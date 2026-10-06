@@ -65,11 +65,31 @@ object AgentClients {
         if (row.tokenSettings.accessTokenTimeToLive != TOKEN_TIME_TO_LIVE) add("token lifetime")
     }
 
+    /**
+     * Refuse an agent client id that another source uses as a client id or a
+     * row id. An agent row id equals its client id, so either match puts two
+     * clients on one row.
+     */
     fun requireNoCollision(agentIds: List<String>, sources: Map<String, Collection<String>>) {
         agentIds.forEach { id ->
             sources.entries.firstOrNull { id in it.value }?.let {
                 throw ChatException("Agent client id '$id' is also registered by ${it.key}.")
             }
+        }
+    }
+
+    /**
+     * Refuse a row id that the store holds for another client. A save of
+     * such a client updates that row in place, and the other client loses its
+     * secret, scopes and settings. See `CHAT-uizwrxmf`.
+     */
+    fun requireRowFree(repository: RegisteredClientRepository, client: RegisteredClient) {
+        val row = repository.findById(client.id) ?: return
+        if (row.clientId != client.clientId) {
+            throw ChatException(
+                "Client '${client.clientId}' needs row id '${client.id}', and the store holds that row " +
+                    "for client '${row.clientId}'."
+            )
         }
     }
 
@@ -104,6 +124,7 @@ object AgentClients {
             val row = repository.findByClientId(agent.clientId)
             if (row == null) {
                 val issued = issue(agent, scope)
+                requireRowFree(repository, issued.client)
                 repository.save(issued.client)
                 announce(issued, out)
                 return@forEach
@@ -120,6 +141,10 @@ object AgentClients {
     }
 }
 
-/** The client ids of the `spring.security.oauth2.authorizationserver.client` map. */
+/** The client id and the row id of one configured client. A blank value is left out. */
+fun clientIds(props: Oauth2ClientProperties): List<String> =
+    listOf(props.clientId, props.id).filter { it.isNotBlank() }.distinct()
+
+/** The client ids of the `spring.security.oauth2.authorizationserver.client` map. Each row id equals its client id. */
 fun bootClientIds(serverProps: ObjectProvider<OAuth2AuthorizationServerProperties>): List<String> =
     serverProps.ifAvailable?.client?.values?.mapNotNull { it.registration.clientId }.orEmpty()

@@ -30,7 +30,7 @@
 -Dmanagement.endpoints.web.exposure.include=shutdown,health
 -Dmanagement.server.port=9001
 -Dserver.port=9000
--Dspring-boot.run.arguments=--clientpath=classpath:client.json
+-Dspring-boot.run.arguments=
 -Dspring-boot.run.jvmArguments=
 -Dspring.application.name=chat-authserv
 -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration

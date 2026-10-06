@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import java.time.Duration
 import com.demo.chat.config.deploy.authserv.Oauth2ClientProperties
 import com.demo.chat.config.deploy.authserv.ClientInitializer
+import com.demo.chat.auth.client.RegisteredClientFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Test
@@ -58,6 +59,48 @@ class ClientInitializerTest {
     }
 
 
+    private fun appClient() = Oauth2ClientProperties().apply {
+        clientId = "app-client-id"
+        id = "app-client-id"
+        secret = "{noop}secret"
+        clientAuthenticationMethods = listOf("client_secret_basic")
+        authorizationGrantTypes = listOf("client_credentials")
+        additionalScopes = listOf("openid")
+    }
+
+    @Test
+    fun `an absent app client is saved once`() {
+        Mockito.`when`(repo.findByClientId("app-client-id")).thenReturn(null)
+
+        ClientInitializer(repo, mapper, AgentClientProperties())
+            .registerAppClient(appClient()).run(DefaultApplicationArguments())
+
+        val saved = ArgumentCaptor.forClass(RegisteredClient::class.java)
+        Mockito.verify(repo, Mockito.times(1)).save(saved.capture())
+        assertThat(saved.value.clientId).isEqualTo("app-client-id")
+        assertThat(saved.value.scopes).containsExactly("openid")
+    }
+
+    @Test
+    fun `a stored app client is kept`() {
+        Mockito.`when`(repo.findByClientId("app-client-id"))
+            .thenReturn(RegisteredClientFactory(appClient())())
+
+        ClientInitializer(repo, mapper, AgentClientProperties())
+            .registerAppClient(appClient()).run(DefaultApplicationArguments())
+
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
+    fun `an app client with no client id fails the start`() {
+        assertThatThrownBy {
+            ClientInitializer(repo, mapper, AgentClientProperties())
+                .registerAppClient(Oauth2ClientProperties()).run(DefaultApplicationArguments())
+        }.hasMessage("app.oauth2.client carries no client id")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
     private fun agentProps() = AgentClientProperties().apply {
         agentScope = "chat.mcp"
         agents = listOf(AgentClientProperties.AgentClient().apply { clientId = "client-agent"; username = "Agent" })
@@ -65,7 +108,7 @@ class ClientInitializerTest {
 
     private fun runner(agentProps: AgentClientProperties, vararg args: String) =
         ClientInitializer(repo, mapper, agentProps)
-            .registerAgentClients(serverProps(), Oauth2ClientProperties().apply { clientId = "chat-client-id" })
+            .registerAgentClients(serverProps(), Oauth2ClientProperties().apply { clientId = "chat-client-id"; id = "chat-client" })
             .run(DefaultApplicationArguments(*args))
 
     private fun serverProps(): ObjectProvider<OAuth2AuthorizationServerProperties> {
@@ -129,6 +172,74 @@ class ClientInitializerTest {
 
         assertThatThrownBy { runner(props) }
             .hasMessage("Agent client id 'chatClient' is also registered by spring.security.oauth2.authorizationserver.client.")
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `an agent id that the app client row id uses fails the start before a write`(stored: Boolean) {
+        if (stored) {
+            Mockito.`when`(repo.findById("chat-client"))
+                .thenReturn(AgentClients.build("chat-client", "chat.mcp", "kept"))
+        }
+        val props = agentProps().apply { agents.single().clientId = "chat-client" }
+
+        assertThatThrownBy { runner(props) }
+            .hasMessage("Agent client id 'chat-client' is also registered by app.oauth2.client.")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
+    fun `an agent id that the clientpath row id uses fails the start`() {
+        val props = agentProps().apply { agents.single().clientId = "1" }
+
+        assertThatThrownBy { runner(props, "--clientpath=classpath:testclient.json") }
+            .hasMessage("Agent client id '1' is also registered by --clientpath.")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
+    fun `an agent whose row id the store holds for another client fails the start`() {
+        Mockito.`when`(repo.findByClientId("client-agent")).thenReturn(null)
+        Mockito.`when`(repo.findById("client-agent")).thenReturn(RegisteredClientFactory(appClient().apply { id = "client-agent" })())
+
+        assertThatThrownBy { runner(agentProps()) }
+            .hasMessage("Client 'client-agent' needs row id 'client-agent', and the store holds that row for client 'app-client-id'.")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
+    fun `an app client whose row id the store holds for another client fails the start`() {
+        val app = appClient().apply { id = "chat-client" }
+        Mockito.`when`(repo.findByClientId("app-client-id")).thenReturn(null)
+        Mockito.`when`(repo.findById("chat-client"))
+            .thenReturn(AgentClients.build("chat-client", "chat.mcp", "kept"))
+
+        assertThatThrownBy {
+            ClientInitializer(repo, mapper, AgentClientProperties())
+                .registerAppClient(app).run(DefaultApplicationArguments())
+        }.hasMessage("Client 'app-client-id' needs row id 'chat-client', and the store holds that row for client 'chat-client'.")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
+    fun `a boot client whose row id the store holds for another client fails the start`() {
+        val props = OAuth2AuthorizationServerProperties().apply {
+            client["boot"] = OAuth2AuthorizationServerProperties.Client().apply {
+                registration.clientId = "chat-client"
+                registration.clientSecret = "{noop}secret"
+                registration.clientAuthenticationMethods = setOf("client_secret_basic")
+                registration.authorizationGrantTypes = setOf("client_credentials")
+            }
+        }
+        Mockito.`when`(repo.findByClientId("chat-client")).thenReturn(null)
+        Mockito.`when`(repo.findById("chat-client"))
+            .thenReturn(RegisteredClientFactory(appClient().apply { id = "chat-client" })())
+
+        assertThatThrownBy {
+            ClientInitializer(repo, mapper, AgentClientProperties())
+                .loadOauth2AuthorizationServerProperties(props).run(DefaultApplicationArguments())
+        }.hasMessage("Client 'chat-client' needs row id 'chat-client', and the store holds that row for client 'app-client-id'.")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
     }
 
     @Test

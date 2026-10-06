@@ -81,7 +81,7 @@ class AuthorizationServerConfig(@Value("\${app.oauth2.jwk.path}") val resource: 
         AgentClients.requireNoCollision(
             agents.map { it.clientId },
             mapOf(
-                "app.oauth2.client" to listOf(clientProps.clientId),
+                "app.oauth2.client" to clientIds(clientProps),
                 "spring.security.oauth2.authorizationserver.client" to bootClientIds(serverProps),
             ),
         )

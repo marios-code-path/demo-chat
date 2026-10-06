@@ -450,7 +450,6 @@ SERVICES: dict[str, Service] = {
             "classpath:/config/oauth2-client.yml",
         ],
         management_endpoints=["shutdown", "health"],
-        run_arguments="--clientpath='classpath:client.json'",
         port_flags_fn=lambda: [
             f"-Dserver.port={AUTHSERV_HTTP_PORT}",
             f"-Dmanagement.server.port={AUTHSERV_MGMT_PORT}",

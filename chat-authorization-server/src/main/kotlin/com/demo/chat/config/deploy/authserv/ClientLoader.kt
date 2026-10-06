@@ -50,12 +50,7 @@ class ClientInitializer(val repo: RegisteredClientRepository,
                     this.secret = reg.clientSecret
                         ?: error("The $name registration carries no client secret")
                 }
-                val registered = RegisteredClientFactory(clientProps)()
-
-                val oldClient = repo.findByClientId(registered.clientId)
-
-                if(oldClient == null)
-                    repo.save(registered)
+                saveClient(clientProps)
             }
         }
 
@@ -76,7 +71,7 @@ class ClientInitializer(val repo: RegisteredClientRepository,
         AgentClients.requireNoCollision(
             agents.map { it.clientId },
             mapOf(
-                "app.oauth2.client" to listOf(clientProps.clientId),
+                "app.oauth2.client" to clientIds(clientProps),
                 "spring.security.oauth2.authorizationserver.client" to bootClientIds(serverProps),
                 "--clientpath" to clientPathIds(args),
             ),
@@ -85,7 +80,7 @@ class ClientInitializer(val repo: RegisteredClientRepository,
     }
 
     private fun clientPathIds(args: ApplicationArguments): List<String> =
-        args.getOptionValues("clientpath")?.firstOrNull()?.let { listOf(readClientPath(it).clientId) }.orEmpty()
+        args.getOptionValues("clientpath")?.firstOrNull()?.let { clientIds(readClientPath(it)) }.orEmpty()
 
     private fun readClientPath(clientPath: String): Oauth2ClientProperties {
         val resource = if (clientPath.startsWith("classpath:")) {
@@ -95,6 +90,17 @@ class ClientInitializer(val repo: RegisteredClientRepository,
         }
         return mapper.readValue(resource.inputStream, Oauth2ClientProperties::class.java)
     }
+
+    /**
+     * Saves `app.oauth2.client` once, as the memory repository holds it. See
+     * `CHAT-uizwrxmf`.
+     */
+    @Bean
+    fun registerAppClient(clientProps: Oauth2ClientProperties): ApplicationRunner =
+        ApplicationRunner {
+            if (clientProps.clientId.isBlank()) error("app.oauth2.client carries no client id")
+            saveClient(clientProps)
+        }
 
     @Bean
     fun loadClient(): ApplicationRunner =
@@ -116,7 +122,9 @@ class ClientInitializer(val repo: RegisteredClientRepository,
 
         val oldClient = repo.findByClientId(client.clientId)
 
-        if(oldClient==null)
+        if(oldClient==null) {
+            AgentClients.requireRowFree(repo, client)
             repo.save(client)
+        }
     }
 }
