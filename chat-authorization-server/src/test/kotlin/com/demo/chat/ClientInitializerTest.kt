@@ -222,6 +222,27 @@ class ClientInitializerTest {
     }
 
     @Test
+    fun `a boot client whose row id the store holds for another client fails the start`() {
+        val props = OAuth2AuthorizationServerProperties().apply {
+            client["boot"] = OAuth2AuthorizationServerProperties.Client().apply {
+                registration.clientId = "chat-client"
+                registration.clientSecret = "{noop}secret"
+                registration.clientAuthenticationMethods = setOf("client_secret_basic")
+                registration.authorizationGrantTypes = setOf("client_credentials")
+            }
+        }
+        Mockito.`when`(repo.findByClientId("chat-client")).thenReturn(null)
+        Mockito.`when`(repo.findById("chat-client"))
+            .thenReturn(RegisteredClientFactory(appClient().apply { id = "chat-client" })())
+
+        assertThatThrownBy {
+            ClientInitializer(repo, mapper, AgentClientProperties())
+                .loadOauth2AuthorizationServerProperties(props).run(DefaultApplicationArguments())
+        }.hasMessage("Client 'chat-client' needs row id 'chat-client', and the store holds that row for client 'app-client-id'.")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
     fun `an agent id that the clientpath file uses fails the start`() {
         val props = agentProps().apply { agents.single().clientId = "ba89bb6f-8cf9-4b39-8118-2bf917b19bee" }
 

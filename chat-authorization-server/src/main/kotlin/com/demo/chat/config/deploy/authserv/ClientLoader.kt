@@ -50,12 +50,7 @@ class ClientInitializer(val repo: RegisteredClientRepository,
                     this.secret = reg.clientSecret
                         ?: error("The $name registration carries no client secret")
                 }
-                val registered = RegisteredClientFactory(clientProps)()
-
-                val oldClient = repo.findByClientId(registered.clientId)
-
-                if(oldClient == null)
-                    repo.save(registered)
+                saveClient(clientProps)
             }
         }
 
