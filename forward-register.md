@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `42f0bb4b`, in sync with `origin`. The working tree holds no untracked file. The two maiden voyage handoff files moved to `~/tmp` on 2026-10-06. |
-| Register state | Updated 2026-10-06, after the multi-agent merge of PR #189. |
-| Last merged PR | #189, merge commit `42f0bb4b`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `edf67e88`, in sync with `origin`. The working tree holds no untracked file. The two maiden voyage handoff files moved to `~/tmp` on 2026-10-06. |
+| Register state | Updated 2026-10-06, after the client-init merge of PR #191. |
+| Last merged PR | #191, merge commit `edf67e88`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Six more hold one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-xcmpudyb-message-id` at `20f3d014`. **The branch refs are kept.** |
 | Worktrees | The main checkout, and `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`. That worktree belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
-| Open PRs | None. PR #189 merged on 2026-10-06 as `42f0bb4b`. That merge carried more than one agent per REST deployment, and it closed `CHAT-frcrctdp`. |
+| Open PRs | None. PR #191 merged on 2026-10-06 as `edf67e88`. That merge repaired the `client-init` path, and it closed `CHAT-uizwrxmf`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,8 +28,9 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh is `CHAT-evdgjpwc`, and it follows PR #189. The refresh before it is
-`CHAT-fayckdfc`, which followed PR #184 and merged as PR #185. The one before
+refresh is `CHAT-texwkksv`, and it follows PR #191. The refresh before it is
+`CHAT-evdgjpwc`, which followed PR #189 and merged as PR #190. The one before
+that is `CHAT-fayckdfc`, which followed PR #184 and merged as PR #185. The one before
 that merged as PR #168, after the shell Admin identity merge. The one before that
 merged as PR #164, and it carried the measured shell reading. The one before that merged as PR #160,
 after the grant policy merge and the MCP agent identity merge. The one before
@@ -4689,7 +4690,37 @@ design and the plan before any code.
 
 ### Filed
 
-- `CHAT-uizwrxmf`. `chat-build authserv` passes `--clientpath` to a
-  `client.json` that main resources do not hold. With agents configured, this
-  also prevents agent registration under `client-init`. The collision check
-  reads that file before it registers agents.
+- `CHAT-uizwrxmf` recorded the missing `client.json` that prevented
+  `chat-build authserv` from starting under `client-init`. PR #191 closed
+  this defect. See the next section.
+
+## Authorization server client initialization repair (2026-10-06)
+
+PR #191 merged as `edf67e88`, with parents `a2350413` and `6cc554aa`.
+The merged tree matches reviewed head `6cc554aa`. Local master matches
+`origin/master`. `CHAT-uizwrxmf` is done.
+
+- `chat-build authserv` passed `--clientpath='classpath:client.json'`, and no
+  `client.json` has ever existed in this repository. So a `client-init` start
+  always failed. `chat-build` now passes no `--clientpath`. The option remains
+  available.
+- `client-init` now saves `app.oauth2.client` once. It also saves Spring
+  clients, configured agents, and an optional JSON client. A blank app client
+  ID fails startup.
+- Agent collision checks compare client IDs and row IDs. Both remaining
+  repository save calls reject a row ID held by another client before writing.
+- **A JDBC `save` selects INSERT or UPDATE by the row id, not the client id.**
+  An agent row id equals its client id, and the shipped app client has the row
+  id `chat-client`. So a client whose row id the store held for another client
+  updated that row in place. The review reproduced it through the production
+  JDBC repository with mocked JDBC operations.
+- `ClientInitializerTest` ran 22 tests with 0 failures and 0 skipped. Each new
+  guard has a mutation that failed only its own test. The independent review
+  reported 38 focused tests passed.
+- The default local gate passed with 1712 tests, zero failures, 41 skipped,
+  and no drift. CI run `37508963649` passed `build`, `integration`, and
+  `agent-http` on `6cc554aa`.
+- A live `client-init` start against the JDBC client store remains untested.
+- `CHAT-pnjmfhnb` remains open at low priority. It tracks the intermittent
+  `MessageReindexServiceImplTests` failure when the test checks records before
+  the terminal record is published.
