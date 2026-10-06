@@ -4558,3 +4558,69 @@ the three key columns through a repository fragment. The key classes now map
 - **A packaged Cassandra deployment.** No launched jar or image sent a
   message. Every proof starts the composition in a test JVM against a test
   container.
+
+## More than one agent on one REST deployment (2026-10-05)
+
+`CHAT-frcrctdp`, under `CHAT-aqpcacwv`. Branch `chat-frcrctdp-multi-agent`.
+**This work is not merged.** Spec:
+`docs/superpowers/specs/2026-10-05-multi-agent-rest-design.md`. Plan:
+`docs/superpowers/plans/2026-10-05-multi-agent-rest.md`. Sigma reviewed the
+design and the plan before any code.
+
+### What changed
+
+- `app.security.agents[n]` and `app.security.required-scope` replace
+  `app.security.agent.*`. The old keys fail the start and name the new keys.
+- The token `client_id` selects the agent identity, on REST and on the core.
+  An unlisted client answers 401 on REST and `0x401` on the core.
+- `chat-build --agent CLIENT_ID=HANDLE` repeats once per agent. On `core` it
+  also creates the agent user, in the bracket form
+  `app.init.initial-users[<H>]`. The old agent flags exit 2.
+- The authorization server issues one `client_credentials` client per agent.
+  It prints each generated secret once, after the repository holds the client.
+  Tokens are self-contained with a 300 second lifetime. `chat-client` lost
+  `chat.mcp`.
+- `shell-scripts/agent-http-gate.sh` runs the agent HTTP test and the relay
+  test in their own builds. The PR job `agent-http` and
+  `build-health.sh --ci` call it.
+
+### Rules that are easy to lose
+
+- **Handle checks ignore case.** The Lucene user index lowercases the handle,
+  so a lookup for `admin` answers `Admin`. The lifecycle keeps an exact match.
+  `Admin`, `Anon` and each service account are reserved.
+- **The core and REST must carry the same list.** No check compares them.
+- **The memory profile makes new agent secrets at each start.**
+- **A map key without brackets can lose distinct values.** Measured: with the
+  emitter mutated to drop the brackets, `Bot_1` bound to the handle `Bot1`.
+- **Neither reactor build runs the agent HTTP classes.** CI and `build-health.sh`
+  activate neither `expose-webflux` nor `rest-core-e2e`. Only
+  `agent-http-gate.sh` runs them, and it requires zero skipped tests.
+- **The vector gate agent is `Agent`, not `Admin`.** `Admin` is reserved now.
+
+### Measured
+
+- `RestAgentSelectionTests` 2/2 with 0 skipped under `-Pexpose-webflux`.
+  `CoreAgentSelectionTests` 2/2. `RestToCoreBearerDeploymentTests` 7/7 with 0
+  skipped after `clean verify -Prest-core-e2e`. The relay core jar holds no
+  `chat-webflux`.
+- A first-agent mutation of the REST wiring failed the REST test alone, and a
+  first-agent mutation of the core wiring failed the core and relay tests
+  alone.
+- `agent-http-gate.sh --offline`: ok at baseline, failed with 2 skipped
+  without the profile, failed with 2 failures under the REST mutation, ok
+  restored.
+- A `REFERENCE` token format failed the agent decoder test. Moving the secret
+  print before the save failed both output tests.
+- `test-flags.sh` 30/30. `gate-embedding-launch.sh` passed with `Agent`: 3 hits
+  and `indexComplete` true.
+
+### Not measured
+
+- Secret rotation, and an authorization server restart while an adapter runs.
+- A check that the REST list and the core list agree. No such check exists.
+
+### Filed
+
+- `CHAT-uizwrxmf`. `chat-build authserv` passes `--clientpath` to a
+  `client.json` that main resources do not hold.

@@ -179,9 +179,9 @@ java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-depl
     --app.service.security.userdetails=true \
     --app.users.create=true \
     --spring.config.additional-location=classpath:/config/userinit.yml \
-    --app.security.agent.client-id=<client-id> \
-    --app.security.agent.username=Agent \
-    --app.security.agent.required-scope=chat.mcp \
+    --app.security.required-scope=chat.mcp \
+    '--app.security.agents[0].client-id=<client-id>' \
+    '--app.security.agents[0].username=Agent' \
     --app.security.jwt.jwk-path=/abs/path/server_keycert.jwk \
     --app.service.core.vector=simple \
     --app.service.core.embedding=openai \
@@ -209,8 +209,8 @@ a start without it fails:
 | Value | Failure without it |
 |---|---|
 | `app.primary=REST` | `WebFluxSecurity` requires an `AgentResourceServerChain` bean (`CHAT-mpjtnpqv`) |
-| the four `app.security` values | `app.security.agent.client-id is required` (`CHAT-pgpmsgvr`) |
-| `app.users.create` and `userinit.yml` | `The agent username 'Agent' answered 0 users` |
+| the four `app.security` values | `app.security.required-scope is required.` (`CHAT-pgpmsgvr`, `CHAT-frcrctdp`) |
+| `app.users.create` and `userinit.yml` | `The agent username 'Agent' for client '<id>' answered 0 users` |
 
 The three `app.controller` values after `recall` are not required for a start.
 The seed needs `topic` and `message`, and the sender lookup needs `user`. They

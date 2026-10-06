@@ -262,7 +262,7 @@ through `GET /message/id/{id}`.
 
 The sender of Step 1 is the agent account. `GET /user/handle/{name}` answers a
 list, and the user id sits at `.[0].key.key.id`. Measured on 2026-10-04. Name
-the handle that `app.security.agent.username` names.
+the handle that the `app.security.agents` entry of the token client names.
 
 ```bash
 SENDER=$(curl -sS http://localhost:8080/user/handle/Agent \

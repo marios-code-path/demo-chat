@@ -20,16 +20,17 @@ The procedure asks the authorization server for a token. The token carries the
 | Form | One JSON Web Token, as bare text. No `Bearer` prefix and no quotes. |
 | Scheme | `ES256`, signed by the key the deployment trusts |
 | Claim `scope` | `chat.mcp` |
-| Claim `client_id` | The value of `app.security.agent.client-id` in the deployment |
+| Claim `client_id` | The client id of one `app.security.agents` entry in the deployment |
 | Lifetime | 300 seconds from issue |
 
 The file holds the token alone. The reader trims the surrounding whitespace, so
 a trailing newline is accepted.
 
-**The `client_id` claim is the link between the two sides.** One client id
-appears three times. It names the OAuth client in the token request. It names
-`app.security.agent.client-id` at the deployment. A token from another client is
-refused with 401, even when its scope is right.
+**The `client_id` claim selects the agent.** One client id appears three times.
+It names the OAuth client in the token request. It names one
+`app.security.agents` entry at the deployment, and that entry names the chat
+user. A token from an unlisted client is refused with 401, even when its scope
+is right. See `CHAT-frcrctdp`.
 
 ## The procedure
 
@@ -41,8 +42,23 @@ key that the deployment trusts.
 ```sh
 export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 \
-  --jwk "$PWD/encrypt-keys/server_keycert.jwk" --profile memory
+  --jwk "$PWD/encrypt-keys/server_keycert.jwk" --profile memory \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
+  --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
 ```
+
+The authorization server registers one `client_credentials` client per
+`--agent`, with the scope `chat.mcp`. The start prints one line per agent:
+
+    Generated secret for agent client '<id>' (<handle>): <secret>
+
+Record each secret. **The memory profile makes new secrets at each start.**
+Request a new token after a restart. The `client-init` profile saves a client
+once and prints its secret once. A lost secret has no recovery path: delete the
+client row, and the next start registers it again.
+
+Do not use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent client id. It is
+the id of `app.oauth2.client`, and the start refuses a shared client id.
 
 **The authorization server needs the `Service` password since 2026-10-02.** The
 core RSocket routes require `ROLE_SERVICE`, and a blank password fails the
@@ -64,7 +80,7 @@ before that line.
 ### Step 2: request the token
 
 ```sh
-curl -sS -u '<client-id>:<client-secret>' \
+curl -sS -u '<agent-client-id>:<printed-secret>' \
   -d 'grant_type=client_credentials' -d 'scope=chat.mcp' \
   http://127.0.0.1:9000/oauth2/token
 ```
@@ -95,7 +111,7 @@ address, which is a development form. Use TLS for any other host.
 ### Step 3: write the credential file
 
 ```sh
-curl -sS -u '<client-id>:<client-secret>' \
+curl -sS -u '<agent-client-id>:<printed-secret>' \
   -d 'grant_type=client_credentials' -d 'scope=chat.mcp' \
   http://127.0.0.1:9000/oauth2/token \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' \
@@ -116,9 +132,9 @@ default, so the context refuses to start without them.
 
 | Property | Value |
 |---|---|
-| `app.security.agent.client-id` | The client id from step 2 |
-| `app.security.agent.username` | The chat user that names the agent identity |
-| `app.security.agent.required-scope` | `chat.mcp` |
+| `app.security.agents[n].client-id` | The client id of agent `n` |
+| `app.security.agents[n].username` | The chat user that names agent `n` |
+| `app.security.required-scope` | `chat.mcp` |
 | `app.security.jwt.jwk-path` | The JWK file that holds the trusted public key |
 
 `docs/BUILD.md` states the launch in full.
@@ -126,18 +142,31 @@ default, so the context refuses to start without them.
 #### The supported route: chat-build rest
 
 ```sh
-./shell-scripts/chat-build rest --run --notls --node-id 1 \
+./shell-scripts/chat-build core --memory --run --notls --node-id 1 --init users,rootkeys \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
-  --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 \
-  --agent-username Agent
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
+  --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
+./shell-scripts/chat-build rest --run --notls --node-id 2 \
+  --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
+  --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
 ```
+
+The core takes `--agent` for every agent, and it creates each agent user as a
+plain user with no grant row. REST takes the same `--agent` list. **The core
+and REST must carry the same list.** No check compares them. A client that REST
+lists and the core does not answers 401.
+
+A handle holds letters, digits and underscores alone. A handle must not be
+`Admin`, `Anon` or a service account, in any case.
 
 Both `--notls` and `--node-id` are required. `chat-build` refuses a start
 without either one. Measured on 2026-09-30: the command without them exits 2
 with `the following arguments are required: --node-id`.
 
 `Agent` is the handle that `userinit.yml` declares for the MCP adapter account.
-The deployment resolves it once at startup, and a wrong handle fails the start.
+The deployment resolves each handle once at startup, and a wrong handle fails
+the start.
 
 Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
 the working directory, so a relative path would resolve against that rather
@@ -161,12 +190,13 @@ holds no store of its own.
 Use this route to reproduce the acceptance run. The appendix carries the full
 flag list, and its ports are 6892 and 6893.
 
-`chat-build` gives no command for this shape. It accepts the agent flags on the
-`rest` service alone, and that service always takes the `client` backend.
+`chat-build` gives no command for this shape. Its `rest` service always takes
+the `client` backend.
 
-The deployment resolves the agent identity once at startup. It looks the
-username up through `ChatUserService` and requires exactly one match. Any other
-count fails the start with `The agent username '<name>' answered <n> users.`
+The deployment resolves each agent identity once at startup. It looks each
+username up through `ChatUserService` and keeps the users whose handle matches
+exactly. Any count other than one fails the start with
+`The agent username '<name>' for client '<id>' answered <n> users. It must answer exactly one user.`
 
 ### Step 5: run the adapter
 
@@ -356,18 +386,11 @@ topics, so its reads rest on the routes that the deployment permits today.
 
 Read `docs/ANONYMOUS-AUTHORIZATION.md` before you widen an agent account.
 
-### Limit 3: the `client-init` path registers no `chat.mcp` client
+### Limit 3 is closed
 
-The `client-init` Spring profile builds its clients from
-`spring.security.oauth2.authorizationserver.client.*`. The client in
-`chat-authorization-server/src/main/resources/application.yml` is `chatClient`,
-and its scopes are `auth, message, topic, user, openId`.
-
-**A token request against `chatClient` with `scope=chat.mcp` fails.** Use the
-`memory` profile, or add `chat.mcp` to that client.
-
-This one is not filed. It is owner judgment, because the fix is a scope list in
-one file. A reader who hits it should file it.
+The `client-init` profile registers one `chat.mcp` client per `--agent` since
+`CHAT-frcrctdp`. It refuses a stored agent row whose shape differs, and it
+names each field that differs.
 
 ## What this does not prove
 
@@ -419,9 +442,9 @@ java --enable-native-access=ALL-UNNAMED \
   --spring.config.additional-location=classpath:/config/userinit.yml \
   --app.controller.topic=true \
   --app.controller.user=true --app.controller.message=true \
-  --app.security.agent.client-id=31649af5-0154-4be5-8695-fda9d18b7981 \
-  --app.security.agent.username=Agent \
-  --app.security.agent.required-scope=chat.mcp \
+  --app.security.required-scope=chat.mcp \
+  '--app.security.agents[0].client-id=5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13' \
+  '--app.security.agents[0].username=Agent' \
   --app.security.jwt.jwk-path=/abs/path/server_keycert.jwk
 ```
 
