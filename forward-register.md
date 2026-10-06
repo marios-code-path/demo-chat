@@ -4614,6 +4614,18 @@ design and the plan before any code.
   print before the save failed both output tests.
 - `test-flags.sh` 30/30. `gate-embedding-launch.sh` passed with `Agent`: 3 hits
   and `indexComplete` true.
+- `build-health.sh` default mode at `95eb1716`: exit 0, 30 modules, 1703 tests,
+  0 failures, 41 skipped, and no drift.
+- `build-health.sh --ci` at `95eb1716`: exit 0, 30 modules, 2043 tests, 0
+  failures, 76 skipped, no drift, and `agent http gate: ok`. The image id moved
+  from `sha256:e819f9db` to `sha256:522e3ebe`.
+- `build-health.sh --ci` with the REST wiring mutated: exit 1. The reactor part
+  passed with 0 failures. The agent gate failed `RestAgentSelectionTests` with 2
+  failures. **No reactor test reads the REST wiring over HTTP.**
+- The self-review found that a REST start with only the old keys failed in the
+  decoder bean with `app.security.required-scope is required.`, before the
+  guard ran. `AgentSecurityProperties` now binds the old `agent` block to refuse
+  it, so every call site names the new keys. `95eb1716`.
 
 ### Not measured
 

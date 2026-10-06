@@ -15,6 +15,16 @@ branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
 modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
 that mode, because all of their tests carry the `integration` tag.
 
+The run on branch `chat-frcrctdp-multi-agent`, on 2026-10-05, with an empty
+temporary `DOCKER_CONFIG`, exits 0 and reports no drift. 30 modules ran 2043
+tests, with 0 failures, 0 errors and 76 skipped. The image id moved from
+`sha256:e819f9db` to `sha256:522e3ebe`, so this run rebuilt the image. The run
+also called `shell-scripts/agent-http-gate.sh`: `RestAgentSelectionTests` ran 2
+tests and `RestToCoreBearerDeploymentTests` ran 7, each with 0 skipped. The
+default mode on the same commit ran 1703 tests with 41 skipped and reports no
+drift. A `--ci` run with the REST wiring mutated exited 1: the reactor part
+passed, and the agent gate failed with 2 failures. See `CHAT-frcrctdp`.
+
 The run on branch `chat-xcmpudyb-message-id`, on 2026-10-04, read this, with an empty temporary `DOCKER_CONFIG`. It exits
 0 and reports no drift. 30 modules ran 1969 tests, with 0 failures, 0 errors
 and 72 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id moved
