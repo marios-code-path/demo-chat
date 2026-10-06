@@ -280,7 +280,9 @@ the servers start.
 `app.security.agents[n]` binds one OAuth client id to one chat user handle.
 `app.security.required-scope` is one value for every agent. The old
 `app.security.agent.*` keys fail the start, and `AgentSecurityPropertiesGuard`
-names the new keys.
+names the new keys. `AgentSecurityProperties` also binds the old `agent` block
+only to refuse it. So `requireComplete` gives the same message on every call
+site, and the message does not depend on which bean starts first.
 
 The token `client_id` selects the agent, on REST and on the core. A token from
 an unlisted client answers 401 on REST and `0x401` on the core. On the relay

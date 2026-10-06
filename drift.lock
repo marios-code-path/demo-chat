@@ -5,8 +5,8 @@ docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/a
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentities.kt sig:697f26513bdee0ce
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentityLifecycle.kt sig:ead36dff6c3e388b
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentJwtDecoderFactory.kt sig:7b1b1e0293559c1f
-docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt sig:8224e80c24937a35
-docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityPropertiesGuard.kt sig:bb9c2ee67d47798b
+docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt sig:1546999e22dd9b8c
+docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityPropertiesGuard.kt sig:4b0824a3bf8fb896
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/security/rsocket/RSocketSecurityErrorCodes.kt sig:c40756a4935868cb
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:da2329ea0e269120
