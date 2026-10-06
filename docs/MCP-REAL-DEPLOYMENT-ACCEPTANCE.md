@@ -1,5 +1,10 @@
 # Real-deployment acceptance for the MCP adapter
 
+**The runs below used the single agent keys of their date.** Since
+`CHAT-frcrctdp`, a launch names each agent with `app.security.agents[n]` and
+`app.security.required-scope`. The old keys fail the start. See
+`docs/MCP-CREDENTIAL-ISSUANCE.md`.
+
 This document records one acceptance run of the Demo Chat MCP adapter against a
 running Demo Chat deployment. Issue `CHAT-spbwlamz` carries the work. Task 8 of
 `docs/superpowers/plans/2026-09-28-demo-chat-mcp-feasibility.md` holds the step

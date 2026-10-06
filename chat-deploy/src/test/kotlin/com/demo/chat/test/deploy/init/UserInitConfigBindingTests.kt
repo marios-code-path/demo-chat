@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources
 import org.springframework.boot.env.YamlPropertySourceLoader
 import org.springframework.core.env.EnumerablePropertySource
+import org.springframework.core.env.MapPropertySource
 import org.springframework.core.env.MutablePropertySources
 import org.springframework.core.io.FileSystemResource
 import java.io.File
@@ -97,6 +98,41 @@ class UserInitConfigBindingTests {
             .toSet()
 
         assertThat(fields).isSubsetOf(allowed)
+    }
+
+    /**
+     * `chat-build --agent` emits each agent user in the bracket form. See
+     * `CHAT-frcrctdp`.
+     *
+     * **Why the brackets.** Without brackets, relaxed binding can select the
+     * same handle value for both entries. Brackets preserve distinct handle
+     * values.
+     */
+    @Test
+    fun `bracketed launch users join the shipped users and keep their own handles`() {
+        val sources = propertySources().apply {
+            addFirst(
+                MapPropertySource(
+                    "launch",
+                    mapOf(
+                        "app.init.initial-users[Bot_1].handle" to "Bot_1",
+                        "app.init.initial-users[Bot_1].name" to "Bot_1",
+                        "app.init.initial-users[Bot_1].image-uri" to "chatimg://agent.png",
+                        "app.init.initial-users[Bot1].handle" to "Bot1",
+                        "app.init.initial-users[Bot1].name" to "Bot1",
+                        "app.init.initial-users[Bot1].image-uri" to "chatimg://agent.png",
+                    )
+                )
+            )
+        }
+
+        val bound = Binder(ConfigurationPropertySources.from(sources))
+            .bind(PREFIX, UserInitializationProperties::class.java).get()
+
+        assertThat(bound.initialUsers.keys).contains("Admin", "Anon", "Agent", "Service", "Bot_1", "Bot1")
+        assertThat(bound.initialUsers.getValue("Bot_1").handle).isEqualTo("Bot_1")
+        assertThat(bound.initialUsers.getValue("Bot1").handle).isEqualTo("Bot1")
+        assertThat(bound.initialUsers.getValue("Agent").name).isEqualTo("MCP ADAPTER")
     }
 
     private fun binder(): Binder = Binder(ConfigurationPropertySources.from(propertySources()))

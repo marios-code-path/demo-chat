@@ -2,7 +2,7 @@ package com.demo.chat.test.controller.webflux
 
 import com.demo.chat.config.WebFluxSecurity
 import com.demo.chat.config.agent.AgentAuthenticationConverter
-import com.demo.chat.config.agent.AgentIdentity
+import com.demo.chat.config.agent.AgentIdentities
 import com.demo.chat.config.agent.AgentJwtDecoderFactory
 import com.demo.chat.config.agent.AgentResourceServerChain
 import com.demo.chat.config.agent.AgentSecurityProperties
@@ -65,25 +65,23 @@ class WebFluxAnonymousIdentityTests {
 
     private fun agentChain(): AgentResourceServerChain {
         val properties = AgentSecurityProperties().apply {
-            agent = AgentSecurityProperties.Agent().apply {
+            requiredScope = "chat.mcp"
+            agents = listOf(AgentSecurityProperties.Agent().apply {
                 clientId = "client-under-test"
                 username = "agent-svc"
-                requiredScope = "chat.mcp"
-            }
+            })
             jwt = AgentSecurityProperties.Jwt().apply { jwkPath = WebFluxTestSigningKey.path() }
         }
-        val identity = AgentIdentity().apply {
-            resolve(
-                ChatUserDetails(
-                    User.create(TestKeys.key(2L), "agent-svc", "agent-svc", "http://agent-svc"),
-                    emptyList(),
-                )
-            )
+        val identities = AgentIdentities().apply {
+            resolve(mapOf("client-under-test" to ChatUserDetails(
+                User.create(TestKeys.key(2L), "agent-svc", "agent-svc", "http://agent-svc"),
+                emptyList<String>(),
+            )))
         }
         return AgentResourceServerChain(
             properties,
             AgentJwtDecoderFactory.fromJwkFile(WebFluxTestSigningKey.path()),
-            AgentAuthenticationConverter(identity, "client-under-test"),
+            AgentAuthenticationConverter(identities),
         )
     }
 

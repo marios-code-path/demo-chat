@@ -139,6 +139,35 @@ before using either flag, or the single-module build cannot resolve them.
 | `--env-file PATH` | Where to write the env file. |
 | `--dry-run` | Print everything, execute nothing. |
 | `--native` | Rejected — GraalVM native builds are still unsupported. |
+| `--jwk PATH` | The JWK file that the deployment trusts. Absolute. Required with `--agent` on `core` and `rest`, and to run `authserv`. |
+| `--agent CLIENT_ID=HANDLE` | One agent. Repeat it for each agent. See below. |
+| `--agent-scope SCOPE` | The one scope of every agent token. Defaults to `chat.mcp`. |
+
+**Agents.** `--agent` names one OAuth client and the chat user that it acts as.
+The token `client_id` selects the agent. See `CHAT-frcrctdp`.
+
+| Service | Emitted properties |
+|---|---|
+| `core` | `app.init.initial-users[<H>].{handle,name,image-uri}`, `app.security.agents[i].{client-id,username}`, `app.security.required-scope`, `app.security.jwt.jwk-path` |
+| `rest` | `app.security.agents[i].{client-id,username}`, `app.security.required-scope`, `app.security.jwt.jwk-path` |
+| `authserv` | `app.oauth2.agents[i].{client-id,username}`, `app.oauth2.agent-scope` |
+
+The core creates each agent user only when the launch runs the `users` init
+phase. Pass the same `--agent` list to the core and to REST. No check compares
+the two lists.
+
+`chat-build` refuses these values, with exit 1:
+
+- A value that is not `CLIENT_ID=HANDLE`.
+- A handle that holds a character other than a letter, a digit or `_`.
+- The handle `Admin`, `Anon` or `Service`, in any case.
+- A client id or a handle that two `--agent` values share. Handles compare
+  without case.
+- `--agent` on a service other than `core`, `rest` or `authserv`.
+- `--agent` on `core` or `rest` without `--jwk`.
+
+The removed flags `--agent-client-id` and `--agent-username` exit 2 and name
+`--agent`.
 
 **Root keys.** Each service has one root key role. `RootKeySource` in
 `chat-deploy` refuses any other combination at start.

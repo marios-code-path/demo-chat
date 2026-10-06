@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.env.Environment
+import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
@@ -29,10 +29,8 @@ class AgentSecurityConfiguration {
 
     @Bean
     fun agentAuthenticationConverter(
-        identity: AgentIdentity,
-        properties: AgentSecurityProperties,
-    ): Converter<Jwt, Mono<AbstractAuthenticationToken>> =
-        AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
+        identities: AgentIdentities,
+    ): Converter<Jwt, Mono<AbstractAuthenticationToken>> = AgentAuthenticationConverter(identities)
 
     /**
      * **A REST launch refuses the core REST controllers here.** Every REST
@@ -44,15 +42,16 @@ class AgentSecurityConfiguration {
         properties: AgentSecurityProperties,
         decoder: ReactiveJwtDecoder,
         converter: Converter<Jwt, Mono<AbstractAuthenticationToken>>,
-        environment: Environment,
+        environment: ConfigurableEnvironment,
     ): AgentResourceServerChain {
+        AgentSecurityPropertiesGuard.requireNoLegacyKeys(environment)
         CoreRestControllers.requireAbsent(environment)
         properties.requireComplete()
         return AgentResourceServerChain(properties, decoder, converter)
     }
 
     @Bean
-    fun agentIdentity(): AgentIdentity = AgentIdentity()
+    fun agentIdentities(): AgentIdentities = AgentIdentities()
 
     @Bean
     fun restRSocketAuthenticationManager(): ReactiveAuthenticationManager =
@@ -63,7 +62,7 @@ class AgentSecurityConfiguration {
     @Bean
     fun <T> agentIdentityLifecycle(
         services: CompositeServiceBeans<T, String>,
-        identity: AgentIdentity,
+        identities: AgentIdentities,
         properties: AgentSecurityProperties,
-    ): AgentIdentityLifecycle<T> = AgentIdentityLifecycle(services.userService(), identity, properties)
+    ): AgentIdentityLifecycle<T> = AgentIdentityLifecycle(services.userService(), identities, properties)
 }

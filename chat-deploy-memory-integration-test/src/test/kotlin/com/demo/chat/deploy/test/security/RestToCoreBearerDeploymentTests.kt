@@ -54,14 +54,14 @@ class RestToCoreBearerDeploymentTests {
         core = start(
             "core", "--memory", "--run", "--notls", "--node-id", "1",
             "--init", "users,rootkeys", "--jwk", key,
-            "--agent-client-id", "client-under-test", "--agent-username", "Agent",
+            "--agent", "client-under-test=Agent", "--agent", "client-claude=Claude",
             "--agent-scope", "chat.mcp",
         )
         await("http://127.0.0.1:${corePort + 1}/actuator/health", core)
 
         rest = start(
             "rest", "--run", "--notls", "--node-id", "2", "--jwk", key,
-            "--agent-client-id", "client-under-test", "--agent-username", "Agent",
+            "--agent", "client-under-test=Agent", "--agent", "client-claude=Claude",
             "--agent-scope", "chat.mcp",
         )
         await("http://127.0.0.1:${restPort + 1}/actuator/health", rest)
@@ -105,7 +105,7 @@ class RestToCoreBearerDeploymentTests {
             ?.groupValues
             ?.get(1)
         assertThat(id).describedAs("the created room key in the REST response").isNotNull
-        assertOwnerIsConfiguredAgent(id!!)
+        assertOwnerIs(id!!, "Agent")
 
         val removed = request(
             HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/id/$id"))
@@ -115,6 +115,35 @@ class RestToCoreBearerDeploymentTests {
         )
 
         assertThat(removed.statusCode()).isEqualTo(204)
+    }
+
+    @Test
+    fun `each REST agent token reaches core authorization as its own identity`() {
+        listOf("client-under-test" to "Agent", "client-claude" to "Claude").forEach { (clientId, handle) ->
+            val token = DeployTestSigningKey.mint(clientId, "chat.mcp")
+            val created = request(
+                HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/new"))
+                    .header("Authorization", "Bearer $token")
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString("{\"type\":\"ByNameRequest\",\"name\":\"relay${handle.lowercase()}\"}"))
+                    .build(),
+            )
+
+            assertThat(created.statusCode()).describedAs("the room add of $handle").isEqualTo(201)
+            val id = Regex("\\\"id\\\"\\s*:\\s*(\\d+)").find(created.body())!!.groupValues[1]
+            assertOwnerIs(id, handle)
+        }
+    }
+
+    @Test
+    fun `a token from an unlisted client answers 401 on REST`() {
+        val response = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/list"))
+                .header("Authorization", "Bearer ${DeployTestSigningKey.mint("client-unlisted", "chat.mcp")}")
+                .GET().build(),
+        )
+
+        assertThat(response.statusCode()).isEqualTo(401)
     }
 
     /**
@@ -261,11 +290,11 @@ class RestToCoreBearerDeploymentTests {
         return builder.tcp("127.0.0.1", corePort)
     }
 
-    private fun assertOwnerIsConfiguredAgent(roomId: String) {
+    private fun assertOwnerIs(roomId: String, handle: String) {
         val requester = coreRequester(UsernamePasswordMetadata("Service", "rest-core-service-secret"))
         try {
             val agent = requester.route("user.user-by-handle")
-                .data(ByStringRequest("Agent"))
+                .data(ByStringRequest(handle))
                 .retrieveFlux(User::class.java).single().block(Duration.ofSeconds(10))!!
             val grants = requester.route("persist.authmetadata.all")
                 .retrieveFlux(AuthMetadata::class.java).collectList().block(Duration.ofSeconds(10))!!
@@ -329,9 +358,14 @@ class RestToCoreBearerDeploymentTests {
         "-Dapp.controller.topic=true", "-Dapp.controller.message=true",
         "-Dapp.service.security.userdetails=true",
         "-Dspring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
-        "-Dapp.security.agent.client-id=client-under-test",
-        "-Dapp.security.agent.username=Agent",
-        "-Dapp.security.agent.required-scope=chat.mcp",
+        "-Dapp.init.initial-users[Claude].handle=Claude",
+        "-Dapp.init.initial-users[Claude].name=Claude",
+        "-Dapp.init.initial-users[Claude].image-uri=chatimg://agent.png",
+        "-Dapp.security.required-scope=chat.mcp",
+        "-Dapp.security.agents[0].client-id=client-under-test",
+        "-Dapp.security.agents[0].username=Agent",
+        "-Dapp.security.agents[1].client-id=client-claude",
+        "-Dapp.security.agents[1].username=Claude",
         "-Dapp.security.jwt.jwk-path=${arguments[arguments.indexOf("--jwk") + 1]}",
     )
 
@@ -359,9 +393,11 @@ class RestToCoreBearerDeploymentTests {
         "-Dspring.security.user.name=actuator", "-Dspring.security.user.password=actuator",
         "-Dspring.security.user.roles=ACTUATOR",
         "-Dspring.config.additional-location=file:${root.resolve("shared-deploy-configuration/src/main/config/client-rsocket-local.yml")}",
-        "-Dapp.security.agent.client-id=client-under-test",
-        "-Dapp.security.agent.username=Agent",
-        "-Dapp.security.agent.required-scope=chat.mcp",
+        "-Dapp.security.required-scope=chat.mcp",
+        "-Dapp.security.agents[0].client-id=client-under-test",
+        "-Dapp.security.agents[0].username=Agent",
+        "-Dapp.security.agents[1].client-id=client-claude",
+        "-Dapp.security.agents[1].username=Claude",
         "-Dapp.security.jwt.jwk-path=${arguments[arguments.indexOf("--jwk") + 1]}",
     )
 

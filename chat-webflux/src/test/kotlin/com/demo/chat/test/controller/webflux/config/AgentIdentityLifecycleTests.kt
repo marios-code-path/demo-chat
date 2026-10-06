@@ -1,6 +1,6 @@
 package com.demo.chat.test.controller.webflux.config
 
-import com.demo.chat.config.agent.AgentIdentity
+import com.demo.chat.config.agent.AgentIdentities
 import com.demo.chat.config.agent.AgentIdentityLifecycle
 import com.demo.chat.config.agent.AgentSecurityProperties
 import com.demo.chat.domain.ByStringRequest
@@ -15,69 +15,102 @@ import reactor.core.publisher.Flux
 
 class AgentIdentityLifecycleTests {
 
-    private val properties = AgentSecurityProperties().apply {
-        agent = AgentSecurityProperties.Agent().apply {
-            clientId = "client-under-test"
-            username = "agent-svc"
-            requiredScope = "chat.mcp"
-        }
-        jwt = AgentSecurityProperties.Jwt().apply {
-            jwkPath = "/tmp/agent-test.jwk"
-        }
+    private fun agent(clientId: String, username: String) = AgentSecurityProperties.Agent().apply {
+        this.clientId = clientId
+        this.username = username
     }
+
+    private fun properties(vararg agents: AgentSecurityProperties.Agent) = AgentSecurityProperties().apply {
+        requiredScope = "chat.mcp"
+        this.agents = agents.toList()
+        jwt = AgentSecurityProperties.Jwt().apply { jwkPath = "/tmp/agent-test.jwk" }
+    }
+
+    private val twoAgents = properties(agent("client-a", "agent-a"), agent("client-b", "agent-b"))
 
     /** `User` is an interface with a factory. There is no `UserStatus`. */
     private fun user(id: Long, handle: String): User<Long> =
         User.create(Key.of(id, 1L), handle, handle, "http://$handle")
 
-    @Test
-    fun `the configured username resolves the agent principal`() {
-        val users = mockUsers()
-        Mockito.`when`(users.findByUsername(ByStringRequest("agent-svc")))
-            .thenReturn(Flux.just(user(7L, "agent-svc")))
-        val identity = AgentIdentity()
-
-        AgentIdentityLifecycle(users, identity, properties).start()
-
-        assertThat(identity.principal().user.key.id).isEqualTo(7L)
-        assertThat(identity.principal().username).isEqualTo("agent-svc")
+    private fun answer(users: ChatUserService<Long>, query: String, vararg found: User<Long>) {
+        Mockito.`when`(users.findByUsername(ByStringRequest(query))).thenReturn(Flux.just(*found))
     }
 
     @Test
-    fun `an unknown username fails the start and names the username`() {
+    fun `every configured agent resolves to its own principal`() {
         val users = mockUsers()
-        Mockito.`when`(users.findByUsername(ByStringRequest("agent-svc")))
-            .thenReturn(Flux.empty())
-        val identity = AgentIdentity()
+        answer(users, "agent-a", user(7L, "agent-a"))
+        answer(users, "agent-b", user(8L, "agent-b"))
+        val identities = AgentIdentities()
 
-        val failure = assertThrows<RuntimeException> {
-            AgentIdentityLifecycle(users, identity, properties).start()
+        AgentIdentityLifecycle(users, identities, twoAgents).start()
+
+        assertThat(identities.principalFor("client-a")!!.user.key.id).isEqualTo(7L)
+        assertThat(identities.principalFor("client-b")!!.user.key.id).isEqualTo(8L)
+        assertThat(identities.principalFor("client-c")).isNull()
+    }
+
+    @Test
+    fun `a missing second handle fails the start and names it`() {
+        val users = mockUsers()
+        answer(users, "agent-a", user(7L, "agent-a"))
+        answer(users, "agent-b")
+
+        val failure = assertThrows<IllegalStateException> {
+            AgentIdentityLifecycle(users, AgentIdentities(), twoAgents).start()
         }
 
-        assertThat(failure.message).contains("agent-svc")
+        assertThat(failure.message).isEqualTo(
+            "The agent username 'agent-b' for client 'client-b' answered 0 users. It must answer exactly one user."
+        )
     }
 
     @Test
-    fun `a username that answers twice fails the start`() {
+    fun `a lookup that answers another case keeps zero users`() {
         val users = mockUsers()
-        Mockito.`when`(users.findByUsername(ByStringRequest("agent-svc")))
-            .thenReturn(Flux.just(user(7L, "agent-svc"), user(8L, "agent-svc")))
-        val identity = AgentIdentity()
+        answer(users, "agent", user(7L, "Agent"))
 
-        val failure = assertThrows<RuntimeException> {
-            AgentIdentityLifecycle(users, identity, properties).start()
+        val failure = assertThrows<IllegalStateException> {
+            AgentIdentityLifecycle(users, AgentIdentities(), properties(agent("client-a", "agent"))).start()
         }
 
-        assertThat(failure.message).contains("agent-svc")
+        assertThat(failure.message).contains("'agent'").contains("answered 0 users")
     }
 
     @Test
-    fun `an unresolved identity refuses to answer a principal`() {
-        val identity = AgentIdentity()
+    fun `a handle that answers twice fails the start`() {
+        val users = mockUsers()
+        answer(users, "agent-a", user(7L, "agent-a"), user(9L, "agent-a"))
 
-        val failure = assertThrows<RuntimeException> { identity.principal() }
+        val failure = assertThrows<IllegalStateException> {
+            AgentIdentityLifecycle(users, AgentIdentities(), properties(agent("client-a", "agent-a"))).start()
+        }
 
-        assertThat(failure.message).contains("agent")
+        assertThat(failure.message).contains("answered 2 users")
+    }
+
+    @Test
+    fun `two clients that resolve to one user key fail the start`() {
+        val users = mockUsers()
+        answer(users, "agent-a", user(7L, "agent-a"))
+        answer(users, "agent-b", user(7L, "agent-b"))
+
+        val failure = assertThrows<IllegalStateException> {
+            AgentIdentityLifecycle(users, AgentIdentities(), twoAgents).start()
+        }
+
+        assertThat(failure.message).isEqualTo(
+            "app.security.agents clients 'client-a' and 'client-b' resolve to one user key."
+        )
+    }
+
+    @Test
+    fun `an unconfigured core starts and resolves nothing`() {
+        val lifecycle = AgentIdentityLifecycle(mockUsers(), AgentIdentities(), AgentSecurityProperties())
+
+        lifecycle.start()
+
+        assertThat(lifecycle.isRunning).isTrue()
     }
 
     @Test

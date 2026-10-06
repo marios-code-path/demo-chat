@@ -2,9 +2,11 @@ package com.demo.chat.config.rsocket
 
 import com.demo.chat.config.agent.AgentAuthenticationConverter
 import com.demo.chat.config.agent.AgentJwtDecoderFactory
-import com.demo.chat.config.agent.AgentIdentity
+import com.demo.chat.config.agent.AgentIdentities
 import com.demo.chat.config.agent.AgentIdentityLifecycle
 import com.demo.chat.config.agent.AgentSecurityProperties
+import com.demo.chat.config.agent.AgentSecurityPropertiesGuard
+import org.springframework.core.env.ConfigurableEnvironment
 import com.demo.chat.service.composite.ChatUserService
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Qualifier
@@ -30,19 +32,21 @@ import reactor.core.publisher.Mono
 class RSocketAgentSecurityConfiguration<T> {
 
     @Bean
-    fun agentIdentity(): AgentIdentity = AgentIdentity()
+    fun agentIdentities(): AgentIdentities = AgentIdentities()
 
     @Bean
-    fun validateAgentSecurityProperties(properties: AgentSecurityProperties) =
-        AgentSecurityPropertiesValidator(properties)
+    fun validateAgentSecurityProperties(
+        properties: AgentSecurityProperties,
+        environment: ConfigurableEnvironment,
+    ) = AgentSecurityPropertiesValidator(properties, environment)
 
+    /** It does nothing when the core holds no agent value. See `CHAT-frcrctdp`. */
     @Bean
-    @ConditionalOnProperty("app.security.agent.username")
     fun agentIdentityLifecycle(
         @Qualifier("userService") users: ChatUserService<T>,
-        identity: AgentIdentity,
+        identities: AgentIdentities,
         properties: AgentSecurityProperties,
-    ): AgentIdentityLifecycle<T> = AgentIdentityLifecycle(users, identity, properties)
+    ): AgentIdentityLifecycle<T> = AgentIdentityLifecycle(users, identities, properties)
 
     @Bean
     @ConditionalOnProperty("app.security.jwt.jwk-path")
@@ -55,7 +59,7 @@ class RSocketAgentSecurityConfiguration<T> {
         passwordEncoder: PasswordEncoder,
         properties: AgentSecurityProperties,
         decoder: ObjectProvider<ReactiveJwtDecoder>,
-        identity: AgentIdentity,
+        identities: AgentIdentities,
     ): ReactiveAuthenticationManager {
         val simple = UserDetailsRepositoryReactiveAuthenticationManager(users).apply {
             setPasswordEncoder(passwordEncoder)
@@ -66,12 +70,12 @@ class RSocketAgentSecurityConfiguration<T> {
             val jwtDecoder = decoder.getIfAvailable {
                 throw IllegalStateException("The configured agent bearer path has no JWT decoder.")
             }
-            val agent = properties.requireComplete().agent
+            val complete = properties.requireComplete()
             RequiredScopeAuthenticationManager(
                 JwtReactiveAuthenticationManager(jwtDecoder).apply {
-                    setJwtAuthenticationConverter(AgentAuthenticationConverter(identity, agent.clientId))
+                    setJwtAuthenticationConverter(AgentAuthenticationConverter(identities))
                 },
-                agent.requiredAuthority(),
+                complete.requiredAuthority(),
             )
         }
         return RSocketAuthenticationManager(simple, bearer)
@@ -120,9 +124,10 @@ class BearerAuthenticationNotConfiguredManager : ReactiveAuthenticationManager {
     )
 }
 
-class AgentSecurityPropertiesValidator(properties: AgentSecurityProperties) {
+class AgentSecurityPropertiesValidator(properties: AgentSecurityProperties, environment: ConfigurableEnvironment) {
 
     init {
+        AgentSecurityPropertiesGuard.requireNoLegacyKeys(environment)
         if (properties.isConfigured()) {
             properties.requireComplete()
         }

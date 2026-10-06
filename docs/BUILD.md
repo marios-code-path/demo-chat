@@ -166,27 +166,33 @@ A `rest` launch mounts the application chain. That chain requires a valid agent
 token on every route it owns. A `core` launch can validate the same token at
 the RSocket boundary.
 
-Pass the four application values on the command line. The application
-properties have no defaults.
+Pass one `--agent <client-id>=<handle>` per agent, and the trusted key. The
+application properties have no defaults.
 
     ./chat-build rest --run --notls --node-id 2 \
         --jwk /abs/path/server_keycert.jwk \
-        --agent-client-id <client-id> --agent-username <handle>
+        --agent <client-id>=<handle> [--agent <client-id>=<handle> ...]
 
-Start the core with the same four values:
+Start the core with the same `--agent` list:
 
-    ./chat-build core --memory --run --notls --node-id 1 \
+    ./chat-build core --memory --run --notls --node-id 1 --init users,rootkeys \
         --jwk /abs/path/server_keycert.jwk \
-        --agent-client-id <client-id> --agent-username <handle>
+        --agent <client-id>=<handle> [--agent <client-id>=<handle> ...]
 
 Both `--notls` and `--node-id` are required. Each launch exits 2 without
 either one. Give each process its own node id.
 
-Both launches emit `app.security.agent.client-id`,
-`app.security.agent.username`, `app.security.agent.required-scope`, and
-`app.security.jwt.jwk-path`. The core starts with bearer validation disabled
-when all four values are absent. Partial values fail startup and name the
-missing property.
+Both launches emit `app.security.agents[n].client-id`,
+`app.security.agents[n].username`, `app.security.required-scope`, and
+`app.security.jwt.jwk-path`. The core also emits
+`app.init.initial-users[<handle>]` for each agent, so it creates each agent
+user. The core starts with bearer validation disabled when all values are
+absent. Partial values fail startup and name the missing property. A token
+from an unlisted client answers 401. See `CHAT-frcrctdp`.
+
+`--agent` repeats once per agent. A handle holds letters, digits and
+underscores alone. `Admin`, `Anon` and `Service` are refused in any case. The
+old `--agent-client-id` and `--agent-username` flags exit 2.
 
 An RSocket server requires `app.service.composite.auth=true`.
 An absent, empty, or false value causes startup failure.
@@ -199,26 +205,30 @@ These are the current startup defaults. This repair does not add configurable st
 `CHAT-npqgshiu` tracks that existing limitation under the actuator-password issue, `CHAT-dmnhxnsp`.
 Anonymous requests to `rootkeys` receive HTTP 401.
 
-Run the optional two-process test from the repository root:
+`shell-scripts/agent-http-gate.sh` runs the agent HTTP test and the two-process relay test.
+Each class runs in its own build, with its own profile.
+`RestAgentSelectionTests` runs under `expose-webflux`.
+`RestToCoreBearerDeploymentTests` runs under `rest-core-e2e`, after a `clean`.
+The gate fails unless each class runs with zero skipped tests.
+It also fails when the relay core jar holds `chat-webflux`.
+The PR job `agent-http` and `build-health.sh --ci` both call it.
+Run it by hand with `--offline` for a local check:
 
 ```bash
-mvn -B -pl chat-deploy-memory-integration-test -am verify \
-  -Prest-core-e2e -Dtest=RestToCoreBearerDeploymentTests \
-  -Dsurefire.failIfNoSpecifiedTests=false
+shell-scripts/agent-http-gate.sh --offline
 ```
 
-The profile builds both executable jars before the test module and enables its deployment tests.
-No separate `run.rest.core.e2e` property is required.
-The default build skips these tests. CI does not run them.
+The reactor builds still skip both classes, because they activate neither profile. See `CHAT-frcrctdp`.
 
 `--agent-scope` defaults to `chat.mcp`.
 
-Use `Agent` for `--agent-username`. `userinit.yml` declares that handle, and
-startup creates the account. The deployment refuses to start unless that handle
-answers exactly one user. The account is a plain user, so it holds no
+Use `Agent` as the handle of the first agent. `userinit.yml` declares that
+handle, and startup creates the account. The deployment refuses to start unless
+each handle answers exactly one user. The account is a plain user, so it holds no
 administrator reach. See `CHAT-werokcbb` and `docs/MCP-CREDENTIAL-ISSUANCE.md`.
 
-`chat-build` accepts these flags on the `rest` and `core` services. The REST
+`chat-build` accepts `--agent` on the `rest`, `core` and `authserv` services.
+On `authserv` it registers one `client_credentials` client per agent. The REST
 service is a facade over a core service, so a core must run first. It reads its
 root keys over HTTP and holds no store.
 

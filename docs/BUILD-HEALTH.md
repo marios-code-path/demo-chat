@@ -15,6 +15,16 @@ branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
 modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
 that mode, because all of their tests carry the `integration` tag.
 
+The run on branch `chat-frcrctdp-multi-agent`, on 2026-10-05, with an empty
+temporary `DOCKER_CONFIG`, exits 0 and reports no drift. 30 modules ran 2043
+tests, with 0 failures, 0 errors and 76 skipped. The image id moved from
+`sha256:e819f9db` to `sha256:522e3ebe`, so this run rebuilt the image. The run
+also called `shell-scripts/agent-http-gate.sh`: `RestAgentSelectionTests` ran 2
+tests and `RestToCoreBearerDeploymentTests` ran 7, each with 0 skipped. The
+default mode on the same commit ran 1703 tests with 41 skipped and reports no
+drift. A `--ci` run with the REST wiring mutated exited 1: the reactor part
+passed, and the agent gate failed with 2 failures. See `CHAT-frcrctdp`.
+
 The run on branch `chat-xcmpudyb-message-id`, on 2026-10-04, read this, with an empty temporary `DOCKER_CONFIG`. It exits
 0 and reports no drift. 30 modules ran 1969 tests, with 0 failures, 0 errors
 and 72 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id moved
@@ -60,7 +70,7 @@ same branch, before the miss code, read 1939 tests with 73 skipped at image
 `sha256:7b54c81b`.
 
 The opt-in two-process test `RestToCoreBearerDeploymentTests` counts as skipped
-in this run. CI does not run it.
+in this run. CI did not run it then. The reactor run still skips it. `shell-scripts/agent-http-gate.sh` runs it apart, with `RestAgentSelectionTests`, and `--ci` fails when that gate fails. See `CHAT-frcrctdp`.
 
 The run on branch `chat-mpjtnpqv-token-relay` read 1905 tests with 67 skipped
 at image `sha256:5a07f4a6`. Earlier runs on that branch read 1903 tests with 66 skipped at image

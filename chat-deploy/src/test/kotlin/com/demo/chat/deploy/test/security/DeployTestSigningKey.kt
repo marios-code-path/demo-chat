@@ -19,9 +19,9 @@ internal object DeployTestSigningKey {
 
     fun register(registry: DynamicPropertyRegistry) {
         registry.add("app.security.jwt.jwk-path") { jwkPath }
-        registry.add("app.security.agent.client-id") { "client-under-test" }
-        registry.add("app.security.agent.username") { "agent-svc" }
-        registry.add("app.security.agent.required-scope") { "chat.mcp" }
+        registry.add("app.security.agents[0].client-id") { "client-under-test" }
+        registry.add("app.security.agents[0].username") { "agent-svc" }
+        registry.add("app.security.required-scope") { "chat.mcp" }
     }
 
     fun path(): String = jwkPath

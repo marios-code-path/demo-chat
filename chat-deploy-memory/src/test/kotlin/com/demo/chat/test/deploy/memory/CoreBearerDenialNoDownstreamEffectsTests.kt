@@ -56,9 +56,9 @@ import org.mockito.Mockito.verifyNoInteractions
         "app.service.security.userdetails=true",
         "app.users.create=true",
         "app.init.initial-users.Agent.password=core-bearer-agent-secret",
-        "app.security.agent.client-id=client-under-test",
-        "app.security.agent.username=Agent",
-        "app.security.agent.required-scope=chat.mcp",
+        "app.security.required-scope=chat.mcp",
+        "app.security.agents[0].client-id=client-under-test",
+        "app.security.agents[0].username=Agent",
     ]
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

@@ -18,4 +18,7 @@ internal object DeployTestSigningKey {
     fun path(): String = jwkPath
 
     fun agentToken(): String = TestTokenMinter.mint(jwkPath, "client-under-test", "chat.mcp")
+
+    /** A token for any client and scope. See `CHAT-frcrctdp`. */
+    fun mint(clientId: String, scope: String): String = TestTokenMinter.mint(jwkPath, clientId, scope)
 }

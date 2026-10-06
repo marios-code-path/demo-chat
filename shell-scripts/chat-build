@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -501,6 +502,34 @@ SERVICES: dict[str, Service] = {
 # Build context
 # --------------------------------------------------------------------------
 
+AGENT_HANDLE = re.compile(r"[A-Za-z0-9_]+")
+# Admin and Anon are the ChatIdentity names. Service is the default service
+# account. An agent must be a plain user. See CHAT-frcrctdp.
+RESERVED_AGENT_HANDLES = ("Admin", "Anon", "Service")
+
+
+def parse_agents(values: list[str]) -> list[tuple[str, str]]:
+    """Parse each --agent value. Exit 1 with a message on a refused value."""
+    agents: list[tuple[str, str]] = []
+    reserved = {name.lower() for name in RESERVED_AGENT_HANDLES}
+    for value in values:
+        client_id, sep, handle = value.partition("=")
+        if not sep or not client_id or not handle:
+            raise SystemExit(f"chat-build: --agent takes CLIENT_ID=HANDLE: {value}")
+        if not AGENT_HANDLE.fullmatch(handle):
+            raise SystemExit(
+                f"chat-build: --agent handle '{handle}' must hold letters, digits and underscores alone")
+        if handle.lower() in reserved:
+            raise SystemExit(f"chat-build: --agent names reserved handle '{handle}'. "
+                             "An agent must be a plain user")
+        if any(client_id == c for c, _ in agents):
+            raise SystemExit(f"chat-build: --agent names client id '{client_id}' twice")
+        if any(handle.lower() == h.lower() for _, h in agents):
+            raise SystemExit(f"chat-build: --agent names handle '{handle}' twice")
+        agents.append((client_id, handle))
+    return agents
+
+
 class BuildContext:
     """Resolves features against a service and composes the Maven invocation."""
 
@@ -515,8 +544,7 @@ class BuildContext:
         self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
         self.tls_dir: str | None = args.tls
         self.jwk_path: str | None = getattr(args, "jwk", None)
-        self.agent_client_id: str | None = getattr(args, "agent_client_id", None)
-        self.agent_username: str | None = getattr(args, "agent_username", None)
+        self.agents: list[tuple[str, str]] = parse_agents(getattr(args, "agent", []) or [])
         self.agent_scope: str = getattr(args, "agent_scope", "chat.mcp")
         self.image_name = service.image_name_for(self.backend)
 
@@ -660,17 +688,28 @@ class BuildContext:
         return flags
 
     def agent_flags(self) -> list[str]:
-        """The REST agent security properties. See CHAT-pgpmsgvr."""
-        if not self.agent_client_id:
+        """The agent properties of each service. See CHAT-frcrctdp."""
+        if not self.agents:
             return []
-        if not self.jwk_path:
-            raise SystemExit("chat-build: --agent-client-id requires --jwk")
-        return [
-            f"-Dapp.security.agent.client-id={self.agent_client_id}",
-            f"-Dapp.security.agent.username={self.agent_username or self.agent_client_id}",
-            f"-Dapp.security.agent.required-scope={self.agent_scope}",
-            f"-Dapp.security.jwt.jwk-path={self.jwk_path}",
-        ]
+        if self.service.name == "authserv":
+            flags = []
+            for i, (client_id, handle) in enumerate(self.agents):
+                flags += [f"-Dapp.oauth2.agents[{i}].client-id={client_id}",
+                          f"-Dapp.oauth2.agents[{i}].username={handle}"]
+            return flags + [f"-Dapp.oauth2.agent-scope={self.agent_scope}"]
+        flags = []
+        if self.service.name == "core":
+            # The bracket form keeps each map key. Without brackets, relaxed
+            # binding can give two entries one handle value.
+            for _, handle in self.agents:
+                flags += [f"-Dapp.init.initial-users[{handle}].handle={handle}",
+                          f"-Dapp.init.initial-users[{handle}].name={handle}",
+                          f"-Dapp.init.initial-users[{handle}].image-uri=chatimg://agent.png"]
+        for i, (client_id, handle) in enumerate(self.agents):
+            flags += [f"-Dapp.security.agents[{i}].client-id={client_id}",
+                      f"-Dapp.security.agents[{i}].username={handle}"]
+        return flags + [f"-Dapp.security.required-scope={self.agent_scope}",
+                        f"-Dapp.security.jwt.jwk-path={self.jwk_path}"]
 
     def tls_flags(self) -> list[str]:
         """Server TLS for services, client TLS for client-shaped services.
@@ -984,12 +1023,15 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                         help="print the resolved command and options, run nothing")
     parser.add_argument("--jwk", metavar="PATH",
                         help="path to the JWK file trusted by the deployment")
-    parser.add_argument("--agent-client-id", default=None,
-                        help="OAuth client id required by the REST agent token")
-    parser.add_argument("--agent-username", default=None,
-                        help="chat user handle used by the REST agent")
+    parser.add_argument("--agent", action="append", default=[], metavar="CLIENT_ID=HANDLE",
+                        help="an agent: the OAuth client id and the chat user handle. "
+                             "Repeat it for each agent")
     parser.add_argument("--agent-scope", default="chat.mcp",
-                        help="scope required by every REST application route")
+                        help="scope required by every agent token")
+    # Removed by CHAT-frcrctdp. Kept hidden so that a launch that names them
+    # fails with a message that names --agent.
+    parser.add_argument("--agent-client-id", default=None, help=argparse.SUPPRESS)
+    parser.add_argument("--agent-username", default=None, help=argparse.SUPPRESS)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1062,24 +1104,32 @@ def main() -> int:
                       file=sys.stderr)
                 return 1
 
-    if args.agent_client_id:
-        if args.service not in ("rest", "core"):
-            print("chat-build: agent authentication flags require the rest or core service",
+    # Compare with None. An empty value such as --agent-client-id= is still a
+    # use of a removed flag.
+    if args.agent_client_id is not None or args.agent_username is not None:
+        print("chat-build: --agent-client-id and --agent-username are removed. "
+              "Use --agent CLIENT_ID=HANDLE. See CHAT-frcrctdp.", file=sys.stderr)
+        return 2
+
+    if args.agent:
+        if args.service not in ("rest", "core", "authserv"):
+            print("chat-build: --agent requires the core, rest or authserv service",
                   file=sys.stderr)
             return 1
-        if not args.jwk:
-            print("chat-build: --agent-client-id requires --jwk PATH",
-                  file=sys.stderr)
-            return 1
-        jwk = Path(args.jwk).expanduser()
-        if not jwk.is_absolute():
-            print(f"chat-build: --jwk must be an absolute path: {args.jwk}",
-                  file=sys.stderr)
-            return 1
-        if not jwk.is_file():
-            print(f"chat-build: --jwk names no file: {args.jwk}",
-                  file=sys.stderr)
-            return 1
+        parse_agents(args.agent)
+        if args.service in ("rest", "core"):
+            if not args.jwk:
+                print("chat-build: --agent requires --jwk PATH", file=sys.stderr)
+                return 1
+            jwk = Path(args.jwk).expanduser()
+            if not jwk.is_absolute():
+                print(f"chat-build: --jwk must be an absolute path: {args.jwk}",
+                      file=sys.stderr)
+                return 1
+            if not jwk.is_file():
+                print(f"chat-build: --jwk names no file: {args.jwk}",
+                      file=sys.stderr)
+                return 1
 
     ctx = BuildContext(SERVICES[args.service], args)
 

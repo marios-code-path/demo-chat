@@ -16,7 +16,11 @@ import java.util.UUID
  * The test key has no x5c chain because these tests do not validate one.
  */
 internal object AuthorizationServerTestSigningKey {
-    private val jwkLocation = generateSigningKey().toUri().toString()
+    private val jwkFile: Path = generateSigningKey()
+    private val jwkLocation = jwkFile.toUri().toString()
+
+    /** The key file path that `AgentJwtDecoderFactory` reads. See `CHAT-frcrctdp`. */
+    fun path(): String = jwkFile.toString()
 
     fun register(registry: DynamicPropertyRegistry) {
         registry.add("app.oauth2.jwk.path") { jwkLocation }

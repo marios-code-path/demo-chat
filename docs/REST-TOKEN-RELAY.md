@@ -51,8 +51,9 @@ flowchart LR
 
 The `chat-security` module holds the shared parts. These are
 `AgentSecurityProperties`, `AgentJwtDecoderFactory`,
-`AgentAuthenticationConverter`, `AgentAuthenticationToken`, and
-`AgentIdentity`. Both processes use the same classes.
+`AgentAuthenticationConverter`, `AgentAuthenticationToken`,
+`AgentIdentities`, and `AgentSecurityPropertiesGuard`. Both processes use the
+same classes. Each process builds its own instances from its own agent list.
 
 ## The request, end to end
 
@@ -75,21 +76,21 @@ sequenceDiagram
 
     Ag->>RC: POST /topic/new, Authorization: Bearer JWT
     RC->>RC: Decode ES256 with the public JWK, check expiry
-    RC->>RC: client_id equals app.security.agent.client-id
+    RC->>RC: client_id selects an app.security.agents entry
     RC->>RC: hasAuthority SCOPE_ + required-scope
-    RC->>Ctl: Context holds AgentAuthenticationToken(Agent, jwt)
+    RC->>Ctl: Context holds AgentAuthenticationToken(selected agent, jwt)
     Ctl->>MR: TopicClient.addRoom, route prefix + "topic-add"
     Note over MR: At subscription, read the reactive context.<br/>Attach BearerTokenMetadata(jwt.tokenValue).
     MR->>EI: Request payload with bearer metadata
     EI->>AU: Payload chain
     AU->>AU: RSocketAuthenticationManager routes the bearer token
     AU->>AU: JWT manager: ES256 signature, expiry
-    AU->>AU: AgentAuthenticationConverter: client_id
+    AU->>AU: AgentAuthenticationConverter: client_id selects the agent
     AU->>AU: RequiredScopeAuthenticationManager: SCOPE_ + required-scope
     AU->>AN: Authentication present, so anonymous is skipped
     AN->>AZ: Composite route is permitAll
     AZ-->>MS: Request proceeds with the Agent context
-    MS->>MS: ContextIdentity reads the Agent user key
+    MS->>MS: ContextIdentity reads the selected agent user key
     MS->>Svc: addRoom as Agent
     Svc-->>Ctl: Room, owner row names Agent
     Ctl-->>Ag: 201 Created
@@ -200,8 +201,8 @@ stateDiagram-v2
     BearerAuth --> Decode: JWK configured
     Decode --> RefusedAuthn: bad signature or expired
     Decode --> ClientCheck: valid ES256 token
-    ClientCheck --> RefusedAuthn: client_id differs
-    ClientCheck --> ScopeCheck: client_id matches
+    ClientCheck --> RefusedAuthn: client_id names no listed agent
+    ClientCheck --> ScopeCheck: client_id names a listed agent
     ScopeCheck --> ScopeRefused: required scope absent
     ScopeCheck --> AgentAuthenticated: required scope present
 
@@ -244,21 +245,23 @@ stateDiagram-v2
     AuthCheck --> FailAuth: composite.auth is absent or not exactly "true"
     AuthCheck --> AgentProps: composite.auth=true
 
+    AgentProps --> FailLegacy: any app.security.agent.* key
     AgentProps --> BearerDisabled: no app.security value
-    AgentProps --> FailPartial: some values, set incomplete
-    AgentProps --> LoadJwk: client id, username, scope, and JWK path
+    AgentProps --> FailPartial: incomplete, duplicate, or reserved handle
+    AgentProps --> LoadJwk: agent list, scope, and JWK path
 
     LoadJwk --> FailJwk: unreadable, not EC, or not P-256
     LoadJwk --> ResolveAgent: decoder built
 
-    ResolveAgent --> FailAgent: username matches zero or many users
-    ResolveAgent --> BearerEnabled: exactly one user
+    ResolveAgent --> FailAgent: a handle keeps zero or many users, or two clients share one user key
+    ResolveAgent --> BearerEnabled: each handle keeps exactly one user
 
     BearerDisabled --> Serving
     BearerEnabled --> Serving
 
     FailAuth --> [*]: An RSocket server requires app.service.composite.auth=true.
-    FailPartial --> [*]: names the missing property
+    FailLegacy --> [*]: names the new keys
+    FailPartial --> [*]: names the property or the value
     FailJwk --> [*]
     FailAgent --> [*]
     NotRSocket --> [*]: no RSocket security beans
@@ -268,9 +271,40 @@ stateDiagram-v2
 `BearerDisabled` still refuses bearer metadata, through
 `BearerAuthenticationNotConfiguredManager`. It does not ignore it.
 
-`AgentIdentityLifecycle` resolves the agent at phase `Int.MAX_VALUE - 3072`.
+`AgentIdentityLifecycle` resolves every agent at phase `Int.MAX_VALUE - 3072`.
 The root keys load earlier, at phase `Int.MAX_VALUE - 4096`. Both run before
 the servers start.
+
+## More than one agent (CHAT-frcrctdp)
+
+`app.security.agents[n]` binds one OAuth client id to one chat user handle.
+`app.security.required-scope` is one value for every agent. The old
+`app.security.agent.*` keys fail the start, and `AgentSecurityPropertiesGuard`
+names the new keys. `AgentSecurityProperties` also binds the old `agent` block
+only to refuse it. So `requireComplete` gives the same message on every call
+site, and the message does not depend on which bean starts first.
+
+The token `client_id` selects the agent, on REST and on the core. A token from
+an unlisted client answers 401 on REST and `0x401` on the core. On the relay
+path, REST forwards the token, and the core selects the agent again from its
+own list.
+
+**The two lists must agree.** No check compares them. Assume REST lists a
+client and the core does not. REST then accepts the token, the core refuses it
+with `0x401`, and REST answers 401. `chat-build --agent` emits the same list for
+both processes.
+
+`AgentIdentityLifecycle` keeps only a user whose handle equals the configured
+handle. The Lucene user index lowercases the handle, so a lookup for `admin`
+answers the user `Admin`. For the same reason, the reserved check and the
+duplicate check compare handles without case. `Admin`, `Anon` and each service
+account are reserved.
+
+`RestAgentSelectionTests` measures the REST selection over HTTP in one process.
+`CoreAgentSelectionTests` measures the core selection over RSocket.
+`RestToCoreBearerDeploymentTests` measures the relay with two agents.
+`shell-scripts/agent-http-gate.sh` runs the first and the last of these in
+their own builds.
 
 ## Closed gaps
 

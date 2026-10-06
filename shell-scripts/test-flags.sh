@@ -65,17 +65,35 @@ CASES=(
   "core-uuid|core --memory --run --notls --uuid --node-id 0"
   "core-websocket|core --memory --websocket --run --notls --long --node-id 0"
   "core-debug|core --memory --debug --run --notls --long --node-id 0"
-  "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 --agent-username agent-svc"
+  "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
+  "core-agent-brackets|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 0f3a7c21-1b2d-4e5f-8a9b-1c2d3e4f5a6b=Bot_1 --agent 9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b=Bot1"
   "core-build-image|core --memory --build --notls --long --node-id 0"
   # other services
   "rest-client|rest --run --notls --long --node-id 0"
-  "rest-client-agent|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 --agent-username agent-svc"
+  "rest-client-agent|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
   "gateway-client|gateway --run --notls --long --node-id 0"
   "authserv-client|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
+  "authserv-client-agent|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
   "shell-client|shell --run --notls --long --node-id 0"                                            # [parity]
   # root key roles under consul discovery. See RootKeySource in chat-deploy.
   "shell-consul|shell --consul --run --notls --long --node-id 0"
   "authserv-consul|authserv --consul --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
+)
+
+# Each case must exit with the code and print the text. See CHAT-frcrctdp.
+# name | chat-build arguments | expected exit | expected text
+REFUSALS=(
+  "refuse-old-client-id|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id x|2|--agent CLIENT_ID=HANDLE"
+  "refuse-old-username|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-username Agent|2|--agent CLIENT_ID=HANDLE"
+  "refuse-old-client-id-empty|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id=|2|--agent CLIENT_ID=HANDLE"
+  "refuse-old-username-empty|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-username=|2|--agent CLIENT_ID=HANDLE"
+  "refuse-reserved|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=admin|1|reserved handle 'admin'"
+  "refuse-duplicate-client|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Agent --agent a=Claude|1|client id 'a' twice"
+  "refuse-duplicate-handle|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Claude --agent b=claude|1|handle 'claude' twice"
+  "refuse-handle-chars|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=my-bot|1|letters, digits and underscores"
+  "refuse-shape|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent Agent|1|CLIENT_ID=HANDLE"
+  "refuse-no-jwk|rest --run --notls --long --node-id 0 --agent a=Agent|1|--agent requires --jwk PATH"
+  "refuse-service|gateway --run --notls --long --node-id 0 --agent a=Agent|1|--agent requires the core, rest or authserv service"
 )
 
 UPDATE=0
@@ -164,6 +182,22 @@ for entry in "${CASES[@]}"; do
     else
         echo "FAIL  $name — flags differ from golden"
         diff <(cat "$file") <(echo "$actual") | sed 's/^/        /'
+        fail=$((fail + 1))
+    fi
+done
+
+for entry in "${REFUSALS[@]}"; do
+    IFS='|' read -r name args want_exit want_text <<< "$entry"
+    [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && continue
+    [ "$UPDATE" -eq 1 ] && continue
+    # shellcheck disable=SC2086
+    out="$("$CHAT_BUILD" $args --dry-run 2>&1)"; code=$?
+    if [ "$code" -eq "$want_exit" ] && grep -qF -- "$want_text" <<< "$out"; then
+        echo "ok    $name"
+        pass=$((pass + 1))
+    else
+        echo "FAIL  $name — exit $code, want $want_exit and \"$want_text\""
+        echo "$out" | sed 's/^/        /'
         fail=$((fail + 1))
     fi
 done
