@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `d25ca495`, in sync with `origin`. The working tree holds no untracked file. The handoff file `werokcbb-next-agent.md` is gone. |
-| Register state | Updated 2026-10-04, after the owner guard merge of PR #184. |
-| Last merged PR | #184, merge commit `d25ca495`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `42f0bb4b`, in sync with `origin`. The working tree holds no untracked file. The two maiden voyage handoff files moved to `~/tmp` on 2026-10-06. |
+| Register state | Updated 2026-10-06, after the multi-agent merge of PR #189. |
+| Last merged PR | #189, merge commit `42f0bb4b`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
-| Worktrees | The main checkout alone. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.worktrees` and `.claude/worktrees` directories are empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
-| Open PRs | None. PR #184 merged on 2026-10-04 as `d25ca495`. That merge carried the owner guard, and it closed the last open child of `CHAT-znprrzhn`. |
+| Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Six more hold one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-xcmpudyb-message-id` at `20f3d014`. **The branch refs are kept.** |
+| Worktrees | The main checkout, and `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`. That worktree belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
+| Open PRs | None. PR #189 merged on 2026-10-06 as `42f0bb4b`. That merge carried more than one agent per REST deployment, and it closed `CHAT-frcrctdp`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,8 +28,9 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh is `CHAT-fayckdfc`, and it follows PR #184. The refresh before it
-merged as PR #168, after the shell Admin identity merge. The one before that
+refresh is `CHAT-evdgjpwc`, and it follows PR #189. The refresh before it is
+`CHAT-fayckdfc`, which followed PR #184 and merged as PR #185. The one before
+that merged as PR #168, after the shell Admin identity merge. The one before that
 merged as PR #164, and it carried the measured shell reading. The one before that merged as PR #160,
 after the grant policy merge and the MCP agent identity merge. The one before
 that merged as PR #159, and it carried the register correction for the MCP
@@ -38,6 +39,13 @@ composite access enforcement merge.
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
+
+**Two of the six unmerged branches carry no lost work.**
+`chat-xcmpudyb-message-id` at `20f3d014` holds the register correction of the
+missing-output trap. `git cherry master` marks it `-`, because PR #188 carried
+the same patch as `0bdd8684`. `backup/chat-bmmtojqm-before-review` at
+`93cada30` holds the chat log commit before its review repairs. PR #186 merged
+the repaired version. Measured on 2026-10-06.
 
 **Three branches belong to other work.** The `chat-hazcatpc-review-fix` branch at
 `606d251a` holds one commit that master lacks, and it carries no remote. The
@@ -53,11 +61,15 @@ the rows above as covering them. The `chat-sgyaaivp-cassandra-timeout` branch at
 holds that commit. PR #163 merged the room by name change. The worktree and the
 branch ref are removed.
 
+**`origin` still holds `chat-xcmpudyb-message-id`.** PR #187 merged it on
+2026-10-05, and the remote ref was not deleted. Measured on 2026-10-06 with
+`git ls-remote --heads origin`.
+
 **One branch exists on the remote alone.** `origin` holds
 `chat-eroapfub-vector-runtime-flags` at `3245d308`, and that commit is titled
 "build: add Java 25 vector runtime flags". No local branch carries that name, and
 the commit is **not** an ancestor of `master`. It is one commit ahead of master
-and 467 behind it. This is the first remote-only branch the register records. A
+and 558 behind it. This is the first remote-only branch the register records. A
 reader who lists local branches will not see it.
 
 **That branch is a stale leftover, not unlanded work.** Its subject names the
@@ -4449,6 +4461,8 @@ Every child of `CHAT-znprrzhn` is done once this merges.
 
 `CHAT-xcmpudyb`, the first step of `CHAT-aqpcacwv`. Branch
 `chat-xcmpudyb-message-id`. **This work is not merged.**
+**Merged since: PR #187, `2b1074ab`, on 2026-10-05.** The merge has two
+parents. PR #188 carried the correction of the missing-output trap below.
 
 ### The defect, and four more on the same path
 
@@ -4559,10 +4573,46 @@ the three key columns through a repository fragment. The key classes now map
   message. Every proof starts the composition in a test JVM against a test
   container.
 
+## A readable chat log in the shell (2026-10-05)
+
+`CHAT-bmmtojqm`, under `CHAT-aqpcacwv`. Sigma owned it. PR #186 merged on
+2026-10-05 as `7089a3fb`. The merge has two parents, `0fd74682` and
+`925a1db8`.
+
+- `messages <room>` shows the stored time, the sender handle and the text,
+  oldest first. `--limit N` selects the newest N messages and keeps that
+  order. A missing user shows its key id. The `SUBSCRIBE` check stays.
+- **Both Jackson decoders dropped the stored timestamp.** The server sent it,
+  and the decoders put the current time in its place. The first integration
+  run found it. A separate decoder commit repairs both generations and keeps
+  decimal precision. Whole numbers read as seconds by default.
+- The PR records `build-health.sh --ci` exit 0 on its final run: 30 modules,
+  1962 tests, 0 failures, 72 skipped.
+
+## The test-count check in build-health (2026-10-05)
+
+`CHAT-lantftth`. PR #188 merged on 2026-10-05 as `a1bda6f3`. The merge has two
+parents, `2b1074ab` and `cb794d95`.
+
+- **The gate now fails when a listed module runs no test.** It compares the
+  modules that ran tests with `shell-scripts/build-health-tests-unit.txt`
+  (28 modules) and `shell-scripts/build-health-tests-integration.txt`
+  (30 modules). `NO TESTS` and `UNLISTED` both exit 1. `--record` writes the
+  list of a mode from a run.
+- `shell-scripts/capture-build-evidence.sh` keeps the evidence of a missing
+  build output before the next build. B13 in `docs/BUILD-HEALTH.md` records
+  the procedure.
+- The PR corrected the `CHAT-xcmpudyb` trap text. The cause of the missing
+  output is unknown, and the old text claimed more than the evidence showed.
+- **The check does not compare test counts.** A module that runs one test in
+  place of a hundred still passes.
+
 ## More than one agent on one REST deployment (2026-10-05)
 
-`CHAT-frcrctdp`, under `CHAT-aqpcacwv`. Branch `chat-frcrctdp-multi-agent`.
-**This work is not merged.** Spec:
+`CHAT-frcrctdp`, under `CHAT-aqpcacwv`. PR #189 merged on 2026-10-06 as
+`42f0bb4b`. Its parents are `a1bda6f3` and `1f94246d`. The master tree matches
+`1f94246d`, and local master matches `origin/master`. The issue and all ten
+subtasks are done. The local feature branch is deleted. Spec:
 `docs/superpowers/specs/2026-10-05-multi-agent-rest-design.md`. Plan:
 `docs/superpowers/plans/2026-10-05-multi-agent-rest.md`. Sigma reviewed the
 design and the plan before any code.
@@ -4600,6 +4650,8 @@ design and the plan before any code.
 
 ### Measured
 
+- PR #189 CI run `37425003150` passed. The `build`, `integration`, and
+  `agent-http` jobs all passed.
 - `RestAgentSelectionTests` 2/2 with 0 skipped under `-Pexpose-webflux`.
   `CoreAgentSelectionTests` 2/2. `RestToCoreBearerDeploymentTests` 7/7 with 0
   skipped after `clean verify -Prest-core-e2e`. The relay core jar holds no
@@ -4614,6 +4666,9 @@ design and the plan before any code.
   print before the save failed both output tests.
 - `test-flags.sh` 30/30. `gate-embedding-launch.sh` passed with `Agent`: 3 hits
   and `indexComplete` true.
+- Sigma's branch review found that empty values for the removed agent flags
+  bypassed the refusal. `1f94246d` compares both values with `None`.
+  `test-flags.sh` passed all 32 cases, including both empty-value refusals.
 - `build-health.sh` default mode at `95eb1716`: exit 0, 30 modules, 1703 tests,
   0 failures, 41 skipped, and no drift.
 - `build-health.sh --ci` at `95eb1716`: exit 0, 30 modules, 2043 tests, 0
@@ -4635,4 +4690,6 @@ design and the plan before any code.
 ### Filed
 
 - `CHAT-uizwrxmf`. `chat-build authserv` passes `--clientpath` to a
-  `client.json` that main resources do not hold.
+  `client.json` that main resources do not hold. With agents configured, this
+  also prevents agent registration under `client-init`. The collision check
+  reads that file before it registers agents.
