@@ -130,6 +130,7 @@ The **conflation layer** (`chat-core/service/conflate/`) is the glue that makes 
 - `KeyEnricherPersistenceStore` — mints a key from `IKeyService` before persisting.
 - `PubSubbedPersistence` — persist, then fan out to the topic.
 - `LoadablePersistedIndex` — rehydrates an in-memory index (Lucene) from the persistence store at boot.
+- `LuceneIndexLoad` — opens one Lucene index at boot, against its store. It reuses index files that match the store, and builds otherwise. See `docs/LUCENE-INDEX-FILES.md`.
 
 That decomposition is what lets `chat-deploy-memory` and `chat-deploy-cassandra` be the same app with different beans.
 
@@ -187,7 +188,7 @@ sequenceDiagram
     App->>Srv: the next lifecycle phases start the servers
 ```
 
-**Every Lucene index loads before readiness.** A Lucene index lives in process memory, so it is empty after a restart. Six indexes load from their stores: auth, user, topic, message, membership and key-value. Any load error fails the start. The process does not start with a partial index. A `NONE` process runs no index load.
+**Every Lucene index opens before readiness.** Without `app.index.lucene.root`, each index lives in process memory, and each start builds it from its store. With the root, each index lives in `<root>/<keyType>/<nodeId>/<index>`. A start reuses the files when every stored entity matches its document byte for byte, and builds otherwise. Six indexes open this way: auth, user, topic, message, membership and key-value. A store error, a repeated store key or a lock held elsewhere fails the start. A `NONE` process opens no index. The compare is exact only when no other process writes the store during the start (`CHAT-lswjobhz`). Two concurrent updates of one key can still leave a stale entry until the next start (`CHAT-oltrsgws`). See `docs/LUCENE-INDEX-FILES.md`.
 
 **The user index load keeps the identity users.** The initial users start after the loads, and they find each identity by its handle. Before `CHAT-uxgdzpag` added the load on 2026-10-04, the user index was empty after a restart. So each restart on a persistent store created a new `Admin`, with a new key and a new set of wildcard rows. **A store that already holds such duplicates fails the start now**, because the handle lookup finds more than one user. Measured on 2026-10-04 with two `Admin` users in one Redis store: the start fails with `Failed to start bean 'rootKeyStartup'`, caused by `Source emitted more than one item`. The message does not name the user. Recreate that store.
 
