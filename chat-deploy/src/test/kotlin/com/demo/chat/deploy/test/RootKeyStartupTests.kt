@@ -260,7 +260,13 @@ class RootKeyStartupTests {
             .withBean("readiness", ApplicationListener::class.java, { readiness(events) })
             .run { ctx ->
                 assertThat(ctx).hasFailed()
-                assertThat(ctx.startupFailure).rootCause().hasMessageContaining("the auth store failed at grant-2")
+                // The original error stays the root cause. A ChatException built with a null cause
+                // refused initCause, and the original error was lost behind "Can't overwrite cause".
+                assertThat(ctx.startupFailure).rootCause()
+                    .isInstanceOf(IllegalStateException::class.java)
+                    .hasMessage("the auth store failed at grant-2")
+                assertThat(generateSequence(ctx.startupFailure) { it.cause }.mapNotNull { it.message }.joinToString(" | "))
+                    .doesNotContain("Can't overwrite cause")
                 assertThat(generateSequence(ctx.startupFailure) { it.cause }.mapNotNull { it.message }.joinToString(" | "))
                     .contains("does not start with a partial index")
                 assertThat(events).containsExactly("added grant-1")

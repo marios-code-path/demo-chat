@@ -65,9 +65,12 @@ class RootKeyStartup<T>(
                 try {
                     load.load().block()
                 } catch (e: RuntimeException) {
+                    // The cause goes to the constructor. ChatException sets a null cause when none is
+                    // given, so a later initCause throws and hides the original error.
                     throw ChatException(
-                        "An index load failed at start. The process does not start with a partial index. Cause: ${e.message}"
-                    ).apply { initCause(e) }
+                        "An index load failed at start. The process does not start with a partial index. Cause: ${e.message}",
+                        e,
+                    )
                 }
             }
             when (source) {
