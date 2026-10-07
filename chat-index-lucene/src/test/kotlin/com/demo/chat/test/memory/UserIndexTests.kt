@@ -25,7 +25,7 @@ class UserIndexTests : IndexTests<Long, User<Long>, IndexSearchRequest>(
                             Pair("handle", t.handle),
                             Pair("name", t.name)
                     )
-                }, { q -> Key.of(q.toLong(), ROOTS.of(ChatDomain.USER).id) }, { t -> t.key} ),
+                }, { q -> Key.of(q.toLong(), ROOTS.of(ChatDomain.USER).id) }, { t -> t.key} ).openedInMemory(),
         Supplier { User.create(TestKeys.key(abs(Random.nextLong())), "test", "test1234"+ abs(Random.nextInt()), "localhost") },
         Function<User<Long>, Key<Long>> { user -> user.key},
         Supplier { IndexSearchRequest("name", "+test*", 1000) },

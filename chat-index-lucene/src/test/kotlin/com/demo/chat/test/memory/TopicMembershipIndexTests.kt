@@ -24,8 +24,8 @@ class TopicMembershipIndexTests : IndexTests<Long, TopicMembership<Long>, IndexS
     LuceneIndex<Long, TopicMembership<Long>>(
         IndexEntryEncoder.ofTopicMembership(),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) },
-        { t -> Key.of(t.key, ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) }),
-    Supplier { TopicMembership.create(123456L, 1234L, 12345L) },
+        { t -> Key.of(t.key, ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) }).openedInMemory(),
+    Supplier { TopicMembership.create(NEXT_ID.incrementAndGet(), 1234L, 12345L) },
     Function<TopicMembership<Long>, Key<Long>> { topicMembership -> Key.of(topicMembership.key, ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) },
     Supplier { IndexSearchRequest(MembershipIndexService.MEMBER, LongUtil().toString(1234L), 1000) },
     ROOTS,
@@ -61,3 +61,5 @@ class TopicMembershipIndexTests : IndexTests<Long, TopicMembership<Long>, IndexS
 }
 
 private val ROOTS = FakeKeyServices.longRoots()
+
+private val NEXT_ID = java.util.concurrent.atomic.AtomicLong(1000L)
