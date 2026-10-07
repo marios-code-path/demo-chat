@@ -4,9 +4,7 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.service.core.MembershipIndexService
-import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.queryparser.classic.QueryParser
-import org.apache.lucene.search.IndexSearcher
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
@@ -16,13 +14,9 @@ open class MembershipLuceneIndex<T>(
     keyReceiver: Function<TopicMembership<T>, Key<T>>,
 ) : LuceneIndex<T, TopicMembership<T>>(entityEncoder, keyEncoder, keyReceiver),
     MembershipIndexService<T, IndexSearchRequest> {
-    override fun size(query: IndexSearchRequest): Mono<Long> = Mono.create { sink ->
-        val indexReader: DirectoryReader = DirectoryReader.open(directory)
-        val indexSearcher = IndexSearcher(indexReader)
-
-        val hit = indexSearcher.search(QueryParser(query.first, analyzer)
-            .parse(query.second), query.config)
-            .totalHits
-        sink.success(hit.value)
+    override fun size(query: IndexSearchRequest): Mono<Long> = Mono.fromCallable {
+        withSearcher { searcher ->
+            searcher.search(QueryParser(query.first, analyzer).parse(query.second), query.config).totalHits.value
+        }
     }
 }

@@ -15,6 +15,7 @@ import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.index.lucene.domain.IndexEntryEncoder
 import com.demo.chat.index.lucene.impl.KeyValueLuceneIndex
 import com.demo.chat.index.lucene.impl.LuceneIndex
+import com.demo.chat.index.lucene.storage.IndexFields
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.KeyValueIndexFields
 import com.demo.chat.service.core.KeyValueIndexFieldsEntry
@@ -44,7 +45,7 @@ private val sampleFields = TypedKeyValueIndexFields(
 )
 
 class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearchRequest>(
-    KeyValueLuceneIndex(LongUtil(), ROOTS, IndexEntryEncoder.ofKeyValueFields(sampleFields)),
+    KeyValueLuceneIndex(LongUtil(), ROOTS, IndexEntryEncoder.ofKeyValueFields(sampleFields)).openedInMemory(),
     Supplier { KeyValuePair.create(TestKeys.key(1234L), IndexedSample("TEST", 7) as Any) },
     Function { pair -> pair.key },
     Supplier { IndexSearchRequest("name", "TEST", 1000) },
@@ -101,7 +102,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
     // deleted both. The removal must match an exact term.
     @Test
     fun `a removal by a uuid key leaves an entity that shares a segment`() {
-        val index = KeyValueLuceneIndex(UUIDUtil(), FakeKeyServices.uuidRoots(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields))
+        val index = KeyValueLuceneIndex(UUIDUtil(), FakeKeyServices.uuidRoots(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields)).openedInMemory()
         val first = TestKeys.key(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
         val second = TestKeys.key(UUID.fromString("550e8400-aaaa-bbbb-cccc-000000000001"))
 
@@ -120,7 +121,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
     // a segment alone.
     @Test
     fun `a replaced uuid entry leaves an entity that shares a segment`() {
-        val index = KeyValueLuceneIndex(UUIDUtil(), FakeKeyServices.uuidRoots(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields))
+        val index = KeyValueLuceneIndex(UUIDUtil(), FakeKeyServices.uuidRoots(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields)).openedInMemory()
         val first = TestKeys.key(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
         val second = TestKeys.key(UUID.fromString("550e8400-aaaa-bbbb-cccc-000000000001"))
 
@@ -154,13 +155,13 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
                     KeyValueIndexFields { value ->
                         listOf(
                             Pair("name", (value as ReservedSample).name),
-                            Pair(LuceneIndex.EXACT_KEY, "a value of its own"),
+                            Pair(IndexFields.EXACT_KEY, "a value of its own"),
                         )
                     }
                 ),
             )
         )
-        val index = KeyValueLuceneIndex(LongUtil(), ROOTS, IndexEntryEncoder.ofKeyValueFields<Long>(mixed))
+        val index = KeyValueLuceneIndex(LongUtil(), ROOTS, IndexEntryEncoder.ofKeyValueFields<Long>(mixed)).openedInMemory()
         val key = TestKeys.key(8008L)
 
         StepVerifier
@@ -186,7 +187,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
             calls.incrementAndGet()
             sampleFields.fieldsOf(pair.data)
         }
-        val index = KeyValueLuceneIndex(LongUtil(), ROOTS, counting)
+        val index = KeyValueLuceneIndex(LongUtil(), ROOTS, counting).openedInMemory()
 
         StepVerifier
             .create(index.add(KeyValuePair.create(TestKeys.key(7007L), IndexedSample("ONCE", 1) as Any)))

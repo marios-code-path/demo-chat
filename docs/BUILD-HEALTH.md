@@ -15,6 +15,23 @@ branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
 modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
 that mode, because all of their tests carry the `integration` tag.
 
+The run on branch `chat-ybtirmgj-lucene-files` at `4775e132`, on 2026-10-07,
+with an empty temporary `DOCKER_CONFIG`, exits 0 and reports no drift. 30
+modules ran 2139 tests, with 0 failures, 0 errors and 76 skipped. The image id
+moved from `sha256:552782db` to `sha256:1afdaa16`, so this run rebuilt the
+image. The agent HTTP gate reports ok. The default mode at `aa1769f8`, one test
+earlier, ran 1796 tests in 30 modules, with 41 skipped, and reports no drift.
+See `CHAT-ybtirmgj`.
+
+Two failures met on that branch, each read before this record:
+
+- The first `--ci` run failed `RedisLuceneFilesRestartTests`, because
+  `UserServiceImpl.addUser` returns before its store write completes. The test
+  now waits on the index. `CHAT-ircckvrs` holds the production defect.
+- The first default run failed `MessageReindexServiceImplTests` with
+  `ConcurrentModificationException` in a test helper. That module did not
+  change on the branch, and the rerun passed. `CHAT-okcfryup` holds the race.
+
 The default mode on branch `chat-uizwrxmf-client-init`, on 2026-10-06, exits
 0 and reports no drift. 30 modules ran 1712 tests, with 0 failures, 0 errors
 and 41 skipped. The count is the 1703 below and nine `ClientInitializerTest`

@@ -2,7 +2,7 @@ package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
-import com.demo.chat.service.core.PersistedIndexLoad
+import com.demo.chat.index.lucene.LuceneIndexLoad
 import com.demo.chat.service.core.StartupIndexLoad
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -80,7 +80,7 @@ class StartupOrderTests {
     @Test
     fun `the auth index loads before either server starts`() {
         // The production auth index load is present, so readiness waited for it.
-        assertThat(loads).anyMatch { it is PersistedIndexLoad<*, *> }
+        assertThat(loads).anyMatch { it is LuceneIndexLoad<*, *> }
 
         val events = recorder.events.toList()
         assertThat(events).contains("ready", "web server", "rsocket server")

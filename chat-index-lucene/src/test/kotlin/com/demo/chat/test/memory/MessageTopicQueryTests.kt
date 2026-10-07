@@ -26,7 +26,7 @@ class MessageTopicQueryTests {
         IndexEntryEncoder.ofMessage(),
         { str -> TestKeys.key(LongUtil().fromString(str)) },
         { message -> message.key },
-    )
+    ).openedInMemory()
 
     private val converters = IndexSearchRequestConverters()
 

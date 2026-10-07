@@ -22,8 +22,8 @@ class MessageTopicIndexTests : IndexTests<Long, MessageTopic<Long>, IndexSearchR
     LuceneIndex<Long, MessageTopic<Long>>(
         IndexEntryEncoder.ofTopic<Long>(),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.MESSAGE_TOPIC).id) },
-        { t -> t.key }),
-    Supplier { MessageTopic.create(TestKeys.key(1234L), "TEST") },
+        { t -> t.key }).openedInMemory(),
+    Supplier { MessageTopic.create(TestKeys.key(NEXT_ID.incrementAndGet()), "TEST") },
     Function<MessageTopic<Long>, Key<Long>> { topic -> topic.key },
     Supplier { IndexSearchRequest(TopicIndexService.NAME, "TEST", 1000) },
     ROOTS,
@@ -33,3 +33,5 @@ class MessageTopicIndexTests : IndexTests<Long, MessageTopic<Long>, IndexSearchR
 }
 
 private val ROOTS = FakeKeyServices.longRoots()
+
+private val NEXT_ID = java.util.concurrent.atomic.AtomicLong(1000L)

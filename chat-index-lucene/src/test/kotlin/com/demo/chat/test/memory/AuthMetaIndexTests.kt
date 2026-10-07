@@ -22,8 +22,8 @@ class AuthMetaIndexTests : IndexTests<Long, AuthMetadata<Long>, IndexSearchReque
     LuceneIndex<Long, AuthMetadata<Long>>(
         IndexEntryEncoder.ofAuthMeta(LongUtil()),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.AUTH_METADATA).id) },
-        { t -> t.key }),
-    Supplier { AuthMetadata.create(TestKeys.key(1234L), TestKeys.key(1L), TestKeys.key(2L), "TESTROLE", Long.MAX_VALUE) },
+        { t -> t.key }).openedInMemory(),
+    Supplier { AuthMetadata.create(TestKeys.key(NEXT_ID.incrementAndGet()), TestKeys.key(1L), TestKeys.key(2L), "TESTROLE", Long.MAX_VALUE) },
     Function<AuthMetadata<Long>, Key<Long>> { msg -> msg.key },
     Supplier { IndexSearchRequest(AuthMetaIndex.PRINCIPAL, LongUtil().toString(1L), 1000) },
     ROOTS,
@@ -33,3 +33,5 @@ class AuthMetaIndexTests : IndexTests<Long, AuthMetadata<Long>, IndexSearchReque
 }
 
 private val ROOTS = FakeKeyServices.longRoots()
+
+private val NEXT_ID = java.util.concurrent.atomic.AtomicLong(1000L)
