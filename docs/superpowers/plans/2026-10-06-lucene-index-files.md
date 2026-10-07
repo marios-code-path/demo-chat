@@ -1,6 +1,6 @@
 # Lucene Index Files Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task. `AGENTS.md` forbids sub-agent driven development. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task. `AGENTS.md` forbids sub-agent driven development. FP child issues track the tasks. The steps are numbered, and they carry no checklist.
 
 **Goal:** Store each Lucene index in files under one configured root. A start reuses the files when they equal the store, and builds otherwise.
 
@@ -82,6 +82,30 @@ All paths below use these prefixes:
 - `LMAIN` = `chat-index-lucene/src/main/kotlin/com/demo/chat`
 - `LTEST` = `chat-index-lucene/src/test/kotlin/com/demo/chat/test`
 
+## Task tracking
+
+`FP_AGENTS.md` forbids markdown checklists. Each task has an FP child issue
+under `CHAT-ybtirmgj`, and each issue depends on the issue of the task before
+it.
+
+| Task | Issue |
+|---|---|
+| 1 | `CHAT-vgsbrkxo` |
+| 2 | `CHAT-fayymgrs` |
+| 3 | `CHAT-gtzdjhze` |
+| 4 | `CHAT-dyacywer` |
+| 5 | `CHAT-didborwb` |
+| 6 | `CHAT-nungovfh` |
+| 7 | `CHAT-pfvbyyhx` |
+| 8 | `CHAT-gnykibjr` |
+| 9 | `CHAT-lztsrkev` |
+| 10 | `CHAT-lnvtyvyv` |
+| 11 | `CHAT-ndgafauz` |
+
+At the start of a task, mark its issue `in-progress`. After its commit, add a
+comment that names the commit and the measured test counts, then mark the
+issue `done`.
+
 ## Build commands
 
 Define once per shell:
@@ -98,11 +122,13 @@ lucene_test() { mvn -o -B -pl chat-core,chat-index-lucene -Dtest="$1" -Dsurefire
 
 ### Task 1: The no-store audit
 
+**Issue:** `CHAT-vgsbrkxo`. Start with `fp issue update --status in-progress CHAT-vgsbrkxo`. End with a comment and `fp issue update --status done CHAT-vgsbrkxo`.
+
 **Files:** none changed in the repository. The evidence goes to the issue.
 
 The behaviour is in plan-level decision 1. This task records the evidence and measures the test contexts that meet the no-store branch today.
 
-- [ ] **Step 1: Record the static evidence**
+**Step 1: Record the static evidence**
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat
@@ -120,7 +146,7 @@ chat-deploy-kafka: chat-persistence-memory
 
 and the poms `pom.xml`, `chat-deploy-kafka`, `chat-index-lucene`, `chat-deploy-redis`, `chat-deploy-memory`. `MemoryPersistenceServices` carries `matchIfMissing = true`. So every Lucene deployment has a store unless `app.service.core.persistence` names a module that is absent.
 
-- [ ] **Step 2: Measure the test contexts that meet the no-store branch**
+**Step 2: Measure the test contexts that meet the no-store branch**
 
 Add one temporary line to `LuceneIndexBeans.load`, as the first statement:
 
@@ -137,7 +163,7 @@ grep -o "NO-STORE-PROBE.*" "$LOG" | sort | uniq -c
 
 Expected: a list of test contexts, possibly empty. **None of them sets `app.index.lucene.root`**, because no code reads it yet. So each one takes the memory branch and keeps today's behaviour.
 
-- [ ] **Step 3: Remove the probe and prove the restore**
+**Step 3: Remove the probe and prove the restore**
 
 ```bash
 git checkout -- /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/kotlin/com/demo/chat/config/LuceneIndexBeans.kt
@@ -146,7 +172,7 @@ git status --short
 
 Expected: no output from `git status --short`.
 
-- [ ] **Step 4: Record the result on the issue**
+**Step 4: Record the result on the issue**
 
 ```bash
 fp comment CHAT-ybtirmgj "No-store audit. Every Lucene deployment carries chat-persistence-memory, and MemoryPersistenceServices matches when the selector is missing. A store is absent only when app.service.core.persistence names an absent module, or in a test context. Probe count over the default build: <paste the uniq -c lines, or 'none'>. Behaviour per plan decision 1: memory mode opens empty with a warning, files mode fails the start, a NONE process opens no index."
@@ -155,6 +181,8 @@ fp comment CHAT-ybtirmgj "No-store audit. Every Lucene deployment carries chat-p
 ---
 
 ### Task 2: Entry bytes, header, outcome, and damage class
+
+**Issue:** `CHAT-fayymgrs`. Start with `fp issue update --status in-progress CHAT-fayymgrs`. End with a comment and `fp issue update --status done CHAT-fayymgrs`.
 
 **Files:**
 - Create: `LMAIN/index/lucene/storage/EntryEncoding.kt`, `IndexEntry.kt`, `IndexHeader.kt`, `StartOutcome.kt`, `Damage.kt`
@@ -168,7 +196,7 @@ fp comment CHAT-ybtirmgj "No-store audit. Every Lucene deployment carries chat-p
 - Produces: `enum StartKind { REUSED, BUILT }`, `enum BuildReason { NO_COMMIT, HEADER, MISMATCH, DAMAGE, REQUESTED_REBUILD, REQUESTED_DROP }`, `data class StartOutcome(kind, reason: BuildReason?, entitiesCompared: Long, documentsWritten: Long)`, `StartOutcome.logLine(name: String): String`
 - Produces: `object Damage { fun isDamage(e: Throwable): Boolean }`
 
-- [ ] **Step 1: Write the failing tests**
+**Step 1: Write the failing tests**
 
 `LTEST/index/lucene/storage/EntryEncodingTests.kt`:
 
@@ -282,12 +310,12 @@ class IndexHeaderTests {
 }
 ```
 
-- [ ] **Step 2: Run the tests and see them fail**
+**Step 2: Run the tests and see them fail**
 
 Run: `lucene_test 'EntryEncodingTests,IndexHeaderTests'`
 Expected: `exit=1`, with compile errors for the missing `com.demo.chat.index.lucene.storage` types.
 
-- [ ] **Step 3: Write the implementation**
+**Step 3: Write the implementation**
 
 `LMAIN/index/lucene/storage/EntryEncoding.kt`:
 
@@ -432,14 +460,16 @@ data class IndexHeader(
         )
 
         /** Returns null when any key is missing. A missing key is a different header. */
-        fun read(data: Map<String, String>): IndexHeader? = IndexHeader(
-            data[FORMAT] ?: return null,
-            data[LUCENE] ?: return null,
-            data[ANALYZER] ?: return null,
-            data[KEY_TYPE] ?: return null,
-            data[NODE_ID] ?: return null,
-            data[INDEX] ?: return null,
-        )
+        fun read(data: Map<String, String>): IndexHeader? {
+            return IndexHeader(
+                data[FORMAT] ?: return null,
+                data[LUCENE] ?: return null,
+                data[ANALYZER] ?: return null,
+                data[KEY_TYPE] ?: return null,
+                data[NODE_ID] ?: return null,
+                data[INDEX] ?: return null,
+            )
+        }
     }
 }
 ```
@@ -499,15 +529,22 @@ object Damage {
 }
 ```
 
-- [ ] **Step 4: Run the tests and see them pass**
+**Step 4: Run the tests and see them pass**
 
 Run: `lucene_test 'EntryEncodingTests,IndexHeaderTests'`
 Expected: `exit=0`, and `Tests run: 9, Failures: 0, Errors: 0`.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
-git add chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage
+git add \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/EntryEncoding.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexEntry.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexHeader.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/StartOutcome.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/Damage.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/EntryEncodingTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/IndexHeaderTests.kt
 git commit -m "Add the Lucene entry bytes, header and outcome (CHAT-ybtirmgj)
 
 Format 1 encodes the key and the fields in encoder order, with UTF-8
@@ -521,6 +558,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 3: Directory sync and request files
 
+**Issue:** `CHAT-gtzdjhze`. Start with `fp issue update --status in-progress CHAT-gtzdjhze`. End with a comment and `fp issue update --status done CHAT-gtzdjhze`.
+
 **Files:**
 - Create: `LMAIN/index/lucene/storage/DirectorySync.kt`, `IndexRequests.kt`
 - Create: `chat-core/src/main/kotlin/com/demo/chat/service/core/IndexFileAdmin.kt`
@@ -532,7 +571,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Produces: `class IndexRequests(dir: Path, sync: (Path) -> Unit = ::syncDirectory, delete: (Path) -> Unit = { Files.deleteIfExists(it) })` with `removeStaleTemporary()`, `pending(): IndexRequest?`, `write(request: IndexRequest): IndexRequestResult`, `clear(requests: List<IndexRequest>)`, and `IndexRequests.clearedBy(pending: IndexRequest?): List<IndexRequest>`
 - Produces, chat-core: `data class IndexRequestResult(val accepted: Boolean, val reason: String, val path: String?)`, `data class IndexFileReport(...)`, `interface IndexFileAdmin`
 
-- [ ] **Step 1: Write the failing tests**
+**Step 1: Write the failing tests**
 
 `LTEST/index/lucene/storage/DirectorySyncTests.kt`:
 
@@ -691,12 +730,12 @@ class IndexRequestsTests {
 
 The "failure before the move" test blocks the temporary path with a directory. `FileChannel.open` with `WRITE` on a directory fails before any move.
 
-- [ ] **Step 2: Run the tests and see them fail**
+**Step 2: Run the tests and see them fail**
 
 Run: `lucene_test 'DirectorySyncTests,IndexRequestsTests'`
 Expected: `exit=1`, with compile errors for `syncDirectory`, `IndexRequests`, and `IndexRequestResult`.
 
-- [ ] **Step 3: Write the implementation**
+**Step 3: Write the implementation**
 
 `chat-core/src/main/kotlin/com/demo/chat/service/core/IndexFileAdmin.kt`:
 
@@ -860,17 +899,22 @@ class IndexRequests(
 
 The `clear` test expects 3 syncs: two from `write` and one from `clear`.
 
-- [ ] **Step 4: Run the tests and see them pass**
+**Step 4: Run the tests and see them pass**
 
 Run: `lucene_test 'DirectorySyncTests,IndexRequestsTests'`
 Expected: `exit=0`, and `Tests run: 11, Failures: 0, Errors: 0`.
 
-- [ ] **Step 5: Run the sync mutation**
+**Step 5: Run the sync mutation**
 
 Stage the new files first, so that a checkout can restore the staged version:
 
 ```bash
-git add /Users/darkbit1001/workspace/demo-chat/chat-core/src /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src
+git add \
+  /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/service/core/IndexFileAdmin.kt \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/DirectorySync.kt \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexRequests.kt \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/DirectorySyncTests.kt \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/IndexRequestsTests.kt
 ```
 
 Edit `DirectorySync.kt`: replace `opener(dir).use { it.force(true) }` with `opener(dir).use { runCatching { it.force(true) } }`.
@@ -885,10 +929,15 @@ git diff --stat
 
 Expected: `git diff --stat` prints nothing.
 
-- [ ] **Step 6: Commit**
+**Step 6: Commit**
 
 ```bash
-git add chat-core/src/main/kotlin/com/demo/chat/service/core/IndexFileAdmin.kt chat-index-lucene/src
+git add \
+  chat-core/src/main/kotlin/com/demo/chat/service/core/IndexFileAdmin.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/DirectorySync.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexRequests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/DirectorySyncTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/IndexRequestsTests.kt
 git commit -m "Add durable Lucene index request files (CHAT-ybtirmgj)
 
 A request file is written to a temporary name, synced, moved
@@ -903,6 +952,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 4: Storage modes
+
+**Issue:** `CHAT-dyacywer`. Start with `fp issue update --status in-progress CHAT-dyacywer`. End with a comment and `fp issue update --status done CHAT-dyacywer`.
 
 **Files:**
 - Create: `LMAIN/index/lucene/storage/LuceneStorage.kt`
@@ -922,6 +973,7 @@ interface LuceneStorage {
     fun open(name: String): Directory
     fun path(name: String): Path?
     fun requests(name: String): IndexRequests?
+    fun sync(name: String)
     fun describe(name: String): String
 }
 class MemoryStorage : LuceneStorage
@@ -929,7 +981,7 @@ open class FileStorage(root: Path, keyType: String, nodeId: Int) : LuceneStorage
 object LuceneStorages { fun of(root: String?, keyType: String?, nodeId: Int?): LuceneStorage }
 ```
 
-- [ ] **Step 1: Write the failing tests**
+**Step 1: Write the failing tests**
 
 `LTEST/index/lucene/storage/LuceneStorageTests.kt`:
 
@@ -979,16 +1031,22 @@ class LuceneStorageTests {
         assertThat(one.summary).isEqualTo("files at $root")
         one.open("user").use { assertThat(it).isInstanceOf(FSDirectory::class.java) }
         assertThat(one.path("user")!!.toFile().isDirectory).isTrue()
+        one.sync("user")
+    }
+
+    @Test
+    fun `memory mode has nothing to sync`() {
+        MemoryStorage().sync("user")
     }
 }
 ```
 
-- [ ] **Step 2: Run the tests and see them fail**
+**Step 2: Run the tests and see them fail**
 
 Run: `lucene_test 'LuceneStorageTests'`
 Expected: `exit=1`, with compile errors for `LuceneStorages`.
 
-- [ ] **Step 3: Write the implementation**
+**Step 3: Write the implementation**
 
 `LMAIN/index/lucene/storage/LuceneStorage.kt`:
 
@@ -1013,6 +1071,10 @@ interface LuceneStorage {
     fun open(name: String): Directory
     fun path(name: String): Path?
     fun requests(name: String): IndexRequests?
+
+    /** Syncs the index directory. Memory mode has nothing to sync. Any failure reaches the caller. */
+    fun sync(name: String)
+
     fun describe(name: String): String = path(name)?.toString() ?: "memory"
 }
 
@@ -1026,6 +1088,7 @@ class MemoryStorage : LuceneStorage {
     override fun open(name: String): Directory = ByteBuffersDirectory()
     override fun path(name: String): Path? = null
     override fun requests(name: String): IndexRequests? = null
+    override fun sync(name: String) = Unit
 }
 
 /**
@@ -1047,6 +1110,8 @@ open class FileStorage(private val root: Path, keyType: String, nodeId: Int) : L
     }
 
     override fun requests(name: String): IndexRequests? = IndexRequests(path(name))
+
+    override fun sync(name: String) = syncDirectory(path(name))
 }
 
 object LuceneStorages {
@@ -1064,15 +1129,17 @@ object LuceneStorages {
 }
 ```
 
-- [ ] **Step 4: Run the tests and see them pass**
+**Step 4: Run the tests and see them pass**
 
 Run: `lucene_test 'LuceneStorageTests'`
-Expected: `exit=0`, and `Tests run: 4, Failures: 0, Errors: 0`.
+Expected: `exit=0`, and `Tests run: 5, Failures: 0, Errors: 0`.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
-git add chat-index-lucene/src
+git add \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/LuceneStorage.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/LuceneStorageTests.kt
 git commit -m "Add the Lucene storage modes (CHAT-ybtirmgj)
 
 No root keeps every index in memory. A root places each index under
@@ -1085,6 +1152,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 5: The start sequence
 
+**Issue:** `CHAT-didborwb`. Start with `fp issue update --status in-progress CHAT-didborwb`. End with a comment and `fp issue update --status done CHAT-didborwb`.
+
 **Files:**
 - Create: `LMAIN/index/lucene/storage/IndexStartSequence.kt`
 - Test: `LTEST/index/lucene/storage/IndexStartSequenceTests.kt`, `LTEST/index/lucene/storage/StartFixtures.kt`
@@ -1095,17 +1164,21 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ```kotlin
 class Started(val directory: Directory, val ownerLock: Lock, val writer: IndexWriter, val manager: SearcherManager, val outcome: StartOutcome)
-class IndexStartSequence<E>(
+class IndexStartSequence<E> internal constructor(
     name: String,
     storage: LuceneStorage,
     analyzer: Analyzer,
     entryOf: (E) -> IndexEntry,
     entities: (() -> Flux<out E>)?,
-) { fun run(): Started }
+    rollback: (IndexWriter) -> Unit,      // a test seam for recovery
+) {
+    constructor(name, storage, analyzer, entryOf, entities)   // rollback = IndexWriter::rollback
+    fun run(): Started
+}
 const val OWNER_LOCK = "chat-owner.lock"   // in IndexStartSequence.kt
 ```
 
-- [ ] **Step 1: Write the fixtures**
+**Step 1: Write the fixtures**
 
 `LTEST/index/lucene/storage/StartFixtures.kt`:
 
@@ -1118,6 +1191,7 @@ import com.demo.chat.index.lucene.storage.LuceneStorage
 import com.demo.chat.index.lucene.storage.Started
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.index.DirectoryReader
+import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.Term
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.TermQuery
@@ -1127,17 +1201,53 @@ import java.io.IOException
 /** One stored entity of the tests: a key text and one field. */
 data class Row(val key: String, val name: String)
 
-fun entryOf(row: Row): IndexEntry = IndexEntry.of(row.key, listOf("name" to row.name))
+fun encode(row: Row): IndexEntry = IndexEntry.of(row.key, listOf("name" to row.name))
 
-/** A store stub. A null list means no store. An error fails the scan after the rows. */
-class RowStore(var rows: List<Row>, var failAfterRows: Boolean = false) {
-    fun all(): Flux<Row> =
-        if (failAfterRows) Flux.fromIterable(rows).concatWith(Flux.error(IOException("injected store failure")))
-        else Flux.fromIterable(rows)
+/**
+ * A store stub. It counts each scan. A scan that matches [failOnScan] fails at
+ * once.
+ *
+ * A store error cannot be placed after a chosen row. Reactor 3.8.7
+ * `BlockingIterable` reports a terminal error as soon as it arrives, even while
+ * rows are still queued. So a test that needs a failure after a writer update
+ * uses [FailingEncoder].
+ */
+class RowStore(var rows: List<Row>, private val failOnScan: Int? = null) {
+    var scans = 0
+        private set
+
+    fun all(): Flux<Row> = Flux.defer {
+        scans++
+        if (scans == failOnScan) Flux.error(IOException("injected store failure")) else Flux.fromIterable(rows)
+    }
 }
 
-fun start(storage: LuceneStorage, store: RowStore?, name: String = "user"): Started =
-    IndexStartSequence(name, storage, StandardAnalyzer(), ::entryOf, store?.let { s -> { s.all() } }).run()
+/**
+ * An encoder that fails on one key during one scan. It counts the rows that it
+ * encoded in that scan before the failure. A row that the build encoded is
+ * also written to the writer before the next row is read.
+ */
+class FailingEncoder(private val store: RowStore, private val failKey: String, private val onScan: Int) {
+    var encodedInFailingScan = 0
+        private set
+
+    fun entryOf(row: Row): IndexEntry {
+        if (store.scans == onScan) {
+            if (row.key == failKey) throw IllegalStateException("injected encoder failure")
+            encodedInFailingScan++
+        }
+        return encode(row)
+    }
+}
+
+fun start(
+    storage: LuceneStorage,
+    store: RowStore?,
+    name: String = "user",
+    entry: (Row) -> IndexEntry = ::encode,
+    rollback: (IndexWriter) -> Unit = { it.rollback() },
+): Started =
+    IndexStartSequence(name, storage, StandardAnalyzer(), entry, store?.let { s -> { s.all() } }, rollback).run()
 
 fun Started.closeAll() {
     manager.close()
@@ -1151,7 +1261,7 @@ fun Started.holds(key: String): Boolean = DirectoryReader.open(directory).use { 
 }
 ```
 
-- [ ] **Step 2: Write the failing tests**
+**Step 2: Write the failing tests**
 
 `LTEST/index/lucene/storage/IndexStartSequenceTests.kt`:
 
@@ -1172,6 +1282,7 @@ import org.apache.lucene.index.IndexWriterConfig
 import org.apache.lucene.store.Directory
 import org.apache.lucene.store.FSDirectory
 import org.apache.lucene.store.FilterDirectory
+import org.apache.lucene.store.Lock
 import org.apache.lucene.store.NativeFSLockFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -1327,30 +1438,38 @@ class IndexStartSequenceTests {
     @Test
     fun `a store error in the compare keeps the previous commit`(@TempDir root: Path) {
         seed(root, a)
-        assertThatThrownBy { start(files(root), RowStore(listOf(a), failAfterRows = true)) }
+        assertThatThrownBy { start(files(root), RowStore(listOf(a), failOnScan = 1)) }
             .hasStackTraceContaining("injected store failure")
         val started = start(files(root), RowStore(listOf(a)))
         assertThat(started.outcome.kind).isEqualTo(StartKind.REUSED)
         started.closeAll()
     }
 
+    /** The compare scan finds a mismatch and succeeds. The build scan fails after one writer update. */
     @Test
     fun `a failed build on the mismatch path keeps the previous commit`(@TempDir root: Path) {
         seed(root, a)
-        // The compare meets b as a mismatch before the error, then the build scan fails.
-        assertThatThrownBy { start(files(root), RowStore(listOf(a, b), failAfterRows = true)) }
-            .hasStackTraceContaining("injected store failure")
+        val store = RowStore(listOf(a, b))
+        val encoder = FailingEncoder(store, failKey = "2", onScan = 2)
+        assertThatThrownBy { start(files(root), store, entry = encoder::entryOf) }
+            .hasMessageContaining("injected encoder failure")
+        assertThat(store.scans).isEqualTo(2)
+        assertThat(encoder.encodedInFailingScan).isEqualTo(1)
         val started = start(files(root), RowStore(listOf(a)))
         assertThat(started.outcome.kind).isEqualTo(StartKind.REUSED)
         started.closeAll()
     }
 
+    /** A drop request skips the compare, so the build scan is the first scan. */
     @Test
     fun `a failed build on the recovery path leaves only lock and request files`(@TempDir root: Path) {
         seed(root, a)
         IndexRequests(dir(root)).write(IndexRequest.DROP)
-        assertThatThrownBy { start(files(root), RowStore(listOf(a), failAfterRows = true)) }
-            .hasStackTraceContaining("injected store failure")
+        val store = RowStore(listOf(a, b))
+        val encoder = FailingEncoder(store, failKey = "2", onScan = 1)
+        assertThatThrownBy { start(files(root), store, entry = encoder::entryOf) }
+            .hasMessageContaining("injected encoder failure")
+        assertThat(encoder.encodedInFailingScan).isEqualTo(1)
         assertThat(names(root)).isSubsetOf("write.lock", OWNER_LOCK, "chat-drop.request", "chat-rebuild.request")
         assertThat(names(root)).contains("chat-drop.request")
         val started = start(files(root), RowStore(listOf(a)))
@@ -1431,7 +1550,9 @@ class IndexStartSequenceTests {
     fun `a commit failure fails the start, and the next start checks again`(@TempDir root: Path) {
         val failing = object : FileStorage(root, "long", 1) {
             override fun open(name: String): Directory = object : FilterDirectory(super.open(name)) {
-                override fun rename(source: String, dest: String) = throw IOException("injected rename failure")
+                override fun rename(source: String, dest: String) {
+                    throw IOException("injected rename failure")
+                }
             }
         }
         assertThatThrownBy { start(failing, RowStore(listOf(a))) }.hasMessageContaining("committed state is uncertain")
@@ -1463,20 +1584,76 @@ class IndexStartSequenceTests {
         val started = start(files(root), RowStore(listOf(a)))
         requests.write(IndexRequest.REBUILD)
         requests.write(IndexRequest.DROP)
-        started.writer.updateDocument(org.apache.lucene.index.Term("_key", "9"), entryOf(Row("9", "x")).document)
+        started.writer.updateDocument(org.apache.lucene.index.Term("_key", "9"), encode(Row("9", "x")).document)
         started.writer.commit()
         assertThat(names(root)).contains("chat-rebuild.request", "chat-drop.request")
+        started.closeAll()
+    }
+
+    @Test
+    fun `a lock failure that is not a held lock closes the directory`(@TempDir root: Path) {
+        var closed = false
+        val failing = object : FileStorage(root, "long", 1) {
+            override fun open(name: String): Directory = object : FilterDirectory(super.open(name)) {
+                override fun obtainLock(lockName: String): Lock = throw IOException("injected lock failure")
+                override fun close() {
+                    closed = true
+                    super.close()
+                }
+            }
+        }
+        assertThatThrownBy { start(failing, RowStore(listOf(a))) }.hasMessage("injected lock failure")
+        assertThat(closed).isTrue()
+    }
+
+    @Test
+    fun `a rollback error stops recovery before any deletion`(@TempDir root: Path) {
+        seed(root, a, b)
+        IndexRequests(dir(root)).write(IndexRequest.DROP)
+        val before = names(root)
+        assertThatThrownBy {
+            start(files(root), RowStore(listOf(a)), rollback = { throw IOException("injected rollback failure") })
+        }.hasMessage("injected rollback failure")
+        assertThat(names(root)).isEqualTo(before)
+        val started = start(files(root), RowStore(listOf(a)))
+        assertThat(started.outcome.reason).isEqualTo(BuildReason.REQUESTED_DROP)
+        started.closeAll()
+    }
+
+    @Test
+    fun `every build syncs the directory, with no request pending`(@TempDir root: Path) {
+        var syncs = 0
+        val counting = object : FileStorage(root, "long", 1) {
+            override fun sync(name: String) {
+                syncs++
+                super.sync(name)
+            }
+        }
+        start(counting, RowStore(listOf(a))).closeAll()
+        assertThat(syncs).isEqualTo(1)
+    }
+
+    @Test
+    fun `a sync failure after the build fails the start, and the next start checks again`(@TempDir root: Path) {
+        val failing = object : FileStorage(root, "long", 1) {
+            override fun sync(name: String) {
+                throw IOException("injected sync failure")
+            }
+        }
+        assertThatThrownBy { start(failing, RowStore(listOf(a))) }.hasMessage("injected sync failure")
+        val started = start(files(root), RowStore(listOf(a)))
+        assertThat(started.holds("1")).isTrue()
         started.closeAll()
     }
 }
 ```
 
-- [ ] **Step 3: Run the tests and see them fail**
+**Step 3: Run the tests and see them fail**
 
 Run: `lucene_test 'IndexStartSequenceTests'`
 Expected: `exit=1`, with compile errors for `IndexStartSequence`, `Started`, and `OWNER_LOCK`.
 
-- [ ] **Step 4: Write the implementation**
+**Step 4: Write the implementation**
 
 `LMAIN/index/lucene/storage/IndexStartSequence.kt`:
 
@@ -1526,13 +1703,22 @@ class Started(
  * The compare is exact only when no other process writes the store during the
  * start. CHAT-lswjobhz holds that limit.
  */
-class IndexStartSequence<E>(
+class IndexStartSequence<E> internal constructor(
     private val name: String,
     private val storage: LuceneStorage,
     private val analyzer: Analyzer,
     private val entryOf: (E) -> IndexEntry,
     private val entities: (() -> Flux<out E>)?,
+    private val rollback: (IndexWriter) -> Unit,
 ) {
+    constructor(
+        name: String,
+        storage: LuceneStorage,
+        analyzer: Analyzer,
+        entryOf: (E) -> IndexEntry,
+        entities: (() -> Flux<out E>)?,
+    ) : this(name, storage, analyzer, entryOf, entities, { it.rollback() })
+
     private val header = IndexHeader.current(name, storage.keyType, storage.nodeId, analyzer)
 
     private sealed interface Decision
@@ -1554,11 +1740,14 @@ class IndexStartSequence<E>(
         val directory = storage.open(name)
         val ownerLock = try {
             directory.obtainLock(OWNER_LOCK)
-        } catch (e: LockObtainFailedException) {
-            runCatching { directory.close() }
-            throw ChatException(
-                "Lucene index $name is in use by another process at ${storage.describe(name)}. Nothing was deleted.", e,
-            )
+        } catch (t: Throwable) {
+            runCatching { directory.close() }.onFailure(t::addSuppressed)
+            if (t is LockObtainFailedException) {
+                throw ChatException(
+                    "Lucene index $name is in use by another process at ${storage.describe(name)}. Nothing was deleted.", t,
+                )
+            }
+            throw t
         }
         var writer: IndexWriter? = null
         try {
@@ -1585,6 +1774,7 @@ class IndexStartSequence<E>(
                     build(active, scan, requests, IndexRequests.clearedBy(pending)),
                 )
             }
+            // Every build syncs the directory inside build(), before this manager exists.
             return Started(directory, ownerLock, active, SearcherManager(directory, null), outcome)
         } catch (t: Throwable) {
             writer?.let { rollbackQuietly(it, t) }
@@ -1661,9 +1851,14 @@ class IndexStartSequence<E>(
         if (Damage.isDamage(e)) throw DamageFound(e) else throw e
     }
 
-    /** Deletes every index file under write.lock. Neither lock nor any request file is deleted. */
+    /**
+     * Deletes every index file under write.lock. Neither lock nor any request
+     * file is deleted. A rollback error stops recovery before any deletion,
+     * because a writer that did not roll back can still hold write.lock or
+     * pending files.
+     */
     private fun recover(directory: Directory, writer: IndexWriter?): IndexWriter {
-        writer?.let { rollbackQuietly(it, null) }
+        if (writer != null && writer.isOpen) rollback(writer)
         val writeLock = try {
             directory.obtainLock(IndexWriter.WRITE_LOCK_NAME)
         } catch (e: LockObtainFailedException) {
@@ -1715,6 +1910,7 @@ class IndexStartSequence<E>(
             )
         }
         requests?.clear(cleared)
+        storage.sync(name)
         return scanned
     }
 
@@ -1733,18 +1929,18 @@ Two notes for the implementer:
 - `ChatException` is a checked Java exception. `run()` throws it out of a Reactor `Mono.fromRunnable` in Task 7. `RootKeyStartup` catches `RuntimeException` only, but `block()` wraps a checked exception in a `RuntimeException`, so the start still fails with the cause attached.
 - A store error from `toStream()` reaches `run()` as a `RuntimeException`. It is not `DamageFound`, so the start fails, as the spec requires.
 
-- [ ] **Step 5: Run the tests and see them pass**
+**Step 5: Run the tests and see them pass**
 
 Run: `lucene_test 'IndexStartSequenceTests'`
-Expected: `exit=0`, and `Tests run: 25, Failures: 0, Errors: 0`.
+Expected: `exit=0`, and `Tests run: 29, Failures: 0, Errors: 0`.
 
 If `damaged files recover and build` reports `MISMATCH` or `REUSED` in place of `DAMAGE`, the overwrite hit bytes that no check reads. Do not weaken the assertion. Print `Files.list(dir(root))` and pick a file that `checkIntegrity` verifies, for example the `.cfs` file. Record the measured file name in the test comment.
 
-- [ ] **Step 6: Run the two mutations of this task**
+**Step 6: Run the four mutations of this task**
 
-Mutation 1: in `compare`, replace `if (!stored.bytesEquals(BytesRef(entry.bytes))) return Build(BuildReason.MISMATCH, compared)` with nothing, and replace the final `return` with `return Reuse(compared)`.
+Mutation 1 bypasses the whole compare decision. In `inspect`, replace `compare(reader, scan)` with `Reuse(reader.numDocs().toLong())`.
 Run: `lucene_test 'IndexStartSequenceTests'`
-Expected: `exit=1`. `different content builds` fails, and so does `a changed field builds`.
+Expected: `exit=1`. `different content builds`, `a changed field builds`, and `an empty store empties the index` fail.
 
 Mutation 2: in `compare`, delete the `if (seen.get(doc)) { ... }` block.
 Expected: `a repeated key in the compare scan fails and deletes nothing` fails.
@@ -1758,17 +1954,23 @@ Expected: `a failed build on the recovery path leaves only lock and request file
 Run each mutation alone. After each one, restore the staged file by its absolute path, and prove the restore:
 
 ```bash
-git add /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src   # once, before the first mutation
+git add \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/StartFixtures.kt \
+  /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/IndexStartSequenceTests.kt   # once, before the first mutation
 git checkout -- /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt
 git diff --stat
 ```
 
 Expected: `git diff --stat` prints nothing.
 
-- [ ] **Step 7: Commit**
+**Step 7: Commit**
 
 ```bash
-git add chat-index-lucene/src
+git add \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/StartFixtures.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/storage/IndexStartSequenceTests.kt
 git commit -m "Add the Lucene index start sequence (CHAT-ybtirmgj)
 
 A start compares the canonical bytes of each stored entity with the
@@ -1783,6 +1985,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 6: The index lifecycle and runtime operations
+
+**Issue:** `CHAT-nungovfh`. Start with `fp issue update --status in-progress CHAT-nungovfh`. End with a comment and `fp issue update --status done CHAT-nungovfh`.
 
 **Files:**
 - Create: `LMAIN/index/lucene/impl/IndexState.kt`, `LTEST/memory/LuceneTestIndexes.kt`, `LTEST/index/lucene/LuceneIndexLifecycleTests.kt`
@@ -1806,7 +2010,7 @@ protected fun <R> withSearcher(read: (IndexSearcher) -> R): R
 
 - Produces, test only: `fun <I : LuceneIndex<*, *>> I.openedInMemory(): I`
 
-- [ ] **Step 1: Write the test helper and the failing lifecycle tests**
+**Step 1: Write the test helper and the failing lifecycle tests**
 
 `LTEST/memory/LuceneTestIndexes.kt`:
 
@@ -1898,22 +2102,30 @@ class LuceneIndexLifecycleTests {
     @Test
     fun `a query during a paused mutation answers from the previous commit`() {
         val index = index().apply { openInMemory() }
-        index.add(Doc(1, "before")).block()
         val reached = CountDownLatch(1)
         val release = CountDownLatch(1)
-        index.beforeCommit = { reached.countDown(); release.await() }
-        val pool = Executors.newSingleThreadExecutor()
-        val write = pool.submit { index.add(Doc(1, "after")).block() }
-        assertThat(reached.await(5, TimeUnit.SECONDS)).isTrue()
+        val pool = Executors.newFixedThreadPool(3)
+        try {
+            index.add(Doc(1, "before")).block()
+            index.beforeCommit = { reached.countDown(); release.await(5, TimeUnit.SECONDS) }
+            val write = pool.submit { index.add(Doc(1, "after")).block() }
+            assertThat(reached.await(5, TimeUnit.SECONDS)).isTrue()
 
-        assertThat(names(index, "before")).containsExactly(1L)
-        assertThat(names(index, "after")).isEmpty()
+            // Each query runs on its own thread under a deadline. A query that waits for the mutation fails here.
+            val before = pool.submit<List<Long>> { names(index, "before") }
+            val after = pool.submit<List<Long>> { names(index, "after") }
+            assertThat(before.get(5, TimeUnit.SECONDS)).containsExactly(1L)
+            assertThat(after.get(5, TimeUnit.SECONDS)).isEmpty()
 
-        release.countDown()
-        write.get(5, TimeUnit.SECONDS)
-        index.beforeCommit = {}
-        assertThat(names(index, "after")).containsExactly(1L)
-        pool.shutdown()
+            release.countDown()
+            write.get(5, TimeUnit.SECONDS)
+            assertThat(names(index, "after")).containsExactly(1L)
+        } finally {
+            release.countDown()
+            index.beforeCommit = {}
+            pool.shutdownNow()
+            index.close()
+        }
     }
 
     @Test
@@ -1972,30 +2184,43 @@ class LuceneIndexLifecycleTests {
         val index = index()
         val inStore = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val pool = Executors.newSingleThreadExecutor()
-        val opening = pool.submit {
-            index.open("doc", MemoryStorage()) {
-                Flux.defer { inStore.countDown(); release.await(); Flux.just(Doc(1, "a")) }
+        val pool = Executors.newFixedThreadPool(2)
+        try {
+            val opening = pool.submit {
+                index.open("doc", MemoryStorage()) {
+                    Flux.defer { inStore.countDown(); release.await(5, TimeUnit.SECONDS); Flux.just(Doc(1, "a")) }
+                }
             }
+            assertThat(inStore.await(5, TimeUnit.SECONDS)).isTrue()
+            val query = pool.submit<Throwable?> { runCatching { names(index, "a") }.exceptionOrNull() }
+            assertThat(query.get(5, TimeUnit.SECONDS)).hasMessageContaining("is not open")
+            release.countDown()
+            opening.get(5, TimeUnit.SECONDS)
+            assertThat(names(index, "a")).containsExactly(1L)
+        } finally {
+            // Release first, so the open ends and close can take the lock.
+            release.countDown()
+            pool.shutdownNow()
+            index.close()
         }
-        assertThat(inStore.await(5, TimeUnit.SECONDS)).isTrue()
-        assertThatThrownBy { names(index, "a") }.hasMessageContaining("is not open")
-        release.countDown()
-        opening.get(5, TimeUnit.SECONDS)
-        assertThat(names(index, "a")).containsExactly(1L)
-        pool.shutdown()
+    }
+
+    @Test
+    fun `an encoder failure on an index that is not open reports the state`() {
+        val index = index { throw IllegalArgumentException("injected encoder failure") }
+        assertThatThrownBy { index.add(Doc(1, "a")).block() }.hasMessageContaining("is not open")
     }
 }
 ```
 
 `open` takes the mutation lock, and a query does not. So a query during `open` sees `NEW` and fails, as the spec requires.
 
-- [ ] **Step 2: Run the lifecycle tests and see them fail**
+**Step 2: Run the lifecycle tests and see them fail**
 
 Run: `lucene_test 'LuceneIndexLifecycleTests'`
 Expected: `exit=1`, with compile errors for `open`, `openInMemory`, `state`, `IndexState`, and `beforeCommit`.
 
-- [ ] **Step 3: Write `IndexState.kt` and replace `LuceneIndex.kt`**
+**Step 3: Write `IndexState.kt` and replace `LuceneIndex.kt`**
 
 `LMAIN/index/lucene/impl/IndexState.kt`:
 
@@ -2091,8 +2316,13 @@ open class LuceneIndex<T, E>(
     internal fun entryOf(entity: E): IndexEntry =
         IndexEntry.of(keyReceiver.apply(entity).id.toString(), entityEncoder.apply(entity))
 
+    /**
+     * The state check runs before the encoder, so an encoder error cannot hide
+     * a NEW, FAILED or CLOSED index. The mutation checks the state again under
+     * the lock.
+     */
     override fun add(entity: E): Mono<Void> =
-        Mono.fromCallable { entryOf(entity) }
+        Mono.fromCallable { requireOpen(); entryOf(entity) }
             .flatMap { entry ->
                 mutate { writer -> writer.updateDocument(Term(IndexFields.EXACT_KEY, entry.keyText), entry.document) }
             }
@@ -2184,7 +2414,7 @@ open class LuceneIndex<T, E>(
 
 `mcp__treesitter-mcp__find_usages` on `EXACT_KEY` in `chat-index-lucene`. Change each user to `IndexFields.EXACT_KEY`.
 
-- [ ] **Step 4: Update the two subclasses**
+**Step 4: Update the two subclasses**
 
 `MembershipLuceneIndex.kt`, replace the `size` body:
 
@@ -2213,7 +2443,9 @@ Remove the now unused imports `DirectoryReader` and `IndexSearcher`.
 
 Remove the `entryEncoder` property and the `Mono` import if nothing else uses them. Keep `entryEncoder` as the constructor argument that passes to the base class.
 
-- [ ] **Step 5: Open every test index, and give the fixed-key tests distinct keys**
+If the language server finds other users of the old `LuceneIndex.EXACT_KEY` constant, change them and add each changed file to the Step 7 `git add` list.
+
+**Step 5: Open every test index, and give the fixed-key tests distinct keys**
 
 For each of these constructions, append `.openedInMemory()` and import `com.demo.chat.test.memory.openedInMemory` where the file sits in another package:
 
@@ -2250,7 +2482,7 @@ and change the supplies:
 
 The `keyExtract` functions read the key from the supplied value, so they still match.
 
-- [ ] **Step 6: Run the whole Lucene module and see it pass**
+**Step 6: Run the whole Lucene module and see it pass**
 
 Run the module tests with no filter:
 
@@ -2258,12 +2490,26 @@ Run the module tests with no filter:
 mvn -o -B -pl chat-core,chat-index-lucene test > "$LOG" 2>&1; echo "exit=$?"; grep -E "Tests run:.*Fail|ERROR\]" "$LOG" | tail -12
 ```
 
-Expected: `exit=0`. Every Lucene test class passes. `LuceneIndexLifecycleTests` reports `Tests run: 10`.
+Expected: `exit=0`. Every Lucene test class passes. `LuceneIndexLifecycleTests` reports `Tests run: 11`.
 
-- [ ] **Step 7: Commit**
+**Step 7: Commit**
 
 ```bash
-git add chat-index-lucene/src
+git add \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/IndexState.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/LuceneIndex.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/MembershipLuceneIndex.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/KeyValueLuceneIndex.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/LuceneTestIndexes.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/LuceneIndexLifecycleTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/AuthMetaIndexTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/KeyValueIndexTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/MessageIndexTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/MessageTopicIndexTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/MessageTopicQueryTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/TopicMembershipIndexTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/UserIndexTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/LuceneIndexBeansRootTests.kt
 git commit -m "Give the Lucene index an explicit lifecycle (CHAT-ybtirmgj)
 
 An index opens through the start sequence and closes once. A mutation
@@ -2279,6 +2525,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 7: The load, the beans, and the registry
 
+**Issue:** `CHAT-pfvbyyhx`. Start with `fp issue update --status in-progress CHAT-pfvbyyhx`. End with a comment and `fp issue update --status done CHAT-pfvbyyhx`.
+
 **Files:**
 - Create: `LMAIN/index/lucene/LuceneIndexLoad.kt`, `LMAIN/index/lucene/LuceneIndexRegistry.kt`
 - Modify: `LMAIN/config/LuceneIndexBeans.kt`
@@ -2291,7 +2539,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Produces: `object LuceneIndexNames { USER, MESSAGE, TOPIC, MEMBERSHIP, AUTH, KEY_VALUE }` in `LuceneIndexRegistry.kt`
 - Produces: beans `luceneStorage(): LuceneStorage` and `luceneIndexRegistry(): LuceneIndexRegistry` on `LuceneIndexBeans`
 
-- [ ] **Step 1: Write the failing tests**
+**Step 1: Write the failing tests**
 
 `LTEST/index/lucene/LuceneIndexRegistryTests.kt`:
 
@@ -2444,12 +2692,12 @@ class LuceneIndexLoadTests {
 
 Before Step 2, confirm with the language server that `FakeKeyServices` and `LongUtil` live at the imported packages. `MessageIndexTests.kt` imports both, so copy its import lines if they differ.
 
-- [ ] **Step 2: Run the tests and see them fail**
+**Step 2: Run the tests and see them fail**
 
 Run: `lucene_test 'LuceneIndexRegistryTests,LuceneIndexBeansStorageTests,LuceneIndexLoadTests'`
 Expected: `exit=1`, with compile errors for `LuceneIndexRegistry`, `luceneStorage`, and the new constructor.
 
-- [ ] **Step 3: Write the load and the registry**
+**Step 3: Write the load and the registry**
 
 `LMAIN/index/lucene/LuceneIndexLoad.kt`:
 
@@ -2547,7 +2795,7 @@ class LuceneIndexRegistry(
 }
 ```
 
-- [ ] **Step 4: Rewire `LuceneIndexBeans`**
+**Step 4: Rewire `LuceneIndexBeans`**
 
 Replace the constructor:
 
@@ -2618,7 +2866,7 @@ Replace each of the six load beans and the `load` helper. Keep the existing KDoc
 
 Write out all six load beans in full. The comment block above only names the pairs. Delete `PersistedIndexLoad` from the imports. `PersistedIndexLoad` stays in chat-core.
 
-- [ ] **Step 5: Run the module tests and see them pass**
+**Step 5: Run the module tests and see them pass**
 
 ```bash
 mvn -o -B -pl chat-core,chat-index-lucene test > "$LOG" 2>&1; echo "exit=$?"; grep -E "Tests run:.*Fail|ERROR\]" "$LOG" | tail -12
@@ -2626,7 +2874,7 @@ mvn -o -B -pl chat-core,chat-index-lucene test > "$LOG" 2>&1; echo "exit=$?"; gr
 
 Expected: `exit=0`. `LuceneIndexBeansConditionTests` still passes, because the new constructor parameters have defaults.
 
-- [ ] **Step 6: Run the memory deployment tests**
+**Step 6: Run the memory deployment tests**
 
 The memory deployment opens every index through `RootKeyStartup` now.
 
@@ -2638,10 +2886,16 @@ Expected: `exit=0`, and `lucene index storage: memory` in the log.
 
 If a test reports `is not open`, that test context builds a Lucene index and runs no index load. Read its configuration. Record the class name in an fp comment, and fix the context, not the lifecycle rule.
 
-- [ ] **Step 7: Commit**
+**Step 7: Commit**
 
 ```bash
-git add chat-index-lucene/src
+git add \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexLoad.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexRegistry.kt \
+  chat-index-lucene/src/main/kotlin/com/demo/chat/config/LuceneIndexBeans.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/LuceneIndexRegistryTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/LuceneIndexBeansStorageTests.kt \
+  chat-index-lucene/src/test/kotlin/com/demo/chat/test/index/lucene/LuceneIndexLoadTests.kt
 git commit -m "Open each Lucene index through its start load (CHAT-ybtirmgj)
 
 LuceneIndexLoad opens one index against its store. With no store,
@@ -2656,6 +2910,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 8: The actuator endpoint
 
+**Issue:** `CHAT-gnykibjr`. Start with `fp issue update --status in-progress CHAT-gnykibjr`. End with a comment and `fp issue update --status done CHAT-gnykibjr`.
+
 **Files:**
 - Create: `chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt`
 - Test: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/LuceneIndexEndpointTests.kt` (four nested-free classes in one file)
@@ -2664,7 +2920,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Consumes: `IndexFileAdmin`, `IndexFileReport`, `IndexRequestResult` from Task 3, and the `luceneIndexRegistry` bean from Task 7.
 - Produces: endpoint id `luceneindex`. `GET /actuator/luceneindex`, `POST /actuator/luceneindex/{name}`, `DELETE /actuator/luceneindex/{name}`.
 
-- [ ] **Step 1: Write the failing HTTP tests**
+**Step 1: Write the failing HTTP tests**
 
 `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/LuceneIndexEndpointTests.kt`:
 
@@ -2864,7 +3120,7 @@ class LuceneIndexEndpointMemoryTests : LuceneEndpointClient() {
 
 Before Step 2, read the `ChatApp` import in `MemoryVectorIndexActuatorTests.kt` and use the same one. A property with no value in `BASE`, such as `app.service.composite`, must register as an empty string, which the `split` above does.
 
-- [ ] **Step 2: Run the tests and see them fail**
+**Step 2: Run the tests and see them fail**
 
 ```bash
 mvn -o -B -pl chat-deploy-memory -am -Dtest='LuceneIndexEndpoint*' -Dsurefire.failIfNoSpecifiedTests=false test > "$LOG" 2>&1; echo "exit=$?"; grep -E "Tests run:|FAIL" "$LOG" | tail -10
@@ -2872,7 +3128,7 @@ mvn -o -B -pl chat-deploy-memory -am -Dtest='LuceneIndexEndpoint*' -Dsurefire.fa
 
 Expected: `exit=1`. The access tests fail with 404, because no endpoint exists. The defaults and annotation tests can pass already. That is expected, and the mutation in Step 5 proves the annotation test.
 
-- [ ] **Step 3: Write the endpoint**
+**Step 3: Write the endpoint**
 
 `chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt`:
 
@@ -2933,29 +3189,31 @@ class LuceneIndexEndpoint(private val admin: ObjectProvider<IndexFileAdmin>) {
 }
 ```
 
-- [ ] **Step 4: Run the tests and see them pass**
+**Step 4: Run the tests and see them pass**
 
 Run the Step 2 command again.
 Expected: `exit=0`. Four classes, 8 tests, 0 failures.
 
-- [ ] **Step 5: Run the annotation mutation**
+**Step 5: Run the annotation mutation**
 
 Edit `LuceneIndexEndpoint.kt`: change `Access.NONE` to `Access.UNRESTRICTED`. Run the Step 2 command.
 Expected: `exit=1`. `LuceneIndexEndpointAnnotationTests` fails.
 Restore by absolute path and prove it:
 
 ```bash
-git add /Users/darkbit1001/workspace/demo-chat/chat-deploy/src   # before the mutation
+git add /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt   # before the mutation
 git checkout -- /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt
 git diff --stat
 ```
 
 Expected: no output from `git diff --stat`.
 
-- [ ] **Step 6: Commit**
+**Step 6: Commit**
 
 ```bash
-git add chat-deploy/src chat-deploy-memory/src
+git add \
+  chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/LuceneIndexEndpointTests.kt
 git commit -m "Add the luceneindex actuator endpoint (CHAT-ybtirmgj)
 
 The endpoint reads the six index reports and writes rebuild and drop
@@ -2970,6 +3228,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 9: Redis restart with index files
 
+**Issue:** `CHAT-lztsrkev`. Start with `fp issue update --status in-progress CHAT-lztsrkev`. End with a comment and `fp issue update --status done CHAT-lztsrkev`.
+
 **Files:**
 - Create: `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisLuceneFilesRestartTests.kt`
 - Modify: `docs/NODEID-CLAIM.md:145` (the allocation table)
@@ -2977,7 +3237,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `IndexFileAdmin` bean, `RedisDeployBootTests.redis`, `RedisDeployBootTests.BootApp`.
 
-- [ ] **Step 1: Write the test**
+**Step 1: Write the test**
 
 ```kotlin
 package com.demo.chat.test.deploy.redis
@@ -3013,46 +3273,55 @@ import java.time.Duration
 @Tag("integration")
 class RedisLuceneFilesRestartTests {
 
-    private val container = RedisDeployBootTests.redis
     private val timeout = Duration.ofSeconds(10)
 
-    private fun properties(root: Path, nodeId: Int) = arrayOf(
-        "spring.application.name=redis-lucene-files-test",
-        "spring.config.additional-location=classpath:/config/userinit.yml",
-        "server.port=0", "spring.rsocket.server.port=0", "app.server.proto=rsocket",
-        "app.key.type=long", "app.nodeid=$nodeId", "app.users.create=true",
-        "app.service.core.key=redis", "app.service.core.persistence=redis",
-        "app.service.core.pubsub=redis-pubsub", "app.service.core.index=lucene",
-        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth=true",
-        "app.controller.persistence", "app.controller.index", "app.controller.key", "app.controller.pubsub",
-        "app.controller.secrets", "app.controller.user", "app.controller.topic", "app.controller.message",
-        "app.service.security.userdetails",
-        "spring.cloud.consul.enabled=false", "spring.cloud.consul.discovery.enabled=false",
-        "spring.cloud.consul.config.enabled=false",
-        "redis-topics.host=${container.containerIpAddress}",
-        "redis-topics.port=${container.getMappedPort(6379)}",
-        "app.index.lucene.root=$root",
-        "app.nodeid.claim.ttl=3s", "app.nodeid.claim.renew-interval=1s",
-        "app.nodeid.claim.safety-margin=1s", "app.nodeid.claim.operation-timeout=500ms",
-    )
+    companion object {
+        private val container = RedisDeployBootTests.redis
 
-    private fun start(root: Path, nodeId: Int): ConfigurableApplicationContext =
-        SpringApplicationBuilder(RedisDeployBootTests.BootApp::class.java)
-            .web(WebApplicationType.NONE)
-            .properties(*properties(root, nodeId))
-            .run()
+        /** A null root keeps the indexes in memory. */
+        private fun properties(root: Path?, nodeId: Int) = arrayOf(
+            "spring.application.name=redis-lucene-files-test",
+            "spring.config.additional-location=classpath:/config/userinit.yml",
+            "server.port=0", "spring.rsocket.server.port=0", "app.server.proto=rsocket",
+            "app.key.type=long", "app.nodeid=$nodeId", "app.users.create=true",
+            "app.service.core.key=redis", "app.service.core.persistence=redis",
+            "app.service.core.pubsub=redis-pubsub", "app.service.core.index=lucene",
+            "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth=true",
+            "app.controller.persistence", "app.controller.index", "app.controller.key", "app.controller.pubsub",
+            "app.controller.secrets", "app.controller.user", "app.controller.topic", "app.controller.message",
+            "app.service.security.userdetails",
+            "spring.cloud.consul.enabled=false", "spring.cloud.consul.discovery.enabled=false",
+            "spring.cloud.consul.config.enabled=false",
+            "redis-topics.host=${container.containerIpAddress}",
+            "redis-topics.port=${container.getMappedPort(6379)}",
+            "app.nodeid.claim.ttl=3s", "app.nodeid.claim.renew-interval=1s",
+            "app.nodeid.claim.safety-margin=1s", "app.nodeid.claim.operation-timeout=500ms",
+        ).toList() + listOfNotNull(root?.let { "app.index.lucene.root=$it" })
 
-    /** Retries only on a held claim, and for at most 15 seconds. Any other failure ends the test. */
-    private fun startWhenClaimFree(root: Path, nodeId: Int): ConfigurableApplicationContext {
-        val deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos()
-        while (true) {
-            try {
-                return start(root, nodeId)
-            } catch (e: Exception) {
-                val claimed = generateSequence<Throwable>(e) { it.cause }.any { it is NodeIdClaimException }
-                if (!claimed || System.nanoTime() > deadline) throw e
-                Thread.sleep(500)
+        fun start(root: Path?, nodeId: Int): ConfigurableApplicationContext =
+            SpringApplicationBuilder(RedisDeployBootTests.BootApp::class.java)
+                .web(WebApplicationType.NONE)
+                .properties(*properties(root, nodeId).toTypedArray())
+                .run()
+
+        /** Retries only on a held claim, and for at most 15 seconds. Any other failure ends the test. */
+        fun startWhenClaimFree(root: Path?, nodeId: Int): ConfigurableApplicationContext {
+            val deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos()
+            while (true) {
+                try {
+                    return start(root, nodeId)
+                } catch (e: Exception) {
+                    val claimed = generateSequence<Throwable>(e) { it.cause }.any { it is NodeIdClaimException }
+                    if (!claimed || System.nanoTime() > deadline) throw e
+                    Thread.sleep(500)
+                }
             }
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        fun ConfigurableApplicationContext.addUser(handle: String) {
+            val composite = getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
+            composite.userService().addUser(UserCreateRequest("files", handle, "http://u")).block(Duration.ofSeconds(10))
         }
     }
 
@@ -3064,15 +3333,9 @@ class RedisLuceneFilesRestartTests {
         (getBean("userIndex") as UserIndexService<Long, IndexSearchRequest>)
             .findBy(IndexSearchRequest("handle", handle, 10)).collectList().block(timeout)!!.isNotEmpty()
 
-    @Suppress("UNCHECKED_CAST")
-    private fun ConfigurableApplicationContext.addUser(handle: String) {
-        val composite = getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
-        composite.userService().addUser(UserCreateRequest("files", handle, "http://u")).block(timeout)
-    }
-
     @Test
     fun `a restart with intact files reuses them`(@TempDir root: Path) {
-        start(root, 18).use { first -> first.addUser("filesreuse") }
+        startWhenClaimFree(root, 18).use { first -> first.addUser("filesreuse") }
         startWhenClaimFree(root, 18).use { second ->
             val user = second.report("user")
             assertThat(user.outcome).isEqualTo("REUSED")
@@ -3083,7 +3346,7 @@ class RedisLuceneFilesRestartTests {
 
     @Test
     fun `a store write with no index write makes the next start build`(@TempDir root: Path) {
-        start(root, 19).use { first ->
+        startWhenClaimFree(root, 19).use { first ->
             first.addUser("filesfirst")
             @Suppress("UNCHECKED_CAST")
             val stores = first.getBean(PersistenceServiceBeans::class.java) as PersistenceServiceBeans<Long, String>
@@ -3102,11 +3365,11 @@ class RedisLuceneFilesRestartTests {
 }
 ```
 
-Before Step 2, check four names with the language server and fix the imports: `CompositeServiceBeans`, `UserCreateRequest`, `NodeIdClaimException`, and `PersistenceServiceBeans`. `RedisGrantRestartTests.kt` imports the first two, so copy its lines.
+The companion holds `start`, `startWhenClaimFree` and `addUser`, so the Task 10 probe can reuse them. Before Step 2, check four names with the language server and fix the imports: `CompositeServiceBeans`, `UserCreateRequest`, `NodeIdClaimException`, and `PersistenceServiceBeans`. `RedisGrantRestartTests.kt` imports the first two, so copy its lines.
 
 A different Redis test writes into the same container. The second start compares every stored user with the index files of node id 18 or 19. Users that another test class wrote earlier are in the store and also in the index files, because the first start of this test indexed them. So they do not break the reuse test.
 
-- [ ] **Step 2: Update the node id table**
+**Step 2: Update the node id table**
 
 In `docs/NODEID-CLAIM.md`, add a row after the `RedisGrantRestartTests` row:
 
@@ -3114,7 +3377,7 @@ In `docs/NODEID-CLAIM.md`, add a row after the `RedisGrantRestartTests` row:
 | `chat-deploy-redis` `RedisLuceneFilesRestartTests` | 18 and 19 |
 ```
 
-- [ ] **Step 3: Run the test**
+**Step 3: Run the test**
 
 ```bash
 mvn -o -B -pl chat-deploy-redis -am -Pintegration -Dtest=RedisLuceneFilesRestartTests -Dsurefire.failIfNoSpecifiedTests=false verify > "$LOG" 2>&1; echo "exit=$?"; grep -E "Tests run:|FAIL|lucene index user" "$LOG" | tail -12
@@ -3124,10 +3387,12 @@ Expected: `exit=0`, `Tests run: 2, Failures: 0`. The log holds `lucene index use
 
 Before a container run, check that no other session runs container tests on this Docker VM. After a red run, read `docker events --since 30m --until 0s --filter event=oom` before you trust the result.
 
-- [ ] **Step 4: Commit**
+**Step 4: Commit**
 
 ```bash
-git add chat-deploy-redis/src docs/NODEID-CLAIM.md
+git add \
+  chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisLuceneFilesRestartTests.kt \
+  docs/NODEID-CLAIM.md
 git commit -m "Prove Lucene index files across a Redis restart (CHAT-ybtirmgj)
 
 A restart with intact files reuses them and writes no document. A
@@ -3141,9 +3406,59 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 10: Measure the fsync cost
 
+**Issue:** `CHAT-lnvtyvyv`. Start with `fp issue update --status in-progress CHAT-lnvtyvyv`. End with a comment and `fp issue update --status done CHAT-lnvtyvyv`.
+
 **Files:** none committed. The numbers go to the issue.
 
-- [ ] **Step 1: Write a temporary measurement test**
+The approved check is one Redis-backed write, measured with memory indexes and with file indexes. The write is `userService().addUser`, which writes the Redis store and then the Lucene user index. An isolated Lucene measurement is supplementary evidence only.
+
+**Step 1: Write a temporary Redis probe**
+
+`chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisIndexWriteCostProbe.kt`, not committed:
+
+```kotlin
+package com.demo.chat.test.deploy.redis
+
+import com.demo.chat.test.deploy.redis.RedisLuceneFilesRestartTests.Companion.addUser
+import com.demo.chat.test.deploy.redis.RedisLuceneFilesRestartTests.Companion.startWhenClaimFree
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import org.springframework.context.ConfigurableApplicationContext
+import java.nio.file.Path
+
+/** Temporary. Node ids 18 and 19, as in RedisLuceneFilesRestartTests. Not committed. */
+@Tag("integration")
+class RedisIndexWriteCostProbe {
+
+    /** Microseconds per write, over 200 writes after 20 warm-up writes. */
+    private fun ConfigurableApplicationContext.perWrite(run: Int, mode: String): Long {
+        (1..20).forEach { addUser("warm${mode}r${run}n$it") }
+        val start = System.nanoTime()
+        (1..200).forEach { addUser("probe${mode}r${run}n$it") }
+        return (System.nanoTime() - start) / 1000 / 200
+    }
+
+    @Test
+    fun measure(@TempDir root: Path) {
+        (1..3).forEach { run ->
+            val memory = startWhenClaimFree(null, 18).use { it.perWrite(run, "m") }
+            val files = startWhenClaimFree(root.resolve("run$run"), 19).use { it.perWrite(run, "f") }
+            println("WRITE-PROBE run=$run memory_us_per_write=$memory files_us_per_write=$files")
+        }
+    }
+}
+```
+
+**Step 2: Run the Redis probe**
+
+```bash
+mvn -o -B -pl chat-deploy-redis -am -Pintegration -Dtest=RedisIndexWriteCostProbe -Dsurefire.failIfNoSpecifiedTests=false verify > "$LOG" 2>&1; echo "exit=$?"; grep -o "WRITE-PROBE.*" "$LOG"
+```
+
+Expected: `exit=0`, and three `WRITE-PROBE` lines.
+
+**Step 3: Supplementary isolated measurement**
 
 `LTEST/memory/FsyncCostProbe.kt`, not committed:
 
@@ -3161,37 +3476,38 @@ import java.nio.file.Path
 class FsyncCostProbe {
     private fun index() = LuceneIndex<Long, Long>({ listOf("v" to it.toString()) }, { Key.of(it.toLong(), -9L) }, { Key.of(it, -9L) })
 
-    private fun time(index: LuceneIndex<Long, Long>): Long {
+    private fun perAdd(index: LuceneIndex<Long, Long>): Long {
         (1L..50L).forEach { index.add(it).block() }
         val start = System.nanoTime()
         (51L..1050L).forEach { index.add(it).block() }
-        return (System.nanoTime() - start) / 1000
+        return (System.nanoTime() - start) / 1000 / 1000
     }
 
     @Test
     fun measure(@TempDir root: Path) {
         val memory = index().apply { openInMemory("probe") }
         val files = index().apply { open("probe", FileStorage(root, "long", 1)) { Flux.empty() } }
-        println("FSYNC-PROBE memory_us_per_add=${time(memory) / 1000} files_us_per_add=${time(files) / 1000}")
-        memory.close(); files.close()
+        try {
+            println("FSYNC-PROBE memory_us_per_add=${perAdd(memory)} files_us_per_add=${perAdd(files)}")
+        } finally {
+            memory.close()
+            files.close()
+        }
     }
 }
 ```
-
-- [ ] **Step 2: Run it three times and record the numbers**
 
 ```bash
 for i in 1 2 3; do lucene_test 'FsyncCostProbe' >/dev/null; grep -o "FSYNC-PROBE.*" "$LOG"; done
 ```
 
-Expected: three lines with microseconds per add for each mode.
-
-- [ ] **Step 3: Delete the probe, prove it, and report**
+**Step 4: Delete both probes, prove it, and report**
 
 ```bash
-rm /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/FsyncCostProbe.kt
+rm /Users/darkbit1001/workspace/demo-chat/chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisIndexWriteCostProbe.kt \
+   /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/test/kotlin/com/demo/chat/test/memory/FsyncCostProbe.kt
 git status --short
-fp comment CHAT-ybtirmgj "fsync cost per index add, 1000 adds after 50 warm-up adds, three runs on this machine: <paste the three lines>. Report only. A batching change is a separate issue."
+fp comment CHAT-ybtirmgj "Write cost of userService().addUser on Redis, 200 writes after 20 warm-up writes, three runs: <paste the WRITE-PROBE lines>. Supplementary isolated Lucene adds: <paste the FSYNC-PROBE lines>. Report only. A batching change is a separate issue."
 ```
 
 Expected: `git status --short` prints nothing.
@@ -3200,12 +3516,14 @@ Expected: `git status --short` prints nothing.
 
 ### Task 11: Documents, drift, and the gate
 
+**Issue:** `CHAT-ndgafauz`. Start with `fp issue update --status in-progress CHAT-ndgafauz`. End with a comment and `fp issue update --status done CHAT-ndgafauz`.
+
 **Files:**
 - Create: `docs/LUCENE-INDEX-FILES.md`
 - Modify: `docs/ARCHITECTURE.md:132`, `docs/ARCHITECTURE.md:190`, `docs/BUILD-HEALTH.md`
 - Modify: `drift.lock` through `drift link`
 
-- [ ] **Step 1: Write the operator note**
+**Step 1: Write the operator note**
 
 `docs/LUCENE-INDEX-FILES.md`:
 
@@ -3256,13 +3574,30 @@ start. `CHAT-lswjobhz` holds that limit.
 > A node can retain a stale index after another node changes the shared
 > store. At restart, differing indexed content causes a rebuild.
 
-A start fails, and it deletes nothing, when:
+### Failures before any file changes
 
-- another process holds `chat-owner.lock` or, during a recovery, `write.lock`
-- the store fails, or the encoder fails
-- the store emits one key twice
-- a permission or a storage error occurs, for example a full disk
+The start fails and leaves the files as they were when:
+
+- another process holds `chat-owner.lock` or `write.lock`
 - the root is set and the process has no local store
+- a permission or a storage error occurs before recovery starts, for example
+  a full disk
+- the store or the encoder fails during the compare
+- the store emits one key twice during the compare
+- a writer rollback fails before recovery deletes anything
+
+### Failures after the start begins to change the files
+
+- **Recovery** runs for a damaged index or a drop request. It deletes the index
+  files first. A later failure leaves only the lock files and the request files.
+  The next start builds.
+- **A build on the header, mismatch or rebuild path** keeps the previous commit
+  when its rollback succeeds.
+- **A failed build commit** leaves the committed state uncertain.
+- **A failure after the commit**, in request deletion, the directory sync or
+  the searcher, leaves the new commit in place.
+
+In each case the next start checks the files again.
 
 ## The endpoint
 
@@ -3304,7 +3639,7 @@ To cancel a request, stop the process, and delete `chat-rebuild.request` or
 Never delete `chat-owner.lock` or `write.lock` while a process runs.
 ````
 
-- [ ] **Step 2: Update `docs/ARCHITECTURE.md`**
+**Step 2: Update `docs/ARCHITECTURE.md`**
 
 Replace the sentence at line 190 with:
 
@@ -3318,7 +3653,7 @@ Line 132 names `LoadablePersistedIndex`. Check whether that type still exists wi
 - `LuceneIndexLoad` — opens one Lucene index at boot, against its store. It reuses index files that match the store, and builds otherwise.
 ```
 
-- [ ] **Step 3: Bind the operator note with drift**
+**Step 3: Bind the operator note with drift**
 
 Review the prose of `docs/LUCENE-INDEX-FILES.md` against the code first. Then:
 
@@ -3336,7 +3671,7 @@ drift check
 
 Expected: `drift status` lists `docs/LUCENE-INDEX-FILES.md` with six bindings. `drift check` reports `ok`. Bind whole files. A Kotlin symbol anchor fails on drift v0.7.0.
 
-- [ ] **Step 4: Run the CI gate**
+**Step 4: Run the CI gate**
 
 ```bash
 DOCKER_CONFIG=$(mktemp -d) shell-scripts/build-health.sh --ci > "$LOG" 2>&1; echo "exit=$?"; tail -30 "$LOG"
@@ -3346,7 +3681,7 @@ Expected: `exit=0`, no drift, and `agent http gate: ok`. Read the image id befor
 
 If the run fails, read `docker events --since 60m --until 0s --filter event=oom` first.
 
-- [ ] **Step 5: Record the counts**
+**Step 5: Record the counts**
 
 Update the test counts in `docs/BUILD-HEALTH.md` from the default run and the `--ci` run. Run `shell-scripts/build-health.sh` once in default mode for its count:
 
@@ -3356,7 +3691,7 @@ shell-scripts/build-health.sh > "$LOG" 2>&1; echo "exit=$?"; tail -15 "$LOG"
 
 The module lists in `shell-scripts/build-health-tests-*.txt` do not change, because this work adds no module.
 
-- [ ] **Step 6: Commit and log**
+**Step 6: Commit and log**
 
 ```bash
 git add docs/LUCENE-INDEX-FILES.md docs/ARCHITECTURE.md docs/BUILD-HEALTH.md drift.lock
