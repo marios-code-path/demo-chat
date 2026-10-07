@@ -436,7 +436,10 @@ A command writes a request in this order:
 
 **`syncDirectory` propagates every failure.** It opens the directory with
 `FileChannel.open(dir, READ)` and calls `force(true)`. Any `IOException` from
-the open or from `force` reaches the caller. **Do not use
+the open or from `force` reaches the caller. The helper takes the channel
+opener as a parameter, with `FileChannel.open(dir, READ)` as the default. A
+test can then pass a channel whose `force(true)` throws, and still run the real
+helper body. **Do not use
 `IOUtils.fsync(directory, true)`.** Lucene 8.7 suppresses an `IOException`
 from `force()` on a directory, so that call cannot support the guarantee below.
 The start sequence uses the same helper in step 8 of the build.
@@ -445,8 +448,8 @@ The start sequence uses the same helper in step 8 of the build.
 
 - If the file system refuses an atomic move, the command answers
   `accepted=false` with the cause. It never substitutes a non-atomic move.
-- If a step before the move fails, the command answers `accepted=false`. No
-  request exists.
+- If a step before the move fails, the command answers `accepted=false`. This
+  attempt installs no new request. Any previously pending request remains.
 - **If the directory sync fails after the move succeeded,** the command answers
   `accepted=false`. The answer states that the request file can remain pending
   and that the next start can act on it. It also gives the request file path.
@@ -548,7 +551,8 @@ Each test uses a temporary root and an in-memory store stub.
 | Commit failure | The build commit fails through an injected writer. The start fails. The next start runs the full sequence. |
 | Failure after commit | Request deletion fails after a completed commit. The start fails. The next start runs the full sequence and builds, because the request file remains. |
 | Directory sync failure in a command | `syncDirectory` fails through an injected sync. The command answers `accepted=false`, and the answer states that the request can remain pending. |
-| Directory sync propagates | `syncDirectory` on a path that cannot be opened throws. It does not return normally. |
+| Directory sync, open failure | `syncDirectory` on a path that cannot be opened throws. It does not return normally. |
+| Directory sync, force failure | The opener returns a channel that opens normally, and its `force(true)` throws. The real `syncDirectory` throws that error. |
 
 ### Endpoint tests, `chat-deploy`
 
@@ -593,7 +597,7 @@ node ids from `docs/NODEID-CLAIM.md`.
 | The pre-commit count check is removed | the build-scan repeated key test |
 | Recovery deletes the request files | the drop request, failed build test |
 | `defaultAccess` is `UNRESTRICTED` | endpoint test 2, which sets no global access default |
-| `syncDirectory` ignores the `force` error | the directory sync failure test |
+| `syncDirectory` ignores the `force` error | the directory sync force failure test |
 
 Each mutation runs alone. Restore each file by its absolute path, and prove the
 restore with `git status`.
