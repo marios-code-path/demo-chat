@@ -76,20 +76,33 @@ class RedisLuceneFilesRestartTests {
             }
         }
 
+        /**
+         * `UserServiceImpl.addUser` returns the key before its store write and
+         * its index write complete, because it subscribes to them detached. A
+         * context that closes at once drops the writes with "Connection is
+         * closed". So this helper waits until the index finds the handle. The
+         * index write follows the store write, so the store holds the user
+         * then. CHAT-ircckvrs holds the detached write.
+         */
         @Suppress("UNCHECKED_CAST")
         fun ConfigurableApplicationContext.addUser(handle: String) {
             val composite = getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
             composite.userService().addUser(UserCreateRequest("files", handle, "http://u")).block(Duration.ofSeconds(10))
+            val deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos()
+            while (!findsHandle(handle)) {
+                check(System.nanoTime() < deadline) { "The user $handle was not indexed within 10 seconds." }
+                Thread.sleep(50)
+            }
         }
+
+        @Suppress("UNCHECKED_CAST")
+        fun ConfigurableApplicationContext.findsHandle(handle: String): Boolean =
+            (getBean("userIndex") as UserIndexService<Long, IndexSearchRequest>)
+                .findBy(IndexSearchRequest("handle", handle, 10)).collectList().block(Duration.ofSeconds(10))!!.isNotEmpty()
     }
 
     private fun ConfigurableApplicationContext.report(name: String) =
         getBean(IndexFileAdmin::class.java).reports().single { it.name == name }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun ConfigurableApplicationContext.findsHandle(handle: String): Boolean =
-        (getBean("userIndex") as UserIndexService<Long, IndexSearchRequest>)
-            .findBy(IndexSearchRequest("handle", handle, 10)).collectList().block(timeout)!!.isNotEmpty()
 
     @Test
     fun `a restart with intact files reuses them`(@TempDir root: Path) {
