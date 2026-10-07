@@ -15,6 +15,8 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import reactor.core.publisher.Flux
+import reactor.core.scheduler.Schedulers
+import java.time.Duration
 import java.io.IOException
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -181,5 +183,26 @@ class LuceneIndexLifecycleTests {
     fun `an encoder failure on an index that is not open reports the state`() {
         val index = index { throw IllegalArgumentException("injected encoder failure") }
         assertThatThrownBy { index.add(Doc(1, "a")).block() }.hasMessageContaining("is not open")
+    }
+
+    /**
+     * A file commit syncs to disk. A caller can subscribe on a Netty event
+     * loop, which is a non-blocking thread, so the commit must move off it.
+     * Review of 9413ae55, CHAT-jknyeowy.
+     */
+    @Test
+    fun `a file mutation never commits on a non-blocking thread`(@TempDir root: Path) {
+        val index = index().apply { open("doc", FileStorage(root, "long", 1)) { Flux.empty() } }
+        val onNonBlocking = mutableListOf<Boolean>()
+        try {
+            index.beforeCommit = { onNonBlocking += Schedulers.isInNonBlockingThread() }
+            index.add(Doc(1, "a")).subscribeOn(Schedulers.parallel()).block(Duration.ofSeconds(5))
+            index.rem(Key.of(1L, ROOT)).subscribeOn(Schedulers.parallel()).block(Duration.ofSeconds(5))
+            assertThat(onNonBlocking).containsExactly(false, false)
+            assertThat(index.liveDocuments()).isEqualTo(0)
+        } finally {
+            index.beforeCommit = {}
+            index.close()
+        }
     }
 }

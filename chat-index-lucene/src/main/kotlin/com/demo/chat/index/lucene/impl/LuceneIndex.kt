@@ -18,6 +18,8 @@ import org.apache.lucene.search.IndexSearcher
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Scheduler
+import reactor.core.scheduler.Schedulers
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Function
 import kotlin.concurrent.withLock
@@ -47,6 +49,15 @@ open class LuceneIndex<T, E : Any>(
     @Volatile private var failure: Throwable? = null
     @Volatile private var name: String = javaClass.simpleName
 
+    /**
+     * Where a mutation runs. A file commit syncs to disk, so files mode runs
+     * each mutation on a scheduler that permits blocking. A caller can
+     * subscribe on a Netty event loop, and a disk sync there delays every
+     * other connection on that loop. Memory mode keeps the caller thread.
+     * Review of 9413ae55, CHAT-jknyeowy.
+     */
+    @Volatile private var mutationScheduler: Scheduler = Schedulers.immediate()
+
     /** A test seam. It runs after the writer change and before the commit. */
     internal var beforeCommit: () -> Unit = {}
 
@@ -58,6 +69,7 @@ open class LuceneIndex<T, E : Any>(
             try {
                 val result = IndexStartSequence(name, storage, analyzer, ::entryOf, entities).run()
                 started = result
+                mutationScheduler = if (storage.persistent) Schedulers.boundedElastic() else Schedulers.immediate()
                 state = IndexState.OPEN
                 logger.info(result.outcome.logLine(name))
             } catch (t: Throwable) {
@@ -142,7 +154,11 @@ open class LuceneIndex<T, E : Any>(
         }
     }
 
-    private fun mutate(change: (IndexWriter) -> Unit): Mono<Void> = Mono.fromRunnable {
+    private fun mutate(change: (IndexWriter) -> Unit): Mono<Void> = Mono.defer {
+        Mono.fromRunnable<Void> { mutateNow(change) }.subscribeOn(mutationScheduler)
+    }
+
+    private fun mutateNow(change: (IndexWriter) -> Unit) {
         mutation.withLock {
             val held = requireOpen()
             try {

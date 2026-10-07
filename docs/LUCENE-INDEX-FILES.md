@@ -71,7 +71,10 @@ In each case the next start checks the files again.
 
 ## Write cost
 
-Each index write commits, and a commit in files mode syncs to disk. Measured
+Each index write commits, and a commit in files mode syncs to disk. So files
+mode runs each write on a scheduler that permits blocking, not on the thread of
+the caller. A disk sync on a Netty event loop would delay every connection on
+that loop. Memory mode keeps the caller thread. Measured
 on 2026-10-07 on a macOS development machine, one Redis `addUser` took about
 25 ms with file indexes and about 2 ms with memory indexes. One isolated index
 add took about 28 ms with files. So file mode allows about 35 commits per
