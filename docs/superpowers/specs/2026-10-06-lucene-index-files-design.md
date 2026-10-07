@@ -282,18 +282,36 @@ Recovery never relies on `IndexWriter` to read a damaged commit.
 6. Commit once, with the new header.
 7. Delete the request files. After a drop build, delete both, because drop
    supersedes rebuild. After a rebuild build, delete the rebuild request.
-8. Sync the directory.
+8. Sync the directory with `syncDirectory` (see Request durability).
 9. Create the `SearcherManager`.
 
-If an error occurs before step 6, call `rollback()` and fail the start.
 `rollback()` cannot undo a completed commit, so every check runs before the
 commit.
 
-- **On the header path and the mismatch path, the previous commit survives a
-  failed build.** Those paths use `deleteAll` with no commit.
-- **On the recovery path, no previous commit remains.** A failed build leaves a
-  directory that holds only the lock files and the request files. The next start
-  takes the "no commit" branch and builds.
+**A failure before the commit, step 1 to step 5:** call `rollback()` and fail
+the start. These two guarantees hold only when `rollback()` succeeds:
+
+- **On the header path and the mismatch path, the previous commit survives.**
+  Those paths use `deleteAll` with no commit.
+- **On the recovery path, no previous commit remains.** The directory holds only
+  the lock files and the request files. The next start takes the "no commit"
+  branch and builds.
+
+If `rollback()` also fails, the start fails with both errors, and this design
+makes no claim about the directory.
+
+**A failure in the commit, step 6:** the committed state is uncertain. The
+commit may or may not be durable. Attempt `rollback()` as best-effort cleanup,
+and fail the start. This design makes no claim about which commit survives.
+
+**A failure after the commit, step 7 to step 9:** request deletion, directory
+sync, or `SearcherManager` creation fails after a completed commit. The start
+fails. Nothing tries to undo the commit.
+
+**After any of these failures, the next start runs the full sequence.** It
+reads the request files that remain, reads the committed state, and lets the
+normal checks decide. No failed start leaves a result that the next start
+trusts without that validation.
 
 A crash between step 6 and step 7 leaves a request file. The next start builds
 again. That is safe.
@@ -304,8 +322,9 @@ Each index records
 `StartOutcome(kind, reason, entitiesCompared, documentsWritten)`.
 
 - `kind` is `REUSED` or `BUILT`.
-- `reason` is one of `NO_COMMIT`, `HEADER`, `MISMATCH`, `DAMAGE`,
-  `REQUESTED_REBUILD`, and `REQUESTED_DROP`.
+- `reason` is nullable. It is null for `REUSED`. For `BUILT` it is one of
+  `NO_COMMIT`, `HEADER`, `MISMATCH`, `DAMAGE`, `REQUESTED_REBUILD`, and
+  `REQUESTED_DROP`, and it is never null.
 
 The start logs one line per index:
 
@@ -413,11 +432,24 @@ A command writes a request in this order:
 1. Write the temporary file `chat-<command>.request.tmp`.
 2. Sync the temporary file with `FileChannel.force(true)`.
 3. Move it to its final name with `ATOMIC_MOVE`.
-4. Sync the directory with `IOUtils.fsync(directory, true)`.
+4. Sync the directory with `syncDirectory`.
 
-**The command answers `accepted=true` only after all four steps succeed.** If
-the file system refuses an atomic move, the command answers `accepted=false`
-with the cause. It never substitutes a non-atomic move.
+**`syncDirectory` propagates every failure.** It opens the directory with
+`FileChannel.open(dir, READ)` and calls `force(true)`. Any `IOException` from
+the open or from `force` reaches the caller. **Do not use
+`IOUtils.fsync(directory, true)`.** Lucene 8.7 suppresses an `IOException`
+from `force()` on a directory, so that call cannot support the guarantee below.
+The start sequence uses the same helper in step 8 of the build.
+
+**The command answers `accepted=true` only after all four steps succeed.**
+
+- If the file system refuses an atomic move, the command answers
+  `accepted=false` with the cause. It never substitutes a non-atomic move.
+- If a step before the move fails, the command answers `accepted=false`. No
+  request exists.
+- **If the directory sync fails after the move succeeded,** the command answers
+  `accepted=false`. The answer states that the request file can remain pending
+  and that the next start can act on it. It also gives the request file path.
 
 The start sequence deletes a stale `.tmp` file from a crashed command. It does
 so after it obtains the owner lock, and before it reads requests. A `.tmp` file never counts as a request.
@@ -513,13 +545,26 @@ Each test uses a temporary root and an in-memory store stub.
 | `write.lock` held elsewhere | A damaged index whose `write.lock` another holder keeps. Recovery fails the start and deletes nothing. |
 | Blank root | The start fails, and the message names the property. |
 | Stale temporary request | A `.tmp` request file is deleted and does not count. |
+| Commit failure | The build commit fails through an injected writer. The start fails. The next start runs the full sequence. |
+| Failure after commit | Request deletion fails after a completed commit. The start fails. The next start runs the full sequence and builds, because the request file remains. |
+| Directory sync failure in a command | `syncDirectory` fails through an injected sync. The command answers `accepted=false`, and the answer states that the request can remain pending. |
+| Directory sync propagates | `syncDirectory` on a path that cannot be opened throws. It does not return normally. |
 
 ### Endpoint tests, `chat-deploy`
 
 1. **Shipped defaults.** `GET /actuator/luceneindex` answers 404.
-2. **Exposure without access.** The id is in the exposure list, and access is
-   not set. An authenticated `GET`, `POST`, and `DELETE` all answer 404, and
-   no request file appears.
+2. **The annotation alone.** This test isolates `defaultAccess`. It sets
+   none of `management.endpoints.enabled-by-default`,
+   `management.endpoints.access.default`, and
+   `management.endpoint.luceneindex.access`. It puts `luceneindex` in the
+   exposure list. An authenticated `GET`, `POST`, and `DELETE` all answer 404,
+   and no request file appears.
+
+   The shipped global default cannot isolate the annotation. Boot 4.0.8
+   resolves both `NONE` and `UNRESTRICTED` to `NONE` when
+   `enabled-by-default=false` is set. A review probe measured that on
+   2026-10-06. `PropertiesEndpointAccessResolver` applies the global default
+   first.
 3. **Access and exposure, no credentials.** `GET`, `POST`, and `DELETE` answer
    401, and no request file appears.
 4. **Access and exposure, actuator credentials.** `GET` answers 200 with six
@@ -547,7 +592,8 @@ node ids from `docs/NODEID-CLAIM.md`.
 | The bitset check is removed | the compare-scan repeated key test |
 | The pre-commit count check is removed | the build-scan repeated key test |
 | Recovery deletes the request files | the drop request, failed build test |
-| `defaultAccess` is `UNRESTRICTED` | endpoint test 2 |
+| `defaultAccess` is `UNRESTRICTED` | endpoint test 2, which sets no global access default |
+| `syncDirectory` ignores the `force` error | the directory sync failure test |
 
 Each mutation runs alone. Restore each file by its absolute path, and prove the
 restore with `git status`.
@@ -580,7 +626,8 @@ the new counts.
 
 ## Open checks for the plan
 
-- **A composition with a Lucene index and no local store.** `LuceneIndexBeans`
+- **A composition with a Lucene index and no local store. This is the first
+  plan task.** Its behaviour must be settled before implementation starts. `LuceneIndexBeans`
   returns an empty load when no `PersistenceServiceBeans` bean exists. The plan
   must find each such composition. With no store, a start cannot validate files.
   The plan must state what `open` does there.
