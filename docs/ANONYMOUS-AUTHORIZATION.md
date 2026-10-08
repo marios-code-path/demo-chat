@@ -125,6 +125,45 @@ one row per domain root, plus the shipped row that names the `Admin` key.
 The checks run since 2026-10-01, so these rows reach the Admin identity in a
 deployment.
 
+## The initial grants are a seed
+
+**`userinit.yml` gives the first value of a grant, and the store holds every
+later change.** The owner decided this rule on 2026-10-07. See
+`CHAT-ghwtzgjp`.
+
+`InitialUsersService` reads the stored rows of each initial grant before it
+writes. It applies the rule to the ten rows of the table above and to the
+generated Admin rows.
+
+| Stored rows with the same principal, target and permission | What a start does |
+|---|---|
+| None | It writes the grant. |
+| One | It writes nothing. An expired or a muted row counts. |
+| More than one | It keeps the row with the highest key id and removes the others. |
+
+**A restart does not undo a revoke.** Expire the row to revoke an initial
+grant. The next start finds that row and writes nothing.
+
+**The removal changes no access decision.** The copies of one grant tie on the
+wildcard level and on the principal rank. So `AuthSummarizer` breaks the tie
+with the key comparator, and it selects the highest key id. The start keeps
+that row.
+
+**Before this rule, each start wrote one more copy of each named grant.**
+Measured on 2026-10-07: two starts on one Redis store added 9 rows. Measured
+again with the restart tests: the Redis and Cassandra tests both fail against
+the earlier service.
+
+- `InitialGrantSeedTests` holds the rule against a recording store.
+- `RedisGrantRestartTests` holds it across a restart. It reads the deciding row
+  before and after the restart, and it holds a revoke.
+- `CassandraGrantRestartTests` asserts one row per named initial grant after
+  two starts.
+
+**The read is not atomic with the write.** Two processes that start at the
+same time against one store can both write a grant. The owner guard has the
+same limit.
+
 ## The room owner
 
 **The server writes one `*` row for a new room, for the caller that created it.**
