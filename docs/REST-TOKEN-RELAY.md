@@ -68,6 +68,7 @@ sequenceDiagram
     participant Ctl as REST controller
     participant MR as MetadataRSocketRequester
     participant EI as Error interceptor (responder)
+    participant UR as Unsupported credential refusal (199)
     participant AU as Authentication (200)
     participant AN as Anonymous (300)
     participant AZ as Authorization (400)
@@ -82,7 +83,8 @@ sequenceDiagram
     Ctl->>MR: TopicClient.addRoom, route prefix + "topic-add"
     Note over MR: At subscription, read the reactive context.<br/>Attach BearerTokenMetadata(jwt.tokenValue).
     MR->>EI: Request payload with bearer metadata
-    EI->>AU: Payload chain
+    EI->>UR: Payload chain
+    UR->>AU: Auth type is simple or bearer
     AU->>AU: RSocketAuthenticationManager routes the bearer token
     AU->>AU: JWT manager: ES256 signature, expiry
     AU->>AU: AgentAuthenticationConverter: client_id selects the agent
@@ -98,6 +100,10 @@ sequenceDiagram
 
 The numbers in brackets are the payload interceptor orders. Spring Security
 sets `AUTHENTICATION` to 200, `ANONYMOUS` to 300, and `AUTHORIZATION` to 400.
+`UnsupportedCredentialRefusal` runs at 199. It refuses an auth type that is
+not simple or bearer, and the legacy `basic` MIME type. Without it, the
+converter reads no authentication from such an entry, and the caller takes
+`Anon`. See `CHAT-jkordfef`.
 
 `RSocketSecurityErrorInterceptor` is not a payload interceptor. It is an
 RSocket responder interceptor, so it wraps the outermost responder. It sees
@@ -190,6 +196,7 @@ stateDiagram-v2
     Inspect --> SetupIdentity: request carries no auth metadata
     Inspect --> SimpleAuth: simple metadata
     Inspect --> BearerAuth: bearer metadata
+    Inspect --> RefusedAuthn: unsupported auth type or legacy basic MIME
 
     SetupIdentity --> Authenticated: setup frame authenticated
     SetupIdentity --> Anonymous: setup frame had no credential
