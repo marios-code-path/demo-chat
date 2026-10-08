@@ -1,7 +1,9 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyRootConflictException
 import com.demo.chat.domain.RootKeyDeletionException
+import com.demo.chat.domain.RootKeyRegistrationException
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyGenerator
@@ -71,6 +73,14 @@ class TestGeneratorKeyService<T>(
     /** The read waits for a subscriber, so a chain that removes first sees the removal. */
     override fun rootOf(id: T): Mono<T & Any> = Mono.fromCallable {
         if (isRoot(id!!)) id else registry[id]
+    }
+
+    /** The rule of the production registries, so handler tests can register keys. */
+    override fun register(key: Key<T>): Mono<Void> = Mono.defer {
+        if (isRoot(key.id!!)) return@defer Mono.error<Void>(RootKeyRegistrationException(key.id))
+        val stored = registry.putIfAbsent(key.id!!, key.root!!)
+        if (stored == null || stored == key.root) Mono.empty()
+        else Mono.error(KeyRootConflictException(key.id, stored, key.root))
     }
 
     private fun isRoot(id: T & Any): Boolean =

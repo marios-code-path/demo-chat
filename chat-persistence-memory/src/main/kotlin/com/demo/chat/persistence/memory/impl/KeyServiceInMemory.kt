@@ -1,7 +1,9 @@
 package com.demo.chat.persistence.memory.impl
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyRootConflictException
 import com.demo.chat.domain.RootKeyDeletionException
+import com.demo.chat.domain.RootKeyRegistrationException
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyService
@@ -33,5 +35,12 @@ open class KeyServiceInMemory<T>(private val keyGen: Supplier<T>, private val ro
     /** The read waits for a subscriber, so a chain that removes first sees the removal. */
     override fun rootOf(id: T): Mono<T & Any> = Mono.fromCallable {
         if (rootKeys.domainOfRoot(id) != null) id!! else roots[id!!]
+    }
+
+    override fun register(key: Key<T>): Mono<Void> = Mono.defer {
+        if (rootKeys.domainOfRoot(key.id) != null) return@defer Mono.error<Void>(RootKeyRegistrationException(key.id))
+        val stored = roots.putIfAbsent(key.id!!, key.root!!)
+        if (stored == null || stored == key.root) Mono.empty()
+        else Mono.error(KeyRootConflictException(key.id, stored, key.root))
     }
 }
