@@ -32,7 +32,8 @@ no rule names answers no identity.
    reached the service with nothing receives no identity.
 3. **`isAuthenticated=false` denies.** A rejected credential carries this
    shape, and so does an expired one. The read refuses both before it looks
-   at the principal.
+   at the principal. Both deployed seams refuse such a credential before the
+   read runs, so this rule is the guard behind them.
 4. **An unknown principal denies quietly.** No identity is not an error. The
    access methods end with `switchIfEmpty(Mono.just(false))`, so an empty
    answer refuses the access.
@@ -43,7 +44,7 @@ A seam must establish the identity. The read never invents one.
 
 | Transport | What establishes the identity |
 |---|---|
-| RSocket | `RSocketSecurity.simpleAuthentication` for a credential, and `RSocketSecurity.anonymous` for a caller without one |
+| RSocket | `RSocketSecurity.simpleAuthentication` with `RSocketAuthenticationManager` for a password or an agent bearer, and `RSocketSecurity.anonymous` for a caller without one |
 | WebFlux | A validated agent JWT with the configured client ID and scope |
 
 **The WebFlux application chain does not enable anonymous authentication.**
@@ -55,6 +56,67 @@ owns, so a credential-less request answers 401 before any identity read. The
 
 **`app.service.composite.auth` turns the access checks on.** `chat-build`
 passes it on every core launch.
+
+## The RSocket authentication seam
+
+`CHAT-jkordfef`. The owner set this policy on 2026-10-07.
+
+The seam reads the credential before any access check. Each case below has
+one result.
+
+| Credential | Frame | Result |
+|---|---|---|
+| None | setup and request | the `Anon` root key |
+| A valid password | setup | the key of that user |
+| A valid agent bearer | request | the key of the agent that its `client_id` selects |
+| A wrong password | setup | `RejectedSetupException`, `Invalid Credentials` |
+| A wrong password | request | `0x401` |
+| A bearer with a bad signature, or text that is not a token | request | `0x401` |
+| An expired bearer | request | `0x401` |
+| A bearer from a client that no agent entry lists | request | `0x401` |
+| A bearer without the required scope | request | `0x403` |
+| An auth type that is not simple or bearer | setup | `RejectedSetupException` |
+| An auth type that is not simple or bearer | request | `0x401` |
+| The legacy `basic` authentication MIME type | request | `0x401` |
+
+Six rules hold the table.
+
+1. **No credential takes `Anon`, by design.** `RSocketSecurity.anonymous`
+   makes that decision. The `Anon` key reaches the grant floor and nothing
+   more.
+2. **A caller that sends a credential never takes `Anon`.** A credential
+   that the seam cannot accept is refused. It does not fall back.
+   `UnsupportedCredentialRefusal` refuses an auth type that the converter
+   cannot read, because the converter answers no authentication for it, and
+   the anonymous filter would then run.
+3. **Expired and invalid bearers share `0x401`.** RFC 6750 uses one
+   `invalid_token` error for both. A client does one thing in both cases: it
+   gets a new token. The message text can differ, and a client must not read
+   it.
+4. **A refusal stops the request before a handler runs.** No room is created.
+   For an expired bearer and a wrong-client bearer,
+   `CoreBearerDenialNoDownstreamEffectsTests` also shows that no store and no
+   controller receives a call.
+5. **Request metadata has precedence over setup metadata.** An invalid request
+   credential does not fall back to the setup identity.
+   `RSocketIdentityPrecedenceTests` pins it.
+6. **A setup refusal arrives on the first request.** `connectTcp` completes
+   with a requester, and `RejectedSetupException` lands on the first call
+   that uses it. A client that reads only the connect result reads a refusal
+   as a success.
+
+**No outside input reaches an unsupported principal at this seam.** The seam
+makes three kinds of authentication: `AnonymousAuthenticationToken`, a
+`ChatUserDetails` principal from the password manager, and
+`AgentAuthenticationToken`, which carries a `ChatUserDetails`. Rule 7 of
+`ContextIdentity` denies any other principal, and `ContextIdentityTests` pins
+that rule. The reachable form of an unsupported credential is an unknown auth
+type, and rule 2 refuses it.
+
+`RSocketAuthenticationSeamTests` in `chat-deploy-memory` sends each case to a
+running server and mocks nothing. It reads the result from the stores. On
+2026-10-07, all 11 tests passed. With the refusal removed from
+`RSocketSecurityConfiguration`, exactly the three unsupported cases failed.
 
 ## What changed on 2026-09-23
 
@@ -107,12 +169,9 @@ unknown principal would gain access in silence.
 
 ## What this policy does not do
 
-- **It validates REST tokens only.** `WebFluxSecurity` validates the local
-  signature, client ID, and required scope. `RSocketServerConfiguration`
-  remains outside this issue and still permits its current payloads.
-- **It does not separate an expired session from a rejected one.** Both deny.
-  A distinct identity for an expired session needs a seam that can tell them
-  apart, and no seam can today.
+- **It does not separate an expired credential from an invalid one.** REST
+  answers 401 for both, and RSocket answers `0x401` for both. The owner chose
+  one code on 2026-10-07. No identity exists for an expired credential.
 - **It does not state what the `Anon` root key may reach.** The access broker
   answers that, and `CHAT-cvdcfczj` owns the full surface.
 - **It does not make a refusal stop an operation.** The programmatic access

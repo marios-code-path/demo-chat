@@ -454,9 +454,12 @@ what is not".
 ## Expiry
 
 `AuthSummarizer` keeps a row when `expires` is `0L` or in the future. A grant
-with an expiry in the past does not allow. That is the only expiry this
-application has. **No credential expires, because no deployed transport
-validates a token.** See `docs/IDENTITY-POLICY.md`.
+with an expiry in the past does not allow.
+
+**A grant expiry is not a credential expiry.** An agent bearer token carries
+its own expiry. The REST chain answers 401 for an expired token, and the
+RSocket seam answers `0x401`, before any grant is read. See
+`docs/IDENTITY-POLICY.md`.
 
 ## What is wired, and what is not
 
