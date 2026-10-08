@@ -41,6 +41,10 @@ export GOLDEN_JWK=/tmp/chat-build-golden.jwk
 : > "$GOLDEN_JWK"
 export DEBUG_PORT=5005
 
+# chat-build expands ~ in --index-root. A fixed HOME keeps that golden the same
+# on every machine. See CHAT-eesnvnad.
+GOLDEN_HOME=/home/golden
+
 # Provenance matters. The four cases marked [parity] were asserted against
 # build-app.sh before it was removed, so their goldens carry the legacy scripts'
 # authority. The rest are snapshots of chat-build's own output: they detect
@@ -68,6 +72,9 @@ CASES=(
   "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
   "core-agent-brackets|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 0f3a7c21-1b2d-4e5f-8a9b-1c2d3e4f5a6b=Bot_1 --agent 9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b=Bot1"
   "core-build-image|core --memory --build --notls --long --node-id 0"
+  # Lucene index files. See CHAT-eesnvnad.
+  "core-redis-index-root|core --redis --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene"
+  "core-redis-index-root-home|core --redis --run --notls --long --node-id 0 --index-root ~/chat-lucene"
   # other services
   "rest-client|rest --run --notls --long --node-id 0"
   "rest-client-agent|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
@@ -94,6 +101,12 @@ REFUSALS=(
   "refuse-shape|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent Agent|1|CLIENT_ID=HANDLE"
   "refuse-no-jwk|rest --run --notls --long --node-id 0 --agent a=Agent|1|--agent requires --jwk PATH"
   "refuse-service|gateway --run --notls --long --node-id 0 --agent a=Agent|1|--agent requires the core, rest or authserv service"
+  # --index-root. See CHAT-eesnvnad.
+  "refuse-index-root-empty|core --redis --run --notls --long --node-id 0 --index-root=|1|--index-root must not be empty"
+  "refuse-index-root-relative|core --redis --run --notls --long --node-id 0 --index-root lucene|1|--index-root must be an absolute path: lucene"
+  "refuse-index-root-service|rest --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root requires the core service"
+  "refuse-index-root-cassandra|core --cassandra --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root has no effect with --cassandra"
+  "refuse-index-root-build|core --redis --build --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root cannot be baked into an image"
 )
 
 UPDATE=0
@@ -147,7 +160,7 @@ for entry in "${CASES[@]}"; do
     [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && continue
 
     # shellcheck disable=SC2086
-    out="$("$CHAT_BUILD" $args --dry-run 2>&1)"
+    out="$(HOME="$GOLDEN_HOME" "$CHAT_BUILD" $args --dry-run 2>&1)"
     if [ $? -ne 0 ]; then
         echo "FAIL  $name — chat-build exited non-zero"
         echo "$out" | sed 's/^/        /'
@@ -191,7 +204,7 @@ for entry in "${REFUSALS[@]}"; do
     [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && continue
     [ "$UPDATE" -eq 1 ] && continue
     # shellcheck disable=SC2086
-    out="$("$CHAT_BUILD" $args --dry-run 2>&1)"; code=$?
+    out="$(HOME="$GOLDEN_HOME" "$CHAT_BUILD" $args --dry-run 2>&1)"; code=$?
     if [ "$code" -eq "$want_exit" ] && grep -qF -- "$want_text" <<< "$out"; then
         echo "ok    $name"
         pass=$((pass + 1))

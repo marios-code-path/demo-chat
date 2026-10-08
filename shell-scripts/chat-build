@@ -545,6 +545,11 @@ class BuildContext:
         self.jwk_path: str | None = getattr(args, "jwk", None)
         self.agents: list[tuple[str, str]] = parse_agents(getattr(args, "agent", []) or [])
         self.agent_scope: str = getattr(args, "agent_scope", "chat.mcp")
+        # Expanded and never resolved, for the reason given at the --jwk flag.
+        # main() refuses an empty or relative value. See CHAT-eesnvnad.
+        index_root = getattr(args, "index_root", None)
+        self.index_root: str | None = (
+            str(Path(index_root).expanduser()) if index_root else None)
         self.image_name = service.image_name_for(self.backend)
 
     # -- resolution ------------------------------------------------------
@@ -679,6 +684,10 @@ class BuildContext:
                 "-Dapp.oauth2.jwk.path=file:"
                 + str(Path(self.jwk_path).expanduser())
             )
+        if self.index_root:
+            # The Lucene indexes keep their files under this directory. Without
+            # it they stay in memory. See docs/LUCENE-INDEX-FILES.md.
+            flags.append(f"-Dapp.index.lucene.root={self.index_root}")
         for feat in self._features():
             for key, value in feat.spring_properties.items():
                 if key.startswith("app.service.core."):
@@ -1025,6 +1034,9 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--agent", action="append", default=[], metavar="CLIENT_ID=HANDLE",
                         help="an agent: the OAuth client id and the chat user handle. "
                              "Repeat it for each agent")
+    parser.add_argument("--index-root", metavar="DIR", default=None,
+                        help="core only: keep the Lucene indexes in files under DIR, "
+                             "an absolute path. Without it they stay in memory")
     parser.add_argument("--agent-scope", default="chat.mcp",
                         help="scope required by every agent token")
     # Removed by CHAT-frcrctdp. Kept hidden so that a launch that names them
@@ -1129,6 +1141,35 @@ def main() -> int:
                 print(f"chat-build: --jwk names no file: {args.jwk}",
                       file=sys.stderr)
                 return 1
+
+    # Compare with None. An empty value such as --index-root= is refused, and
+    # not read as no root. See CHAT-eesnvnad.
+    if args.index_root is not None:
+        if args.service != "core":
+            print("chat-build: --index-root requires the core service. "
+                  "Only the core holds the Lucene indexes", file=sys.stderr)
+            return 1
+        if not args.index_root:
+            print("chat-build: --index-root must not be empty", file=sys.stderr)
+            return 1
+        if args.cassandra:
+            print("chat-build: --index-root has no effect with --cassandra. "
+                  "The Cassandra backend uses the Cassandra index, not Lucene",
+                  file=sys.stderr)
+            return 1
+        if args.build:
+            print("chat-build: --index-root cannot be baked into an image. "
+                  "A host path does not exist inside the container. "
+                  "Mount a volume and supply app.index.lucene.root when you "
+                  "run the image", file=sys.stderr)
+            return 1
+        # Expand ~ first, then check. The directory may be absent, because
+        # the index start creates it. Absolute, because spring-boot:run sets
+        # the module directory as the working directory.
+        if not Path(args.index_root).expanduser().is_absolute():
+            print(f"chat-build: --index-root must be an absolute path: "
+                  f"{args.index_root}", file=sys.stderr)
+            return 1
 
     ctx = BuildContext(SERVICES[args.service], args)
 
