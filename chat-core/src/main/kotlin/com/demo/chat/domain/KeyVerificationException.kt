@@ -5,4 +5,4 @@ package com.demo.chat.domain
  * from the stored root, or its domain differs from the expected domain. See
  * `KeyVerifier` and `CHAT-avduuqwp`.
  */
-class KeyVerificationException(message: String) : ChatException(message)
+class KeyVerificationException(message: String) : ChatException(message), NoEffectRefusal
