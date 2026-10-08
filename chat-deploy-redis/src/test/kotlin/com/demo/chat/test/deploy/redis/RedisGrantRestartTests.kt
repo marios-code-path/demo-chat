@@ -1,6 +1,7 @@
 package com.demo.chat.test.deploy.redis
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
@@ -31,7 +32,7 @@ import java.time.Duration
  * in process memory. So this test also proves that the start sequence
  * reloads that index from Redis before readiness.
  *
- * Node ids 13 to 17 belong to this class. See docs/NODEID-CLAIM.md. The
+ * Node ids 13 to 17, 30 and 31 belong to this class. See docs/NODEID-CLAIM.md. The
  * second context takes 14, because a Redis close does not release the claim
  * today. `LettuceConnectionFactory` stops before the claim guard releases.
  * `CHAT-ocpojbyy` holds that defect.
@@ -203,6 +204,94 @@ class RedisGrantRestartTests {
     @Suppress("UNCHECKED_CAST")
     private fun ConfigurableApplicationContext.composite() =
         getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
+
+    @Suppress("UNCHECKED_CAST")
+    private fun ConfigurableApplicationContext.grants() =
+        getBean(AuthorizationService::class.java) as AuthorizationService<Long, AuthMetadata<Long>>
+
+    private fun ConfigurableApplicationContext.stored(principal: Key<Long>, target: Key<Long>, perm: String) =
+        grants().getStoredGrants(principal, target).filter { it.permission == perm }.collectList().block(timeout)!!
+
+    /** The row that decides one access question for [caller]. */
+    private fun ConfigurableApplicationContext.deciding(caller: Key<Long>, target: Key<Long>, perm: String) =
+        grants().getAuthorizationsAgainst(caller, target, perm).filter { it.permission == perm }
+            .collectList().block(timeout)!!.single()
+
+    /**
+     * **The initial grants are a seed, not a reconcile.** See `CHAT-ghwtzgjp`.
+     *
+     * Before this rule, each start wrote one more copy of each named initial
+     * grant. Measured on 2026-10-07: two starts on one store added 9 rows.
+     *
+     * - The second start keeps one row for each initial grant.
+     * - It keeps the row that decided access before the start, and the same
+     *   row decides access after it.
+     * - It does not undo a revoke.
+     *
+     * The test restores the revoked grant, because the other Redis boot tests
+     * share this container.
+     */
+    @Test
+    fun `a restart keeps one row per initial grant and keeps a revoke`() {
+        val member: Key<Long>
+        val selected: AuthMetadata<Long>
+        val revoked: AuthMetadata<Long>
+
+        start(30).use { first ->
+            val roots = first.roots()
+            val userRoot = roots.of(ChatDomain.USER)
+            val topicRoot = roots.of(ChatDomain.MESSAGE_TOPIC)
+            val messageRoot = roots.of(ChatDomain.MESSAGE)
+            val placeholder = Key.empty(0L, roots.of(ChatDomain.AUTH_METADATA).id)
+            member = first.composite().userService()
+                .addUser(UserCreateRequest("seed", "seeduser", "http://u")).block(timeout)!!
+
+            // Two copies of a shipped grant, as two starts before this rule wrote them.
+            repeat(2) {
+                first.grants().authorize(AuthMetadata.create(placeholder, userRoot, topicRoot, "JOIN", false, 0L), true)
+                    .block(timeout)
+            }
+            val copies = first.stored(userRoot, topicRoot, "JOIN")
+            Assertions.assertTrue(copies.size >= 3, "the seeded copies: $copies")
+            selected = first.deciding(member, topicRoot, "JOIN")
+            Assertions.assertEquals(copies.maxBy { it.key.id }.key, selected.key, "the summarizer selects the highest key")
+
+            // An operator revokes a shipped grant by expiring the row that decides it.
+            val send = first.deciding(member, messageRoot, "SEND")
+            revoked = AuthMetadata.create(send.key, send.principal, send.target, send.permission, send.mute, 1L)
+            first.grants().authorize(revoked, true).block(timeout)
+        }
+
+        start(31).use { second ->
+            val roots = second.roots()
+            val userRoot = roots.of(ChatDomain.USER)
+            val topicRoot = roots.of(ChatDomain.MESSAGE_TOPIC)
+            val messageRoot = roots.of(ChatDomain.MESSAGE)
+            try {
+                val join = second.stored(userRoot, topicRoot, "JOIN")
+                Assertions.assertEquals(listOf(selected.key), join.map { it.key }, "the JOIN rows after the restart")
+                Assertions.assertEquals(selected.key, second.deciding(member, topicRoot, "JOIN").key, "the deciding row")
+
+                val send = second.stored(userRoot, messageRoot, "SEND").distinctBy { it.key }
+                Assertions.assertEquals(listOf(revoked.key), send.map { it.key }, "the SEND rows after the restart")
+                Assertions.assertEquals(1L, send.single().expires, "the revoke holds")
+
+                // Every named initial grant holds one row after two starts.
+                val properties = second.getBean(UserInitializationProperties::class.java)
+                properties.initialRoles.roles.forEach { role ->
+                    val principal = roots.byName(role.user)!!
+                    val target = roots.byName(role.target)!!
+                    val rows = second.stored(principal, target, role.role).distinctBy { it.key }
+                    Assertions.assertEquals(1, rows.size, "rows for ${role.user} -> ${role.target} : ${role.role}: $rows")
+                }
+            } finally {
+                second.grants().authorize(
+                    AuthMetadata.create(revoked.key, revoked.principal, revoked.target, revoked.permission, false, 0L),
+                    true,
+                ).block(timeout)
+            }
+        }
+    }
 
     /**
      * A stored grant that cannot be read fails the start. The auth index load
