@@ -4,18 +4,16 @@ import com.demo.chat.config.deploy.init.InitalRoles
 import com.demo.chat.config.deploy.init.RoleDefinition
 import com.demo.chat.config.deploy.init.UserDefinition
 import com.demo.chat.config.deploy.init.UserInitializationProperties
-import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
+import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.init.InitialUsersService
-import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.TestLongKeyGenerator
-import com.demo.chat.test.anyBoolean
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.key.TestKeys
 import org.mockito.BDDMockito
@@ -27,9 +25,12 @@ import reactor.core.publisher.Mono
 /**
  * The scaffolding that both initial-user test classes share.
  *
- * The user service and the authorization service are mocks. **The secrets store
- * is real**, so a test reads the credential that the service actually wrote.
- * See `CHAT-werokcbb`.
+ * The user service is a mock. **The secrets store and the authorization store
+ * are real maps**, so a test reads what the service actually wrote. See
+ * `CHAT-werokcbb` and `CHAT-ghwtzgjp`.
+ *
+ * The user service answers one key per handle. So a second start finds the
+ * users of the first start, as a store that reloads its user index does.
  */
 class InitialUsersFixture(val encoder: PasswordEncoder = Mockito.mock(PasswordEncoder::class.java)) {
 
@@ -39,19 +40,21 @@ class InitialUsersFixture(val encoder: PasswordEncoder = Mockito.mock(PasswordEn
     val userService: ChatUserService<Long> =
         Mockito.mock(ChatUserService::class.java) as ChatUserService<Long>
 
-    @Suppress("UNCHECKED_CAST")
-    val authorizationService: AuthorizationService<Long, AuthMetadata<Long>> =
-        Mockito.mock(AuthorizationService::class.java) as AuthorizationService<Long, AuthMetadata<Long>>
+    val authorizationService = RecordingAuthorizationService()
 
     val secretsStore = RecordingSecretsStore()
 
+    private val userKeys: MutableMap<String, Key<Long>> = mutableMapOf()
+
     init {
-        // A created user answers a fresh key. A found user is not needed here,
-        // so find answers nothing and a failure stays visible.
-        BDDMockito.given(userService.addUser(anyObject()))
-            .willReturn(Mono.defer { Mono.just(TestKeys.key(keyGenerator.nextId())) })
+        // A created user answers the key of its handle. The same handle gives
+        // the same key at every start. Find answers nothing, so a failure stays
+        // visible.
+        BDDMockito.given(userService.addUser(anyObject())).willAnswer { call ->
+            val request = call.getArgument<UserCreateRequest>(0)
+            Mono.just(userKeys.getOrPut(request.handle) { TestKeys.key(keyGenerator.nextId()) })
+        }
         BDDMockito.given(userService.findByUsername(anyObject())).willReturn(Flux.empty())
-        BDDMockito.given(authorizationService.authorize(anyObject(), anyBoolean())).willReturn(Mono.empty())
     }
 
     /** The production service under test, wired to every mock of this fixture. */
