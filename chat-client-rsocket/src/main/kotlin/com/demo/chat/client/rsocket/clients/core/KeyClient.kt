@@ -42,6 +42,12 @@ open class KeyClient<T : Any>(
             .data(id)
             .retrieveMono(Any::class.java)
             .map { typeUtil.assignFrom(it) }
+
+    /** `retrieveMono` returns a refusal to the caller. A `send()` would lose it. */
+    override fun register(key: Key<T>): Mono<Void> = requester
+            .route("${prefix}register")
+            .data(key)
+            .retrieveMono(Void::class.java)
 }
 
 interface KeyClientProxy<T>: IKeyService<T> {
@@ -56,4 +62,7 @@ interface KeyClientProxy<T>: IKeyService<T> {
 
     @RSocketExchange("key.rootOf")
     override fun rootOf(@Payload id: T): Mono<T & Any>
+
+    @RSocketExchange("key.register")
+    override fun register(@Payload key: Key<T>): Mono<Void>
 }

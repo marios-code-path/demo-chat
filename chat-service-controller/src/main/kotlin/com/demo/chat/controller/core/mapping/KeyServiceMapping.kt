@@ -20,6 +20,10 @@ interface IKeyServiceMapping<T> : IKeyService<T> {
     @MessageMapping("rem")
     fun remRoute(@Verified(anyDomain = true) key: VerifiedKey<T>): Mono<Void> = rem(key.key)
 
+    /** Registration of an assigned key. The core route rule requires `ROLE_SERVICE` or `ROLE_ADMIN`. */
+    @MessageMapping("register")
+    override fun register(key: Key<T>): Mono<Void>
+
     fun typeUtil(): TypeUtil<T>
 
     // The two reads below ask the registry itself, so no verification runs first.

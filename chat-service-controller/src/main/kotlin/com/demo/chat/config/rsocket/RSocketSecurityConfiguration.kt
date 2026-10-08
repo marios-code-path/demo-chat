@@ -34,6 +34,7 @@ class RSocketSecurityConfiguration {
                 .route("secrets.**").hasAnyRole(SERVICE, ADMIN)
                 .route("key.key").hasAnyRole(SERVICE, ADMIN)
                 .route("key.rem").hasAnyRole(SERVICE, ADMIN)
+                .route("key.register").hasAnyRole(SERVICE, ADMIN)
                 .anyExchange().permitAll()
         }
         .build()

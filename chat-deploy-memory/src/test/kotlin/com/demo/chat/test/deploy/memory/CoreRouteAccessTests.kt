@@ -231,6 +231,25 @@ class CoreRouteAccessTests {
             .isFalse()
     }
 
+    /** **Key registration.** A refused registration writes no registry row. Decision 2 of the spec. */
+    @Test
+    fun `the key boundary refuses a registration and registers nothing`() {
+        val messageRoot = rootKeys.of(ChatDomain.MESSAGE).id
+        val unregistered = Key.of(990_001L, messageRoot)
+
+        refusedCallers().forEach {
+            assertRefused(it.route("key.register").data(unregistered).retrieveMono(Void::class.java))
+        }
+        assertThat(keys.keyService().rootOf(unregistered.id).block(timeout))
+            .describedAs("the registry after two refused registrations")
+            .isNull()
+
+        service().route("key.register").data(unregistered).retrieveMono(Void::class.java).block(timeout)
+        assertThat(keys.keyService().rootOf(unregistered.id).block(timeout))
+            .describedAs("the registry after the service registration")
+            .isEqualTo(messageRoot)
+    }
+
     /** **Secrets.** A refused write leaves the stored credential as it was. */
     @Test
     fun `the secrets boundary refuses a write and a compare and the credential stays`() {
