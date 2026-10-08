@@ -1,4 +1,4 @@
-# Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
+# Role names use exact domain names, Admin, or Anon. The value * marks ownership.
 #
 # Every key here must bind to UserInitializationProperties in chat-deploy.
 # That type names passwordEncoder, initialRoles and initialUsers, and a
@@ -13,8 +13,6 @@ app:
   init:
     passwordEncoder: bcrypt
     initialRoles:
-      rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
-      wildcard: "*"
       roles:
         - { user: Admin, target: Admin, role: "*" }
         - { user: Anon, target: User, role: FIND }

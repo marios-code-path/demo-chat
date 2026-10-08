@@ -38,6 +38,9 @@ So the policy applies at command sites.
 An `OperationClass` is a child of `OperationPolicy`, so the minimum
 composition is one `OperationPolicy` holding a list of `Operation`.
 
+This action model is separate from the `userinit.yml` binding. Seed grants
+never expire. `NONE` and `NOW` are action-model values, not seed properties.
+
 ## The matching rules
 
 The order of matching is:
@@ -55,7 +58,8 @@ So `user: dest{ROLE=*}` reads as
 For `ID`, the value matches one of `ACTIVE`, `ROOT`, `ANON` or `ADMIN`.
 `ROOT` names the root key of the **User domain**. `ANON` and `ADMIN` name the
 root keys of the anonymous user and the admin user. `ACTIVE` names the caller
-that is logged in.
+that is logged in. These names are runtime sources, not configuration names.
+Configuration accepts exact domain names, `Admin`, and `Anon`.
 
 ## What a root key is
 
@@ -179,22 +183,19 @@ actor set then held the target key.
 |---|---|---|---|---|---|
 | `add` | `member` | `key.id` | `*` | none | A membership belongs to its member |
 
-## The owner question, recorded and not decided
+## The wildcard write decision
 
-**Should a policy grant only narrow permissions, or may one user give another
-`*` on a topic?**
-
-The owner view in the draft: keep one place where `*` is applied, which is
-initialization and system definition. `*` then becomes a stable indicator of
-ownership.
+The owner decision permits `*` only in seed rows, generated Admin rows, and
+the room-owner row for an authenticated caller. `*` remains a stable owner
+indicator.
 
 That reading makes `dest{ROLE=*}` above meaningful, because it finds the owner
 of a topic by looking for the holder of `*`.
 
 ## What the current code does not support
 
-Each line is measured on 2026-09-23 at master `42cd6a69`. **Every one of them
-must close before any of this reaches configuration.**
+The first five lines were measured before the schema work. The current status
+appears in each line below.
 
 1. **`operationPolicy` has no binding type.** `UserInitializationProperties`
    binds `passwordEncoder`, `initialRoles` and `initialUsers`. Spring ignores
@@ -206,10 +207,12 @@ must close before any of this reaches configuration.**
    and the `*` that `TopicCommands.addTopic` writes now match an operation.
    The shipped matrix did not move, because no operation names the `Admin` key
    as its target.
-4. **`rolesAllowed` and `wildcard` bind and are never read.**
-   `InitialUsersService` reads `initialRoles.roles` alone.
-5. **`role: '-'` has no denial meaning.** The permission check answers whether
-   a list contains a string. Nothing subtracts.
+4. **`rolesAllowed` and `wildcard` are not bound.** Spring ignores unknown
+   keys. The shipped YAML omits both keys, but an operator file that keeps
+   them starts without an error. `InitialUsersService` reads `initialRoles.roles`
+   alone.
+5. **The binding rejects `role: '-'`.** Existing stored rows still treat `-`
+   as ordinary permission text. Nothing subtracts it.
 6. **A grant on a domain root does not cover the objects of that domain**, and
    **a principal alias does not exist.** `docs/ANONYMOUS-AUTHORIZATION.md`
    measures both. The owner decided on 2026-09-23 that the expansion must
@@ -218,12 +221,14 @@ must close before any of this reaches configuration.**
 
 ## What a typed schema must define
 
-`CHAT-zcxgrtqc` carries these.
+`CHAT-zcxgrtqc` carries these schema rules.
 
-- The wildcard, and where it may be written.
-- Denial, and how it composes with a grant.
-- Expiry, including what `none` and `now` mean as values.
-- Principal aliases, meaning `ACTIVE`, `ROOT`, `ANON` and `ADMIN`.
+- Only seed rows, generated Admin rows, and authenticated owner rows may write `*`.
+- The binding rejects `-`. Denial remains an action-model concern.
+- Seed rows never expire. `NONE` and `NOW` belong only to this action model.
+- Configuration accepts exact domain names, `Admin`, and `Anon`.
+- `ACTIVE` and `ROOT` are runtime sources, not configuration names.
+- The binding and shipped YAML omit `rolesAllowed` and `wildcard`.
 - Object grant expansion, meaning whether a domain root reaches its objects.
 - Binding tests, then authorization tests, before the policy is enabled.
 
@@ -455,18 +460,15 @@ Four contracts must exist before this mechanism is reviewable. None exists.
    maximum needs coordination between two writers that compute it at once.
 4. **Owner selection.** `dest{ROLE=*}` answers a set. It names one owner only
    while the policy guarantees that one caller holds `*` on a target. The
-   draft records that question above, under `The owner question, recorded and
-   not decided`, and it is still open.
+   draft records the one-owner rule above, under `The wildcard write decision`.
 
 **Contract 4 is closed. The owner decided on 2026-09-24: one owner per
 target.**
 
 - In valid state, `dest{ROLE=*}` identifies one owner. Concurrent enforcement
   remains open. The evaluator must not select an arbitrary holder from invalid state.
-- **A second `*` grant on a target is refused at the source.** `*` is written
-  at creation and by system definition, which is the owner view recorded above
-  under `The owner question, recorded and not decided`. That question is now
-  answered, and the answer is no.
+- **A second `*` grant on a target is refused at the source.** The schema
+  permits seed rows, generated Admin rows, and authenticated owner rows.
 - A transfer replaces the holder. It must not open a window with no owner or
   with two owners.
 - A moderator takes narrow grants. A moderator never takes `*`.
@@ -854,8 +856,5 @@ for a `JOIN` row followed by a second row.
 under `-` and it never reaches the `JOIN` group. The `JOIN` grant stands, and
 the `-` row stands beside it as a permission that no operation asks for.
 
-So `-` still means nothing, exactly as item 5 of
-`What the current code does not support` records.
-
-`CHAT-zcxgrtqc` must state the rule for `-`, or remove the spelling. A
-normalization that turned `-` into an expired row would have to say so.
+So `-` still means nothing in stored authorization rows. The configuration
+binding rejects the value. The action model must define denial separately.

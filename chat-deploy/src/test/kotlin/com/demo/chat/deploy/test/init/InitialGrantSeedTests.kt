@@ -29,7 +29,7 @@ class InitialGrantSeedTests {
     private val properties = UserInitializationProperties(
         "noop",
         InitalRoles(
-            arrayOf("SEND"), "*", arrayOf(
+            arrayOf(
                 RoleDefinition("User", "Message", "SEND"),
                 RoleDefinition("Anon", "User", "FIND"),
             )
@@ -60,6 +60,15 @@ class InitialGrantSeedTests {
             .describedAs("the stored grant keys after two starts")
             .isEqualTo(first)
         assertThat(userSend()).hasSize(1)
+    }
+
+    @Test
+    fun `seed grants never expire`() {
+        start()
+
+        assertThat(fixture.authorizationService.stored().map { it.expires })
+            .describedAs("the expiry of every seeded grant")
+            .containsOnly(0L)
     }
 
     /**

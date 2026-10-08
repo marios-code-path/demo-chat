@@ -1,4 +1,4 @@
-# Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
+# Role names use exact domain names, Admin, or Anon. The value * marks ownership.
 #logging.level.org.springframework: DEBUG
 #logging.level.io.rsocket.FrameLogger: DEBUG
 logging:
@@ -55,20 +55,18 @@ app:
     create: true
   init:
     initialRoles:
-      rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
-      wildcard: "*"
       roles:
-        - { user: TestAdmin, target: TestAdmin, role: "*" }
-        - { user: Anon, target: TestUsers, role: READ }
-        - { user: Anon, target: TestUsers, role: CREATE }
-        - { user: Anon, target: Messages, role: READ }
-        - { user: Anon, target: MessageTopics, role: READ }
-        - { user: TestUsers, target: TestUsers, role: READ }
-        - { user: TestUsers, target: Messages, role: READ }
-        - { user: TestUsers, target: Messages, role: CREATE }
-        - { user: TestUsers, target: MessageTopics, role: JOIN }
-        - { user: TestUsers, target: MessageTopics, role: SEND }
-        - { user: TestUsers, target: MessageTopics, role: READ }
+        - { user: Admin, target: Admin, role: "*" }
+        - { user: Anon, target: User, role: READ }
+        - { user: Anon, target: User, role: CREATE }
+        - { user: Anon, target: Message, role: READ }
+        - { user: Anon, target: MessageTopic, role: READ }
+        - { user: User, target: User, role: READ }
+        - { user: User, target: Message, role: READ }
+        - { user: User, target: Message, role: CREATE }
+        - { user: User, target: MessageTopic, role: JOIN }
+        - { user: User, target: MessageTopic, role: SEND }
+        - { user: User, target: MessageTopic, role: READ }
     initialUsers:
       Anon:
         handle: Anon

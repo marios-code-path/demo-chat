@@ -71,7 +71,7 @@ class InitialUsersFixture(val encoder: PasswordEncoder = Mockito.mock(PasswordEn
         /** Properties that name [users], with no role. */
         fun properties(vararg users: Pair<String, UserDefinition>) = UserInitializationProperties(
             "noop",
-            InitalRoles(arrayOf("READ"), "*", arrayOf<RoleDefinition>()),
+            InitalRoles(arrayOf<RoleDefinition>()),
             users.toMap(),
         )
 
