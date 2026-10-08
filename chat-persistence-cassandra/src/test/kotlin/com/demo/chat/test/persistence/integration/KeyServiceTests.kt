@@ -2,7 +2,10 @@ package com.demo.chat.test.persistence.integration
 
 import com.demo.chat.test.key.FakeKeyServices
 
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyRootConflictException
 import com.demo.chat.domain.RootKeyDeletionException
+import com.demo.chat.domain.RootKeyRegistrationException
 
 import com.demo.chat.domain.knownkey.ChatDomain
 
@@ -112,5 +115,41 @@ class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
             .create(deleteStream)
             .expectSubscription()
             .verifyComplete()
+    }
+
+    @Test
+    fun `a new key registers under its root`() {
+        val id = keyGenerator.nextId()
+        val root = rootKeys.of(ChatDomain.MESSAGE).id
+        StepVerifier.create(svc.register(Key.of(id, root))).verifyComplete()
+        Assertions.assertThat(svc.rootOf(id).block()).isEqualTo(root)
+    }
+
+    @Test
+    fun `a repeated registration succeeds and keeps one root`() {
+        val id = keyGenerator.nextId()
+        val root = rootKeys.of(ChatDomain.MESSAGE).id
+        svc.register(Key.of(id, root)).block()
+        StepVerifier.create(svc.register(Key.of(id, root))).verifyComplete()
+        Assertions.assertThat(svc.rootOf(id).block()).isEqualTo(root)
+    }
+
+    @Test
+    fun `a different root fails with a conflict and keeps the stored root`() {
+        val id = keyGenerator.nextId()
+        val root = rootKeys.of(ChatDomain.MESSAGE).id
+        svc.register(Key.of(id, root)).block()
+        StepVerifier.create(svc.register(Key.of(id, rootKeys.of(ChatDomain.USER).id)))
+            .expectError(KeyRootConflictException::class.java)
+            .verify()
+        Assertions.assertThat(svc.rootOf(id).block()).isEqualTo(root)
+    }
+
+    @Test
+    fun `a root key id is refused`() {
+        val root = rootKeys.of(ChatDomain.MESSAGE).id
+        StepVerifier.create(svc.register(Key.of(root, root)))
+            .expectError(RootKeyRegistrationException::class.java)
+            .verify()
     }
 }

@@ -1,7 +1,9 @@
 package com.demo.chat.persistence.cassandra.impl
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyRootConflictException
 import com.demo.chat.domain.RootKeyDeletionException
+import com.demo.chat.domain.RootKeyRegistrationException
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.persistence.cassandra.domain.CSKeyRow
@@ -41,4 +43,23 @@ class KeyServiceCassandra<T : Any>(
         if (rootKeys.domainOfRoot(id) != null) Mono.just(id)
         else template.selectOne(Query.query(where("id").`is`(id)), CSKeyRow::class.java)
             .map { @Suppress("UNCHECKED_CAST") (it.root as T) }
+
+    /**
+     * `IF NOT EXISTS` writes the row only when the id is absent. The read
+     * after it returns the stored root in both cases. Decision 2 of the spec.
+     */
+    @Suppress("UNCHECKED_CAST")
+    override fun register(key: Key<T>): Mono<Void> =
+        if (rootKeys.domainOfRoot(key.id) != null) Mono.error(RootKeyRegistrationException(key.id))
+        else template.reactiveCqlOperations
+            .execute("INSERT INTO keys (id, root) VALUES (?, ?) IF NOT EXISTS", key.id, key.root)
+            .then(
+                template.reactiveCqlOperations
+                    .query("SELECT root FROM keys WHERE id = ?", { row, _ -> row.getObject("root") as T }, key.id)
+                    .next()
+            )
+            .flatMap { stored ->
+                if (stored == key.root) Mono.empty<Void>()
+                else Mono.error(KeyRootConflictException(key.id, stored, key.root))
+            }
 }
