@@ -640,7 +640,9 @@ the new counts.
 
 ## Not delivered by this work
 
-- No deployment sets `app.index.lucene.root`.
+- No deployment sets `app.index.lucene.root`. **Since 2026-10-07,
+  `chat-build core --index-root DIR` sets it.** No deployment yml sets it.
+  See `CHAT-eesnvnad`.
 - No live rebuild.
 - No repair of `CHAT-lswjobhz` or `CHAT-oltrsgws`.
 - No batched commits.
