@@ -1,5 +1,7 @@
 package com.demo.chat.config.deploy.init
 
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.ChatIdentity
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -17,8 +19,6 @@ data class UserInitializationProperties @ConstructorBinding constructor(
 )
 
 data class InitalRoles @ConstructorBinding constructor(
-    val rolesAllowed: Array<String>,
-    val wildcard: String,
     val roles: Array<RoleDefinition>
 )
 
@@ -39,4 +39,15 @@ data class RoleDefinition @ConstructorBinding constructor(
     val user: String,
     val target: String,
     val role: String,
-)
+) {
+    init {
+        require(role != "-") { "The initial role cannot be '-'" }
+        require(user in CONFIGURATION_NAMES) { "The initial role user must name a domain or identity: $user" }
+        require(target in CONFIGURATION_NAMES) { "The initial role target must name a domain or identity: $target" }
+    }
+
+    companion object {
+        private val CONFIGURATION_NAMES =
+            (ChatDomain.entries.map { it.wireName } + ChatIdentity.entries.map { it.wireName }).toSet()
+    }
+}

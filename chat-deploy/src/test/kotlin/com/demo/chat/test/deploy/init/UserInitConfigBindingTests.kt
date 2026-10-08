@@ -1,7 +1,11 @@
 package com.demo.chat.test.deploy.init
 
 import com.demo.chat.config.deploy.init.UserInitializationProperties
+import com.demo.chat.config.deploy.init.RoleDefinition
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.ChatIdentity
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.boot.context.properties.bind.Binder
 import org.springframework.boot.context.properties.source.ConfigurationPropertySources
@@ -85,6 +89,43 @@ class UserInitConfigBindingTests {
                     "An unbound key has no effect at runtime.", declared, bound
             )
             .isSubsetOf(bound)
+    }
+
+    @Test
+    fun `the shipped initial roles expose only the role list`() {
+        val declared = propertyNames()
+            .filter { it.startsWith("$PREFIX.initialroles.") }
+            .map {
+                it.removePrefix("$PREFIX.initialroles.")
+                    .substringBefore('.')
+                    .substringBefore('[')
+            }
+            .toSet()
+
+        assertThat(declared)
+            .contains("roles")
+            .doesNotContain("rolesallowed", "wildcard")
+    }
+
+    @Test
+    fun `role definitions reject denial and runtime source names`() {
+        assertThatThrownBy { RoleDefinition("User", "Message", "-") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { RoleDefinition("ACTIVE", "Message", "GET") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+        assertThatThrownBy { RoleDefinition("user", "Message", "GET") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    @Test
+    fun `shipped role names use exact domains or identities`() {
+        val accepted = ChatDomain.entries.map { it.wireName } + ChatIdentity.entries.map { it.wireName }
+        val roles = binder().bind(PREFIX, UserInitializationProperties::class.java).get().initialRoles.roles
+
+        roles.forEach { role ->
+            assertThat(accepted).contains(role.user)
+            assertThat(accepted).contains(role.target)
+        }
     }
 
     /** Every role names the three fields that `RoleDefinition` binds. */

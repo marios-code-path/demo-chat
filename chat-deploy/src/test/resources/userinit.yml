@@ -1,12 +1,10 @@
-# Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
+# Role names use exact domain names, Admin, or Anon. The value * marks ownership.
 #logging.level.org.springframework: DEBUG
 #logging.level.io.rsocket.FrameLogger: DEBUG
 app:
   init:
     passwordEncoder: noop
     initialRoles:
-      rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
-      wildcard: "*"
       roles:
         - { user: Admin, target: Admin, role: "*" }
         - { user: Anon, target: User, role: READ }

@@ -71,7 +71,7 @@ open class MockInitializationTests<T>(
 
     private fun oneUser() = UserInitializationProperties(
         "noop",
-        InitalRoles(arrayOf("READ"), "*", arrayOf<RoleDefinition>()),
+        InitalRoles(arrayOf<RoleDefinition>()),
         mapOf(Pair("Admin", UserDefinition("Admin", "AdminUser", "http://foo.bar.img", "changeme"))),
     )
 
@@ -136,7 +136,7 @@ open class MockInitializationTests<T>(
         val properties = UserInitializationProperties(
             "noop",
             InitalRoles(
-                arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
+                arrayOf<RoleDefinition>(
                     RoleDefinition("Admin", "Admin", "*"),
                     RoleDefinition("User", "User", "READ"),
                     RoleDefinition("User", "MessageTopic", "READ")

@@ -245,7 +245,7 @@ class AuthSummarizerTests {
      * ENTITY beats DOMAIN_ROOT. Later beats earlier.
      *
      * Every case below puts the `User` root in the actor set by hand. The
-     * production actor set does not hold it yet. CHAT-mahevldm carries that.
+     * production actor set includes that root since CHAT-mahevldm.
      */
     @Test
     fun `the owner keeps the target after a close`() {

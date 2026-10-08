@@ -88,6 +88,8 @@ class InitialUsersService<T>(
 
         // get role definitions
         initializationProperties.initialRoles.roles.forEach { permission ->
+            // RoleDefinition validates configuration names before binding.
+            // Keep this guard because a deployment can load an incomplete root-key set.
             val user = rootKeys.byName(permission.user)
             val target = rootKeys.byName(permission.target)
             if (user != null && target != null) {
