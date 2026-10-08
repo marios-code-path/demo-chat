@@ -24,13 +24,18 @@ internal object AgentTestTokens {
         return file.toString()
     }
 
-    fun mint(path: String, clientId: String): String {
+    /**
+     * A negative [expiresInMillis] mints an expired token. Keep it beyond the
+     * 60 second clock skew that the decoder allows.
+     */
+    fun mint(path: String, clientId: String, expiresInMillis: Long = 60_000): String {
         val key = JWK.parse(Files.readString(Paths.get(path))) as ECKey
+        val now = System.currentTimeMillis()
         val claims = JWTClaimsSet.Builder()
             .issuer("https://authserv").subject(clientId)
             .claim("client_id", clientId).claim("scope", "chat.mcp")
-            .issueTime(Date(System.currentTimeMillis() - 1_000))
-            .expirationTime(Date(System.currentTimeMillis() + 60_000))
+            .issueTime(Date(minOf(now, now + expiresInMillis) - 1_000))
+            .expirationTime(Date(now + expiresInMillis))
             .build()
         val token = SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).keyID(key.keyID).build(), claims)
         token.sign(ECDSASigner(key))

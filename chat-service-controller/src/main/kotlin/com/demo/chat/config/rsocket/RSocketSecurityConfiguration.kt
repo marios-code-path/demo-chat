@@ -22,6 +22,7 @@ class RSocketSecurityConfiguration {
         security: RSocketSecurity,
         authenticationManager: ReactiveAuthenticationManager,
     ): PayloadSocketAcceptorInterceptor = security
+        .addPayloadInterceptor(UnsupportedCredentialRefusal())
         .simpleAuthentication { it.authenticationManager(authenticationManager) }
         .anonymous(Customizer.withDefaults())
         .authorizePayload { authorize ->
