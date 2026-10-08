@@ -127,15 +127,55 @@ class InitialUsersService<T>(
             )
         }
 
-        // set permissions
+        // set permissions, one grant at a time, so a grant that the
+        // configuration names twice is seeded once.
         Flux.fromIterable(initialRoles)
-            .flatMap { authMeta ->
-                println("Adding Permission ${authMeta.principal.id} -> ${authMeta.target.id} : ${authMeta.permission}, ${authMeta.mute}, ${authMeta.expires}")
-                authorizationService.authorize(authMeta, true)
-            }.blockLast()
+            .concatMap { authMeta -> seedGrant(authMeta) }
+            .blockLast()
 
         return identityKeys
     }
+
+    /**
+     * This method seeds one initial grant. **The configuration gives the first
+     * value of a grant, and the store holds every later change.** See
+     * `CHAT-ghwtzgjp`.
+     *
+     * - No stored row names the same principal, target and permission: the
+     *   method writes the grant.
+     * - One stored row names them: the method writes nothing. An expired or a
+     *   muted row counts, so a restart does not undo a revoke.
+     * - More than one stored row names them: the method keeps the row with the
+     *   highest key id and removes the others. Before this rule, each start
+     *   wrote one more copy.
+     *
+     * **The kept row is the row that decides access today.** The copies tie on
+     * the wildcard level and on the principal rank. So `AuthSummarizer` breaks
+     * the tie with the key comparator of `AuthBeansConfiguration`, which is
+     * [TypeUtil.compare] on the key id, and it selects the highest. The removal
+     * changes no access decision.
+     *
+     * **The read is not atomic with the write.** Two processes that start at
+     * the same time against one store can both write a grant.
+     */
+    private fun seedGrant(grant: AuthMetadata<T>): Mono<Void> =
+        authorizationService.getStoredGrants(grant.principal, grant.target)
+            .filter { row -> row.permission == grant.permission }
+            .collectList()
+            .flatMap { rows ->
+                if (rows.isEmpty()) {
+                    println("Adding Permission ${grant.principal.id} -> ${grant.target.id} : ${grant.permission}, ${grant.mute}, ${grant.expires}")
+                    authorizationService.authorize(grant, true)
+                } else {
+                    val kept = rows.maxWith { a, b -> typeUtil.compare(a.key.id, b.key.id) }
+                    Flux.fromIterable(rows.filter { row -> row.key != kept.key })
+                        .concatMap { copy ->
+                            println("Removing Permission copy ${copy.key.id}: ${grant.principal.id} -> ${grant.target.id} : ${grant.permission}")
+                            authorizationService.authorize(copy, false)
+                        }
+                        .then()
+                }
+            }
 
     /**
      * This method answers the credential secret for one initial user.

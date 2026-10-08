@@ -4724,3 +4724,53 @@ The merged tree matches reviewed head `6cc554aa`. Local master matches
 - `CHAT-pnjmfhnb` remains open at low priority. It tracks the intermittent
   `MessageReindexServiceImplTests` failure when the test checks records before
   the terminal record is published.
+
+## The initial grants are a seed (2026-10-07)
+
+`CHAT-ghwtzgjp`. Branch `chat-ghwtzgjp-initial-grants`. **This work is not
+merged.**
+
+### The defect
+
+`InitialUsersService` wrote every initial grant at every start. A named grant
+is not an owner row, so the owner guard of `CHAT-esengqpv` did not stop it.
+Each restart added one copy of each named grant. Measured on 2026-10-07: two
+starts on one Redis store added 9 rows.
+
+**A copy did not change an access decision on its own.** It could defeat a
+revoke. An operator who expired one copy left the other copies live, and a
+`Long` copy from a later start ranks above the edited row.
+
+### The owner decisions of 2026-10-07
+
+1. **The fix sits in `InitialUsersService`.** Other grant writers do not
+   change.
+2. **A revoked initial grant stays revoked across a restart.** An expired or
+   a muted row counts as present.
+3. **Stored copies collapse to the row that decides access.** The start keeps
+   the highest key id, which `AuthSummarizer` selects among tied copies.
+
+`docs/ANONYMOUS-AUTHORIZATION.md` states the rule under
+`The initial grants are a seed`. `drift.lock` binds that document to
+`InitialUsersService.kt` now.
+
+### Measured
+
+- `InitialGrantSeedTests`: 4 tests. Three mutations each fail their own test:
+  always write, count live rows only, and keep the lowest key.
+- `RedisGrantRestartTests` gains a restart test on node ids 30 and 31. It
+  fails against the `master` service with 4 or more `JOIN` rows.
+- `CassandraGrantRestartTests` asserts one row per named initial grant. It
+  fails against the `master` service at `Anon -> User : FIND`. **So the
+  Cassandra backend also wrote copies.** The issue had recorded Cassandra as
+  not measured.
+- `build-health.sh --ci`: exit 0, 30 modules, 2144 tests, 0 failures,
+  0 errors, 76 skipped, no drift, and `agent http gate: ok`. The run used an
+  empty `DOCKER_CONFIG`, and the image id moved from `sha256:1afdaa16` to
+  `sha256:f5ee6fce`.
+- `drift check` reports ok, and `git diff --check` exits 0.
+
+### Not covered
+
+- **The read is not atomic with the write.** Two processes that start at the
+  same time against one store can both write a grant.

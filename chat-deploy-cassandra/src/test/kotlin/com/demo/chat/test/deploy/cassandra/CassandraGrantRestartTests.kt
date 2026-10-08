@@ -2,6 +2,7 @@ package com.demo.chat.test.deploy.cassandra
 
 import com.demo.chat.ChatApp
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UserCreateRequest
@@ -148,6 +149,17 @@ class CassandraGrantRestartTests : CassandraContainerBase() {
             Assertions.assertEquals(target, current, "the restart must read the stored root")
             Assertions.assertTrue(second.allows(user, current, "REM"), "the runtime grant must apply after the restart")
             Assertions.assertTrue(second.allows(user, current, "GET_ALL"), "the shipped grant must apply after the restart")
+
+            // Every named initial grant holds one row after two starts. Before
+            // CHAT-ghwtzgjp, each start wrote one more copy.
+            val roots = second.roots()
+            second.getBean(UserInitializationProperties::class.java).initialRoles.roles.forEach { role ->
+                val rows = second.grants().getStoredGrants(roots.byName(role.user)!!, roots.byName(role.target)!!)
+                    .filter { it.permission == role.role }
+                    .collectList().block(timeout)!!
+                    .distinctBy { it.key }
+                Assertions.assertEquals(1, rows.size, "rows for ${role.user} -> ${role.target} : ${role.role}: $rows")
+            }
 
             val runtime = second.grants()
                 .getAuthorizationsForPrincipal(user)

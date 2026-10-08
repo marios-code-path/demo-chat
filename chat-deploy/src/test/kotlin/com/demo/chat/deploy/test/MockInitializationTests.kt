@@ -121,6 +121,11 @@ open class MockInitializationTests<T>(
             .given(authorizationService.authorize(anyObject(), anyBoolean()))
             .willReturn(Mono.empty())
 
+        // The store holds no grant, so the start seeds every initial grant. See CHAT-ghwtzgjp.
+        BDDMockito
+            .given(authorizationService.getStoredGrants(anyObject(), anyObject()))
+            .willReturn(Flux.empty())
+
         BDDMockito
             .given(passwordEncoder.encode(anyObject()))
             .willReturn("{noop}password")

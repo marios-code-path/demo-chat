@@ -1,3 +1,4 @@
+docs/ANONYMOUS-AUTHORIZATION.md -> chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt sig:d0078fb0a808409e
 docs/LUCENE-INDEX-FILES.md -> chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt sig:d275a6ae77a73f71
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexLoad.kt sig:b23de4231f0070f4
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexRegistry.kt sig:bbd6363a345f4057

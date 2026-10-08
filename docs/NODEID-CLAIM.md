@@ -142,7 +142,7 @@ failure.
 | `chat-persistence-cassandra` claim store tests | 200 to 209 |
 | `chat-deploy-redis` `RedisDeployBootTests` | 1 |
 | `chat-deploy-redis` `RedisClaimBootTests` | 11 and 12 |
-| `chat-deploy-redis` `RedisGrantRestartTests` | 13 to 17 |
+| `chat-deploy-redis` `RedisGrantRestartTests` | 13 to 17, 30 and 31 |
 | `chat-deploy-redis` `RedisLuceneFilesRestartTests` | 18 and 19 |
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
