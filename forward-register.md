@@ -4774,3 +4774,50 @@ revoke. An operator who expired one copy left the other copies live, and a
 
 - **The read is not atomic with the write.** Two processes that start at the
   same time against one store can both write a grant.
+
+## The RSocket authentication seam (2026-10-07)
+
+`CHAT-jkordfef`. Branch `chat-jkordfef-rsocket-seam`. **This work is not
+merged.**
+
+### The gap
+
+An authentication entry with an auth type that is not well known took the
+`Anon` identity in silence. `AuthenticationPayloadExchangeConverter` in
+spring-security-rsocket 7.0.7 answers no authentication for such an entry, so
+the anonymous filter ran. The legacy `basic` MIME type had the same result.
+Measured on a running server: the room was created.
+
+### The owner decisions of 2026-10-07
+
+1. **A caller that sends a credential never takes `Anon`.** An unsupported
+   credential is refused. `UnsupportedCredentialRefusal` runs at payload
+   order 199, one step before authentication. A request answers `0x401`, and a
+   setup frame answers `RejectedSetupException`.
+2. **Expired and invalid bearers share `0x401`.** No distinct code or
+   identity exists for an expired credential.
+
+`docs/IDENTITY-POLICY.md` holds the seam table. `drift.lock` binds it to the
+seam sources now.
+
+### Measured
+
+- `RSocketAuthenticationSeamTests` in `chat-deploy-memory`: 11 cases on a
+  running server, nothing mocked. All pass. With the refusal removed, exactly
+  the three unsupported cases fail.
+- `build-health.sh --ci`: exit 0, 30 modules, 2155 tests, 0 failures,
+  0 errors, 76 skipped, no drift, and `agent http gate: ok`. The image id
+  moved from `sha256:4965580b` to `sha256:63c3d5c6`.
+- `CHAT-ileqgajf` is closed. Its interceptor was gone, and the new test pins
+  the anonymous path.
+
+### One trap
+
+**A port-0 test server can collide with IntelliJ on macOS.** The first `--ci`
+run gave a `chat-client-rsocket` test server port 63342. IntelliJ listens on
+`127.0.0.1:63342`. Netty bound the wildcard address, and macOS allowed both.
+The client connected to `localhost` and reached IntelliJ, which closed the
+connection. `KeyServiceRequesterTests` failed 3 of 3 with
+`ClosedChannelException`, and maven skipped `chat-shell`. The class passes
+alone. If a test server logs port 63342, read `lsof -iTCP:63342` before you
+read the failure as a regression. `CHAT-cikgeefc` records it.
