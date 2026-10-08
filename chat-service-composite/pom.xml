@@ -28,6 +28,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-messaging-memory</artifactId>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-vector-store</artifactId>
         </dependency>
