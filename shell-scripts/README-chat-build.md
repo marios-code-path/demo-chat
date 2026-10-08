@@ -81,17 +81,17 @@ JVM flags. Options within a group are mutually exclusive.
 
 ### Backends (pick one)
 
-| Flag | Maven profile | Notes |
+| Flag | Module or Maven profile | Notes |
 |---|---|---|
-| `--memory` | `memory-backend` | Memory persistence + pubsub + Lucene index. Default for `core`. |
-| `--cassandra` | `cassandra-backend` | Cassandra persistence + index. |
-| `--kafka` | `kafka-backend` | Kafka messaging with memory persistence + Lucene index. Reads `KAFKA_BOOTSTRAP_SERVERS`. |
-| `--client` | `client-backend` | RSocket client, no local datastore. Default for `rest`, `gateway`, `authserv`, `shell`. |
-| `--redis` | `redis-backend` | Placeholder — the profile exists but declares no dependencies yet. |
+| `--memory` | module `chat-deploy-memory` | Memory persistence + pubsub + Lucene index. Default for `core`. |
+| `--cassandra` | module `chat-deploy-cassandra` | Cassandra persistence + index. |
+| `--kafka` | module `chat-deploy-kafka` | Kafka messaging with memory persistence + Lucene index. Reads `KAFKA_BOOTSTRAP_SERVERS`. |
+| `--redis` | module `chat-deploy-redis` | Redis persistence, keys and Pub/Sub, with memory secrets and the Lucene index. |
+| `--client` | profile `client-backend` | RSocket client, no local datastore. Default for `rest`, `gateway`, `authserv`, `shell`. |
 
-The module never changes. Backends are `chat-deploy` profiles that pull the
-matching deploy module in as a dependency, so `--cassandra` still builds
-`chat-deploy` with `chat-deploy-cassandra` on the classpath.
+A store backend selects its own deploy module, and `chat-build` runs Maven in
+that module directory. `--client` keeps `chat-deploy` and adds the
+`client-backend` profile. `--dry-run` prints the module.
 
 ### Add-ons
 
@@ -142,6 +142,7 @@ before using either flag, or the single-module build cannot resolve them.
 | `--jwk PATH` | The JWK file that the deployment trusts. Absolute. Required with `--agent` on `core` and `rest`, and to run `authserv`. |
 | `--agent CLIENT_ID=HANDLE` | One agent. Repeat it for each agent. See below. |
 | `--agent-scope SCOPE` | The one scope of every agent token. Defaults to `chat.mcp`. |
+| `--index-root DIR` | `core` only. Keep the Lucene indexes in files under `DIR`. See below. |
 
 **Agents.** `--agent` names one OAuth client and the chat user that it acts as.
 The token `client_id` selects the agent. See `CHAT-frcrctdp`.
@@ -168,6 +169,24 @@ the two lists.
 
 The removed flags `--agent-client-id` and `--agent-username` exit 2 and name
 `--agent`.
+
+**Lucene index files.** `--index-root DIR` sets `app.index.lucene.root`.
+Without it, the Lucene indexes stay in memory. `chat-build` expands `~`, then
+requires an absolute path. The directory can be absent, because the index start
+creates it. See `docs/LUCENE-INDEX-FILES.md` and `CHAT-eesnvnad`.
+
+The files help only `--redis`, because its store survives a restart. With
+`--memory` or `--kafka`, the store starts empty. So each start builds the
+indexes again from an empty store.
+
+`chat-build` refuses these values, with exit 1:
+
+- An empty value, such as `--index-root=`.
+- A relative path.
+- A service other than `core`.
+- `--cassandra`. That backend uses the Cassandra index, not Lucene.
+- `--build`. A host path does not exist inside a container. Mount a volume
+  and set `app.index.lucene.root` when you run the image.
 
 **Root keys.** Each service has one root key role. `RootKeySource` in
 `chat-deploy` refuses any other combination at start.
@@ -278,15 +297,18 @@ shape, it needs updating.
 ./shell-scripts/test-flags.sh --update         # rewrite goldens, then read the diff
 ```
 
-Runs `chat-build --dry-run` over fifteen configurations and compares the flag
-set and Maven profiles against committed expectations under `golden/`. Every
-backend, every service, and the variants that change flag composition.
+Runs `chat-build --dry-run` over each case in `test-flags.sh`, and compares the
+flag set and Maven profiles against committed expectations under `golden/`.
+Every backend, every service, and the variants that change flag composition.
+Each refusal case must exit with its code and print its text. The run sets
+`HOME` to `/home/golden`, so a golden that expands `~` is the same on every
+machine.
 
 Comparison ignores three non-semantic differences: shell quoting that never
 needed to reach the JVM, `-P` ordering, and repeated entries inside comma-lists.
 
 The goldens were seeded while `test-parity.sh` still existed and passed, so the
-four cases it covered carry the old scripts' authority. The remaining eleven are
+four cases it covered carry the old scripts' authority. The other cases are
 snapshots of chat-build's own output — they catch change, but nothing
 independent vouches for them. The case list in `test-flags.sh` marks which is
 which.

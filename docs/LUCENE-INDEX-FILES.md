@@ -9,6 +9,9 @@ Set `app.index.lucene.root` to keep the Lucene indexes in files. Without it,
 every index stays in memory, and each start builds it from the store. A blank
 value fails the start.
 
+`chat-build core --index-root DIR` sets it. No deployment yml sets it. See
+`shell-scripts/README-chat-build.md` and `CHAT-eesnvnad`.
+
 ```
 <root>/<app.key.type>/<app.nodeid>/<index>
 index = user | message | topic | membership | auth | keyvalue

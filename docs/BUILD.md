@@ -125,6 +125,19 @@ See `docs/NODEID-CLAIM.md` for the node-id lease rules.
 
 See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 
+### Keep the Lucene indexes in files
+
+Add `--index-root DIR` to a `core` launch. `DIR` must be an absolute path.
+A restart then reuses the index files when they match the store.
+
+```bash
+./shell-scripts/chat-build core --redis --run --notls --node-id 0 \
+  --init users,rootkeys --index-root ~/chat-lucene
+```
+
+Use it with `--redis`. A memory or Kafka store starts empty, so its indexes
+build again at each start. See `docs/LUCENE-INDEX-FILES.md`.
+
 ### The authorization server needs a signing key
 
 `app.oauth2.jwk.path` has no default, and this repository commits no key.
