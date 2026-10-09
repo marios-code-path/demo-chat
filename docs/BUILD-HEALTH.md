@@ -31,11 +31,17 @@ That class runs only under `expose-webflux`, through the agent HTTP gate.
 The first `--ci` run did not override `DOCKER_CONFIG`, and it is not a reading.
 Its tests passed, but `build-image` failed with `'username' must not be null`.
 
-Both full gates measured the tree before one later correction.
+The two local full-gate readings above measured the tree before one later correction.
 That correction sets the send tool's `idempotentHint` to `false`, as the spec requires.
 It changes one annotation value and its test.
 After it, the 237 `chat-mcp` tests passed, and the agent HTTP gate passed its 15 tests without skips.
-The full gates did not run again.
+
+[PR #205](https://github.com/marios-code-path/demo-chat/pull/205) records a later default gate at `748a1348`, after the correction and branch merge.
+It reports exit 0, 30 modules, 2,086 tests, zero failures, zero errors, 47 skips, and no drift.
+It also records 15 passing agent HTTP tests without skips at that revision.
+The local `--ci` gate did not run again at `748a1348`.
+[GitHub workflow 37999738568](https://github.com/marios-code-path/demo-chat/actions/runs/37999738568) passed its `build`, `integration`, and `agent-http` jobs at that source revision.
+PR #205 merged as `8965daa0` on 2026-10-09.
 
 A separate full `expose-webflux` module run fails under `CHAT-gsddauhn`.
 Existing RSocket contexts lack `AgentResourceServerChain` on that classpath.

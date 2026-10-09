@@ -12,7 +12,8 @@
 
 **Branch:** `chat-teujorxl-mcp-messaging`, based on `e8d9ed13`.
 
-**Status:** approved. Tasks 1 through 6 are complete. The separate REST-profile baseline remains under `CHAT-gsddauhn`.
+**Status:** complete. All seven tasks are complete. PR #205 merged as `8965daa0` on 2026-10-09.
+The separate REST-profile baseline remains under `CHAT-gsddauhn`.
 
 Evidence: `docs/superpowers/reviews/2026-10-09-mcp-messaging-profile-check.md`.
 
