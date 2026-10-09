@@ -20,6 +20,7 @@ import com.demo.chat.service.core.KeyAllocator
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Mono
 import java.time.Clock
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -72,10 +73,12 @@ class MemoryDomainCommandBus<T : Any, V>(
         RequestIds.requireValid(submission.requestId)
         val identity = RequestIdentity(submission.owner, submission.requestId)
         val fingerprint = CommandFingerprint.of(
-            CommandOperation.RECORD_MESSAGE,
+            submission.operation,
             typeUtil.toString(submission.sender),
             typeUtil.toString(submission.dest),
             submission.content,
+            submission.timestamp,
+            submission.publish,
         )
         val lock = locks.computeIfAbsent(identity) { Any() }
         val receipt = synchronized(lock) {
@@ -101,17 +104,21 @@ class MemoryDomainCommandBus<T : Any, V>(
         fingerprint: String,
     ): Receipt<T> {
         val key = allocator.allocate(ChatDomain.MESSAGE)
-        val messageKey: MessageKey<T> = SimpleMessageKey(key.id, key.root, submission.sender, submission.dest, clock.instant())
+        val timestamp = (submission.timestamp ?: clock.instant()).truncatedTo(ChronoUnit.MILLIS)
+        val messageKey: MessageKey<T> = SimpleMessageKey(key.id, key.root, submission.sender, submission.dest, timestamp)
         val command = AcceptedCommand(
             commandId = commandIds(),
             owner = submission.owner,
             requestId = submission.requestId,
             rootId = key.root,
-            operation = CommandOperation.RECORD_MESSAGE,
+            operation = submission.operation,
             orderingKey = submission.dest,
             schemaVersion = SCHEMA_VERSION,
             message = Message.create(messageKey, submission.content, true),
-            obligations = obligations,
+            obligations = when (submission.publish) {
+                false -> obligations - BackendId.PUBSUB
+                else -> obligations
+            },
             executionPolicyVersion = policy.version,
         )
         val receipt = Receipt(command.commandId, messageKey)

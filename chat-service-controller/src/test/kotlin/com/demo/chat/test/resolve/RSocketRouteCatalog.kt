@@ -176,6 +176,11 @@ object RSocketRouteCatalog {
             "req.dest" to service("MESSAGE_TOPIC"),
             "req.from" to service("USER"),
             "req.msg" to notIdentity("a payload value")),
+        // message.message-import. The Admin route supplies the owner and the request names the sender.
+        entry("MessageServiceController", "importMessage", "MessageImportRequest<T,V>",
+            "req.dest" to service("MESSAGE_TOPIC"),
+            "req.from" to service("USER"),
+            "req.msg" to notIdentity("a payload value")),
         // message.message-submit. The sender is the authenticated user, so the request names none.
         entry("MessageServiceController", "submit", "MessageSubmitRequest<T,V>",
             "req.dest" to service("MESSAGE_TOPIC"),

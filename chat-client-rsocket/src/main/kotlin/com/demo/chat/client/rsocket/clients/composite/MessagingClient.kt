@@ -3,6 +3,7 @@ package com.demo.chat.client.rsocket.clients.composite
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.command.CommandStatus
@@ -40,6 +41,12 @@ open class MessagingClient<T, V>(
     override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> =
             requester
                     .route("${prefix}message-send")
+                    .data(req)
+                    .retrieveMono()
+
+    override fun importMessage(req: MessageImportRequest<T, V>): Mono<out Message<T, V>> =
+            requester
+                    .route("${prefix}message-import")
                     .data(req)
                     .retrieveMono()
 

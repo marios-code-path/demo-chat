@@ -8,7 +8,9 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.NotFoundException
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.command.BackendId
 import com.demo.chat.domain.command.BackendState
 import com.demo.chat.domain.command.CallerOutcome
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Test
 import reactor.core.Exceptions
 import reactor.core.publisher.Mono
 import java.time.Duration
+import java.time.Instant
 
 class MessageCommandServiceTests {
     private val stacks = mutableListOf<MessagingStack>()
@@ -114,6 +117,18 @@ class MessageCommandServiceTests {
     }
 
     @Test
+    fun `an import fails with the command ID when its wait ends`() {
+        val s = stack(timeout = Duration.ofMillis(200))
+        s.gatePersistence = true
+        val admin = serviceAs(s, object : SubmitterIdentity<Long> {
+            override fun current(): Mono<Key<Long>> = Mono.just(CommandFixtures.ROOTS.admin())
+        })
+        assertThat(errorOf(admin.importMessage(MessageImportRequest(
+            "slow", SENDER, ROOM, Instant.parse("2026-10-08T10:00:00Z"), "import-slow"
+        )))).isInstanceOf(CommandPendingException::class.java)
+    }
+
+    @Test
     fun `a composition without a submitter refuses submission`() {
         val s = stack(useSubmitter = false)
         assertThat(errorOf(submit(s, "r-nobody"))).isInstanceOf(SubmitterUnavailableException::class.java)
@@ -122,7 +137,8 @@ class MessageCommandServiceTests {
     private fun serviceAs(s: MessagingStack, submitter: SubmitterIdentity<Long>) = MessagingServiceImpl(
         s.index, s.persistence, s.publications, MapRequestConverters()::topicIdToQuery,
         KeyVerifier(s.registry, s.roots), s.runtime.bus, s.runtime.completions, submitter,
-        CompletionRequirement.parse("P,I"), Duration.ofSeconds(1),
+        CompletionRequirement.parse("P,I"), Duration.ofSeconds(1), TypeUtil.LongUtil,
+        rootKeys = s.roots,
     )
 
     @Test

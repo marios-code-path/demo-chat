@@ -10,6 +10,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.command.CommandStatus
 import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.service.composite.ChatMessageService
@@ -40,6 +41,10 @@ open class MessagingServiceAccess<T, V> (
     override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> = verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC)
         .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "SEND") }
         .then(that.send(req))
+
+    override fun importMessage(req: MessageImportRequest<T, V>): Mono<out Message<T, V>> = verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC)
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "SEND") }
+        .then(that.importMessage(req))
 
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>> = verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC)
         .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "SEND") }

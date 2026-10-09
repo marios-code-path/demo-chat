@@ -97,6 +97,7 @@ internal class MessagingStack(
         submitter = if (useSubmitter) submitter else null,
         requirement = requirement,
         timeout = timeout,
+        typeUtil = TypeUtil.LongUtil,
     )
 
     init {

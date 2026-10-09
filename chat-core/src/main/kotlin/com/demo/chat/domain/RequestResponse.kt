@@ -22,6 +22,16 @@ data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T) : Requ
 @JsonTypeName("MessageSubmitRequest")
 data class MessageSubmitRequest<T, V>(val msg: V, val dest: T, val requestId: String) : RequestResponse<T>()
 
+@JsonTypeName("MessageImportRequest")
+data class MessageImportRequest<T, V>(
+    val msg: V,
+    val from: T,
+    val dest: T,
+    val timestamp: Instant,
+    val messageId: String,
+    val publish: Boolean = false,
+) : RequestResponse<T>()
+
 @JsonTypeName("CommandStatusRequest")
 data class CommandStatusRequest(val commandId: String) : RequestResponse<Any>()
 
