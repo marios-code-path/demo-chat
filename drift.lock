@@ -12,7 +12,7 @@ docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/in
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusSettings.kt sig:c8c3008bbf745a1c
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusValidation.kt sig:80fedc67d1b0bf61
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/service/command/BackendExecutionPolicy.kt sig:596cedd2fb4df983
-docs/MESSAGE-COMMANDS.md -> chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt sig:c920d575fbeed5b6
+docs/MESSAGE-COMMANDS.md -> chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt sig:4b7849013617671f
 docs/MESSAGE-COMMANDS.md -> chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/composite/mapping/SubmitStatus.kt sig:8c5a6e291e314fd5
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/CoreSecurityErrorDecoder.kt sig:59ee4b32bebf84ef
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/MetadataRSocketRequester.kt sig:5a8d41ce7cdeacb3

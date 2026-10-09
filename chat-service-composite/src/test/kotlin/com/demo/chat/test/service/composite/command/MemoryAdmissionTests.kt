@@ -2,6 +2,8 @@ package com.demo.chat.test.service.composite.command
 
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.command.CommandSubmission
+import com.demo.chat.domain.command.CommandOperation
+import com.demo.chat.domain.command.BackendId
 import com.demo.chat.domain.command.InvalidRequestIdException
 import com.demo.chat.domain.command.RequestConflictException
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -22,6 +24,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.time.Instant
 
 class MemoryAdmissionTests {
     private val roots = CommandFixtures.ROOTS
@@ -47,6 +50,31 @@ class MemoryAdmissionTests {
         assertThat(status.status(receipt.commandId).block()).isNotNull
         assertThat(receipt.messageKey.root).isEqualTo(roots.of(ChatDomain.MESSAGE).id)
         assertThat(notifications.get()).isEqualTo(1)
+    }
+
+    @Test
+    fun `an import keeps owner sender and millisecond time and can omit publication`() {
+        val importedAt = Instant.parse("2026-10-08T10:00:00.001234Z")
+        val localBus = bus()
+        localBus.submit(
+            CommandSubmission(
+                owner = 99L,
+                requestId = "import:claude-turn",
+                sender = 11L,
+                dest = 100L,
+                content = "imported",
+                operation = CommandOperation.IMPORT_MESSAGE,
+                timestamp = importedAt,
+                publish = false,
+            )
+        ).block()!!
+
+        val command = log.iterator().next().command
+        assertThat(command.owner).isEqualTo(99L)
+        assertThat(command.operation).isEqualTo(CommandOperation.IMPORT_MESSAGE)
+        assertThat(command.message.key.from).isEqualTo(11L)
+        assertThat(command.message.key.timestamp).isEqualTo(Instant.parse("2026-10-08T10:00:00.001Z"))
+        assertThat(command.obligations).containsExactlyInAnyOrder(BackendId.PERSISTENCE, BackendId.INDEX)
     }
 
     @Test

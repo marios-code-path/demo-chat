@@ -13,6 +13,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.domain.command.CompletionRequirement
@@ -169,6 +170,7 @@ class MessageControllerTests : RSocketTestBase() {
             null,
             CompletionRequirement.parse("P,I"),
             Duration.ofSeconds(5),
+            UUIDUtil(),
         )
 
         @Controller

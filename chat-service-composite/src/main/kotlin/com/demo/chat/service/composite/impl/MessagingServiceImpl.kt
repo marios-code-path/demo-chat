@@ -5,12 +5,16 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.NotFoundException
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.domain.command.BackendId
 import com.demo.chat.domain.command.BackendState
 import com.demo.chat.domain.command.CallerOutcome
 import com.demo.chat.domain.command.CommandIncompleteException
+import com.demo.chat.domain.command.CommandOperation
 import com.demo.chat.domain.command.CommandPendingException
 import com.demo.chat.domain.command.CommandStatus
 import com.demo.chat.domain.command.CommandSubmission
@@ -19,6 +23,7 @@ import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.domain.command.SenderMismatchException
 import com.demo.chat.domain.command.SubmitterUnavailableException
 import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.command.CommandCompletionService
 import com.demo.chat.service.command.DomainCommandBus
 import com.demo.chat.service.command.SubmitterIdentity
@@ -29,7 +34,9 @@ import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Clock
 import java.time.Duration
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
@@ -45,7 +52,10 @@ open class MessagingServiceImpl<T : Any, V, Q>(
     private val submitter: SubmitterIdentity<T>?,
     private val requirement: CompletionRequirement,
     private val timeout: Duration,
+    private val typeUtil: TypeUtil<T>,
     private val requestIds: () -> String = { UUID.randomUUID().toString() },
+    private val rootKeys: RootKeys<T> = RootKeys(),
+    private val clock: Clock = Clock.systemUTC(),
 ) : ChatMessageService<T, V> {
 
     /**
@@ -59,7 +69,7 @@ open class MessagingServiceImpl<T : Any, V, Q>(
                 history(req).collectList()
                     .flatMapMany { stored ->
                         val seen = ConcurrentHashMap.newKeySet<T>()
-                        val merged = (stored + live.replay).sortedBy { it.key.timestamp }
+                        val merged = (stored + live.replay).sortedWith(Comparator(::compareMessages))
                         Flux.concat(Flux.fromIterable(merged), live.messages).filter { seen.add(it.key.id) }
                     }
                     .doFinally { live.close() }
@@ -74,7 +84,16 @@ open class MessagingServiceImpl<T : Any, V, Q>(
         messageIndex
             .findBy(topicIdToQuery.apply(req))
             .collectList()
-            .flatMapMany { messageKeys -> messagePersistence.byIds(messageKeys) }
+            .flatMapMany { messageKeys ->
+                messagePersistence.byIds(messageKeys).collectList().flatMapMany { messages ->
+                    Flux.fromIterable(messages.sortedWith(Comparator(::compareMessages)))
+                }
+            }
+
+    private fun compareMessages(left: Message<T, V>, right: Message<T, V>): Int =
+        left.key.timestamp.compareTo(right.key.timestamp).let { byTime ->
+            if (byTime != 0) byTime else typeUtil.compare(left.key.id, right.key.id)
+        }
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
         verifier.resolve(req.id, ChatDomain.MESSAGE)
@@ -82,6 +101,61 @@ open class MessagingServiceImpl<T : Any, V, Q>(
 
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>> =
         owner().flatMap { owner -> admitAndWait(owner, req.requestId, req.dest, req.msg) }
+
+    override fun importMessage(req: MessageImportRequest<T, V>): Mono<out Message<T, V>> =
+        owner().flatMap { owner ->
+            if (owner.id != rootKeys.admin().id) Mono.error(AccessDeniedException)
+            else importAsAdmin(req)
+        }
+
+    private fun importAsAdmin(req: MessageImportRequest<T, V>): Mono<out Message<T, V>> = Mono.defer {
+        when {
+            req.messageId.isBlank() -> Mono.error(IllegalArgumentException("An imported message needs a source message ID."))
+            req.from == rootKeys.anon().id -> Mono.error(AccessDeniedException)
+            req.timestamp.isAfter(clock.instant()) -> Mono.error(IllegalArgumentException("An imported message time cannot be in the future."))
+            else -> {
+                val timestamp = req.timestamp.truncatedTo(ChronoUnit.MILLIS)
+                verifier.resolve(req.from, ChatDomain.USER)
+                    .then(verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC))
+                    .thenMany(history(ByIdRequest(req.dest)))
+                    .filter { it.key.from == req.from && it.key.timestamp == timestamp && it.data == req.msg }
+                    .next()
+                    .map { it as Message<T, V> }
+                    .switchIfEmpty(Mono.defer {
+                        val submission = CommandSubmission(
+                            owner = rootKeys.admin().id,
+                            requestId = "import:${req.messageId}",
+                            sender = req.from,
+                            dest = req.dest,
+                            content = req.msg,
+                            operation = CommandOperation.IMPORT_MESSAGE,
+                            timestamp = timestamp,
+                            publish = req.publish,
+                        )
+                            commandBus.submit(submission)
+                            .flatMap { receipt ->
+                                val waitFor = requirement.copy(
+                                    backends = if (req.publish) requirement.backends else requirement.backends - BackendId.PUBSUB
+                                )
+                                val stored = Message.create(receipt.messageKey, req.msg, true)
+                                if (waitFor.backends.isEmpty()) Mono.just(stored)
+                                else completions.await(receipt.commandId, waitFor, timeout).flatMap { result ->
+                                    when (result.outcome) {
+                                        CallerOutcome.COMPLETED, CallerOutcome.ACCEPTED -> Mono.just(stored)
+                                        CallerOutcome.PENDING -> Mono.error(CommandPendingException(result.receipt.commandId))
+                                        CallerOutcome.INCOMPLETE -> Mono.error(
+                                            CommandIncompleteException(
+                                                result.receipt.commandId,
+                                                result.backends.filter { it.key in waitFor.backends && it.value.state == BackendState.FAILED }.keys,
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                    })
+            }
+        }
+    }
 
     /**
      * The legacy adapter. It gives no retry safety, because each call creates a

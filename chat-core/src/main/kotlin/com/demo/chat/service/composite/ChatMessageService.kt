@@ -4,6 +4,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.command.CommandStatus
@@ -24,6 +25,8 @@ interface ChatMessageService<T, V> {
     fun listMessages(req: ByIdRequest<T>): Flux<out Message<T, V>>
     fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
     fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>>
+
+    fun importMessage(req: MessageImportRequest<T, V>): Mono<out Message<T, V>>
 
     /** Admits a message command and waits for the configured requirement. Decision 10 of the spec. */
     fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>>
