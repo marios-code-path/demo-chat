@@ -22,6 +22,12 @@
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-mcp</artifactId>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-index-lucene</artifactId>
             <version>0.0.1</version>
         </dependency>

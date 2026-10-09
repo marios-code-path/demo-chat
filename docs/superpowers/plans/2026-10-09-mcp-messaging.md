@@ -12,7 +12,7 @@
 
 **Branch:** `chat-teujorxl-mcp-messaging`, based on `e8d9ed13`.
 
-**Status:** approved. Tasks 1 through 5 are committed. Task 6 waits for a baseline decision after its full profile checks.
+**Status:** approved. Tasks 1 through 6 are complete. The separate REST-profile baseline remains under `CHAT-gsddauhn`.
 
 Evidence: `docs/superpowers/reviews/2026-10-09-mcp-messaging-profile-check.md`.
 
@@ -718,6 +718,10 @@ class McpMessageStoreGateConfiguration {
 ```
 
 Import this configuration only into the dedicated test context.
+The child uses the deployment test classpath, which includes Logback.
+Give that child a temporary Logback configuration with the root level `OFF`.
+The normal adapter classpath has no logging provider.
+This test setting preserves protocol-only stdout without changing production logging.
 Use `MessagePersistence`, `Message`, Reactor, concurrency, and Spring test imports shown by the declared types.
 Obtain the gate from the test context.
 Set `app.command.completion.timeout=100ms` for this context and requirement `P,I`.

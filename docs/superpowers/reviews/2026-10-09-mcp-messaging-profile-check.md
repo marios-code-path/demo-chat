@@ -6,8 +6,9 @@ The measured tree also includes the six-line test dependency addition in `chat-d
 
 Tasks 1 through 5 are committed.
 The adapter's latest complete test run passed 237 tests with no failures, errors, or skips.
-Task 6 has no deployment test yet.
-The owner must decide whether to accept the existing REST-profile failures as a baseline.
+These checks preceded the Task 6 deployment test.
+The separate baseline is accepted under `CHAT-gsddauhn`.
+Task 6 continues with explicit REST test classes and `app.primary=REST`.
 
 ## Complete profile checks with the new dependency
 
@@ -66,7 +67,36 @@ Logs are in `/tmp/chat-teujorxl-logs/`:
 - `task6-classpath-webflux.log`
 - `task6-without-mcp-comparison.log`
 
-The proposed next step accepts this profile failure as a separate baseline.
-Task 6 would then continue with focused authenticated MCP deployment tests and the agent HTTP gate.
+The accepted scope keeps this profile failure as a separate baseline.
+Task 6 continues with focused authenticated MCP deployment tests and the agent HTTP gate.
 Repairing the full REST profile requires a separate scope decision.
 No Cassandra source changed, and these checks did not select Cassandra modules.
+
+## Task 6 deployment evidence
+
+The six deployment tests use `app.primary=REST` and real signed agent tokens.
+The adapter and pinned Node client run as child processes.
+The tests check submission, both message reads, joining, pending completion, repeats, conflicts, room refusal, and command ownership.
+The persistence gate exists only in the test context.
+
+Without the store wrapper, five tests passed and the pending test failed.
+It expected `PENDING` and received `COMPLETED`.
+With the wrapper, all six tests passed with no failures, errors, or skips.
+The command used `clean verify`, the `expose-webflux` profile, and an explicit `McpMessagingDeploymentTests` filter.
+The build exited 0.
+Neither deployment run reported the Surefire shutdown warning.
+Logs: `task6-red-pending.log` and `task6-green.log` in the directory above.
+
+The broad deployment classpath adds Logback to the child adapter.
+Its default configuration writes SDK log lines to stdout.
+The fixture supplies a temporary configuration with the root level `OFF`.
+The normal adapter runtime still has no logging provider.
+Each fixture checks protocol-only stdout and adapter exit within five seconds.
+
+The updated agent HTTP gate exited 0.
+Its REST run passed two identity tests and six MCP messaging tests.
+Its relay run passed seven tests, and the packaged core contained no `chat-webflux` jar.
+All three classes reported zero failures, errors, and skips.
+The REST run reported no Surefire shutdown warning.
+Logs: `task6-agent-http-gate.log` and the retained `task6-agent-rest.log`.
+The earlier RSocket warning still has no measured cause.
