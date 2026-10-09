@@ -12,7 +12,7 @@
 
 **Branch:** `chat-teujorxl-mcp-messaging`, based on `e8d9ed13`.
 
-**Status:** proposed implementation plan. No implementation task has started.
+**Status:** approved after the two review changes below. Implementation can start without another plan review.
 
 ## Execution rules
 
@@ -21,6 +21,8 @@ Claim each child issue before changing code.
 Record the failing test, implementation, passing test, and commit on that issue.
 Stage explicit paths only.
 Run reactor builds without `install`, to preserve the shared Maven repository.
+Run only one Maven build at a time in this worktree.
+Write each build's output to a separate log file outside the repository.
 Do not implement import, Kafka, search, pagination, or native compilation here.
 Keep ordinary sends bound to the authenticated sender.
 Do not investigate or repair unrelated Cassandra failures.
@@ -242,8 +244,19 @@ assertEquals(
 )
 ```
 
-Use fixed fixture bodies declared in the test class for `acceptedBody` and each other scenario.
-The source REST tests must prove the wrapper, ID, timestamp, and null representations used by those bodies.
+Store one fixture file per response shape under `chat-mcp/src/test/resources/messaging/`.
+Use separate Long and UUID files for messages, history, receipts, send results, and command status.
+Include separate files for each send outcome and each status shape used by the tests.
+Read those files from the adapter test classpath instead of declaring fixture bodies in test classes.
+Make each named REST test read the same fixture file and compare it with its real response.
+Locate the repository root by walking parent directories until `chat-mcp/src/test/resources/messaging/` exists.
+Resolve fixtures beneath that directory without copying them into another module.
+Compare complete parsed JSON structures, including wrappers, scalar types, timestamps, and null fields.
+Replace only generated identity, timestamp, and counter values with the corresponding fixture values before comparison.
+Do not remove fields or change their scalar types during that replacement.
+For history, compare each complete NDJSON record with its fixture record.
+Add explicit UUID REST coverage alongside Long coverage in the named REST tests.
+A changed server shape must fail a shared-fixture comparison for either key type.
 
 5. Run the two decoder test classes.
 6. Run the named REST classes with this command:
@@ -256,7 +269,7 @@ mvn -B -pl chat-webflux -am clean verify \
 
 7. Remove one required-field check and verify its fixture test fails.
 8. Restore the check and run both focused sets.
-9. Commit the seven named files with the child issue ID.
+9. Commit the seven named files and the shared fixtures with the child issue ID.
 
 ## Task 3: client, input validation, and room scope
 
@@ -564,8 +577,20 @@ Create these files:
 - `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/McpMessageStoreGate.kt`
 
 1. Add a test-scoped `chat-mcp` dependency to `chat-deploy-memory`.
-2. Add the deployment tests before changing any production behavior.
-3. Run with `-Pexpose-webflux` and verify the missing fixture or behavior fails explicitly.
+2. Run the module's complete test set under both transport profiles before writing the deployment test.
+3. Check that both runs include passing Maven enforcer checks.
+4. Add the deployment tests before changing any production behavior.
+5. Run with `-Pexpose-webflux` and verify the missing fixture or behavior fails explicitly.
+
+The dependency changes every test's classpath in this module.
+Run these commands sequentially without a test filter:
+
+```sh
+mvn -B -pl chat-deploy-memory -am -Pexpose-rsocket clean verify > /tmp/chat-teujorxl-task6-rsocket.log 2>&1
+mvn -B -pl chat-deploy-memory -am -Pexpose-webflux clean verify > /tmp/chat-teujorxl-task6-webflux.log 2>&1
+```
+
+Record each exit code, test count, skipped count, and enforcer result before creating the deployment test.
 
 Add this dependency without changing managed library versions:
 
@@ -700,6 +725,12 @@ For deterministic pending, perform this sequence:
 7. Read the stored message through both MCP read tools.
 8. Open the gate again in `finally` and `@AfterEach` cleanup.
 
+The attempt watchdog changes a held P attempt to `UNCERTAIN` after 30 seconds.
+Node and adapter startup consume part of that interval.
+Open the gate promptly after observing `PENDING`.
+Allow a backend state of `UNCERTAIN` before release, followed by `SUCCEEDED` after release.
+Do not require P to remain in its initial state while the gate holds it.
+
 Do not use `Thread.sleep` to force pending.
 Use a bounded polling deadline for eventual status and history assertions.
 Do not run this class's tests concurrently because they share one gate.
@@ -718,19 +749,22 @@ Provide at least these six deployment tests:
 The hidden-message test must first prove a raw message-by-ID GET succeeds under the shipped policy.
 Then prove MCP returns `NOT_AVAILABLE` without its content or identifiers.
 This distinguishes adapter scope evidence from server authorization evidence.
+Create the denied room with the second agent.
+Include that room in the first agent adapter's `topicIds` for the history and send refusal tests.
+Otherwise, the adapter refuses those calls before the server checks access.
 
-4. Run the deployment class explicitly:
+6. Run the deployment class explicitly:
 
 ```sh
 mvn -B -pl chat-deploy-memory -am -Pexpose-webflux clean verify \
   -Dtest=McpMessagingDeploymentTests -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-5. Add the class to the existing `expose-webflux` run in `agent-http-gate.sh`.
-6. Require at least six tests, zero failures, zero errors, and zero skipped tests for the new class.
-7. Temporarily omit the gate wrapper and verify the pending test fails.
-8. Restore it and run the deployment class and `shell-scripts/agent-http-gate.sh`.
-9. Commit the four named files with the child issue ID.
+7. Add the class to the existing `expose-webflux` run in `agent-http-gate.sh`.
+8. Require at least six tests, zero failures, zero errors, and zero skipped tests for the new class.
+9. Temporarily omit the gate wrapper and verify the pending test fails.
+10. Restore it and run the deployment class and `shell-scripts/agent-http-gate.sh`.
+11. Commit the four named files with the child issue ID.
 
 ## Task 7: operator documentation and final verification
 
