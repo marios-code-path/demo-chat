@@ -88,9 +88,33 @@ class MessageCommandServiceTests {
         val receipt = submit(s, "r-lookup").block()!!.receipt
         assertThatThrownBy { s.service.messageById(ByIdRequest(receipt.messageKey.id)).block() }
         s.persistenceGate.tryEmitEmpty()
-        CommandFixtures.waitUntil { s.registry.rootOf(receipt.messageKey.id).block() != null }
+        awaitSucceeded(s, receipt.commandId, BackendId.PERSISTENCE)
         assertThat(s.service.messageById(ByIdRequest(receipt.messageKey.id)).block()!!.data).isEqualTo("hello")
     }
+
+    /**
+     * `P` registers the key, then stores the message. Between the two steps the key resolves and the read answers
+     * empty. So a registered key does not prove a stored message. `CHAT-udhhlrrb`.
+     */
+    @Test
+    fun `a registered key does not imply a stored message`() {
+        val s = stack(CompletionRequirement.NONE)
+        s.gateStore = true
+        val receipt = submit(s, "r-store").block()!!.receipt
+        CommandFixtures.waitUntil { s.registry.rootOf(receipt.messageKey.id).block() != null }
+        assertThat(s.service.messageById(ByIdRequest(receipt.messageKey.id)).block()).isNull()
+        assertThat(backendState(s, receipt.commandId, BackendId.PERSISTENCE)).isEqualTo(BackendState.PENDING)
+        s.storeGate.tryEmitEmpty()
+        awaitSucceeded(s, receipt.commandId, BackendId.PERSISTENCE)
+        assertThat(s.service.messageById(ByIdRequest(receipt.messageKey.id)).block()!!.data).isEqualTo("hello")
+    }
+
+    private fun backendState(s: MessagingStack, commandId: String, backend: BackendId): BackendState? =
+        s.service.commandStatus(CommandStatusRequest(commandId)).block()!!.backends[backend]?.state
+
+    /** `P` succeeds only after the key registration and the store write. Decision 2. */
+    private fun awaitSucceeded(s: MessagingStack, commandId: String, backend: BackendId) =
+        CommandFixtures.waitUntil { backendState(s, commandId, backend) == BackendState.SUCCEEDED }
 
     @Test
     fun `case 28 - the legacy send rejects another sender and admits nothing`() {
