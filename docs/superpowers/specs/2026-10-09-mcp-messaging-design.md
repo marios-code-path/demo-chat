@@ -2,7 +2,7 @@
 
 Date: 2026-10-09.
 Issue: `CHAT-teujorxl`.
-Status: scope approved. The detailed contracts below await spec review.
+Status: approved at `5c5029f6` on 2026-10-09. Acceptance setup incorporates the subsequent review notes.
 
 ## Goal
 
@@ -220,18 +220,20 @@ Start an authenticated memory deployment with the message controller enabled.
 Set `app.command.bus=memory`, completion requirement `P,I`, and completion timeout `5s`.
 Use the existing credential procedure for the configured agent.
 Create a fixture room through `POST /topic/new` using that agent's token.
-Verify the agent has `SEND` and `SUBSCRIBE` on the room before MCP acceptance calls.
-If the room already exists, grant those permissions through the existing authorized setup path.
+For an existing room, use `PUT /topic/join/{id}` with the agent token.
+Verify permissions through a successful history read and submission before MCP acceptance calls.
+The agent has no route to inspect its grants.
 MCP adds no room creation, join, or grant tool.
 Configure the fixture room in `topicIds` and enable sending.
 
 Use a separate test deployment to produce a deterministic `PENDING` result.
-A test-only wrapper holds the real persistence handler behind a latch before it executes.
+A test-only wrapper holds the message persistence store behind a nonblocking latch.
+The real persistence handler runs unchanged and calls the wrapped store.
 Keep the other real handlers active and set completion requirement `P,I`.
 Set the server completion timeout to `100ms` in that test deployment.
 Submit through the real stdio MCP client while the latch remains closed.
-Verify a `PENDING` receipt, then release the handler and poll command status for backend success.
-The wrapper must invoke the real persistence handler after release.
+Verify a `PENDING` receipt, then release the store gate and poll command status for backend success.
+The wrapper must invoke the real store after release.
 Release the latch during test cleanup, including after assertion failure.
 Add no production control route or handler delay setting.
 
