@@ -205,6 +205,12 @@ done
 
 Each answer carries the new message key, and the status is 201.
 
+A send waits for `P` and `I` only. Set
+`app.command.completion.requirement=P,I,V`, or wait, before a recall reads the
+new message. This scenario rebuilds the index in Step 2, and the rebuild reads
+the stored messages, so the recall in Step 4 does not depend on that wait. See
+`docs/MESSAGE-COMMANDS.md`.
+
 ### Step 2. Rebuild the index
 
 **The send route indexes each message as it arrives.** The rebuild still
