@@ -132,6 +132,31 @@ class MemoryCommandStatusStoreTests {
         assertThat(stalled.await(id, piu, Duration.ofMillis(100)).block()!!.outcome).isEqualTo(CallerOutcome.INCOMPLETE)
     }
 
+    /**
+     * A callback of observer A completes another backend while version 1 is
+     * still being delivered. The nested change must not reach observer B
+     * before version 1 does. Owner review of `4247c42f`.
+     */
+    @Test
+    fun `a change made inside an observer callback reaches every observer in version order`() {
+        committed()
+        val seenByA = java.util.concurrent.CopyOnWriteArrayList<Long>()
+        val seenByB = java.util.concurrent.CopyOnWriteArrayList<Long>()
+        val a = store.observe(id).subscribe { status ->
+            seenByA.add(status.version)
+            if (status.version == 1L) succeed(INDEX)
+        }
+        val b = store.observe(id).subscribe { seenByB.add(it.version) }
+
+        succeed(PERSISTENCE)
+
+        CommandFixtures.waitUntil { seenByA.size == 3 && seenByB.size == 3 }
+        a.dispose()
+        b.dispose()
+        assertThat(seenByA).containsExactly(0L, 1L, 2L)
+        assertThat(seenByB).containsExactly(0L, 1L, 2L)
+    }
+
     @Test
     fun `observe loses no change while changes race the subscription`() {
         committed()

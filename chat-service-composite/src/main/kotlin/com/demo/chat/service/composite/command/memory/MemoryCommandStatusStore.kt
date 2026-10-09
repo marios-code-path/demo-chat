@@ -26,6 +26,10 @@ open class MemoryCommandStatusStore<T : Any> : CommandCompletionService<T> {
 
     private inner class Entry(val marker: CommitMarker, @Volatile var status: CommandStatus<T>) {
         val changes: Sinks.Many<CommandStatus<T>> = Sinks.many().multicast().directBestEffort()
+
+        /** Changes that wait for emission, in version order. The entry lock guards both fields. */
+        val pending = ArrayDeque<CommandStatus<T>>()
+        var draining = false
     }
 
     private val entries = ConcurrentHashMap<String, Entry>()
@@ -48,7 +52,12 @@ open class MemoryCommandStatusStore<T : Any> : CommandCompletionService<T> {
         entries.remove(commandId)
     }
 
-    /** One change per call. Changes of one command emit in version order, because one lock orders them. */
+    /**
+     * One change per call. The lock orders the versions, and [drain] emits
+     * them in that order. A callback that calls this method during an
+     * emission only queues its change, so no observer receives a newer
+     * version before an older one.
+     */
     fun update(commandId: String, backend: BackendId, change: (BackendStatus) -> BackendStatus) {
         val entry = entries[commandId] ?: return
         synchronized(entry) {
@@ -61,7 +70,29 @@ open class MemoryCommandStatusStore<T : Any> : CommandCompletionService<T> {
                 version = entry.status.version + 1,
             )
             entry.status = next
-            entry.changes.tryEmitNext(next)
+            entry.pending.addLast(next)
+        }
+        drain(entry)
+    }
+
+    /**
+     * One drainer per command emits each queued change, outside the lock.
+     * A nested call, or a call from another thread, finds the drainer active
+     * and returns. The active drainer then emits that change in its turn.
+     */
+    private fun drain(entry: Entry) {
+        while (true) {
+            val next = synchronized(entry) {
+                if (entry.draining) return
+                val queued = entry.pending.removeFirstOrNull() ?: return
+                entry.draining = true
+                queued
+            }
+            try {
+                entry.changes.tryEmitNext(next)
+            } finally {
+                synchronized(entry) { entry.draining = false }
+            }
         }
     }
 
