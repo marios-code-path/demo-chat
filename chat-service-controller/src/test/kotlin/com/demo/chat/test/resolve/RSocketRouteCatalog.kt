@@ -176,6 +176,12 @@ object RSocketRouteCatalog {
             "req.dest" to service("MESSAGE_TOPIC"),
             "req.from" to service("USER"),
             "req.msg" to notIdentity("a payload value")),
+        // message.message-submit. The sender is the authenticated user, so the request names none.
+        entry("MessageServiceController", "submit", "MessageSubmitRequest<T,V>",
+            "req.dest" to service("MESSAGE_TOPIC"),
+            "req.msg" to notIdentity("a payload value")),
+        // message.message-command-status. The service answers only a command of the caller.
+        entry("MessageServiceController", "commandStatus", "CommandStatusRequest"),
         // persist.authmetadata.add
         entry("AuthMetaPersistenceController", "addRoute", "AuthMetadata<T>",
             "ent.expires" to notIdentity("an expiry time in milliseconds"),
