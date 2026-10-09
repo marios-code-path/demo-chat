@@ -4821,3 +4821,42 @@ connection. `KeyServiceRequesterTests` failed 3 of 3 with
 `ClosedChannelException`, and maven skipped `chat-shell`. The class passes
 alone. If a test server logs port 63342, read `lsof -iTCP:63342` before you
 read the failure as a regression. `CHAT-cikgeefc` records it.
+
+## The action grant policy model (2026-10-08)
+
+`CHAT-xdsetfkf`. Branch `chat-xdsetfkf-action-grant-model`. **This work is not
+merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-design.md`.
+
+### What exists
+
+- A typed model in `chat-core`, package
+  `com.demo.chat.service.security.policy`. `GrantPolicy.intents` returns
+  `GrantIntent` values. It reads no store and writes no row.
+- `ShippedGrantPolicies` states the shipped writers as three policies:
+  `roomowner`, `roomjoin`, and `roomleave`.
+- **No production code reads the model.** `ContextRoomOwnerGrant` and
+  `MembershipGrant` did not change. `CHAT-qojwcatx` moves them onto it.
+
+### Rules that are easy to lose
+
+- **`NONE` and `NOW` are policy values, not stored values.** The shipped
+  writers store `NONE` as `0` and `NOW` as the clock time of the leave.
+- **`ACTIVE` and `ROOT` are runtime sources.** Configuration does not accept
+  them.
+- **The constructor refuses `*` outside the room owner rule.** So the draft
+  close row is refused. A close policy needs an owner decision first.
+- **A `GrantIntent` holds no key.** The writer selects the grant row key.
+
+### Measured
+
+- `GrantPolicyTests` 15 of 15 in `chat-core`.
+- `ShippedGrantPolicyTests` 8 of 8 in `chat-security`. Each test runs the
+  production writer against a map store, and compares the rows with the
+  policy intents.
+- `MembershipGrantTests` 9 and `RoomOwnerGrantTests` 8 pass with no change.
+- Three mutations of `ShippedGrantPolicies`, each run alone. Removing the join
+  `SUBSCRIBE` rule, giving the leave `NONE`, and granting the `User` root on a
+  join each failed exactly its own comparison test.
+- `build-health.sh` default mode: exit 0, 30 modules, 1839 tests, 0 failures,
+  0 errors, 41 skipped, and no drift. `drift check` reports ok, and
+  `git diff --check` exits 0.
