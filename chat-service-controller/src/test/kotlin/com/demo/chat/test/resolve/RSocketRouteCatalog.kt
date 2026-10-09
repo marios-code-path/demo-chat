@@ -145,6 +145,9 @@ object RSocketRouteCatalog {
             "key" to registry()),
         // key.key
         entry("KeyController", "key", "ChatDomain"),
+        // key.register. The registry writes the key itself and refuses a root conflict.
+        entry("KeyController", "register", "Key<T>",
+            "key" to registry()),
         // key.rem
         entry("KeyController", "remRoute", "VerifiedKey<T>",
             "key" to resolver("any")),
