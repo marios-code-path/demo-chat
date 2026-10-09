@@ -1,0 +1,17 @@
+{
+  "receipt": {
+    "commandId": "c-rest",
+    "messageKey": {
+      "key": {
+        "id": 1554361326074068992,
+        "root": 1554361143634427905,
+        "from": 7,
+        "dest": 12345,
+        "timestamp": "2026-10-09T12:00:00Z",
+        "empty": false
+      }
+    }
+  },
+  "outcome": "ACCEPTED",
+  "backends": {}
+}

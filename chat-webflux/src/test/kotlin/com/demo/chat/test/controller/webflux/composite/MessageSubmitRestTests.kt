@@ -62,6 +62,13 @@ import java.util.concurrent.atomic.AtomicReference
 )
 @TestPropertySource(properties = ["app.controller.message"])
 class MessageSubmitRestTests {
+    @Autowired lateinit var wireMapper: tools.jackson.databind.json.JsonMapper
+
+    @Test
+    fun `Long and UUID command responses match the shared MCP fixtures`() {
+        MessagingRestFixtures.both(wireMapper).forEach { it.checkSendAndStatus() }
+    }
+
     @Autowired lateinit var client: WebTestClient
     @Autowired lateinit var beans: CompositeServiceBeans<Long, String>
     @Autowired lateinit var registry: TestGeneratorKeyService<Long>

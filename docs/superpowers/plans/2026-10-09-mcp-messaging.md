@@ -174,6 +174,7 @@ Create these files:
 - `chat-mcp/src/main/kotlin/com/demo/chat/mcp/client/CommandEnvelope.kt`
 - `chat-mcp/src/test/kotlin/com/demo/chat/mcp/client/MessageEnvelopeTests.kt`
 - `chat-mcp/src/test/kotlin/com/demo/chat/mcp/client/CommandEnvelopeTests.kt`
+- `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/MessagingRestFixtures.kt`
 
 Modify these existing REST tests to verify the source fixtures:
 
@@ -249,6 +250,8 @@ Use separate Long and UUID files for messages, history, receipts, send results, 
 Include separate files for each send outcome and each status shape used by the tests.
 Read those files from the adapter test classpath instead of declaring fixture bodies in test classes.
 Make each named REST test read the same fixture file and compare it with its real response.
+Use `MessagingRestFixtures` to bind the production controller for each key type with the slice's configured Jackson codec.
+These fixture comparisons check serialization, while existing slice tests retain their authorization checks.
 Locate the repository root by walking parent directories until `chat-mcp/src/test/resources/messaging/` exists.
 Resolve fixtures beneath that directory without copying them into another module.
 Compare complete parsed JSON structures, including wrappers, scalar types, timestamps, and null fields.
@@ -269,7 +272,7 @@ mvn -B -pl chat-webflux -am clean verify \
 
 7. Remove one required-field check and verify its fixture test fails.
 8. Restore the check and run both focused sets.
-9. Commit the seven named files and the shared fixtures with the child issue ID.
+9. Commit the eight named files and the shared fixtures with the child issue ID.
 
 ## Task 3: client, input validation, and room scope
 
