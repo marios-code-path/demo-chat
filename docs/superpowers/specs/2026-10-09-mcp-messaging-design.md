@@ -33,6 +33,7 @@ Use the submit route with a caller-owned request ID.
 Each input is an object with string fields.
 Reject missing fields, unknown fields, and incorrect field types.
 Validate object IDs through the existing `keyType` rules.
+Require command IDs to contain 1 to 128 ASCII characters from `!` through `~`.
 Encode command IDs as path segments, without treating them as object IDs.
 Declare input and output schemas for each tool.
 
@@ -48,6 +49,8 @@ A receipt contains `commandId` and `messageKey`.
 Backend map keys use `PERSISTENCE`, `INDEX`, `VECTOR`, and `PUBSUB`.
 Each backend value contains `state`, `attempts`, and nullable `nextRecoveryAt`.
 States use `PENDING`, `SUCCEEDED`, `FAILED`, and `UNCERTAIN`.
+The `backends` schema permits an empty map.
+The server returns that empty map for `ACCEPTED` with completion requirement `none`.
 Do not expose raw backend reason strings.
 
 The status result contains `commandId`, `requestId`, `receipt`, `backends`, and `version`.
@@ -66,9 +69,12 @@ Send declares `readOnlyHint=false`, `destructiveHint=false`, and `idempotentHint
 The process-lifetime request mapping does not justify an unconditional idempotency hint.
 
 Send text must be nonblank and contain 1 to 16,384 UTF-8 bytes.
-A request ID must contain 1 to 128 visible ASCII characters.
+This text limit is an adapter rule. The current server does not enforce it.
+A request ID must contain 1 to 128 ASCII characters from `!` through `~`.
 The caller chooses one request ID for each intentional message.
 The caller retains that ID for repeated submissions.
+The namespace belongs to the authenticated agent identity, not to one adapter process.
+Two adapters with the same agent identity share that namespace.
 Do not derive it from an MCP invocation ID.
 Send the ID in the `Idempotency-Key` header.
 Send the text as `text/plain`.
@@ -82,8 +88,9 @@ Accept no sender override.
 | `PENDING` | 202 | The caller wait ended. Execution continues. |
 | `INCOMPLETE` | 424 | A required backend failed. Preserve the receipt and backend states. |
 
-Return the first three outcomes as structured tool results with `isError=false`.
-Return `INCOMPLETE` with `isError=true`, while retaining its structured command result.
+Return the first three outcomes in `structuredContent` with `isError=false` and no application `_meta`.
+Return `INCOMPLETE` in `structuredContent` with `isError=true`.
+Its `_meta` contains exactly `code`, `message`, and `retryable`, with code `COMMAND_INCOMPLETE`.
 Validate the typed response before reporting a command outcome.
 Do not interpret HTTP 202 alone as proof of completion.
 Completion follows server configuration, which defaults to `P,I`.
@@ -99,8 +106,14 @@ Do not advertise retry safety across server restarts.
 Validate every topic argument against `topicIds` before a backend request.
 Check each returned message belongs to a configured topic before exposing it.
 Fail a history result containing an out-of-scope message without returning partial content.
-The server remains responsible for authorization before content leaves the backend.
-The local topic check does not replace server authorization.
+The server checks `SUBSCRIBE` for history and `SEND` for submission.
+Message-by-ID reads check `GET` on the message key.
+The shipped `{Anon, Message, GET}` grant permits that read for every caller.
+Therefore, the server does not enforce a room limit for `chat_get_message`.
+The adapter's returned-topic check is the only configured room limit for that tool.
+An out-of-scope message produces `NOT_AVAILABLE` without message content or identifiers in the error.
+Do not log its content while decoding or rejecting the response.
+This milestone does not change server authorization policy.
 
 The server restricts command status to its authenticated owner.
 The status tool does not promise an additional topic allowlist check.
@@ -114,8 +127,21 @@ Preserve the credential origin check and the shared request limit.
 Preserve the existing 30-second call deadline and 1 MiB response bound.
 Read the credential file for each request.
 Perform no automatic submission retry and follow no submission redirect.
+A submission response with status 3xx produces `OUTCOME_UNKNOWN`.
+Do not send its body or credential to the redirect target.
+Existing read redirect rules remain unchanged.
+
+The server completion timeout defaults to 5 seconds and has no upper bound in the current configuration parser.
+The adapter's 30-second deadline includes connection and response processing.
+Launch documentation must require a server completion timeout below that deadline, with time for transport and response processing.
+Use `app.command.completion.timeout=5s` for the documented deployment.
+The adapter cannot validate that remote property at startup through the existing API.
+A longer server wait can produce `OUTCOME_UNKNOWN` instead of `PENDING` when the adapter deadline expires.
+Even a shorter server wait cannot guarantee that a response arrives before the adapter deadline.
 
 History uses the finite stored-history route, not the live listener route.
+Request `application/x-ndjson` for history and `application/json` for the other routes.
+Decode each history record under the response bound before exposing any message.
 The backend route has no pagination.
 Preserve its returned message order without claiming a stable paging boundary.
 An oversized response produces `LIMIT_EXCEEDED`.
@@ -125,17 +151,36 @@ Large-room pagination remains separate work.
 ## Error contract
 
 Keep existing error codes and fixed client sentences.
-Add `INVALID_INPUT` for invalid tool input or a backend submission refusal with status 400.
+Keep the two existing topic tools' invalid-input mapping to `NOT_AVAILABLE`.
+Add `INVALID_INPUT` for invalid input to the four new tools or a backend submission refusal with status 400.
+Use `NOT_AVAILABLE` for valid IDs outside the configured topic scope across all tools.
 Add `REQUEST_CONFLICT` for status 409.
 Add `COMMAND_INCOMPLETE` for a validated `INCOMPLETE` result.
 These codes require fixed client sentences and error-contract tests.
 
 A submission without a reliable response can have executed.
-Return `OUTCOME_UNKNOWN` with the caller request ID and no invented receipt.
+Return `OUTCOME_UNKNOWN` with `isError=true` and no `structuredContent` or invented receipt.
+Its `_meta` contains exactly `code`, `message`, `retryable`, and `requestId`.
+The request ID equals the validated caller input.
+This fourth metadata field applies only to unknown submission outcomes.
+Other error metadata keeps exactly the three existing fields.
+Every error includes one text content item containing its fixed client sentence.
+Success text content renders the same application object as `structuredContent`.
 Include no raw backend response or exception text.
 Keep `retryable=false` for submission errors in this milestone.
 The client must not treat this flag as permission to create another request ID.
 Document the process-lifetime limit beside repeated-submission guidance.
+
+Use these fixed sentences for the new submission error behavior:
+
+| Code | Sentence |
+|---|---|
+| `INVALID_INPUT` | `the tool input is not valid` |
+| `REQUEST_CONFLICT` | `the request ID conflicts with an earlier submission` |
+| `COMMAND_INCOMPLETE` | `a required backend refused the command` |
+| `OUTCOME_UNKNOWN` | `the submission outcome is unknown. Repeat only with the same request ID while the server process remains unchanged.` |
+
+The revised `OUTCOME_UNKNOWN` sentence applies when the new send tool activates that previously unused code.
 
 Malformed responses after submission also produce an unknown outcome when admission cannot be established.
 A valid receipt with `PENDING` remains a normal command result.
@@ -155,12 +200,40 @@ Log no credentials, message content, argument values, or raw backend reason stri
 6. Repeat one request identity and verify one command identity and one message identity.
 7. Change content or room under that identity and verify a conflict.
 8. Refuse unauthorized reads, sends, and another owner's command status.
-9. Refuse out-of-scope message results before exposing their content.
+9. Return `NOT_AVAILABLE` for a readable out-of-scope message ID, without exposing its content or identifiers.
 10. Lose a submission response and verify no automatic second submission occurs.
 11. Preserve a validated 424 command result and its receipt.
 12. Reject oversized history without partial output.
 13. Preserve numeric IDs above `2^53` exactly.
 14. Verify protocol output, bounded requests, shutdown, and diagnostic redaction.
+15. Verify exact error field locations for `OUTCOME_UNKNOWN` and `INCOMPLETE`.
+16. Preserve existing topic invalid-input behavior and test the new tools' `INVALID_INPUT` behavior.
+17. Accept an empty backend map for `ACCEPTED` and return a later status through the status tool.
+18. Refuse invalid command IDs before any backend request.
+19. Return `OUTCOME_UNKNOWN` for a submission redirect without following it.
+20. Verify the adapter rejects oversized text before submission.
+21. Verify two adapters using one identity recover the same command for the same request ID.
+
+## Deployment acceptance setup
+
+Start an authenticated memory deployment with the message controller enabled.
+Set `app.command.bus=memory`, completion requirement `P,I`, and completion timeout `5s`.
+Use the existing credential procedure for the configured agent.
+Create a fixture room through `POST /topic/new` using that agent's token.
+Verify the agent has `SEND` and `SUBSCRIBE` on the room before MCP acceptance calls.
+If the room already exists, grant those permissions through the existing authorized setup path.
+MCP adds no room creation, join, or grant tool.
+Configure the fixture room in `topicIds` and enable sending.
+
+Use a separate test deployment to produce a deterministic `PENDING` result.
+A test-only wrapper holds the real persistence handler behind a latch before it executes.
+Keep the other real handlers active and set completion requirement `P,I`.
+Set the server completion timeout to `100ms` in that test deployment.
+Submit through the real stdio MCP client while the latch remains closed.
+Verify a `PENDING` receipt, then release the handler and poll command status for backend success.
+The wrapper must invoke the real persistence handler after release.
+Release the latch during test cleanup, including after assertion failure.
+Add no production control route or handler delay setting.
 
 Use focused tests for contracts and HTTP behavior.
 Use the real MCP client harness for protocol evidence.
