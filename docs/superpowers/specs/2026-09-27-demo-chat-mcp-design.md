@@ -2,10 +2,10 @@
 
 Date: 2026-09-27.
 Tracking: CHAT-ylvoiixm.
-Status: Draft for owner review and implementer assessment.
+Status: historical design, with current messaging contracts updated under `CHAT-teujorxl`.
 
-This document proposes a new interface. It does not report an implemented MCP server.
-The owner requested a specification for another agent. Implementation is outside this task.
+The adapter implements topic reads and Stage 1 messaging. Search remains deferred.
+The messaging authority is `2026-10-09-mcp-messaging-design.md` in this directory. Earlier measured-basis sections remain historical.
 
 ## 1. Objective and proposed scope
 
@@ -156,13 +156,15 @@ Names and descriptions must remain stable within this API version.
 |---|---|---|
 | `chat_list_topics` | `{}` | `{topics: Topic[]}` containing only configured, permitted topics. |
 | `chat_get_topic` | `{topicId: Id}` | `{topic: Topic}`. |
+| `chat_list_messages` | `{topicId: Id}` | `{messages: Message[]}`. |
 | `chat_get_message` | `{messageId: Id}` | `{message: Message}`. |
 | `chat_search_messages` | `{topicId: Id, query: string, limit?: integer}` | `{indexComplete: boolean, hits: SearchHit[]}`. Limit defaults to 10 and ranges from 1 to 50. |
-| `chat_send_message` | `{topicId: Id, text: string}` | `{messageKey: KeyRef, outcome: "accepted"}`. |
+| `chat_send_message` | `{topicId: Id, text: string, requestId: string}` | `{receipt, outcome, backends}`. |
+| `chat_get_command_status` | `{commandId: string}` | `{commandId, requestId, receipt, backends, version}`. |
 
 `Id` follows section 6. `KeyRef` is its returned key object.
-`Topic` contains `key: KeyRef` and `name: string`.
-`Message` contains `key: KeyRef`, `senderId: Id`, `topicId: Id`, `text: string`, and `timestamp: string`.
+`Topic` contains string fields `id`, `root`, and `name`.
+`Message` contains `messageKey: KeyRef`, `senderId: Id`, `topicId: Id`, `text: string`, and `timestamp: string`.
 The timestamp is the stored message timestamp in ISO-8601 UTC form.
 `SearchHit` contains `message: Message` and `score: number`.
 The score must be finite. It is a relevance measure, not an identity or probability.
@@ -175,10 +177,11 @@ At most 100 topics can appear, so the first version needs no topic pagination.
 
 Every topic argument must be in the configured allowlist.
 A message result must also belong to a configured topic before emission.
-Backend authorization must occur before message content leaves the backend.
-The local topic check cannot replace that backend check.
+The shipped message-by-ID route permits every authenticated agent to read any message.
+The adapter must check the returned room before emitting content.
+Room history and submission also require server permission.
 
-Search stays within one configured topic. Query text must contain one to 2,000 characters and must not be blank.
+Search is deferred and no search tool is registered. The proposed search contract stays within one configured topic. Query text must contain one to 2,000 characters and must not be blank.
 Use the backend default threshold of zero. Do not expose query syntax or raw index operations.
 Read permission must cover each returned message.
 Permission filtering may return fewer hits than requested. Do not fill the gap from another topic.
@@ -189,8 +192,17 @@ Send text must contain one to 16,384 UTF-8 bytes and must not be blank.
 Do not silently trim, truncate, or rewrite it.
 The backend derives the sender from authentication.
 The adapter accepts no sender override and performs no automatic send retry.
-`accepted` means the backend returned its success response and message key.
-It does not prove recipient delivery, durable storage, or exactly-once execution.
+A receipt contains `commandId` and `messageKey`.
+Outcomes are `COMPLETED`, `ACCEPTED`, `PENDING`, and `INCOMPLETE`.
+`COMPLETED` proves the selected requirement, which defaults to `P,I`.
+It does not prove recipient delivery or exactly-once execution.
+`ACCEPTED` can contain an empty backend map.
+Request IDs and command IDs require 1 to 128 visible ASCII characters, without spaces.
+The namespace belongs to the authenticated agent across adapters and rooms.
+Repeated identity and payload return the existing command within one unchanged Stage 1 process.
+Changed content or room under that identity conflicts.
+The adapter alone enforces the text byte limit.
+Configure the server completion timeout as `5s`, below the adapter deadline of `30s`.
 
 Read tools declare `readOnlyHint=true` and `idempotentHint=true`.
 Send declares `readOnlyHint=false`, `destructiveHint=false`, and `idempotentHint=false`.
@@ -205,7 +217,9 @@ These routes were inspected in the root identity implementation worktree.
 | Topic lookup | `GET /topic/id/{id}` |
 | Message lookup | `GET /message/id/{id}` |
 | Topic recall | `POST /message/recall/topic` |
-| Send | `POST /message/send/{id}` with `text/plain` |
+| History | `GET /message/list/{id}` with NDJSON |
+| Send | `POST /message/submit/{id}` with `text/plain` and `Idempotency-Key` |
+| Command status | `GET /message/command/{commandId}` |
 
 Topic recall uses the actual `TopicRecallRequest` serializer contract.
 The implementer must test its discriminator and generic ID decoding against the running backend.
@@ -217,10 +231,12 @@ No tool calls `/persist`, `/index`, secrets routes, root publication endpoints, 
 
 ## 9. Errors, limits, and cancellation
 
-Invalid MCP envelopes and schema violations use protocol errors from the selected SDK.
+Invalid MCP envelopes use protocol errors from the selected SDK. Invalid message-tool arguments use `INVALID_INPUT`.
 Application failures use an MCP tool error result with a stable code and a short message.
-Its application data has `code`, `message`, and `retryable` fields. Failed sends also include `outcome`.
-`outcome` is `not_executed` or `unknown` for failed sends. It is absent for read failures.
+Most failures contain exactly three `_meta` fields: `code`, `message`, and `retryable`.
+`OUTCOME_UNKNOWN` adds the validated `requestId`, without a receipt or structured result.
+`COMMAND_INCOMPLETE` retains the command result in `structuredContent`, with three metadata fields.
+Successful results contain matching text and structured JSON, without metadata.
 
 | Code | Meaning |
 |---|---|
@@ -230,15 +246,18 @@ Its application data has `code`, `message`, and `retryable` fields. Failed sends
 | `BACKEND_UNAVAILABLE` | A backend transport or service failure occurred. |
 | `LIMIT_EXCEEDED` | A response or configured work limit was exceeded. |
 | `OUTCOME_UNKNOWN` | A send may have executed, but no reliable result arrived. |
+| `INVALID_INPUT` | A new message tool received invalid arguments. Legacy topic tools retain `NOT_AVAILABLE`. |
+| `REQUEST_CONFLICT` | An earlier submission used this identity with a different payload. |
+| `COMMAND_INCOMPLETE` | A required backend recorded a definitive refusal. |
 
 Do not expose raw backend exception messages or distinguish hidden objects from missing objects.
 A timeout after dispatch must not claim that a send failed without effects.
 Failed sends always have `retryable=false` because this version provides no durable deduplication contract.
-The user must reconcile an unknown send before attempting another send.
+The caller may repeat an unknown submission only with the same request ID while the server process remains unchanged.
 
 Use a five-second connect timeout and a 30-second call deadline.
 Allow at most four concurrent backend requests per adapter process.
-Limit each backend response and each emitted tool result to one MiB of UTF-8 JSON.
+Limit each backend response to one MiB. Message results use the validated projection defined by the messaging spec.
 Fail when a result exceeds its limit. Do not return a silently shortened result.
 Propagate cancellation to outstanding reads.
 Cancellation after send dispatch cannot promise rollback.

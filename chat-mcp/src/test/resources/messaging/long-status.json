@@ -1,0 +1,45 @@
+{
+  "commandId": "c-rest",
+  "owner": 7,
+  "requestId": "request:1",
+  "receipt": {
+    "commandId": "c-rest",
+    "messageKey": {
+      "key": {
+        "id": 1554361326074068992,
+        "root": 1554361143634427905,
+        "from": 7,
+        "dest": 12345,
+        "timestamp": "2026-10-09T12:00:00Z",
+        "empty": false
+      }
+    }
+  },
+  "backends": {
+    "PERSISTENCE": {
+      "state": "PENDING",
+      "attempts": 0,
+      "reason": null,
+      "nextRecoveryAt": null
+    },
+    "INDEX": {
+      "state": "SUCCEEDED",
+      "attempts": 1,
+      "reason": null,
+      "nextRecoveryAt": null
+    },
+    "VECTOR": {
+      "state": "UNCERTAIN",
+      "attempts": 5,
+      "reason": "private reason",
+      "nextRecoveryAt": "2026-10-09T12:00:30Z"
+    },
+    "PUBSUB": {
+      "state": "FAILED",
+      "attempts": 1,
+      "reason": "private refusal",
+      "nextRecoveryAt": null
+    }
+  },
+  "version": 2147483648
+}

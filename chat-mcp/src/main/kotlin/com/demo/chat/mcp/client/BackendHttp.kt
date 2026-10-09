@@ -34,6 +34,9 @@ object BackendLimits {
     const val MAX_REDIRECTS: Int = 4
 }
 
+/** One HTTP status and the body allowed by the submission contract. */
+data class BackendResponse(val status: Int, val body: String)
+
 /**
  * One backend transport. A test replaces it with a fake.
  *
@@ -60,6 +63,8 @@ interface BackendHttp : AutoCloseable {
      * a call that returned.
      */
     fun get(target: URI, credential: String): String
+    fun history(target: URI, credential: String): String
+    fun submit(target: URI, credential: String, requestId: String, text: String): BackendResponse
 }
 
 /**
@@ -92,7 +97,37 @@ class JdkBackendHttp(
             Thread(runnable, "mcp-backend-deadline").apply { isDaemon = true }
         }
 
-    override fun get(target: URI, credential: String): String {
+    override fun get(target: URI, credential: String): String =
+        read(target, credential, "application/json")
+
+    override fun history(target: URI, credential: String): String =
+        read(target, credential, "application/x-ndjson")
+
+    override fun submit(target: URI, credential: String, requestId: String, text: String): BackendResponse {
+        requireConfiguredOrigin(target)
+        val deadline = System.nanoTime() + callDeadline.toNanos()
+        waitForAPermit(deadline)
+        var status: Int? = null
+        try {
+            val response = send(target, credential, deadline, "application/json", requestId, text)
+            status = response.statusCode()
+            return response.body().use { body ->
+                when (status) {
+                    201, 202, 424 -> BackendResponse(status, readBody(body, deadline))
+                    400, 409, 401, 403, 404 -> BackendResponse(status, "")
+                    else -> throw SubmissionUnknownException(requestId, status)
+                }
+            }
+        } catch (failure: SubmissionUnknownException) {
+            throw failure
+        } catch (failure: Exception) {
+            throw SubmissionUnknownException(requestId, status)
+        } finally {
+            permits.release()
+        }
+    }
+
+    private fun read(target: URI, credential: String, accept: String): String {
         val deadline = System.nanoTime() + callDeadline.toNanos()
         waitForAPermit(deadline)
         try {
@@ -100,9 +135,10 @@ class JdkBackendHttp(
             var hops = 0
             while (true) {
                 requireConfiguredOrigin(current)
-                val response = send(current, credential, deadline)
+                val response = send(current, credential, deadline, accept)
                 val status = response.statusCode()
                 if (status in 300..399) {
+                    response.body().close()
                     val location =
                         response.headers().firstValue("location").orElse(null)
                             ?: throw ClientException(
@@ -110,7 +146,6 @@ class JdkBackendHttp(
                                 FailureReason.PROTOCOL,
                                 status,
                             )
-                    response.body().close()
                     hops += 1
                     if (hops > maxRedirects) {
                         throw ClientException(
@@ -175,18 +210,28 @@ class JdkBackendHttp(
     }
 
     /** Send one request under the remaining time of the deadline. */
-    private fun send(target: URI, credential: String, deadline: Long): HttpResponse<InputStream> {
+    private fun send(
+        target: URI,
+        credential: String,
+        deadline: Long,
+        accept: String,
+        requestId: String? = null,
+        text: String? = null,
+    ): HttpResponse<InputStream> {
         val remaining = deadline - System.nanoTime()
         if (remaining <= 0) {
             throw ClientException("the backend call passed its deadline", FailureReason.TRANSPORT)
         }
-        val request =
+        val builder =
             HttpRequest.newBuilder(target)
                 .timeout(Duration.ofNanos(remaining))
                 .header("Authorization", "Bearer $credential")
-                .header("Accept", "application/json")
-                .GET()
-                .build()
+                .header("Accept", accept)
+        if (requestId == null) builder.GET()
+        else builder.header("Content-Type", "text/plain")
+            .header("Idempotency-Key", requestId)
+            .POST(HttpRequest.BodyPublishers.ofString(requireNotNull(text), StandardCharsets.UTF_8))
+        val request = builder.build()
         return try {
             client.send(request, HttpResponse.BodyHandlers.ofInputStream())
         } catch (failure: IOException) {

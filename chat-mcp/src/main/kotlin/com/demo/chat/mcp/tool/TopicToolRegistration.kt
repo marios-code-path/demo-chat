@@ -259,7 +259,7 @@ private fun refused(
  * The line carries the five fields the design requires. It carries no argument
  * value, no topic name, no token and no payload.
  */
-private fun report(
+internal fun report(
     toolName: String,
     call: Long,
     started: Long,
@@ -291,7 +291,7 @@ private const val HTTP_OK: Int = 200
 private val CALL_NUMBERS: AtomicLong = AtomicLong(0)
 
 /** Take the next correlation id. It counts from one, and it is unique in this process. */
-private fun nextCallNumber(): Long = CALL_NUMBERS.incrementAndGet()
+internal fun nextCallNumber(): Long = CALL_NUMBERS.incrementAndGet()
 
 /**
  * Refuse every argument that the tool does not declare.

@@ -1,11 +1,13 @@
 # The Demo Chat MCP adapter
 
 The adapter is a standalone program. It speaks the Model Context Protocol
-(MCP) over stdin and stdout. It reads chat topics from a running Demo Chat
-deployment.
+(MCP) over stdin and stdout. It reads topics and messages from a running Demo Chat deployment.
+Optional sending uses caller-selected request IDs and command status.
 
 The adapter holds no database credential and no direct store access. It calls
-the deployment over HTTP. The deployment decides what the caller may read.
+the deployment over HTTP. The deployment checks route access.
+For message-by-ID reads, the adapter also enforces the configured room limit.
+The shipped backend policy permits any authenticated agent to read any message by ID.
 
 The adapter serves protocol revision `2025-11-25`.
 
@@ -31,7 +33,7 @@ otherwise.
 | `backendBaseUrl` | The origin of the deployment. It carries a scheme, a host and an optional port. It carries no path, query, fragment or user info. |
 | `credentialFile` | The file that holds the token. A relative path resolves against the directory of the configuration file. See `docs/MCP-CREDENTIAL-ISSUANCE.md`. |
 | `keyType` | `long` or `uuid`. It must agree with the deployment. |
-| `topicIds` | The topic ids this adapter may read. Comma separated. One to 100 ids. |
+| `topicIds` | The room IDs this adapter may read or send to. Comma separated. One to 100 ids. |
 | `enableSend` | Optional. `true` or `false`. The default is `false`. |
 | `enableSearch` | Optional. `true` or `false`. The default is `false`. |
 
@@ -76,11 +78,11 @@ chat-mcp: <tool> <verdict> call=<n> duration=<ms>ms code=<CODE> status=<s|->
 
 | Field | Meaning |
 |---|---|
-| `<tool>` | The tool name, `chat_list_topics` or `chat_get_topic`. |
+| `<tool>` | The registered tool name. |
 | `<verdict>` | `answered`, or `refused: <sentence>` for a failure. |
 | `call=<n>` | The correlation id. It counts from one inside one process. |
 | `duration=<ms>ms` | The wall time of the call, in milliseconds. |
-| `code=<CODE>` | `OK`, or one of the six failure codes in the next section. |
+| `code=<CODE>` | `OK`, or one of the nine failure codes in the next section. |
 | `status=<s\|->` | The backend HTTP status. `-` means the call reached no backend answer. |
 
 **The status reaches this line alone.** It never reaches the client. See the
@@ -101,114 +103,130 @@ The Task 5 harness purity test asserts that every stderr line carries the
 prefix. So a library line that returns fails that test rather than reaching a
 client in silence.
 
-## The two tools
+## Tools and results
 
-| Tool | Input | Output |
+Five read tools are available by default.
+`enableSend=true` adds the send tool.
+Search remains unavailable, including when `enableSearch=true`.
+Every ID in an MCP argument or result is a string.
+Long IDs retain every digit, including values above `2^53`.
+
+| Tool | Input | Successful result |
 |---|---|---|
-| `chat_list_topics` | No argument | `{topics: [Topic]}` |
+| `chat_list_topics` | `{}` | `{topics: [Topic]}` |
 | `chat_get_topic` | `{topicId: string}` | `{topic: Topic}` |
+| `chat_list_messages` | `{topicId: string}` | `{messages: [Message]}` |
+| `chat_get_message` | `{messageId: string}` | `{message: Message}` |
+| `chat_get_command_status` | `{commandId: string}` | `CommandStatus` |
+| `chat_send_message` | `{topicId: string, text: string, requestId: string}` | `{receipt, outcome, backends}` |
 
-A `Topic` carries `id`, `root` and `name`, each a JSON string. A Long id keeps
-every digit, including a value above 2^53.
+A `Topic` contains string fields `id`, `root`, and `name`.
+A `Message` contains `messageKey`, `senderId`, `topicId`, `text`, and `timestamp`.
+A `messageKey` contains string fields `id` and `root`.
+The timestamp uses ISO-8601 UTC form.
+A receipt contains `commandId` and `messageKey`.
+A status contains `commandId`, `requestId`, `receipt`, `backends`, and numeric `version`.
+Backend entries contain `state`, numeric `attempts`, and nullable `nextRecoveryAt`.
+The adapter omits backend reasons and the status owner.
+The server restricts command status by owner, without an additional adapter room check.
 
-`chat_list_topics` reads each configured topic by its id endpoint. It does not
-call the unbounded list endpoint. A topic that the deployment denies or does not
-serve is left out of the answer. The answer carries no name and no count for it.
+Backend names are `PERSISTENCE`, `INDEX`, `VECTOR`, and `PUBSUB`.
+Backend states are `PENDING`, `SUCCEEDED`, `FAILED`, and `UNCERTAIN`.
+An `ACCEPTED` result can contain an empty `backends` object.
 
-`chat_get_topic` refuses a topic id that is not in `topicIds`. The refusal
-happens before any backend call.
+`chat_list_topics` reads each configured topic by its ID endpoint.
+It omits topics that the deployment denies or does not serve.
+`chat_get_topic` and room-based message tools reject unconfigured rooms before HTTP.
+Message reads also check each returned room before emitting any result.
+This check is the room restriction for the broadly permitted message-by-ID route.
+History uses stored messages, without pagination or a live subscription.
+An oversized history fails completely, without partial output.
 
-Both tools declare themselves read only and idempotent.
+### Sending and retry identity
+
+Example call:
+
+```json
+{"topicId":"1554361326074068992","text":"hello","requestId":"agent:turn:42"}
+```
+
+Example successful result:
+
+```json
+{"receipt":{"commandId":"c-42","messageKey":{"id":"1554361326074068993","root":"1554361143634427905"}},"outcome":"COMPLETED","backends":{"PERSISTENCE":{"state":"SUCCEEDED","attempts":1,"nextRecoveryAt":null},"INDEX":{"state":"SUCCEEDED","attempts":1,"nextRecoveryAt":null}}}
+```
+
+The adapter sends `POST /message/submit/{topicId}` with an `Idempotency-Key` header.
+The server derives the sender from the authenticated token.
+Request IDs and command IDs require 1 to 128 visible ASCII characters, without spaces.
+Text must be nonblank and contain at most 16,384 UTF-8 bytes.
+The adapter alone enforces that byte limit.
+It preserves the text without trimming or truncation.
+
+The request namespace belongs to the authenticated agent, across all its adapters and rooms.
+A repeat with the same request ID and payload returns the same command and message.
+Changed content or room under that identity produces `REQUEST_CONFLICT`.
+Stage 1 retains this mapping only while the server process remains unchanged.
+A server restart removes retry safety for earlier requests.
+
+`COMPLETED` means the selected backend requirement succeeded.
+The default requirement is `P,I`, which does not prove vector completion or recipient delivery.
+`PENDING` returns a receipt while required work remains unresolved.
+`ACCEPTED` requires no backend completion.
+`INCOMPLETE` means a required backend recorded a definitive refusal.
+Use `chat_get_command_status` to inspect later progress.
+
+Configure `app.command.completion.timeout=5s` on the server.
+That starting value stays below the adapter's `30s` deadline.
+The adapter cannot inspect the remote setting.
+A longer server wait or a transport failure can produce `OUTCOME_UNKNOWN` instead of `PENDING`.
+The adapter never repeats a submission or follows its redirect.
+Repeat an unknown submission only with the same request ID while the server process remains unchanged.
+Legacy send routes provide no caller-owned retry safety.
+
+Read tools declare `readOnlyHint=true` and `idempotentHint=true`.
+Sending declares `readOnlyHint=false`, `destructiveHint=false`, and `idempotentHint=false`.
+A repeat is safe only with the same request ID while the server process remains unchanged.
+That condition is not unconditional, so the send hint is false.
+These hints grant no permission.
 
 ## Failures
 
-A tool failure is an MCP tool error result. It carries `isError` true and the
-three application fields. A malformed MCP envelope is not a tool failure. The
-SDK answers that one with a JSON-RPC protocol error.
+Application failures are MCP tool results with `isError=true`.
+Malformed protocol envelopes receive SDK protocol errors.
+Successful results contain the same JSON in text and `structuredContent`, without `_meta`.
 
-### The three application fields
+Most failures contain exactly three `_meta` fields: `code`, `message`, and `retryable`.
+`OUTCOME_UNKNOWN` adds the validated caller `requestId` as a fourth field.
+It contains no receipt or `structuredContent`.
+`COMMAND_INCOMPLETE` retains the validated send result in `structuredContent`, including its receipt.
+Its `_meta` still contains exactly three fields.
+There is no separate error `outcome` field.
 
-A failed tool result carries `_meta` with exactly three flat fields:
-
-| Field | Meaning |
-|---|---|
-| `code` | One of the six codes below. |
-| `message` | A sentence this adapter built. |
-| `retryable` | `true` when a repeat of the same call may succeed. |
-
-A good result carries no `_meta` at all. The SDK omits an absent field.
-
-### The six codes
-
-| Code | Meaning | Producer today |
-|---|---|---|
-| `AUTHENTICATION_REQUIRED` | The backend refused the credential, or the credential file is unusable. | Yes |
-| `NOT_AVAILABLE` | The object is absent, denied, or outside the configured scope. | Yes |
-| `FEATURE_UNAVAILABLE` | A required backend feature is unavailable. | **None** |
-| `BACKEND_UNAVAILABLE` | A backend transport or service failure occurred. | Yes |
-| `LIMIT_EXCEEDED` | A response or the configured work limit was exceeded. | Yes |
-| `OUTCOME_UNKNOWN` | A send may have executed, and no reliable result arrived. | **None** |
-
-`FEATURE_UNAVAILABLE` and `OUTCOME_UNKNOWN` have no producer in this phase.
-They are declared so the vocabulary is complete. No path invents one.
-
-### `retryable` is true for a transport failure alone
-
-A transport failure is a connection that did not open, or a deadline that
-passed. A repeat of a read may then succeed. Every other class is decided by
-the request or by the stored data, so a repeat gives the same answer.
-
-**A failed send must always answer `false`.** The adapter holds no durable
-deduplication contract, so a repeat may send twice. No send tool exists yet.
-That rule binds the tool that adds one.
-
-### No raw backend text, and no hidden object
-
-The message is a sentence this adapter built. It carries no backend exception
-text, no topic name, no argument value and no payload.
-
-**Every code has one fixed sentence, and the code alone selects it.**
-
-| Code | Sentence |
+| Code | Fixed message |
 |---|---|
 | `AUTHENTICATION_REQUIRED` | `the backend refused the credential of this adapter` |
 | `NOT_AVAILABLE` | `the backend does not serve this object, or it refuses this caller` |
 | `FEATURE_UNAVAILABLE` | `the backend does not offer a feature this call requires` |
 | `BACKEND_UNAVAILABLE` | `the backend did not answer the call` |
 | `LIMIT_EXCEEDED` | `the call passed a limit of this adapter` |
-| `OUTCOME_UNKNOWN` | `the adapter cannot tell whether the call completed` |
+| `OUTCOME_UNKNOWN` | `the submission outcome is unknown. Repeat only with the same request ID while the server process remains unchanged.` |
+| `INVALID_INPUT` | `the tool input is not valid` |
+| `REQUEST_CONFLICT` | `the request ID conflicts with an earlier submission` |
+| `COMMAND_INCOMPLETE` | `a required backend refused the command` |
 
-**The message of a `ClientException` never reaches a client.** A transport
-builds that message from the material it handled, so it can hold a URL, a
-header, a stored value or a credential fragment. The classifier reads the
-reason of the failure and nothing else. The message serves a debugger and a
-stack trace alone.
+`FEATURE_UNAVAILABLE` has no producer because search remains unavailable.
+The new message tools use `INVALID_INPUT` for invalid arguments.
+Existing topic tools preserve their earlier `NOT_AVAILABLE` behavior for invalid arguments.
+Adapter input refusals and unexpected adapter failures can use their existing adapter-generated sentences.
+No failure exposes backend text, credentials, hidden object identifiers, or content.
+Denied and absent objects both produce `NOT_AVAILABLE`.
+Backend HTTP status appears only in stderr diagnostics.
 
-Two failures carry adapter prose instead, and each says so.
-
-- A refusal of the adapter's own, such as a missing argument, names the value
-  to correct. The adapter wrote that sentence.
-- An unplanned failure answers `the adapter could not complete the call`. That
-  failure held no backend answer, so no class name and no message exists to
-  escape.
-
-**A denied object and an absent object answer the same sentence.** A 403 and a
-404 both become `NOT_AVAILABLE` with the sentence above. A reader that could
-tell them apart would learn that a hidden object exists. No sentence names a
-status, a count or a value from the request.
-
-The backend status is not lost. It reaches the stderr diagnostic line, which
-carries operator data alone.
-
-### The adapter owns one transport
-
-The adapter builds one transport for the whole process and closes it at
-shutdown. The concurrency limit is per adapter process, so a transport for each
-client would make that limit belong to one client.
-
-The transport holds a watchdog executor and one thread. `serveStdio` closes the
-transport on every path, so the thread is released whether the run ended well
-or badly.
+Only read transport failures can have `retryable=true`.
+Every send error has `retryable=false`, including an unknown outcome.
+The caller must decide whether the process-lifetime retry condition still holds.
+The adapter owns one HTTP transport and closes its watchdog during shutdown.
 
 ## Bounds
 
@@ -218,13 +236,14 @@ or badly.
 | Call deadline | 30 s |
 | Concurrent backend requests | 4 |
 | Response body | 1 MiB |
-| Redirects in one call | 4 |
+| Read redirects in one call | 4, within the configured origin |
+| Submission redirects | Never followed |
 | Shutdown after stdin close | 5 s |
 
 ## The client harness
 
 `chat-mcp/src/test/client/` holds a Node harness. It is a real MCP client at a
-pinned version. It connects to the adapter over stdio and calls both tools.
+pinned version. It connects to the adapter over stdio and calls the selected tools.
 
 The harness is pinned to `@modelcontextprotocol/sdk` 1.31.0. That release
 declares protocol revision `2025-11-25`, which is the revision this adapter
@@ -255,6 +274,16 @@ tools, the answer to each call, every raw stdout line, every stderr line and the
 exit.
 
 The harness asserts nothing. The reader decides.
+Messaging calls use a JSON array of tool names and argument objects:
+
+```json
+[{"name":"chat_send_message","arguments":{"topicId":"1554361326074068992","text":"hello","requestId":"agent:turn:42"}}]
+```
+
+```sh
+node harness.mjs --calls-file calls.json -- \
+  java -cp <classpath> com.demo.chat.mcp.McpAdapterMainKt --config <file>
+```
 
 `McpAdapterHarnessTests` runs the harness against the JVM build. That test is
 not the native acceptance test. See Task 6 of the plan.
@@ -273,8 +302,9 @@ warm tree activates no profile and makes no network call.
 
 ## Acceptance against a real deployment
 
-The harness test runs against a fake backend. A reader who needs end-to-end
-evidence runs the same harness against a deployment.
+Adapter-unit harness tests use fake backends.
+`McpMessagingDeploymentTests` uses authenticated REST, real handlers, and the real adapter.
+A reader can also run the same harness against a deployment.
 `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records one such run, on 2026-09-29.
 Task 8 of the plan holds the full step list. The shape is:
 
@@ -284,10 +314,10 @@ Task 8 of the plan holds the full step list. The shape is:
    names. Create a topic through it. Record the id, the root and the name.
 3. Name that id in `topicIds`, and name one id the deployment does not serve.
 4. Run the harness with the deployment behind the adapter.
-5. Read the transcript. Discovery must list both tools. The served topic must
+5. Read the transcript. Discovery must list five read tools, or six tools when sending is enabled. The served topic must
    carry the id, the root and the name the deployment holds. The unserved id
    must refuse with no backend text. stdout must carry frames alone.
-6. Repeat with a junk credential in the file. Every call must answer 401.
+6. Repeat with a junk credential in the file. Every call must report `AUTHENTICATION_REQUIRED`, with status 401 in stderr.
 
 **One boundary held for the 2026-09-29 run, and one no longer holds.**
 
@@ -318,4 +348,4 @@ end-to-end evidence runs the acceptance recipe with that credential.
 - It accepts no backend URL, credential, sender id, root or partition from a
   tool argument.
 - It processes no encrypted payload.
-- It reads no live subscription and no historical timeline.
+- It reads no live subscription and provides no history pagination.

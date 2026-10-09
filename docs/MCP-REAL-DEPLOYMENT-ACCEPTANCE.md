@@ -1,12 +1,12 @@
 # Real-deployment acceptance for the MCP adapter
 
-**The runs below used the single agent keys of their date.** Since
+**The historical runs through 2026-10-01 used single-agent keys.** Since
 `CHAT-frcrctdp`, a launch names each agent with `app.security.agents[n]` and
 `app.security.required-scope`. The old keys fail the start. See
 `docs/MCP-CREDENTIAL-ISSUANCE.md`.
 
-This document records one acceptance run of the Demo Chat MCP adapter against a
-running Demo Chat deployment. Issue `CHAT-spbwlamz` carries the work. Task 8 of
+This document records dated acceptance runs against Demo Chat deployments.
+The initial run used the earlier two-tool adapter. Issue `CHAT-spbwlamz` carries the work. Task 8 of
 `docs/superpowers/plans/2026-09-28-demo-chat-mcp-feasibility.md` holds the step
 list.
 
@@ -521,3 +521,71 @@ root, so the last row allows.
 5. Compare each answer against the deployment's own answer to the same route.
 6. Replace the credential file with junk text. Run the harness again. Every
    call must answer `AUTHENTICATION_REQUIRED` with `status=401`.
+
+## The 2026-10-09 automated messaging run
+
+Issue: `CHAT-teujorxl`. Task 6 source: `1b5e73ff`.
+Follow-up `e2c77a7d` adds a changed-room conflict assertion to the same test.
+The earlier dated measurements remain historical evidence.
+This run adds authenticated messaging coverage without replacing those records.
+
+`McpMessagingDeploymentTests` starts an authenticated memory REST deployment on a random port.
+It uses real handlers, memory persistence and Pubsub, Lucene indexing, and `app.command.bus=memory`.
+The server selects the sender from the agent token.
+The fixture signs JWTs with a temporary trusted key.
+It does not request tokens from an authorization server.
+It uses loopback HTTP and proves no TLS behavior.
+
+The pinned Node client starts the real adapter as a child process.
+Each call checks protocol-only stdout and adapter shutdown within five seconds.
+The deployment classpath includes Logback, so the child uses a temporary configuration with logging disabled.
+The normal adapter runtime still has no logging provider.
+
+| Test | Evidence |
+|---|---|
+| Submission and reads | An MCP send reaches persistence and index. Both read tools return the same message and token-selected sender. |
+| Existing room | A second agent creates the room. The caller joins, then history and submission probes succeed. |
+| Pending completion | A test-only store gate produces `PENDING`. Release permits P and I to succeed, followed by both message reads. |
+| Repeat and conflict | Two adapter processes reuse one request identity and receive one receipt. Changed text or room conflicts. History contains one message. |
+| Room refusal | The denied room is configured in the adapter. The server refuses history and submission. |
+| Message scope | Raw message-by-ID GET succeeds. The adapter blocks that message outside its configured rooms without content or identifier disclosure. |
+| Command owner | Another agent receives the same unavailable result for an existing command and a missing command. |
+
+The test class has six tests because one test covers both room refusal and message scope.
+It reports zero failures, errors, and skips.
+Omitting the persistence wrapper fails the pending test, which receives `COMPLETED` instead.
+The held attempt may become `UNCERTAIN` after the 30-second watchdog deadline.
+The test permits that state before release and requires success afterward.
+No production delay setting or control route exists.
+
+The updated agent HTTP gate passed two identity tests, six MCP tests, and seven relay tests.
+All three classes report zero failures, errors, and skips.
+The REST run emitted no Surefire shutdown warning.
+The earlier full RSocket-profile warning remains unexplained.
+The full REST-profile failure is a separate accepted baseline under `CHAT-gsddauhn`.
+The final `build-health.sh --ci` run used an empty temporary `DOCKER_CONFIG`.
+It ran 2,450 reactor tests, with zero failures, zero errors, and 82 skips, and it reported no drift.
+Its agent HTTP gate passed the same 15 tests without skips.
+`docs/BUILD-HEALTH.md` records both runs and the cause of the skip count.
+The [profile report](superpowers/reviews/2026-10-09-mcp-messaging-profile-check.md) records the comparison without `chat-mcp`.
+
+Run the deployment class explicitly:
+
+```sh
+mvn -B -pl chat-deploy-memory -am -Pexpose-webflux clean verify \
+  -Dtest=McpMessagingDeploymentTests -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+Run the authentication, messaging, and relay gate:
+
+```sh
+shell-scripts/agent-http-gate.sh
+```
+
+For manual acceptance, obtain a token through `docs/MCP-CREDENTIAL-ISSUANCE.md`.
+Create a room through `POST /topic/new`, or join one through `PUT /topic/join/{id}`.
+Confirm one history read and one submission succeed before MCP calls.
+Configure that room and enable sending.
+Use caller-owned request IDs and the server completion timeout of `5s`.
+Use the `--calls-file` harness mode documented in `docs/MCP-ADAPTER.md`.
+A server restart removes Stage 1 retry safety for earlier requests.

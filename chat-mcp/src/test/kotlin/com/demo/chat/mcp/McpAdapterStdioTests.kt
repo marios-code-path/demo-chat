@@ -32,6 +32,17 @@ class McpAdapterStdioTests {
 
     /** A transport that reaches no network and records its own close. */
     private class RecordingHttp : BackendHttp {
+        override fun history(target: URI, credential: String): String =
+            throw AssertionError("this test must not read message history")
+
+        override fun submit(
+            target: URI,
+            credential: String,
+            requestId: String,
+            text: String,
+        ): com.demo.chat.mcp.client.BackendResponse =
+            throw AssertionError("this test must not submit a message")
+
         var closed: Boolean = false
             private set
 

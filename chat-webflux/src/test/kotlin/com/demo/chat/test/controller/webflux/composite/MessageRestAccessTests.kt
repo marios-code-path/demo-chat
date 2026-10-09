@@ -58,6 +58,13 @@ import reactor.core.publisher.Mono
 )
 @TestPropertySource(properties = ["app.controller.message"])
 class MessageRestAccessTests {
+    @Autowired lateinit var wireMapper: tools.jackson.databind.json.JsonMapper
+
+    @Test
+    fun `Long and UUID messages match the shared MCP fixtures`() {
+        MessagingRestFixtures.both(wireMapper).forEach { it.checkMessage() }
+    }
+
 
     @Autowired lateinit var client: WebTestClient
     @Autowired lateinit var beans: CompositeServiceBeans<Long, String>

@@ -217,6 +217,31 @@ node harness.mjs --read-id <allowed id> --refused-id <other id> -- \
 A working credential answers 200 for an allowed topic. A broken one answers a
 tool error with `code=AUTHENTICATION_REQUIRED` and `status=401`.
 
+## Messaging room setup
+
+The same agent token authenticates all message tools.
+The server derives the sender from that identity.
+All adapters using one agent share the request ID namespace.
+Do not reuse a request ID for different content or another room.
+Stage 1 retains retry identity only within one unchanged server process.
+
+Create a room through `POST /topic/new` with the agent token.
+For an existing room, use `PUT /topic/join/{id}` with that token.
+The join operation grants the agent `SEND` and `SUBSCRIBE` for that room.
+Verify setup through a successful history read and submission before MCP acceptance calls.
+The agent has no route that reads its grants.
+MCP supplies no room creation, join, or grant tool.
+
+Configure each allowed room in `topicIds` and set `enableSend=true` when sending is required.
+Set `app.command.completion.timeout=5s` on the command service.
+That starting value is below the adapter deadline of `30s`.
+A transport deadline can still produce an unknown submission outcome.
+
+The shipped message-by-ID policy permits any authenticated agent to read any message.
+The adapter checks the returned room and blocks content outside `topicIds`.
+This local restriction does not narrow the same token's direct HTTP permissions.
+See `docs/MCP-ADAPTER.md` for message schemas, error metadata, and retry limits.
+
 ## Measured evidence
 
 Measured on 2026-09-30, from a memory deployment on `127.0.0.1:6892`. Node

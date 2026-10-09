@@ -18,6 +18,12 @@ class TopicClientTests {
 
     /** One fake transport that records what it was asked for. */
     private class FakeHttp(private val body: String) : BackendHttp {
+        override fun history(target: URI, credential: String): String =
+            throw AssertionError("a topic test must not read message history")
+
+        override fun submit(target: URI, credential: String, requestId: String, text: String): BackendResponse =
+            throw AssertionError("a topic test must not submit a message")
+
         var lastTarget: URI? = null
         var lastCredential: String? = null
         var calls: Int = 0

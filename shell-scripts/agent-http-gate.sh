@@ -4,14 +4,14 @@
 #
 # The CI jobs and build-health.sh run without the expose-webflux and
 # rest-core-e2e profiles. Under those builds, RestAgentSelectionTests and
-# RestToCoreBearerDeploymentTests are skipped. This runner runs each class in
-# its own Maven build with its own profile. It fails unless each class runs
-# with zero skipped tests.
+# RestToCoreBearerDeploymentTests are skipped. McpMessagingDeploymentTests also
+# requires expose-webflux. This runner selects each class under its profile.
+# It fails unless every selected class runs with zero skipped tests.
 #
 #   ./shell-scripts/agent-http-gate.sh            # resolve online, like CI
 #   ./shell-scripts/agent-http-gate.sh --offline  # use the local repository alone
 #
-# Exit 0 when both classes pass with zero skipped tests and the relay core jar
+# Exit 0 when all three classes pass with zero skipped tests and the relay core jar
 # holds no chat-webflux. Exit 1 otherwise. Exit 2 on a usage error.
 
 set -u
@@ -62,10 +62,19 @@ require_class() {
     fi
 }
 
-echo "running: RestAgentSelectionTests under expose-webflux"
+echo "running: RestAgentSelectionTests and McpMessagingDeploymentTests under expose-webflux"
 (cd "$ROOT" && mvn $OFFLINE -B -pl chat-deploy-memory -am -Pexpose-webflux clean test \
-    -Dtest=RestAgentSelectionTests -Dsurefire.failIfNoSpecifiedTests=false) > "$logs/rest.log" 2>&1
-require_class chat-deploy-memory com.demo.chat.test.deploy.memory.RestAgentSelectionTests 2 $?
+    -Dtest=RestAgentSelectionTests,McpMessagingDeploymentTests -Dsurefire.failIfNoSpecifiedTests=false) > "$logs/rest.log" 2>&1
+rest_exit=$?
+require_class chat-deploy-memory com.demo.chat.test.deploy.memory.RestAgentSelectionTests 2 "$rest_exit"
+require_class chat-deploy-memory com.demo.chat.test.deploy.memory.McpMessagingDeploymentTests 6 "$rest_exit"
+if grep -q 'Surefire is going to kill self fork JVM' "$logs/rest.log"; then
+    echo "WARN  REST test process exceeded the Surefire shutdown deadline"
+    echo "      REST log: $logs/rest.log"
+    shutdown_warning=1
+else
+    shutdown_warning=0
+fi
 
 # clean removes every output of the first build. The relay core is a core and
 # not a REST launch, so its jar must not hold chat-webflux.
@@ -87,7 +96,9 @@ fi
 
 if [ "$status" -eq 0 ]; then
     echo "agent http gate: ok"
-    rm -rf "$logs"
+    if [ "$shutdown_warning" -eq 0 ]; then
+        rm -rf "$logs"
+    fi
 else
     echo "agent http gate: FAILED — logs in $logs"
 fi

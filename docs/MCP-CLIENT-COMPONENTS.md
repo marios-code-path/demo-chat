@@ -9,9 +9,10 @@ questions.
 3. Why the adapter added no external library, and why `configPathFrom` works the
    way it does.
 
-The adapter is `chat-mcp`. Its sources are 17 Kotlin files in five packages.
+The adapter is `chat-mcp`. Its sources separate configuration, HTTP transport, decoding, services, and MCP registration.
 `docs/MCP-ADAPTER.md` is the operator document. The design is
 `docs/superpowers/specs/2026-09-27-demo-chat-mcp-design.md`.
+The messaging contract is `docs/superpowers/specs/2026-10-09-mcp-messaging-design.md`.
 
 ## The shape in one paragraph
 
@@ -73,8 +74,7 @@ flowchart TD
     class REG accent
 ```
 
-`REG` carries the accent, because `TopicToolRegistration.answer` is the one
-place where the MCP types meet the application types.
+`REG` marks the topic registration boundary. Messaging has a separate registration boundary, described below.
 
 ## The type boundaries
 
@@ -87,9 +87,9 @@ cross the next.
 | `TopicToolRegistration` to `TopicToolService` | `String` argument text, `Set<String>` of allowed names, `TopicView`, `List<TopicView>`, `JsonObject` | No MCP type enters the service. The service KDoc states this |
 | `TopicToolService` to `TopicClient` | `AdapterId` alone | No `JsonObject`. No MCP type |
 | `TopicClient` to `BackendHttp` | `URI`, credential text, body text | The credential is read for one call and discarded |
-| `BackendHttp` to the deployment | One HTTP GET with a bearer header | No configuration file, no key type, no allowlist |
+| `BackendHttp` to the deployment | HTTP GET or submit POST with a bearer header | No configuration file, no key type, no allowlist |
 | Deployment answer to `decodeTopic` | JSON text | No `Double` and no `Float` ever holds an id |
-| Any failure to the host | `ToolError(code, message, retryable)` | `ClientException.message` does not cross. Task 7 rule 4 |
+| Any failure to the host | `ToolError(code, message, retryable)`, with the messaging additions described below | `ClientException.message` does not cross. Task 7 rule 4 |
 | Process arguments to `configPathFrom` | `List<String>`, `Map<String, String>`, `Path` | No credential and no backend URL arrives as an argument |
 
 ## The data flow of one call
@@ -236,16 +236,38 @@ MCP hosts differ. Some pass a command with arguments. Some pass a command and an
 environment block. The adapter accepts both, and the argument wins, so one host
 configuration cannot half-apply.
 
-## What a reader must not conclude
+## Messaging components
 
-1. **This document does not add a component.** It describes the code at commit
-   `3295f7c3` and nothing else.
-2. **The adapter is still not authenticated against a deployment.** No
-   deployment enforces a credential, so no route reads the bearer header.
-   `CHAT-pgpmsgvr` closes that boundary. `CHAT-rvcrzxvw` closes the other half:
-   no procedure creates the account, grants the scope and obtains the token that
-   `credentialFile` names. The adapter already reads that file and sends the
-   token, so that issue adds no code.
-3. **The absence of a Spring context is a decision and not an oversight.** A
-   later task that adds one changes the stdout contract, the startup time and
-   the classpath. Read the design before it does.
+`MessagingToolRegistration` converts MCP arguments and application errors.
+`MessagingToolService` checks input limits, configured rooms, and each returned message's room.
+`MessagingClient` chooses fixed REST routes and reads the credential for each request.
+`MessageEnvelope` and `CommandEnvelope` decode production wire envelopes without numeric ID rounding.
+The same `JdkBackendHttp` bounds all requests and never repeats a submission.
+
+```mermaid
+flowchart LR
+    H[MCP host] --> R[MessagingToolRegistration]
+    R --> S[MessagingToolService]
+    S --> C[MessagingClient]
+    C --> T[JdkBackendHttp]
+    T --> D[Authenticated REST deployment]
+    C --> E[MessageEnvelope and CommandEnvelope]
+    E --> S
+```
+
+Message projections cross the service boundary as `JsonObject` values.
+The room check occurs before registration emits those values.
+The shipped message-by-ID route allows every authenticated agent to read any message.
+The adapter therefore supplies the configured room restriction for that tool.
+
+Successful results carry matching text and `structuredContent`, without metadata.
+Most failures contain three `_meta` fields: `code`, `message`, and `retryable`.
+An unknown submission adds the validated `requestId`.
+An incomplete command retains its result in `structuredContent` and keeps three metadata fields.
+See `docs/MCP-ADAPTER.md` for the complete shapes and retry conditions.
+
+The earlier diagrams describe the topic path introduced at `3295f7c3`.
+They do not imply that messaging reuses the topic service or topic decoder.
+Production REST authentication and credential issuance now exist.
+The dated acceptance records distinguish locally signed test tokens from authorization-server-issued tokens.
+The adapter runtime still contains no Spring context or direct store access.
