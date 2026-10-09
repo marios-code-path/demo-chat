@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `edf67e88`, in sync with `origin`. The working tree holds no untracked file. The two maiden voyage handoff files moved to `~/tmp` on 2026-10-06. |
-| Register state | Updated 2026-10-06, after the client-init merge of PR #191. |
-| Last merged PR | #191, merge commit `edf67e88`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `02baae05`, in sync with `origin`. The working tree holds no untracked file. |
+| Register state | Updated 2026-10-09, after the message import merge of PR #202. |
+| Last merged PR | #202, merge commit `02baae05`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #193 to PR #202` lists the latest ten. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Six more hold one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-xcmpudyb-message-id` at `20f3d014`. **The branch refs are kept.** |
-| Worktrees | The main checkout, and `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`. That worktree belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
-| Open PRs | None. PR #191 merged on 2026-10-06 as `edf67e88`. That merge repaired the `client-init` path, and it closed `CHAT-uizwrxmf`. |
+| Worktrees | The main checkout, `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, and `.worktrees/chat-teujorxl-mcp-messaging` at `e2c77a7d`. The first belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The second holds `CHAT-teujorxl` work, which is in progress and not merged. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
+| Open PRs | None, measured on 2026-10-09. PR #202 merged on 2026-10-09 as `02baae05`, and it closed `CHAT-ugsreefu`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,8 +28,9 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh is `CHAT-texwkksv`, and it follows PR #191. The refresh before it is
-`CHAT-evdgjpwc`, which followed PR #189 and merged as PR #190. The one before
+refresh is `CHAT-ukiwartp`, and it follows PR #202. The refresh before it is
+`CHAT-texwkksv`, which followed PR #191 and merged as PR #192. The one before
+that is `CHAT-evdgjpwc`, which followed PR #189 and merged as PR #190. The one before
 that is `CHAT-fayckdfc`, which followed PR #184 and merged as PR #185. The one before
 that merged as PR #168, after the shell Admin identity merge. The one before that
 merged as PR #164, and it carried the measured shell reading. The one before that merged as PR #160,
@@ -4729,6 +4730,7 @@ The merged tree matches reviewed head `6cc554aa`. Local master matches
 
 `CHAT-ghwtzgjp`. Branch `chat-ghwtzgjp-initial-grants`. **This work is not
 merged.**
+**Merged since: PR #196, `5e325499`, on 2026-10-08.**
 
 ### The defect
 
@@ -4779,6 +4781,7 @@ revoke. An operator who expired one copy left the other copies live, and a
 
 `CHAT-jkordfef`. Branch `chat-jkordfef-rsocket-seam`. **This work is not
 merged.**
+**Merged since: PR #197, `6df0680e`, on 2026-10-08.**
 
 ### The gap
 
@@ -4826,6 +4829,7 @@ read the failure as a regression. `CHAT-cikgeefc` records it.
 
 `CHAT-xdsetfkf`. Branch `chat-xdsetfkf-action-grant-model`. **This work is not
 merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-design.md`.
+**Merged since: PR #199, `b8d14c71`, on 2026-10-09.**
 
 ### What exists
 
@@ -4866,6 +4870,8 @@ merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-des
 `CHAT-qojwcatx`. Branch `chat-qojwcatx-policy-execution`, stacked on PR #199.
 **This work is not merged.** Plan:
 `docs/superpowers/plans/2026-10-08-action-grant-policy-execution.md`.
+**Merged since: PR #200, `d0b5eee4`, on 2026-10-09.** PR #199 merged first,
+so PR #200 merged against `master`.
 
 ### What changed
 
@@ -4913,6 +4919,9 @@ merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-des
 
 `CHAT-ugsreefu`. The implementation is in the worktree branch
 `chat-ugsreefu-message-import`. It is not committed.
+**Merged since: PR #202, `02baae05`, on 2026-10-09.** The merge has two
+parents, and its tree equals the branch tip `e789acaa`. `CHAT-ugsreefu` is
+done, and `CHAT-emwhnlay` is unblocked.
 
 ### Contract
 
@@ -4938,4 +4947,44 @@ merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-des
   long and UUID deployments.
 - The Cassandra test was not run in the local review. Container availability
   and the measured result remain pending.
+  **CI measured it since.** Run `37976198743` on `e789acaa`: the
+  `integration` job ran `CassandraMessageSendTests` with 4 tests and
+  0 failures.
 - `docs/MESSAGE-COMMANDS.md` and this register describe the new route.
+
+## Merges from PR #193 to PR #202 (2026-10-06/09)
+
+Each merge has two parents. Each merge tree equals its branch tip, except
+PR #201. Measured on 2026-10-09 with `git diff <tip> <merge>`.
+
+| PR | Merge | Issue | What |
+|----|-------|-------|------|
+| #193 | `65cc66e7` | `CHAT-pnjmfhnb` | Wait for the durable terminal record in `runAndAwait` |
+| #194 | `506cb1dd` | `CHAT-ybtirmgj` | Store the Lucene indexes in files, reuse them at start, else rebuild |
+| #195 | `3bb8a85d` | `CHAT-eesnvnad` | `chat-build core --index-root` sets `app.index.lucene.root` |
+| #196 | `5e325499` | `CHAT-ghwtzgjp` | Seed each initial grant once, and keep a revoke across restarts |
+| #197 | `6df0680e` | `CHAT-jkordfef` | Refuse an unsupported RSocket credential |
+| #198 | `e66d2257` | `CHAT-zcxgrtqc` | Enforce typed operation policy schema boundaries |
+| #199 | `b8d14c71` | `CHAT-xdsetfkf` | The typed action grant policy model |
+| #200 | `d0b5eee4` | `CHAT-qojwcatx` | Execute the grant policies with the shipped writers |
+| #201 | `e8d9ed13` | `CHAT-chftimgy` | Message command bus Stage 1 |
+| #202 | `02baae05` | `CHAT-ugsreefu` | The Admin-only message import route |
+
+**The PR #201 merge tree differs from its tip `165c7f3f`, and that is
+expected.** The tip does not hold PR #198, PR #199 and PR #200. The files in
+the difference are exactly the files those three merges changed.
+
+Five of these merges have no section of their own in this file: #193, #194,
+#195, #198 and #201. Their specs, plans and issues hold the record.
+`docs/MESSAGE-COMMANDS.md` describes Stage 1 of the command bus.
+
+### One CI reading after PR #202
+
+**The `build` job of run `37976198743` failed.** That run tested the PR #202
+head `e789acaa`. `MessageCommandServiceTests` case 21 failed with a
+`NullPointerException` at line 92. PR #202 did not change that test. The
+`integration` and `agent-http` jobs passed.
+
+Read from source and not measured: the test waits until the key registry holds
+the message key. `P` registers the key and then stores the message, so the read
+can fall between the two steps. `CHAT-udhhlrrb` holds it.
