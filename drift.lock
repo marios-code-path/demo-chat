@@ -1,4 +1,4 @@
-docs/ANONYMOUS-AUTHORIZATION.md -> chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt sig:d0078fb0a808409e
+docs/ANONYMOUS-AUTHORIZATION.md -> chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt sig:18e996082f868bc9
 docs/IDENTITY-POLICY.md -> chat-security/src/main/kotlin/com/demo/chat/security/access/ContextIdentity.kt sig:215ab7d48bd8c60a
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:cb3869fa6db81d30

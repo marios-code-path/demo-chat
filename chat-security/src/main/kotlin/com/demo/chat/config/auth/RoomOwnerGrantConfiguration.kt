@@ -5,6 +5,7 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.ContextIdentity
 import com.demo.chat.security.service.ContextRoomOwnerGrant
+import com.demo.chat.security.service.PolicyGrantWriter
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.RoomOwnerGrant
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -38,9 +39,10 @@ open class RoomOwnerGrantConfiguration<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val rootKeys: RootKeys<T>,
     private val typeUtil: TypeUtil<T>,
+    private val policyGrantWriter: PolicyGrantWriter<T>,
 ) {
 
     @Bean
     open fun roomOwnerGrant(): RoomOwnerGrant<T> =
-        ContextRoomOwnerGrant(ContextIdentity(rootKeys), authorizationService, rootKeys, typeUtil)
+        ContextRoomOwnerGrant(ContextIdentity(rootKeys), authorizationService, rootKeys, typeUtil, policyGrantWriter)
 }

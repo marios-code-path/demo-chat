@@ -132,7 +132,51 @@ The implementation of `CHAT-qojwcatx` must keep the topic key and the grant row
 key independent. A topic can reference a grant row. A topic must not become
 the grant row.
 
+## Execution, under `CHAT-qojwcatx`
+
+Plan: `docs/superpowers/plans/2026-10-08-action-grant-policy-execution.md`.
+
+`PolicyGrantWriter` in `chat-security` maps the intents of a policy to
+`AuthMetadata` rows.
+
+- A `NONE` intent sets the expiry of each stored row of the same principal,
+  target, and permission to `0`. It writes one new row when no such row exists.
+- A `NOW` intent sets each live row to expire at the action time. It writes no
+  row when no live row exists. All `NOW` intents of one call read one time.
+- Each new row carries an empty key with the `AUTH_METADATA` root. The store
+  mints the key. A target key never becomes a grant row key.
+- A new `*` row goes through `AuthorizationService.authorize`, so the owner
+  guard still refuses a second live owner.
+
+**A policy has no effect until it is enabled.** The writer takes an explicit
+list of enabled policies, and it writes nothing for any other policy.
+`GrantPolicyConfiguration` enables `ShippedGrantPolicies.ALL` alone.
+
+**The composite keeps its two ports.** `TopicServiceImpl` calls
+`RoomOwnerGrant` and `RoomMemberGrant`, as it did before. Each port
+implementation applies one named policy:
+
+| Port implementation | Policy | Active principal |
+|---|---|---|
+| `ContextRoomOwnerGrant` | `roomowner` | the caller, through `ContextIdentity` |
+| `MembershipGrant` | `roomjoin`, `roomleave` | the verified member of the request |
+
+A member can differ from the caller when the caller holds `JOIN` on the member.
+So the member is the active principal of a join, as it was before.
+
+`RoomOwnerGrantException` and `AnonymousJoinException` did not change. Both
+stay in `TopicServiceImpl`.
+
+**One edge case changed, and `addRoom` cannot reach it.** An expired owner row
+of the same caller is now set to never expire in place. Before, that case wrote
+a second row. A new room key has no stored row.
+
+**No authorization topic exists.** The writer does not need one.
+
 ## Deferred to `CHAT-qojwcatx`
+
+This list was written before the execution work. Each item is done above,
+except failure behaviour.
 
 - How a completed operation calls a policy. The owner decided on 2026-10-08
   that the composite service calls the policy directly.
