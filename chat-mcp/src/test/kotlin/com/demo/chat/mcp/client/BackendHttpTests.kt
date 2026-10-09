@@ -8,6 +8,8 @@ import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -20,17 +22,25 @@ import org.junit.jupiter.api.Test
  * through the JDK client and not through a stub.
  */
 class BackendHttpTests {
+    @Test
+    fun `the transport declares history and submission operations`() {
+        val methods = BackendHttp::class.java.methods.map { it.name }.toSet()
+        assertTrue("history" in methods, "the history operation is missing")
+        assertTrue("submit" in methods, "the submission operation is missing")
+    }
+
     /** One loopback server with one handler. */
     private class Server(handler: (HttpExchange) -> Unit) : AutoCloseable {
         val requests = AtomicInteger()
         private val server: HttpServer = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        private val executor = Executors.newFixedThreadPool(8)
 
         init {
             server.createContext("/") { exchange ->
                 requests.incrementAndGet()
                 handler(exchange)
             }
-            server.executor = java.util.concurrent.Executors.newFixedThreadPool(8)
+            server.executor = executor
             server.start()
         }
 
@@ -38,6 +48,7 @@ class BackendHttpTests {
 
         override fun close() {
             server.stop(0)
+            executor.shutdownNow()
         }
     }
 
@@ -45,6 +56,210 @@ class BackendHttpTests {
         val bytes = body.toByteArray(Charsets.UTF_8)
         exchange.sendResponseHeaders(status, bytes.size.toLong())
         exchange.responseBody.use { it.write(bytes) }
+    }
+
+    @Test
+    fun `history requests NDJSON and preserves its body`() {
+        val body = "{\"message\":1}\n{\"message\":2}\n"
+        val headers = AtomicReference<List<String>>()
+        Server { exchange ->
+            headers.set(listOf(exchange.requestMethod, exchange.requestHeaders.getFirst("Accept")))
+            respond(exchange, 200, body)
+        }.use { server ->
+            JdkBackendHttp(server.origin).use { http ->
+                assertEquals(body, http.history(server.origin.resolve("/message/list/7"), "token"))
+                assertEquals(listOf("GET", "application/x-ndjson"), headers.get())
+                assertEquals(1, server.requests.get())
+            }
+        }
+    }
+
+    @Test
+    fun `submission preserves its request and supported response statuses`() {
+        val text = "  hello λ 🌊\n"
+        for (status in listOf(201, 202, 424)) {
+            val request = AtomicReference<List<String>>()
+            Server { exchange ->
+                request.set(listOf(
+                    exchange.requestMethod,
+                    exchange.requestHeaders.getFirst("Authorization"),
+                    exchange.requestHeaders.getFirst("Accept"),
+                    exchange.requestHeaders.getFirst("Content-Type"),
+                    exchange.requestHeaders.getFirst("Idempotency-Key"),
+                    exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) },
+                ))
+                respond(exchange, status, "{\"status\":$status}")
+            }.use { server ->
+                JdkBackendHttp(server.origin).use { http ->
+                    assertEquals(
+                        BackendResponse(status, "{\"status\":$status}"),
+                        http.submit(server.origin.resolve("/message/submit/7"), "token", "request:1", text),
+                    )
+                    assertEquals(
+                        listOf("POST", "Bearer token", "application/json", "text/plain", "request:1", text),
+                        request.get(),
+                    )
+                    assertEquals(1, server.requests.get())
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `confirmed submission refusals discard their bodies`() {
+        for (status in listOf(400, 409, 401, 403, 404)) {
+            Server { respond(it, status, "private backend text") }.use { server ->
+                JdkBackendHttp(server.origin).use { http ->
+                    assertEquals(BackendResponse(status, ""), http.submit(server.origin, "token", "request", "text"))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `submission redirects never reach their target`() {
+        for (status in listOf(301, 302, 307, 308)) {
+            Server { exchange ->
+                if (exchange.requestURI.path == "/target") respond(exchange, 201, "private response")
+                else {
+                    exchange.responseHeaders.add("Location", "/target")
+                    exchange.sendResponseHeaders(status, -1)
+                    exchange.close()
+                }
+            }.use { server ->
+                JdkBackendHttp(server.origin).use { http ->
+                    val failure = assertThrows(SubmissionUnknownException::class.java) {
+                        http.submit(server.origin.resolve("/submit"), "token", "request", "text")
+                    }
+                    assertEquals("request", failure.requestId)
+                    assertEquals(status, failure.status)
+                    assertEquals(1, server.requests.get())
+                    assertEquals("the submission outcome is unknown", failure.message)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `an unexpected submission status is uncertain`() {
+        Server { respond(it, 500, "private backend failure") }.use { server ->
+            JdkBackendHttp(server.origin).use { http ->
+                val failure = assertThrows(SubmissionUnknownException::class.java) {
+                    http.submit(server.origin, "token", "request", "text")
+                }
+                assertEquals(500, failure.status)
+                assertEquals("the submission outcome is unknown", failure.message)
+            }
+        }
+    }
+
+    @Test
+    fun `a large submission response is uncertain and releases its permit`() {
+        Server { exchange ->
+            respond(exchange, 201, if (exchange.requestURI.path == "/large") "x".repeat(1048577) else "ok")
+        }.use { server ->
+            JdkBackendHttp(server.origin, maxConcurrentRequests = 1).use { http ->
+                assertThrows(SubmissionUnknownException::class.java) {
+                    http.submit(server.origin.resolve("/large"), "token", "request", "text")
+                }
+                assertEquals(BackendResponse(201, "ok"), http.submit(server.origin, "token", "next", "text"))
+            }
+        }
+    }
+
+    @Test
+    fun `a stalled submission response closes at the deadline and releases its permit`() {
+        val serverRelease = CountDownLatch(1)
+        Server { exchange ->
+            if (exchange.requestURI.path == "/stall") {
+                exchange.sendResponseHeaders(201, 1024)
+                exchange.responseBody.write(1)
+                exchange.responseBody.flush()
+                serverRelease.await(5, TimeUnit.SECONDS)
+                exchange.close()
+            } else respond(exchange, 201, "ok")
+        }.use { server ->
+            JdkBackendHttp(server.origin, callDeadline = Duration.ofMillis(400), maxConcurrentRequests = 1).use { http ->
+                val start = System.nanoTime()
+                try {
+                    assertThrows(SubmissionUnknownException::class.java) {
+                        http.submit(server.origin.resolve("/stall"), "token", "request", "text")
+                    }
+                    assertTrue(Duration.ofNanos(System.nanoTime() - start) < Duration.ofSeconds(2))
+                    assertEquals(BackendResponse(201, "ok"), http.submit(server.origin, "token", "next", "text"))
+                } finally {
+                    serverRelease.countDown()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `a lost submission response does not trigger a resend`() {
+        Server { exchange -> exchange.requestBody.use { it.readBytes() }; exchange.close() }.use { server ->
+            JdkBackendHttp(server.origin).use { http ->
+                assertThrows(SubmissionUnknownException::class.java) {
+                    http.submit(server.origin, "token", "request", "text")
+                }
+                assertEquals(1, server.requests.get())
+            }
+        }
+    }
+
+    @Test
+    fun `new operations refuse another origin before sending a request`() {
+        Server { respond(it, 201, "unexpected") }.use { server ->
+            JdkBackendHttp(URI("http://127.0.0.1:1")).use { http ->
+                assertThrows(ClientException::class.java) { http.history(server.origin, "token") }
+                assertThrows(ClientException::class.java) { http.submit(server.origin, "token", "request", "text") }
+                assertEquals(0, server.requests.get())
+            }
+        }
+    }
+
+    @Test
+    fun `submission and history share the request limit`() {
+        val arrived = CountDownLatch(4)
+        val release = CountDownLatch(1)
+        Server { exchange ->
+            arrived.countDown()
+            release.await(5, TimeUnit.SECONDS)
+            respond(exchange, if (exchange.requestMethod == "POST") 201 else 200, "ok")
+        }.use { server ->
+            JdkBackendHttp(server.origin).use { http ->
+                val workers = Executors.newFixedThreadPool(5)
+                try {
+                    val reads = (1..4).map { workers.submit<String> { http.history(server.origin, "token") } }
+                    assertTrue(arrived.await(3, TimeUnit.SECONDS))
+                    val submission = workers.submit<BackendResponse> {
+                        http.submit(server.origin, "token", "request", "text")
+                    }
+                    assertThrows(java.util.concurrent.TimeoutException::class.java) {
+                        submission.get(150, TimeUnit.MILLISECONDS)
+                    }
+                    assertEquals(4, server.requests.get())
+                    release.countDown()
+                    reads.forEach { assertEquals("ok", it.get(3, TimeUnit.SECONDS)) }
+                    assertEquals(BackendResponse(201, "ok"), submission.get(3, TimeUnit.SECONDS))
+                } finally {
+                    release.countDown()
+                    workers.shutdownNow()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `a permit deadline before dispatch remains a local limit refusal`() {
+        Server { respond(it, 201, "unexpected") }.use { server ->
+            JdkBackendHttp(server.origin, maxConcurrentRequests = 0, callDeadline = Duration.ofMillis(100)).use { http ->
+                val failure = assertThrows(ClientException::class.java) {
+                    http.submit(server.origin, "token", "request", "text")
+                }
+                assertEquals(FailureReason.LIMIT, failure.reason)
+                assertEquals(0, server.requests.get())
+            }
+        }
     }
 
     @Test
