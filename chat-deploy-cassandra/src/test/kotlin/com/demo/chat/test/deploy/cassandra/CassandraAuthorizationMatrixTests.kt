@@ -119,8 +119,17 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
 
             // A real message of this deployment. Before `CHAT-xcmpudyb`, the
             // send failed on this backend, so this row used a minted key.
+            // A composite send binds the sender to the authenticated user, so
+            // the call carries the caller.
             val message = composite.messageService()
                 .send(MessageSendRequest("matrix message", caller.id, room.id))
+                .contextWrite(
+                    ReactiveSecurityContextHolder.withAuthentication(
+                        UsernamePasswordAuthenticationToken(
+                            ChatUserDetails(User.create(caller, "matrixuser", "matrixuser", "http://u"), listOf()), "n/a", listOf(),
+                        )
+                    )
+                )
                 .block(timeout)!!
 
             // `addRoom` allows since 2026-10-01. The owner decided on that date

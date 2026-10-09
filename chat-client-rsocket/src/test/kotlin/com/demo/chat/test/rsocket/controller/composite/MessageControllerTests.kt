@@ -15,6 +15,12 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
+import com.demo.chat.domain.command.CompletionRequirement
+import com.demo.chat.service.command.CommandCompletionService
+import com.demo.chat.service.command.DomainCommandBus
+import com.demo.chat.service.composite.command.publication.RoomPublications
+import org.mockito.Mockito
+import java.time.Duration
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
@@ -147,6 +153,7 @@ class MessageControllerTests : RSocketTestBase() {
 
 
         @Bean
+        @Suppress("UNCHECKED_CAST")
         fun testMessagingServiceImpl(
             messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
             msgPersist: MessagePersistence<UUID, String>,
@@ -154,9 +161,14 @@ class MessageControllerTests : RSocketTestBase() {
         ) = MessagingServiceImpl<UUID, String, Map<String, String>>(
             messageIdx,
             msgPersist,
-            messaging,
+            RoomPublications(messaging),
             Function { i -> mapOf(Pair(MessageIndexService.TOPIC, i.id.toString())) },
             RSocketTestRegistry.verifier,
+            Mockito.mock(DomainCommandBus::class.java) as DomainCommandBus<UUID, String>,
+            Mockito.mock(CommandCompletionService::class.java) as CommandCompletionService<UUID>,
+            null,
+            CompletionRequirement.parse("P,I"),
+            Duration.ofSeconds(5),
         )
 
         @Controller

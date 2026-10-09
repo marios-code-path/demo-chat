@@ -17,7 +17,10 @@ import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.service.security.RoomMemberGrant
 import com.demo.chat.service.security.RoomOwnerGrant
-import com.demo.chat.service.vector.MessageVectorIndexer
+import com.demo.chat.config.CommandBusSettings
+import com.demo.chat.service.command.SubmitterIdentity
+import com.demo.chat.service.composite.command.memory.MemoryCommandRuntime
+import com.demo.chat.service.composite.command.publication.RoomPublications
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -32,7 +35,10 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
     val typeUtil: TypeUtil<T>,
     private val emptyMessageSupplier: EmptyMessageUtil<V>,
     private val queryConverters: RequestToQueryConverters<Q>,
-    private val vectorIndexers: ObjectProvider<MessageVectorIndexer<T>>,
+    private val commandRuntime: MemoryCommandRuntime<T, V>,
+    private val publications: RoomPublications<T, V>,
+    private val commandSettings: CommandBusSettings,
+    private val submitters: ObjectProvider<SubmitterIdentity<T>>,
     private val roomOwnerGrants: ObjectProvider<RoomOwnerGrant<T>>,
     private val roomMemberGrants: ObjectProvider<RoomMemberGrant<T>>,
     keyService: IKeyService<T>,
@@ -46,10 +52,14 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
     override fun messageService() = MessagingServiceImpl(
         messageIndex = indexBeans.messageIndex(),
         messagePersistence = persistenceBeans.messagePersistence(),
-        pubsub = pubsub.pubSubService(),
+        publications = publications,
         topicIdToQuery = queryConverters::topicIdToQuery,
         verifier = verifier,
-        messageVectorIndexer = vectorIndexers.ifAvailable,
+        commandBus = commandRuntime.bus,
+        completions = commandRuntime.completions,
+        submitter = submitters.ifAvailable,
+        requirement = commandSettings.requirement,
+        timeout = commandSettings.timeout,
     )
 
     @Bean

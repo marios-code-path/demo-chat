@@ -1,8 +1,12 @@
 package com.demo.chat.client.rsocket.clients.composite
 
 import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.MessageSubmitRequest
+import com.demo.chat.domain.command.CommandStatus
+import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.domain.Message
 import org.springframework.messaging.rsocket.RSocketRequester
@@ -36,6 +40,18 @@ open class MessagingClient<T, V>(
     override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> =
             requester
                     .route("${prefix}message-send")
+                    .data(req)
+                    .retrieveMono()
+
+    override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>> =
+            requester
+                    .route("${prefix}message-submit")
+                    .data(req)
+                    .retrieveMono()
+
+    override fun commandStatus(req: CommandStatusRequest): Mono<out CommandStatus<T>> =
+            requester
+                    .route("${prefix}message-command-status")
                     .data(req)
                     .retrieveMono()
 }
