@@ -157,6 +157,29 @@ class MemoryCommandRuntimeTests {
         waitUntil { stateOf(rt, next.commandId, PERSISTENCE).state == BackendState.SUCCEEDED }
     }
 
+    /**
+     * A long queue builds behind an uncertain command while a backend is down.
+     * The handler completes on the calling thread, so a drain that releases
+     * the room by a direct call nests each next command on one stack.
+     */
+    @Test
+    fun `final review - a long queue behind a released room drains without a deep stack`() {
+        val release = CountDownLatch(1)
+        val p = ScriptedHandler(PERSISTENCE) { command, _ ->
+            if (command.requestId == "r-head" && release.count > 0) Mono.error(UncertainOutcomeException("held"))
+            else Mono.empty()
+        }
+        val rt = runtime(listOf(p, ScriptedHandler(INDEX), ScriptedHandler(PUBSUB)))
+        val head = submit(rt, "r-head")
+        waitUntil { stateOf(rt, head.commandId, PERSISTENCE).state == BackendState.UNCERTAIN }
+        val queued = (1..5000).map { submit(rt, "r-queued-$it") }
+        waitUntil(Duration.ofSeconds(20)) { stateOf(rt, queued.last().commandId, INDEX).state == BackendState.SUCCEEDED }
+
+        release.countDown()
+        waitUntil(Duration.ofSeconds(30)) { stateOf(rt, queued.last().commandId, PERSISTENCE).state == BackendState.SUCCEEDED }
+        assertThat(queued.count { stateOf(rt, it.commandId, PERSISTENCE).state == BackendState.SUCCEEDED }).isEqualTo(5000)
+    }
+
     @Test
     fun `case 13 - delayed accepted work still runs, because TTL is disabled`() {
         val gate = CountDownLatch(1)

@@ -132,9 +132,14 @@ class BackendRuntime<T : Any, V>(
         }
     }
 
+    /**
+     * The next command starts on a scheduler task, not on this stack. A handler
+     * can complete on the calling thread, so a direct call would nest each next
+     * command of a long queue, and a drain would end in `StackOverflowError`.
+     */
     private fun release(room: Room<T, V>) {
         room.busy.set(false)
-        pump(room)
+        scheduler.schedule { pump(room) }
     }
 
     private fun reasonOf(error: Throwable): String = "${error.javaClass.simpleName}: ${error.message}"
