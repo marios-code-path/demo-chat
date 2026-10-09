@@ -324,11 +324,17 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 |---|---|---|---|---|---|
 | `addRoom`, MessageTopic NEW | **allow** | **allow** | deny | deny | deny |
 | `send`, room SEND | deny | deny | deny | deny | deny |
+| `submit`, room SEND | deny | deny | deny | deny | deny |
+| `command status`, `permitAll()` | owner only | owner only | owner only | owner only | owner only |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
 | `messageById`, GET | **allow** | **allow** | deny | deny | deny |
 | `listRooms`, MessageTopic GET_ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 | `getRoomByName`, no expression | **no check** | **no check** | **no check** | **no check** | **no check** |
+
+The RSocket `message-send` rejects a sender that is not the caller, since Stage 1.
+`submit` and `command status` are message commands. `docs/MESSAGE-COMMANDS.md`
+describes them.
 
 **`addRoom` moved from deny to allow on 2026-10-01.** The owner decided that
 every user may add a room, because a room is an unbounded resource and no

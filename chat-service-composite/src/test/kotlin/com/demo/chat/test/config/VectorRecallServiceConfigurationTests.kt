@@ -31,7 +31,7 @@ import java.time.Duration
 class VectorRecallServiceConfigurationTests {
 
     private val allProperties = mapOf(
-        "app.service.composite" to "true",
+        "app.service.composite" to "true", "app.command.bus" to "memory",
         "app.service.core.vector" to "simple",
         "app.service.core.embedding" to "mock",
         "app.key.type" to "long",
@@ -139,7 +139,7 @@ class VectorRecallServiceConfigurationTests {
     fun `one selector set creates no recall bean`() {
         val context = contextWith(
             mapOf(
-                "app.service.composite" to "true",
+                "app.service.composite" to "true", "app.command.bus" to "memory",
                 "app.service.core.vector" to "simple",
                 "app.key.type" to "long",
                 "app.nodeid" to "1",

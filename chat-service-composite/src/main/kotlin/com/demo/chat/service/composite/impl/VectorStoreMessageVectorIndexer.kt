@@ -85,10 +85,21 @@ class VectorStoreMessageVectorIndexer<T>(
     private fun replace(message: Message<T, String>) {
         val document = mapper.toDocument(message)
         if (writeMode == VectorWriteMode.DELETE_THEN_ADD) {
-            vectorStore.delete(listOf(document.id))
+            // Two overlapping writes of one id could both remove and then both
+            // add, and the second add fails with `Duplicate id`. The embedded
+            // store lives in this process, so one lock per id makes the pair
+            // atomic among its writers. The safe-repeat contract needs it.
+            synchronized(writeLocks[Math.floorMod(document.id.hashCode(), writeLocks.size)]) {
+                vectorStore.delete(listOf(document.id))
+                vectorStore.add(listOf(document))
+            }
+            return
         }
         vectorStore.add(listOf(document))
     }
+
+    /** Striped locks, so the lock set does not grow with the number of messages. */
+    private val writeLocks = Array(64) { Any() }
 
     // A failed delete leaves a stale document. Stale document removal is out of
     // scope for this design, so this path keeps its current behavior.

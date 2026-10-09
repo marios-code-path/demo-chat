@@ -2,20 +2,13 @@ package com.demo.chat.test.service.composite
 
 import com.demo.chat.domain.knownkey.ChatDomain
 
-import com.demo.chat.test.key.FakeKeyServices
-
-import com.demo.chat.service.core.KeyVerifier
-
-import com.demo.chat.test.key.TestVerifiers
-
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.composite.impl.MessagingServiceImpl
+import com.demo.chat.test.service.composite.command.MessagingStack
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import java.time.Duration
 
@@ -32,29 +25,18 @@ import java.time.Duration
  * here, exactly as it finds nothing on lucene and on cassandra.
  */
 class MessagingServiceHistoryTests {
-    /** The topics of these tests, registered in MESSAGE_TOPIC. See CHAT-avduuqwp, D7. */
-    private val historyRegistry = FakeKeyServices.long(FAKE_ROOTS).apply {
-        register(100L, ChatDomain.MESSAGE_TOPIC)
-        register(999L, ChatDomain.MESSAGE_TOPIC)
-    }
+    /** The stack registers room 100 in MESSAGE_TOPIC. Room 999 is registered here. See CHAT-avduuqwp, D7. */
+    private val stack = MessagingStack().apply { registry.register(999L, ChatDomain.MESSAGE_TOPIC) }
+    private val pubsub = stack.pubsub
+    private val service = stack.service
 
-
-    private val messageIndex = FakeMessageIndex()
-    private val persistence = FakeMessagePersistence()
-    private val pubsub = FakePubSub()
-
-    private val service = MessagingServiceImpl(
-        messageIndex = messageIndex,
-        messagePersistence = persistence,
-        pubsub = pubsub,
-        topicIdToQuery = MapRequestConverters()::topicIdToQuery,
-        verifier = KeyVerifier(historyRegistry, FAKE_ROOTS),
-    )
+    @AfterEach
+    fun close() = stack.close()
 
     private fun store(id: Long, topic: Long, text: String) {
         val message = Message.create(TestKeys.message(id, 10L, topic), text, true)
-        persistence.add(message).block()
-        messageIndex.add(message).block()
+        stack.persistence.add(message).block()
+        stack.index.add(message).block()
     }
 
     @Test

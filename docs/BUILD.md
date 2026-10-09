@@ -123,6 +123,12 @@ Choose a node id that is unique for deployments that write to one Redis or Cassa
 
 See `docs/NODEID-CLAIM.md` for the node-id lease rules.
 
+`chat-build` emits `-Dapp.command.bus=memory` on a core launch.
+
+A hand-written launch that sets `app.service.composite` must set `app.command.bus=memory`. Startup refuses an unset value.
+
+See `docs/MESSAGE-COMMANDS.md` for the message command properties.
+
 See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 
 ### Keep the Lucene indexes in files

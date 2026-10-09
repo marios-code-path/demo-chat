@@ -19,6 +19,16 @@ interface IKeyService<T> {
 
     /** This method returns an empty Mono for an unknown id. It returns the id itself for a root key. */
     fun rootOf(id: T): Mono<T & Any>
+
+    /**
+     * This method registers [key] with no new id. Decision 2 of the spec.
+     * A repeat with the same root succeeds and writes nothing. A different
+     * root fails with `KeyRootConflictException`. A root key id fails with
+     * `RootKeyRegistrationException`. A provider that cannot register keeps
+     * this default, which refuses.
+     */
+    fun register(key: Key<T>): Mono<Void> =
+        Mono.error(UnsupportedOperationException("${this::class.simpleName} does not register keys."))
 }
 
 /** A source of ids. A generator makes ids, and a key service makes keys. */

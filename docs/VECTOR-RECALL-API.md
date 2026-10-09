@@ -112,11 +112,13 @@ credentials. See `CHAT-pgpmsgvr` and `CHAT-jdsamcia`.
 
 ## Turn it on
 
-Six properties start the recall beans and the seed routes. All six are
-required.
+Seven properties start the recall beans and the seed routes. All seven are
+required. `app.command.bus` selects the message command bus. See
+`docs/MESSAGE-COMMANDS.md`.
 
 ```properties
 app.service.composite=true
+app.command.bus=memory
 app.service.core.vector=simple
 app.service.core.embedding=mock
 app.controller.recall=true
@@ -125,6 +127,8 @@ app.controller.message=true
 ```
 
 `app.service.core.vector` takes `mock`, `simple`, `redis`, or `embedded`.
+With `app.service.composite` set, Stage 1 refuses `app.service.core.vector=mock`
+at startup, because the mock store has no safe-repeat evidence.
 `app.service.core.embedding` takes `mock`, `openai`, or `local`. A mock vector
 store takes the mock model alone. A production model also needs
 `app.service.core.embedding.identity`. An illegal pair fails the startup.
@@ -204,6 +208,12 @@ done
 ```
 
 Each answer carries the new message key, and the status is 201.
+
+A send waits for `P` and `I` only. Set
+`app.command.completion.requirement=P,I,V`, or wait, before a recall reads the
+new message. This scenario rebuilds the index in Step 2, and the rebuild reads
+the stored messages, so the recall in Step 4 does not depend on that wait. See
+`docs/MESSAGE-COMMANDS.md`.
 
 ### Step 2. Rebuild the index
 

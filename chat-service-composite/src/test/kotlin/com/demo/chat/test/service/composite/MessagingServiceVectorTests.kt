@@ -2,54 +2,26 @@ package com.demo.chat.test.service.composite
 
 import com.demo.chat.domain.knownkey.ChatDomain
 
-import com.demo.chat.test.key.FakeKeyServices
-
-import com.demo.chat.service.core.KeyVerifier
-
-import com.demo.chat.test.key.TestVerifiers
-
 import com.demo.chat.test.key.TestKeys
 
-import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
-import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.composite.impl.VectorStoreMessageVectorIndexer
-import com.demo.chat.service.core.MessageIndexService
-import com.demo.chat.service.core.MessagePersistence
-import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.service.vector.MessageDocumentMapper
-import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorWriteMode
+import com.demo.chat.test.service.composite.command.CommandFixtures
+import com.demo.chat.test.service.composite.command.MessagingStack
 import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito
-import org.mockito.InOrder
-import org.mockito.Mockito
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 class MessagingServiceVectorTests {
-    /** The sender 20 and the room 30, registered in their domains. See CHAT-avduuqwp, D7. */
-    private val sendVerifier = KeyVerifier(
-        FakeKeyServices.long(FAKE_ROOTS).apply {
-            register(20L, ChatDomain.USER)
-            register(30L, ChatDomain.MESSAGE_TOPIC)
-        },
-        FAKE_ROOTS,
-    )
-
-
-    private val messageIndex = mock<MessageIndexService<Long, String, Any>>()
-    private val messagePersistence = mock<MessagePersistence<Long, String>>()
-    private val pubsub = mock<TopicPubSubService<Long, String>>()
+    private val stacks = mutableListOf<MessagingStack>()
     private val store = MockVectorStore()
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
     private val indexState = InMemoryVectorIndexState<Long>()
@@ -57,105 +29,42 @@ class MessagingServiceVectorTests {
     private val realIndexer =
         VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, indexJobStore, VectorWriteMode.UPSERT)
 
-    private fun givenKey() {
-        BDDMockito.given(messagePersistence.key()).willReturn(Mono.just(TestKeys.key(100L)))
-        BDDMockito.given(messagePersistence.add(any<Message<Long, String>>())).willReturn(Mono.empty())
-        BDDMockito.given(messageIndex.add(any<Message<Long, String>>())).willReturn(Mono.empty())
-        BDDMockito.given(pubsub.sendMessage(any<Message<Long, String>>())).willReturn(Mono.empty())
-    }
+    private fun stack(submitter: Key<Long>? = null) = MessagingStack(submitterKey = submitter).also { stacks += it }
 
-    private fun request() = MessageSendRequest("hello apple", 20L, 30L)
+    @AfterEach
+    fun close() = stacks.forEach { it.close() }
 
-    @Test
-    fun `send calls persistence then index then vector then pubsub`() {
-        val indexer = mock<MessageVectorIndexer<Long>>()
-        BDDMockito.given(indexer.add(any<Message<Long, String>>())).willReturn(Mono.empty())
-        givenKey()
-
-        val service = MessagingServiceImpl(
-            messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, sendVerifier, indexer
-        )
-
-        StepVerifier.create(service.send(request())).expectNext(TestKeys.key(100L)).verifyComplete()
-
-        val inOrder: InOrder = Mockito.inOrder(messagePersistence, messageIndex, indexer, pubsub)
-        inOrder.verify(messagePersistence).add(any<Message<Long, String>>())
-        inOrder.verify(messageIndex).add(any<Message<Long, String>>())
-        inOrder.verify(indexer).add(any<Message<Long, String>>())
-        inOrder.verify(pubsub).sendMessage(any<Message<Long, String>>())
-    }
-
-    // D7. A refused sender or destination mints no key and writes nothing.
+    // D7. A refused sender or destination admits no command and writes nothing.
     @Test
     fun `send from an unknown sender mints nothing and writes nothing`() {
-        val service = MessagingServiceImpl(
-            messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, sendVerifier
-        )
+        val unknown = Key.of(424260L, CommandFixtures.ROOTS.of(ChatDomain.USER).id)
+        val s = stack(unknown)
 
-        StepVerifier.create(service.send(MessageSendRequest("hello", 424260L, 30L)))
+        StepVerifier.create(s.service.send(MessageSendRequest("hello", 424260L, MessagingStack.ROOM)))
             .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
-        Mockito.verifyNoInteractions(messagePersistence, messageIndex, pubsub)
+        Assertions.assertThat(s.runtime.bus.committedMappings()).isZero()
+        Assertions.assertThat(s.persistence.added).isEmpty()
+        Assertions.assertThat(s.index.added).isEmpty()
     }
 
     @Test
     fun `send to a destination outside MESSAGE_TOPIC mints nothing and writes nothing`() {
-        val service = MessagingServiceImpl(
-            messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, sendVerifier
-        )
+        val s = stack()
 
-        StepVerifier.create(service.send(MessageSendRequest("hello", 20L, 20L)))
+        StepVerifier.create(s.service.send(MessageSendRequest("hello", MessagingStack.SENDER, MessagingStack.SENDER)))
             .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
-        Mockito.verifyNoInteractions(messagePersistence, messageIndex, pubsub)
+        Assertions.assertThat(s.runtime.bus.committedMappings()).isZero()
+        Assertions.assertThat(s.persistence.added).isEmpty()
+        Assertions.assertThat(s.index.added).isEmpty()
     }
 
     @Test
     fun `listen to an unknown topic opens no listener`() {
-        val service = MessagingServiceImpl(
-            messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, sendVerifier
-        )
+        val s = stack()
 
-        StepVerifier.create(service.listenTopic(com.demo.chat.domain.ByIdRequest(424261L)))
+        StepVerifier.create(s.service.listenTopic(com.demo.chat.domain.ByIdRequest(424261L)))
             .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
-        Mockito.verifyNoInteractions(messagePersistence, messageIndex, pubsub)
-    }
-
-    @Test
-    fun `inactive chain stays three steps when there is no indexer`() {
-        givenKey()
-
-        val service = MessagingServiceImpl(
-            messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, sendVerifier
-        )
-
-        StepVerifier.create(service.send(request())).expectNext(TestKeys.key(100L)).verifyComplete()
-
-        val inOrder: InOrder = Mockito.inOrder(messagePersistence, messageIndex, pubsub)
-        inOrder.verify(messagePersistence).add(any<Message<Long, String>>())
-        inOrder.verify(messageIndex).add(any<Message<Long, String>>())
-        inOrder.verify(pubsub).sendMessage(any<Message<Long, String>>())
-        Assertions.assertThat(store.ids).isEmpty()
-    }
-
-    @Test
-    fun `vector failure stops pubsub and fails send`() {
-        val failing = mock<MessageVectorIndexer<Long>>()
-        BDDMockito.given(failing.add(any<Message<Long, String>>()))
-            .willReturn(Mono.error(Exception("vector down")))
-        givenKey()
-
-        val service = MessagingServiceImpl(
-            messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, sendVerifier, failing
-        )
-
-        StepVerifier.create(service.send(request())).expectError().verify()
-        Mockito.verify(pubsub, Mockito.never()).sendMessage(any<Message<Long, String>>())
-        Mockito.verify(messagePersistence, Mockito.times(1)).add(any<Message<Long, String>>())
+        Assertions.assertThat(s.pubsub.subscribers.get()).isZero()
     }
 
     @Test

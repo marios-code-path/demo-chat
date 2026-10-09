@@ -8,6 +8,7 @@ import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.security.rsocket.CoreNotFound
 import java.time.ZoneId
+import java.util.UUID
 import java.time.format.DateTimeFormatter
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
@@ -25,47 +26,40 @@ class PubSubCommands<T : Any>(
     private val messageService: ChatMessageService<T, String> = compositeServices.messageService()
     private val userService: ChatUserService<T> = compositeServices.userService()
 
-    /** [topic] is a room name or a room id. See `CHAT-scoizkpm`. */
-    fun send(
-        topic: String,
-        userName: String,
-        messageText: String
-    ) {
-        val identity: T = identity("_")
-
-        if (!topic.equals("_")) {
-            messageService
-                .send(MessageSendRequest(messageText, identity, rooms.idOf(topic)))
-                .doOnNext { key ->
-                    println("Message Id: ${key.id}")
-                }
-                .block()
-
-            return
+    /**
+     * [topic] is a room name or a room id. See `CHAT-scoizkpm`. [requestId] `_`
+     * creates a new ID. Repeat a send with the printed request ID to recover
+     * its receipt. The server binds the sender to the login, so the shell
+     * sends none.
+     */
+    fun send(topic: String, userName: String, messageText: String, requestId: String) {
+        val id = if (requestId == "_") UUID.randomUUID().toString() else requestId
+        val dest: Mono<T> = when {
+            topic != "_" -> Mono.just(rooms.idOf(topic))
+            userName != "_" -> userService.findByUsername(ByStringRequest(userName)).collectList().flatMap { users ->
+                if (users.size != 1) Mono.error(ChatException("Problem Finding a Definite User: $userName"))
+                else Mono.just(users[0].key.id)
+            }
+            else -> throw IllegalArgumentException("send needs --topic or --userName.")
         }
+        dest.flatMap { messageService.submit(MessageSubmitRequest(messageText, it, id)) }
+            .doOnNext { result ->
+                println("Request Id: $id")
+                println("Message Id: ${result.receipt.messageKey.id}")
+                println("Command Id: ${result.receipt.commandId}")
+                println("Outcome: ${result.outcome}")
+            }
+            .block()
+    }
 
-        // TODO this makes me think: re-do the whole app-sided username constraint.   Figure out how to create the
-        // TODO constraint close to the service itself.
-        if (!userName.equals("_")) {
-            userService
-                .findByUsername(ByStringRequest(userName))
-                .collectList()
-                .flatMap { users ->
-                    if (users.size > 1)
-                        return@flatMap Mono.error(ChatException("Problem Finding a Definite User: ${userName}"))
-
-                    messageService
-                        .send(MessageSendRequest(messageText, identity, users.get(0).key.id))
-                }
-                .doOnNext { key ->
-                    println("Message Id: ${key.id}")
-                }
-                .block()
-
-            return
-        }
-
-        throw IllegalArgumentException("send needs --topic or --userName.")
+    /** Prints the state of each backend of a command that the login owns. */
+    fun commandStatus(commandId: String) {
+        messageService.commandStatus(CommandStatusRequest(commandId))
+            .doOnNext { status ->
+                println("Command Id: ${status.commandId}")
+                status.backends.forEach { (backend, state) -> println("$backend: ${state.state}") }
+            }
+            .block()
     }
 
     /**

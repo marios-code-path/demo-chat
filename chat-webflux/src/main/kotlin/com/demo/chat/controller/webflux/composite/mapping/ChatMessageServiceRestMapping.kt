@@ -7,7 +7,12 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.CommandStatusRequest
+import com.demo.chat.domain.MessageSubmitRequest
+import com.demo.chat.domain.command.CommandStatus
+import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.security.ChatUserDetails
+import org.springframework.http.ResponseEntity
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -75,4 +80,25 @@ interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
         @Resolved(ChatDomain.MESSAGE_TOPIC) id: VerifiedKey<T>, @RequestBody message: String,
         @AuthenticationPrincipal details: ChatUserDetails<T>
     ): Mono<out Key<T>> = send(MessageSendRequest(message, details.user.key.id, id.key.id))
+
+    /**
+     * The request ID travels in `Idempotency-Key`, because the body holds the
+     * message text. A retry with the same key recovers the same receipt.
+     * The facade carries its own check. A facade call crosses no proxy.
+     */
+    @PostMapping("/submit/{id}", consumes = [MediaType.TEXT_PLAIN_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PreAuthorize("@chatAccess.hasAccessToId(#id.key.id, 'SEND')")
+    fun restSubmit(
+        @Resolved(ChatDomain.MESSAGE_TOPIC) id: VerifiedKey<T>,
+        @RequestBody message: String,
+        @RequestHeader("Idempotency-Key") requestId: String,
+    ): Mono<ResponseEntity<MessageSendResult<T>>> =
+        submit(MessageSubmitRequest(message, id.key.id, requestId))
+            .map { ResponseEntity.status(SubmitStatus.of(it.outcome)).body(it) }
+
+    /** Every caller may ask. The service answers not found for a command of another owner. */
+    @GetMapping("/command/{commandId}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PreAuthorize("permitAll()")
+    fun restCommandStatus(@PathVariable commandId: String): Mono<out CommandStatus<T>> =
+        commandStatus(CommandStatusRequest(commandId))
 }

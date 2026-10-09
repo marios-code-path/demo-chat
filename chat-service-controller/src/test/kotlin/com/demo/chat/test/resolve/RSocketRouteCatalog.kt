@@ -145,6 +145,9 @@ object RSocketRouteCatalog {
             "key" to registry()),
         // key.key
         entry("KeyController", "key", "ChatDomain"),
+        // key.register. The registry writes the key itself and refuses a root conflict.
+        entry("KeyController", "register", "Key<T>",
+            "key" to registry()),
         // key.rem
         entry("KeyController", "remRoute", "VerifiedKey<T>",
             "key" to resolver("any")),
@@ -173,6 +176,12 @@ object RSocketRouteCatalog {
             "req.dest" to service("MESSAGE_TOPIC"),
             "req.from" to service("USER"),
             "req.msg" to notIdentity("a payload value")),
+        // message.message-submit. The sender is the authenticated user, so the request names none.
+        entry("MessageServiceController", "submit", "MessageSubmitRequest<T,V>",
+            "req.dest" to service("MESSAGE_TOPIC"),
+            "req.msg" to notIdentity("a payload value")),
+        // message.message-command-status. The service answers only a command of the caller.
+        entry("MessageServiceController", "commandStatus", "CommandStatusRequest"),
         // persist.authmetadata.add
         entry("AuthMetaPersistenceController", "addRoute", "AuthMetadata<T>",
             "ent.expires" to notIdentity("an expiry time in milliseconds"),

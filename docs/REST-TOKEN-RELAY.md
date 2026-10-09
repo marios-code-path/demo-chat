@@ -139,8 +139,8 @@ flowchart TD
 Three sources raise an authorization refusal. The first is a bearer token
 without the required scope. The second is `@PreAuthorize` in a composite
 handler. The third is `authorizePayload`, for the core routes:
-`persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, and
-`key.rem`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
+`persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, `key.rem`,
+and `key.register`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
 holds `ROLE_AGENT`, so the core refuses these routes to the agent.
 
 **A miss takes code `0x404`.** `CHAT-scoizkpm` added it on 2026-10-03. The
@@ -162,6 +162,13 @@ composite in the same JVM, so its miss is `NotFoundException` and not
 `CoreNotFound`. `KeyRefusalAdvice.inProcessNotFound` maps it. `CHAT-sdvmkidi`
 added it on 2026-10-04. Before, it answered 500.
 `RestCoreNotFoundMappingTests` pins it.
+
+**The same advice maps the message command errors.** `CHAT-igqnydef` added
+them on 2026-10-08. A request conflict answers 409, and an invalid request ID
+answers 400. A sender that is not the login answers 403. A legacy send whose
+wait ended answers 504, and a failed required backend answers 424. These
+errors do not come from the relay, so they do not change the mappings above.
+`MessageSubmitRestTests` pins the submit statuses.
 
 ## REST client: which metadata a request carries
 

@@ -40,7 +40,7 @@ import java.time.Duration
         "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory", "app.service.core.pubsub=memory",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
-        "app.service.core.secrets=memory", "app.service.composite=true",
+        "app.service.core.secrets=memory", "app.service.composite=true", "app.command.bus=memory",
         "app.service.composite.auth=true",
         "app.service.security.userdetails=true", "app.users.create=true",
         "app.controller.topic=true", "app.controller.user=true", "app.controller.message=true",

@@ -72,7 +72,7 @@ class ShellParsedInputTests {
 
         execute(commandsOf(PubSubCommandsRegistrar(commands)), "send --topic lobby --messageText hello")
 
-        verify(commands).send("lobby", "_", "hello")
+        verify(commands).send("lobby", "_", "hello", "_")
     }
 
     /** **A command that changes state confirms it.** It printed nothing before `CHAT-dxkkzvrf`. */
@@ -202,7 +202,7 @@ class ShellParsedInputTests {
         execute(beans, "hangup lobby")
         execute(beans, "messages lobby")
 
-        verify(commands).send("lobby", "_", "hello there")
+        verify(commands).send("lobby", "_", "hello there", "_")
         verify(commands).listen("lobby")
         verify(commands).hangup("lobby")
         verify(commands).messages("lobby")
@@ -278,7 +278,7 @@ class ShellParsedInputTests {
         assertThatThrownBy { execute(commandsOf(PubSubCommandsRegistrar(commands)), "send --topic lobby") }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessage("send needs messageText. Give it as the first argument or as --messageText.")
-        verify(commands, never()).send(anyString(), anyString(), anyString())
+        verify(commands, never()).send(anyString(), anyString(), anyString(), anyString())
     }
 
     /** **A required option that is not the main option is refused too.** */

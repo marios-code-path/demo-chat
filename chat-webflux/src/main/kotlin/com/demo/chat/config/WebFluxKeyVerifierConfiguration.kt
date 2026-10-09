@@ -9,6 +9,11 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer
 import com.demo.chat.domain.UnsupportedDomainException
+import com.demo.chat.domain.command.CommandIncompleteException
+import com.demo.chat.domain.command.CommandPendingException
+import com.demo.chat.domain.command.InvalidRequestIdException
+import com.demo.chat.domain.command.RequestConflictException
+import com.demo.chat.domain.command.SenderMismatchException
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.rsocket.CoreAuthenticationRefusal
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
@@ -101,4 +106,25 @@ class KeyRefusalAdvice {
     @ExceptionHandler(AccessDeniedException::class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     fun forbidden(error: AccessDeniedException): String = error.message ?: "Access Denied"
+
+    @ExceptionHandler(RequestConflictException::class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    fun requestConflict(error: RequestConflictException): String = error.message ?: "The request conflicts."
+
+    @ExceptionHandler(InvalidRequestIdException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun invalidRequestId(error: InvalidRequestIdException): String = error.message ?: "The request ID is not valid."
+
+    @ExceptionHandler(SenderMismatchException::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun senderMismatch(error: SenderMismatchException): String = error.message ?: "The sender is refused."
+
+    /** The legacy send only. Its wait ended, and the command is still pending. */
+    @ExceptionHandler(CommandPendingException::class)
+    @ResponseStatus(HttpStatus.GATEWAY_TIMEOUT)
+    fun commandPending(error: CommandPendingException): String = error.message ?: "The command is pending."
+
+    @ExceptionHandler(CommandIncompleteException::class)
+    @ResponseStatus(HttpStatus.FAILED_DEPENDENCY)
+    fun commandIncomplete(error: CommandIncompleteException): String = error.message ?: "The command is incomplete."
 }

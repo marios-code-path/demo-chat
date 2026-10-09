@@ -15,6 +15,17 @@ branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
 modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
 that mode, because all of their tests carry the `integration` tag.
 
+The run on branch `chat-chftimgy-command-bus-stage1` at `6e5420bb`, on
+2026-10-08, with an empty temporary `DOCKER_CONFIG`, exits 0 and reports no
+drift. 30 modules ran 2350 tests, with 0 failures, 0 errors and 76 skipped.
+`chat-shell` ran 120 tests with 33 skipped. The image id moved from
+`sha256:1707e457`, the run at `4247c42f`, to `sha256:ad791447`, so this run
+rebuilt the image. The agent HTTP gate reports ok. The default mode at the same
+commit ran 1979 tests in 30 modules, with 0 failures and 41 skipped, and
+reports no drift. No Cassandra test failed in either run. `CHAT-znodyvcc` holds
+the `NoNodeAvailableException` failures of the baseline run. See
+`CHAT-chftimgy`.
+
 The run on branch `chat-ybtirmgj-lucene-files` at `4775e132`, on 2026-10-07,
 with an empty temporary `DOCKER_CONFIG`, exits 0 and reports no drift. 30
 modules ran 2139 tests, with 0 failures, 0 errors and 76 skipped. The image id

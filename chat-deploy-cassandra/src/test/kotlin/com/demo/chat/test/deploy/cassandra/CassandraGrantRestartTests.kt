@@ -58,7 +58,7 @@ class CassandraGrantRestartTests : CassandraContainerBase() {
         "app.service.core.index=cassandra",
         "app.service.core.pubsub=memory",
         "app.service.core.secrets=cassandra",
-        "app.service.composite",
+        "app.service.composite", "app.command.bus=memory",
         "app.service.composite.auth=true",
         "app.controller.secrets",
         "app.controller.key",

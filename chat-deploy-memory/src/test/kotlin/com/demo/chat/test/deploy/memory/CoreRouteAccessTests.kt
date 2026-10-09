@@ -81,7 +81,7 @@ private const val PLAIN_SECRET = "coreroutesplainsecret"
         "app.service.core.key=memory", "app.service.core.pubsub=memory",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
         "app.service.core.secrets=memory",
-        "app.service.composite", "app.service.composite.auth=true",
+        "app.service.composite", "app.command.bus=memory", "app.service.composite.auth=true",
         "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message", "app.controller.topic",
         "app.controller.pubsub", "app.controller.secrets",
@@ -229,6 +229,25 @@ class CoreRouteAccessTests {
         assertThat(keys.keyService().exists(victim).block(timeout))
             .describedAs("the key after the service removal")
             .isFalse()
+    }
+
+    /** **Key registration.** A refused registration writes no registry row. Decision 2 of the spec. */
+    @Test
+    fun `the key boundary refuses a registration and registers nothing`() {
+        val messageRoot = rootKeys.of(ChatDomain.MESSAGE).id
+        val unregistered = Key.of(990_001L, messageRoot)
+
+        refusedCallers().forEach {
+            assertRefused(it.route("key.register").data(unregistered).retrieveMono(Void::class.java))
+        }
+        assertThat(keys.keyService().rootOf(unregistered.id).block(timeout))
+            .describedAs("the registry after two refused registrations")
+            .isNull()
+
+        service().route("key.register").data(unregistered).retrieveMono(Void::class.java).block(timeout)
+        assertThat(keys.keyService().rootOf(unregistered.id).block(timeout))
+            .describedAs("the registry after the service registration")
+            .isEqualTo(messageRoot)
     }
 
     /** **Secrets.** A refused write leaves the stored credential as it was. */

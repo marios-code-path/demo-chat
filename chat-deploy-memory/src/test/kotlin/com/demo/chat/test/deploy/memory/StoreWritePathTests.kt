@@ -15,6 +15,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.VectorIndexJobStore
@@ -22,7 +23,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.test.context.TestPropertySource
+import reactor.core.publisher.Mono
 import java.time.Duration
 import java.time.Instant
 
@@ -41,7 +45,7 @@ import java.time.Instant
         "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory",
         "app.service.core.pubsub=memory", "app.service.core.index=lucene", "app.service.core.persistence=memory",
-        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth=true",
+        "app.service.core.secrets=memory", "app.service.composite", "app.command.bus=memory", "app.service.composite.auth=true",
         "app.service.core.vector=embedded", "app.service.core.embedding=mock",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message", "app.controller.topic", "app.controller.pubsub",
@@ -85,6 +89,16 @@ class StoreWritePathTests {
     private fun newUser(handle: String): Key<Long> =
         composite.userService().addUser(UserCreateRequest("name-$handle", handle, "http://u")).block(timeout)!!
 
+    /** A composite send binds the sender to the authenticated user, so the call carries that user. */
+    private fun <R : Any> asUser(userKey: Key<Long>, handle: String, call: Mono<R>): Mono<R> =
+        call.contextWrite(
+            ReactiveSecurityContextHolder.withAuthentication(
+                UsernamePasswordAuthenticationToken(
+                    ChatUserDetails(User.create(userKey, handle, handle, "http://$handle"), listOf()), "n/a", listOf(),
+                )
+            )
+        )
+
     // The topic name index tokenizes the same way.
     private fun newRoom(name: String): Key<Long> =
         composite.topicService().addRoom(ByStringRequest(name)).block(timeout)!!
@@ -95,7 +109,8 @@ class StoreWritePathTests {
         val user = newUser("e1sender")
         val room = newRoom("e1room")
 
-        val sent = composite.messageService().send(MessageSendRequest("hello", user.id, room.id)).block(timeout)!!
+        val sent = asUser(user, "e1sender", composite.messageService().send(MessageSendRequest("hello", user.id, room.id)))
+            .block(timeout)!!
 
         assertThat(sent.root).isEqualTo(root(ChatDomain.MESSAGE))
         assertThat(stores.messagePersistence().get(sent).block(timeout)!!.key.id).isEqualTo(sent.id)

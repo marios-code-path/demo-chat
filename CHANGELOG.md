@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### 2026-10-08 — Message command bus Stage 1
+
+| Change | Reason |
+|---|---|
+| A send is a captured command on the `memory` bus | Independent backend handlers, caller completion waits |
+| New REST and RSocket submit and status routes | Retry safety through a request ID |
+| `app.command.bus` is required | Provider selection at launch |
+| The legacy RSocket `message-send` rejects another sender | The sender binds to the authenticated user |
+| Submit, legacy send, and status refuse an anonymous caller | Request identity needs an authenticated owner |
+| Startup rejects a provider without safe-repeat evidence, such as `redis-xstream` | Every active handler needs CI evidence |
+| The legacy send routes give no retry safety | Each call creates a new request ID |
+| The embedded vector write locks per document id | Overlapping writes of one document failed with `Duplicate id` |
+
 ### 2026-03-24 — chat-messaging-kafka pom.xml
 
 | Change | Reason |

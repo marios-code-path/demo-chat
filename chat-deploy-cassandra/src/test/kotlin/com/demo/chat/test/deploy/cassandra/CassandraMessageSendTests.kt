@@ -5,13 +5,17 @@ import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
+import com.demo.chat.security.ChatUserDetails
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import java.time.Duration
 
 /**
@@ -50,7 +54,7 @@ class CassandraMessageSendTests : CassandraContainerBase() {
                 "app.service.core.index=cassandra",
                 "app.service.core.pubsub=memory",
                 "app.service.core.secrets=cassandra",
-                "app.service.composite",
+                "app.service.composite", "app.command.bus=memory",
                 "app.service.composite.auth=true",
                 "app.controller.secrets",
                 "app.controller.key",
@@ -80,8 +84,17 @@ class CassandraMessageSendTests : CassandraContainerBase() {
                 .addRoom(ByStringRequest("sendroom$keyType"))
                 .block(timeout)!!
 
+            // A composite send binds the sender to the authenticated user, so
+            // the call carries the sender.
             val sent = composite.messageService()
                 .send(MessageSendRequest("hello $keyType", sender.id, room.id))
+                .contextWrite(
+                    ReactiveSecurityContextHolder.withAuthentication(
+                        UsernamePasswordAuthenticationToken(
+                            ChatUserDetails(User.create(sender, "sender", "sender$keyType", "http://u"), listOf()), "n/a", listOf(),
+                        )
+                    )
+                )
                 .block(timeout)!!
 
             val byId = composite.messageService().messageById(ByIdRequest(sent.id)).block(timeout)!!

@@ -45,7 +45,7 @@ class DeadEmbeddingEndpointTests {
         "--app.service.core.index=lucene",
         "--app.service.core.pubsub=memory",
         "--app.service.core.secrets=memory",
-        "--app.service.composite=true",
+        "--app.service.composite=true", "--app.command.bus=memory",
         "--app.service.composite.auth=true",
         "--app.service.security.userdetails=true",
         "--app.service.core.vector=$vector",

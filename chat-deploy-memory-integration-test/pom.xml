@@ -76,7 +76,7 @@ NodeId.parse fails without a value. 900 is this test deployment value. The
 image receives it at build time. It is not a shared YAML default. The memory
 backend has no claim store, so no lease check applies. -->
 -Dapp.nodeid=900
--Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth=true
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth=true -Dapp.command.bus=memory
 -Dapp.controller.persistence -Dapp.controller.index
 -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
 -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message

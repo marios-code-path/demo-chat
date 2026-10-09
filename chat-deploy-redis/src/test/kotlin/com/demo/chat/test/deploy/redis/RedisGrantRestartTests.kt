@@ -8,9 +8,11 @@ import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.security.AuthorizationService
 import org.junit.jupiter.api.Assertions
@@ -22,6 +24,9 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.ReactiveSecurityContextHolder
+import reactor.core.publisher.Mono
 import java.time.Duration
 
 /**
@@ -62,7 +67,7 @@ class RedisGrantRestartTests {
         "app.service.core.pubsub=redis-pubsub",
         "app.service.core.index=lucene",
         "app.service.core.secrets=memory",
-        "app.service.composite",
+        "app.service.composite", "app.command.bus=memory",
         "app.service.composite.auth=true",
         "app.controller.persistence",
         "app.controller.index",
@@ -159,6 +164,16 @@ class RedisGrantRestartTests {
      * Each read below goes through one reloaded index: the user index, the
      * topic name index, the message index by room, and the membership index.
      */
+    /** A composite send binds the sender to the authenticated user, so the call carries that user. */
+    private fun <R : Any> asUser(userKey: Key<Long>, handle: String, call: Mono<R>): Mono<R> =
+        call.contextWrite(
+            ReactiveSecurityContextHolder.withAuthentication(
+                UsernamePasswordAuthenticationToken(
+                    ChatUserDetails(User.create(userKey, handle, handle, "http://$handle"), listOf()), "n/a", listOf(),
+                )
+            )
+        )
+
     @Test
     fun `the stored identities, rooms, messages and memberships are found after a restart`() {
         val admin: Key<Long>
@@ -171,7 +186,8 @@ class RedisGrantRestartTests {
             member = composite.userService().addUser(UserCreateRequest("reload", "reloaduser", "http://u")).block(timeout)!!
             room = composite.topicService().addRoom(ByStringRequest("reloadroom")).block(timeout)!!
             composite.topicService().joinRoom(MembershipRequest(member.id, room.id)).block(timeout)
-            composite.messageService().send(MessageSendRequest("reloadline", member.id, room.id)).block(timeout)
+            asUser(member, "reloaduser", composite.messageService().send(MessageSendRequest("reloadline", member.id, room.id)))
+                .block(timeout)
         }
 
         start(17).use { second ->

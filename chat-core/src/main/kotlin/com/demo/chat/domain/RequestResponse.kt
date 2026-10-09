@@ -19,6 +19,12 @@ data class MembershipRequest<T>(val uid: T, val roomId: T) : RequestResponse<T>(
 @JsonTypeName("MessageSendRequest")
 data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T) : RequestResponse<T>()
 
+@JsonTypeName("MessageSubmitRequest")
+data class MessageSubmitRequest<T, V>(val msg: V, val dest: T, val requestId: String) : RequestResponse<T>()
+
+@JsonTypeName("CommandStatusRequest")
+data class CommandStatusRequest(val commandId: String) : RequestResponse<Any>()
+
 @JsonTypeName("UserCreateRequest")
 data class UserCreateRequest(val name: String, val handle: String, val imgUri: String) : RequestResponse<Any>()
 

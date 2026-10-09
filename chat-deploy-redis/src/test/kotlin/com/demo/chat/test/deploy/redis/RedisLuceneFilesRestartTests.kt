@@ -44,7 +44,7 @@ class RedisLuceneFilesRestartTests {
             "app.key.type=long", "app.nodeid=$nodeId", "app.users.create=true",
             "app.service.core.key=redis", "app.service.core.persistence=redis",
             "app.service.core.pubsub=redis-pubsub", "app.service.core.index=lucene",
-            "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth=true",
+            "app.service.core.secrets=memory", "app.service.composite", "app.command.bus=memory", "app.service.composite.auth=true",
             "app.controller.persistence", "app.controller.index", "app.controller.key", "app.controller.pubsub",
             "app.controller.secrets", "app.controller.user", "app.controller.topic", "app.controller.message",
             "app.service.security.userdetails",

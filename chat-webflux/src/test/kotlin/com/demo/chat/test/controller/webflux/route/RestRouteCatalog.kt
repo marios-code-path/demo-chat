@@ -188,6 +188,12 @@ object RestRouteCatalog {
             "details.authorities[]" to notIdentity("a granted authority of the principal"),
             "details.user.key" to principal(),
             "id" to resolver("MESSAGE_TOPIC")),
+        // POST /message/submit/{id}. The sender is the authenticated user, so the request names none.
+        entry("ChatMessageServiceController", "restSubmit", "VerifiedKey<T>,String,String",
+            "id" to resolver("MESSAGE_TOPIC")),
+        // GET /message/command/{commandId}
+        entry("ChatMessageServiceController", "restCommandStatus", "String",
+            "commandId" to notIdentity("a command ID, which the service matches to the caller")),
         // POST /persist/kv/key
         entry("KeyValueStoreRestController", "key", ""),
         // POST /persist/membership/key

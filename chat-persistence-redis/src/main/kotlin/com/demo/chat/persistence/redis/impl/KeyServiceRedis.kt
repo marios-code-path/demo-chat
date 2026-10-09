@@ -1,7 +1,9 @@
 package com.demo.chat.persistence.redis.impl
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyRootConflictException
 import com.demo.chat.domain.RootKeyDeletionException
+import com.demo.chat.domain.RootKeyRegistrationException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootIds
@@ -53,4 +55,20 @@ class KeyServiceRedis<T : Any>(
             .opsForHash<String, String>()
             .get(keyRegistryHash, typeUtil.toString(id))
             .map { RootIds.parse(typeUtil, it, "$keyRegistryHash $id") }
+
+    /** `putIfAbsent` sends `HSETNX`, so one write decides. Decision 2 of the spec. */
+    override fun register(key: Key<T>): Mono<Void> {
+        if (rootKeys.domainOfRoot(key.id) != null) return Mono.error(RootKeyRegistrationException(key.id))
+        val field = typeUtil.toString(key.id)
+        val root = typeUtil.toString(key.root)
+        val hash = stringTemplate.opsForHash<String, String>()
+        return hash.putIfAbsent(keyRegistryHash, field, root)
+            .flatMap { written ->
+                if (written) Mono.empty<Void>()
+                else hash.get(keyRegistryHash, field).flatMap { stored ->
+                    if (stored == root) Mono.empty<Void>()
+                    else Mono.error(KeyRootConflictException(key.id, stored, key.root))
+                }
+            }
+    }
 }
