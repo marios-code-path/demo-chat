@@ -21,6 +21,7 @@ import com.demo.chat.service.composite.command.publication.RoomPublications
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.core.KeyAllocator
 import com.demo.chat.service.core.KeyVerifier
+import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.key.FakeKeyServices
 import com.demo.chat.test.service.composite.FakeMessageIndex
@@ -36,6 +37,15 @@ class GatedHandler<T, V>(private val delegate: DomainCommandHandler<T, V>, priva
     DomainCommandHandler<T, V> {
     override val descriptor = delegate.descriptor
     override fun handle(command: AcceptedCommand<T, V>): Mono<Void> = gate.then(Mono.defer { delegate.handle(command) })
+}
+
+/**
+ * A message store whose add waits on [gate]. `P` registers the key before it calls add, so this gate holds `P`
+ * between the key registration and the store write. An open gate is `Mono.empty()`.
+ */
+class GatedStore<T, V>(private val delegate: MessagePersistence<T, V>, private val gate: Mono<Void>) :
+    MessagePersistence<T, V> by delegate {
+    override fun add(ent: Message<T, V>): Mono<Void> = gate.then(Mono.defer { delegate.add(ent) })
 }
 
 /** Counts live subscribers, so a test can prove that a cancel disposes them. */
@@ -66,7 +76,9 @@ internal class MessagingStack(
     val persistenceGate = Sinks.empty<Void>()
     val indexGate = Sinks.empty<Void>()
     val pubsubGate = Sinks.empty<Void>()
+    val storeGate = Sinks.empty<Void>()
     var gatePersistence = false
+    var gateStore = false
     var gateIndex = false
     var gatePubsub = false
 
@@ -75,7 +87,10 @@ internal class MessagingStack(
     val runtime = MemoryCommandRuntime(
         KeyAllocator(LongKeyGenerator(1), roots), TypeUtil.LongUtil,
         listOf<DomainCommandHandler<Long, String>>(
-            GatedHandler(MessagePersistenceHandler(registry, persistence), gate({ gatePersistence }, persistenceGate)),
+            GatedHandler(
+                MessagePersistenceHandler(registry, GatedStore(persistence, gate({ gateStore }, storeGate))),
+                gate({ gatePersistence }, persistenceGate),
+            ),
             GatedHandler(MessageIndexHandler(index), gate({ gateIndex }, indexGate)),
             GatedHandler(MessagePubSubHandler(publications), gate({ gatePubsub }, pubsubGate)),
         ) + extraHandlers,
