@@ -794,6 +794,11 @@ Modify these documentation files:
 - `forward-register.md`
 
 Update `docs/BUILD-HEALTH.md` only with measurements from the final gates.
+Final review added a changed-room conflict assertion to the Task 6 deployment test at `e2c77a7d`.
+Task 7 also places the transport KDoc on `BackendHttp` and gives `BackendResponse` its own description.
+Those comment changes alter no runtime behavior.
+Final review found that Task 4 declared `idempotentHint=true` for sending.
+The approved spec requires `false`, so Task 7 corrects the annotation and its test.
 
 1. Check drift bindings before editing each document.
 2. Document five read tools and optional sending, with exact argument and result examples.

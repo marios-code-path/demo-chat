@@ -34,6 +34,9 @@ object BackendLimits {
     const val MAX_REDIRECTS: Int = 4
 }
 
+/** One HTTP status and the body allowed by the submission contract. */
+data class BackendResponse(val status: Int, val body: String)
+
 /**
  * One backend transport. A test replaces it with a fake.
  *
@@ -45,8 +48,6 @@ object BackendLimits {
  * The design sets the concurrency limit per adapter process. One transport for
  * each client would make that limit belong to one client.
  */
-data class BackendResponse(val status: Int, val body: String)
-
 interface BackendHttp : AutoCloseable {
     /**
      * Read one resource.

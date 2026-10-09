@@ -4908,3 +4908,45 @@ merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-des
   `5d334eed0cfa`. `docker events` reported no OOM kill in the run window.
 - `drift check` reports ok after a reviewed relink of
   `docs/ANONYMOUS-AUTHORIZATION.md`. Its bound seed passage did not change.
+
+## MCP Stage 1 messaging on the implementation branch, 2026-10-09
+
+Issue: `CHAT-teujorxl`. Branch: `chat-teujorxl-mcp-messaging`.
+This section records branch work, not a merge.
+The accepted messaging spec is `docs/superpowers/specs/2026-10-09-mcp-messaging-design.md`.
+The execution plan is `docs/superpowers/plans/2026-10-09-mcp-messaging.md`.
+
+The adapter exposes five read tools by default and adds sending with `enableSend=true`.
+Message tools use the existing submit and status routes.
+Request identity belongs to the authenticated agent across its adapters and rooms.
+Stage 1 retry safety ends when the server process restarts.
+The default `P,I` requirement does not prove vector completion or recipient delivery.
+
+The adapter checks every returned message's room.
+This check is necessary because the shipped message-by-ID route permits reads from any authenticated agent.
+Room setup requires creation or `PUT /topic/join/{id}`, followed by successful history and submission probes.
+The agent has no grants-read route.
+Operator schemas, error metadata, and limits are in `docs/MCP-ADAPTER.md`.
+
+Task 6 is committed at `1b5e73ff`.
+Follow-up `e2c77a7d` also tests a changed room under the same request identity.
+Its six authenticated MCP deployment tests pass without failures, errors, or skips.
+The agent HTTP gate also passes two identity tests and seven relay tests.
+The REST run emitted no Surefire shutdown warning.
+`CHAT-gsddauhn` holds the separate full REST-profile failure.
+The earlier full RSocket-profile shutdown warning has no measured cause.
+
+The default gate ran 2,079 tests in 30 modules, with zero failures, zero errors, and 47 skips.
+The `--ci` gate ran 2,450 tests in 30 modules, with zero failures, zero errors, and 82 skips.
+Both gates exit 0 and report no drift.
+The `--ci` run used an empty temporary `DOCKER_CONFIG`, after the first run failed in `build-image`.
+The six `McpMessagingDeploymentTests` tests skip in the reactor, so the `--ci` skip count rose from 76 to 82.
+Surefire printed its shutdown deadline in `chat-client-rsocket` and `chat-deploy-memory` during the default gate.
+
+Final review found that the send tool declared `idempotentHint=true`, against the spec.
+Task 7 sets it to `false`, because retry safety ends when the server process restarts.
+The full gates measured the tree before that one-value change.
+After it, the 237 `chat-mcp` tests and the 15 agent HTTP gate tests passed.
+
+Kafka durability, replication, search, live subscriptions, and import remain outside this milestone.
+`CHAT-ugsreefu` retains the separate import design boundary.

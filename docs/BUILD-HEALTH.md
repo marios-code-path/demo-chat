@@ -15,6 +15,35 @@ branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
 modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
 that mode, because all of their tests carry the `integration` tag.
 
+The default run for `CHAT-teujorxl` on `chat-teujorxl-mcp-messaging`, on 2026-10-09, exits 0 and reports no drift.
+Its functional source is `e2c77a7d`, with documentation edits and a KDoc placement correction in the working tree.
+Thirty modules ran 2,079 tests, with zero failures, zero errors, and 47 skips.
+Surefire reported its shutdown deadline in `chat-client-rsocket` and `chat-deploy-memory`.
+The warning causes remain unmeasured.
+The dedicated authenticated MCP REST tests emitted no shutdown warning and checked each adapter child's bounded exit.
+
+The `--ci` run for `CHAT-teujorxl` on the same tree, on 2026-10-09, used an empty temporary `DOCKER_CONFIG`.
+It exits 0 and reports no drift.
+Thirty modules ran 2,450 tests, with zero failures, zero errors, and 82 skips.
+The agent HTTP gate passed 15 tests, with zero failures, zero errors, and zero skips.
+The skip count rose from 76 to 82 because the reactor skips all six `McpMessagingDeploymentTests` tests.
+That class runs only under `expose-webflux`, through the agent HTTP gate.
+The first `--ci` run did not override `DOCKER_CONFIG`, and it is not a reading.
+Its tests passed, but `build-image` failed with `'username' must not be null`.
+
+Both full gates measured the tree before one later correction.
+That correction sets the send tool's `idempotentHint` to `false`, as the spec requires.
+It changes one annotation value and its test.
+After it, the 237 `chat-mcp` tests passed, and the agent HTTP gate passed its 15 tests without skips.
+The full gates did not run again.
+
+A separate full `expose-webflux` module run fails under `CHAT-gsddauhn`.
+Existing RSocket contexts lack `AgentResourceServerChain` on that classpath.
+A comparison reproduced the startup failure without `chat-mcp`.
+Both dependency enforcer rules passed with the new test dependency under both transport profiles.
+The accepted baseline does not permit security repairs in the MCP milestone.
+The agent HTTP gate selects the supported REST classes explicitly, including six MCP messaging tests without skips.
+
 The run on branch `chat-chftimgy-command-bus-stage1` at `6e5420bb`, on
 2026-10-08, with an empty temporary `DOCKER_CONFIG`, exits 0 and reports no
 drift. 30 modules ran 2350 tests, with 0 failures, 0 errors and 76 skipped.
