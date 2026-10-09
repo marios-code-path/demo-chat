@@ -12,7 +12,9 @@
 
 **Branch:** `chat-teujorxl-mcp-messaging`, based on `e8d9ed13`.
 
-**Status:** approved after the two review changes below. Implementation can start without another plan review.
+**Status:** approved. Tasks 1 through 5 are committed. Task 6 waits for a baseline decision after its full profile checks.
+
+Evidence: `docs/superpowers/reviews/2026-10-09-mcp-messaging-profile-check.md`.
 
 ## Execution rules
 
