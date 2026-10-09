@@ -122,6 +122,11 @@ class McpMessagingDeploymentTests {
             "topicId" to room, "text" to "changed message", "requestId" to requestId,
         )).single()
         assertThat(errorCode(conflict)).isEqualTo("REQUEST_CONFLICT")
+        val otherRoom = readyRoom()
+        val changedRoom = calls("$room,$otherRoom", "chat_send_message" to args(
+            "topicId" to otherRoom, "text" to "one stored message", "requestId" to requestId,
+        )).single()
+        assertThat(errorCode(changedRoom)).isEqualTo("REQUEST_CONFLICT")
         val history = success(calls(room, "chat_list_messages" to args("topicId" to room)).single())
         val stored = history.getValue("messages").jsonArray.filter { it.jsonObject.text("text") == "one stored message" }
         assertThat(stored).hasSize(1)
