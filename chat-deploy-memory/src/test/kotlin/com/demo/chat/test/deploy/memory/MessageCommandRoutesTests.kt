@@ -5,15 +5,20 @@ import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
+import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.service.composite.command.memory.MemoryCommandRuntime
 import com.demo.chat.service.security.AuthenticationService
+import com.demo.chat.security.rsocket.RSocketNotFound
 import io.rsocket.metadata.WellKnownMimeType
+import io.rsocket.exceptions.CustomRSocketException
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
@@ -33,6 +38,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import org.springframework.util.MimeTypeUtils
 import tools.jackson.databind.json.JsonMapper
 import java.time.Duration
+import java.time.Instant
 
 /** The RSocket submit and status routes, over a running server. The setup of `StandardUserJoinSendTests`. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatApp::class])
@@ -61,6 +67,7 @@ class MessageCommandRoutesTests {
     @Autowired lateinit var composite: CompositeServiceBeans<Long, String>
     @Autowired lateinit var authentication: AuthenticationService<Long>
     @Autowired lateinit var runtime: MemoryCommandRuntime<Long, String>
+    @Autowired lateinit var rootKeys: RootKeys<Long>
 
     @Value("\${local.rsocket.server.port}")
     var port: Int = 0
@@ -139,11 +146,132 @@ class MessageCommandRoutesTests {
         assertThat(runtime.bus.committedMappings()).isEqualTo(before)
     }
 
+    @Test
+    fun `Admin imports turns with their sender and time and a repeat writes nothing`() {
+        val room = composite.topicService().addRoom(ByStringRequest("importroom")).block(timeout)!!
+        val firstSender = standardUser("importfirst", "importfirstsecret")
+        val secondSender = standardUser("importsecond", "importsecondsecret")
+        val admin = connect("Admin", "changeme")
+        val early = Instant.parse("2026-10-08T10:00:00.001234Z")
+        val middle = Instant.parse("2026-10-08T10:00:01.001234Z")
+        val late = Instant.parse("2026-10-08T10:00:02.001234Z")
+
+        admin.route("message.message-import")
+            .data(MessageImportRequest("late", secondSender.id, room.id, late, "claude-late"))
+            .retrieveMono(Map::class.java).block(timeout)
+        admin.route("message.message-import")
+            .data(MessageImportRequest("early", firstSender.id, room.id, early, "claude-early"))
+            .retrieveMono(Map::class.java).block(timeout)
+        admin.route("message.message-import")
+            .data(MessageImportRequest("middle", firstSender.id, room.id, middle, "claude-middle"))
+            .retrieveMono(Map::class.java).block(timeout)
+        val mappingsBeforeHistoryRepeat = runtime.bus.committedMappings()
+        admin.route("message.message-import")
+            .data(MessageImportRequest("late", secondSender.id, room.id, late, "claude-late-rerun"))
+            .retrieveMono(Map::class.java).block(timeout)
+        assertThat(runtime.bus.committedMappings()).isEqualTo(mappingsBeforeHistoryRepeat)
+
+        val messages = admin.route("message.message-list-topic").data(ByIdRequest(room.id))
+            .retrieveFlux(Map::class.java).collectList().block(timeout)!!
+        assertThat(messages).hasSize(3)
+        val first = messages[0]["message"] as Map<*, *>
+        val second = messages[1]["message"] as Map<*, *>
+        val third = messages[2]["message"] as Map<*, *>
+        val firstKey = ((first["key"] as Map<*, *>) ["key"] as Map<*, *>)
+        val secondKey = ((second["key"] as Map<*, *>) ["key"] as Map<*, *>)
+        val thirdKey = ((third["key"] as Map<*, *>) ["key"] as Map<*, *>)
+        assertThat(first["data"]).isEqualTo("early")
+        assertThat(second["data"]).isEqualTo("middle")
+        assertThat(third["data"]).isEqualTo("late")
+        assertThat(firstKey["from"].toString()).isEqualTo(firstSender.id.toString())
+        assertThat(secondKey["from"].toString()).isEqualTo(firstSender.id.toString())
+        assertThat(thirdKey["from"].toString()).isEqualTo(secondSender.id.toString())
+        assertThat(firstKey["timestamp"].toString()).isEqualTo("2026-10-08T10:00:00.001Z")
+    }
+
+    @Test
+    fun `a non Admin import is refused before command admission`() {
+        val room = composite.topicService().addRoom(ByStringRequest("importdeniedroom")).block(timeout)!!
+        val sender = standardUser("importdenied", "importdeniedsecret")
+        val requester = connect("importdenied", "importdeniedsecret")
+        val before = runtime.bus.committedMappings()
+
+        val error = catchThrowable {
+            requester.route("message.message-import")
+                .data(MessageImportRequest("denied", sender.id, room.id, Instant.parse("2026-10-08T10:00:00Z"), "claude-denied"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
+
+        assertThat(error).hasMessageContaining("Access Denied")
+        assertThat(runtime.bus.committedMappings()).isEqualTo(before)
+        val messages = connect("Admin", "changeme").route("message.message-list-topic")
+            .data(ByIdRequest(room.id)).retrieveFlux(Map::class.java).collectList().block(timeout)!!
+        assertThat(messages).isEmpty()
+    }
+
+    @Test
+    fun `an unknown sender room or future time is refused before command admission`() {
+        val room = composite.topicService().addRoom(ByStringRequest("importvalidationroom")).block(timeout)!!
+        val sender = standardUser("importvalidation", "importvalidationsecret")
+        val admin = connect("Admin", "changeme")
+        val before = runtime.bus.committedMappings()
+
+        val unknownSender = catchThrowable {
+            admin.route("message.message-import")
+                .data(MessageImportRequest("unknown sender", Long.MAX_VALUE, room.id, Instant.parse("2026-10-08T10:00:00Z"), "claude-unknown-sender"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
+        val unknownRoom = catchThrowable {
+            admin.route("message.message-import")
+                .data(MessageImportRequest("unknown room", sender.id, Long.MAX_VALUE, Instant.parse("2026-10-08T10:00:00Z"), "claude-unknown-room"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
+        val future = catchThrowable {
+            admin.route("message.message-import")
+                .data(MessageImportRequest("future", sender.id, room.id, Instant.now().plusSeconds(60), "claude-future"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
+
+        assertNotFound(unknownSender)
+        assertNotFound(unknownRoom)
+        assertThat(future).hasMessageContaining("future")
+        assertThat(runtime.bus.committedMappings()).isEqualTo(before)
+    }
+
+    @Test
+    fun `an anonymous caller and the Anon sender are refused before admission`() {
+        val room = composite.topicService().addRoom(ByStringRequest("importanonymousroom")).block(timeout)!!
+        val sender = standardUser("importanonymous", "importanonymoussecret")
+        val before = runtime.bus.committedMappings()
+        val anonymous = connectAnonymously()
+
+        val callerError = catchThrowable {
+            anonymous.route("message.message-import")
+                .data(MessageImportRequest("anonymous caller", sender.id, room.id, Instant.parse("2026-10-08T10:00:00Z"), "claude-anonymous-caller"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
+        assertThat(callerError).hasMessageContaining("Access Denied")
+
+        val admin = connect("Admin", "changeme")
+        val senderError = catchThrowable {
+            admin.route("message.message-import")
+                .data(MessageImportRequest("anonymous sender", rootKeys.anon().id, room.id, Instant.parse("2026-10-08T10:00:01Z"), "claude-anonymous-sender"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
+        assertThat(senderError).hasMessageContaining("Access Denied")
+        assertThat(runtime.bus.committedMappings()).isEqualTo(before)
+    }
+
     private fun standardUser(handle: String, password: String): Key<Long> {
         val key = composite.userService()
             .addUser(UserCreateRequest("name-$handle", handle, "http://u")).block(timeout)!!
         authentication.setAuthentication(key, "{noop}$password").block(timeout)
         return key
+    }
+
+    private fun assertNotFound(error: Throwable?) {
+        assertThat(error).isInstanceOf(CustomRSocketException::class.java)
+        assertThat((error as CustomRSocketException).errorCode()).isEqualTo(RSocketNotFound.CODE)
     }
 
     /** A fresh builder per connection, because the injected builder is one mutable object. */
@@ -159,6 +287,17 @@ class MessageCommandRoutesTests {
             .setupMetadata(
                 UsernamePasswordMetadata(username, password),
                 MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string),
+            )
+            .connectTcp("localhost", port)
+            .block(timeout)!!
+
+    private fun connectAnonymously(): RSocketRequester =
+        RSocketRequester.builder()
+            .rsocketStrategies(
+                strategies.mutate()
+                    .decoders { it.add(0, JacksonJsonDecoder(mapper)) }
+                    .encoders { it.add(0, JacksonJsonEncoder(mapper)) }
+                    .build()
             )
             .connectTcp("localhost", port)
             .block(timeout)!!

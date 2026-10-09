@@ -16,7 +16,8 @@ import com.demo.chat.service.vector.MessageVectorIndexer
 import reactor.core.publisher.Mono
 
 private fun descriptorOf(backend: BackendId) = HandlerDescriptor(
-    backend, setOf(ChatDomain.MESSAGE), setOf(CommandOperation.RECORD_MESSAGE), SafeRepeatContracts.SUPPORTED.getValue(backend),
+    backend, setOf(ChatDomain.MESSAGE), setOf(CommandOperation.RECORD_MESSAGE, CommandOperation.IMPORT_MESSAGE),
+    SafeRepeatContracts.SUPPORTED.getValue(backend),
 )
 
 /** `P`: register the assigned key, then store the message. `P` succeeds only after both. Decision 2. */

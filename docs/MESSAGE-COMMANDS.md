@@ -1,6 +1,6 @@
 # Message commands
 
-A message send is a captured command. Independent backend handlers run it. The caller waits for a declared set of backends.
+A message submission is a captured command. Independent backend handlers run it. The caller waits for a declared set of backends.
 
 Spec: `docs/superpowers/specs/2026-10-07-domain-command-bus-design.md`. This document describes Stage 1.
 
@@ -26,16 +26,27 @@ A duration is an integer and one unit: `ms`, `s`, `m`, `h`, or `d`. Example: `30
 
 `P` is Persistence, `I` is Index, `V` is Vector, and `U` is Pubsub.
 
+Message timestamps use millisecond precision. Normal sends and imports truncate finer precision before admission.
+
 ## Submit
 
 | Transport | Route | Request ID |
 |---|---|---|
 | REST | `POST /message/submit/{roomId}`, body is the text | Header `Idempotency-Key` |
 | RSocket | `message.message-submit` with `MessageSubmitRequest` | Field `requestId` |
+| RSocket | `message.message-import` with `MessageImportRequest` | `import:` plus the source message ID |
 
 A request ID has 1 to 128 visible ASCII characters. Keep it for each intentional send. Reuse it on every retry. A retry with the same text and room recovers the same receipt. A retry with other text under the same ID is a conflict.
 
 The server binds the sender to the authenticated user. A submission carries no sender.
+
+The import route accepts only an Admin caller. It preserves the supplied sender and time.
+
+The route refuses a future time. It truncates the time to milliseconds before it checks history and submits the command.
+
+The route returns an existing message when history has the same sender, time, and text. Otherwise it submits one import command.
+
+The import route does not publish by default. A publish flag enables `U`. The route uses the source message ID in the command request ID.
 
 | Outcome | REST status | Meaning |
 |---|---|---|
@@ -68,6 +79,8 @@ An anonymous caller cannot submit, cannot use the legacy send, and cannot read a
 ## Delivery to listeners
 
 A listener receives the room history, the messages that `U` published before it subscribed, and the live messages. It receives each message ID once per subscription. A message whose `U` failed reaches a listener only through the history, after `I` indexes it.
+
+History is ordered by message time and then by message key. An imported message with publication disabled reaches listeners through history after `I` indexes it.
 
 ## Recovery
 

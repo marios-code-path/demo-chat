@@ -4908,3 +4908,34 @@ merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-des
   `5d334eed0cfa`. `docker events` reported no OOM kill in the run window.
 - `drift check` reports ok after a reviewed relink of
   `docs/ANONYMOUS-AUTHORIZATION.md`. Its bound seed passage did not change.
+
+## The message import route (2026-10-09)
+
+`CHAT-ugsreefu`. The implementation is in the worktree branch
+`chat-ugsreefu-message-import`. It is not committed.
+
+### Contract
+
+- The composite RSocket route is `message.message-import`. It accepts only an
+  Admin caller.
+- The route preserves the supplied registered user and the supplied time.
+  `Anon` is not a valid imported sender.
+- The route uses `import:<source-message-id>` as the command request ID.
+  History matching also prevents a repeat with a new request ID.
+- The history match uses sender, millisecond time, and text. This remains a
+  read-before-write check and does not prevent concurrent duplicate imports.
+- Publication is disabled by default. The `publish` flag enables the `U`
+  obligation. The caller does not report success for `PENDING` or `INCOMPLETE`.
+- History is ordered by time and then by the required type-aware key
+  comparison. Normal message times also truncate to milliseconds.
+
+### Evidence and limits
+
+- Memory route tests cover ordered import, restart-style history repeat,
+  Admin access, anonymous access, `Anon` sender refusal, unknown keys, and
+  future time.
+- Cassandra ordering coverage is added to `CassandraMessageSendTests` for
+  long and UUID deployments.
+- The Cassandra test was not run in the local review. Container availability
+  and the measured result remain pending.
+- `docs/MESSAGE-COMMANDS.md` and this register describe the new route.

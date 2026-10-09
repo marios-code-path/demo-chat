@@ -54,12 +54,14 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
         messagePersistence = persistenceBeans.messagePersistence(),
         publications = publications,
         topicIdToQuery = queryConverters::topicIdToQuery,
+        typeUtil = typeUtil,
         verifier = verifier,
         commandBus = commandRuntime.bus,
         completions = commandRuntime.completions,
         submitter = submitters.ifAvailable,
         requirement = commandSettings.requirement,
         timeout = commandSettings.timeout,
+        rootKeys = rootKeys,
     )
 
     @Bean

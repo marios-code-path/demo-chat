@@ -4,9 +4,12 @@ import com.demo.chat.ChatApp
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.ChatUserDetails
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Tag
@@ -15,6 +18,7 @@ import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import java.time.Duration
 
@@ -29,7 +33,7 @@ import java.time.Duration
  * it. The message is read back by its id from the store, and by its room
  * through the index.
  *
- * Node ids 25 and 26 belong to this class. See docs/NODEID-CLAIM.md.
+ * Node ids 25 through 28 belong to this class. See docs/NODEID-CLAIM.md.
  */
 @Tag("integration")
 class CassandraMessageSendTests : CassandraContainerBase() {
@@ -118,4 +122,59 @@ class CassandraMessageSendTests : CassandraContainerBase() {
     @Test
     fun `a message sent on a uuid cassandra deployment reads back by id and by room`() =
         sendAndRead("uuid", 26)
+
+    private fun importAndReadOutOfOrder(keyType: String, nodeId: Int) {
+        start(keyType, nodeId).use { context ->
+            @Suppress("UNCHECKED_CAST")
+            val composite = context.getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Any, String>
+            @Suppress("UNCHECKED_CAST")
+            val rootKeys = context.getBean(RootKeys::class.java) as RootKeys<Any>
+            val firstSender = composite.userService()
+                .addUser(UserCreateRequest("first $keyType", "first$keyType", "http://u"))
+                .block(timeout)!!
+            val secondSender = composite.userService()
+                .addUser(UserCreateRequest("second $keyType", "second$keyType", "http://u"))
+                .block(timeout)!!
+            val room = composite.topicService()
+                .addRoom(ByStringRequest("importroom$keyType"))
+                .block(timeout)!!
+            val admin = UsernamePasswordAuthenticationToken(
+                ChatUserDetails(
+                    User.create(rootKeys.admin(), "Admin", "Admin", "http://u"),
+                    listOf("ROLE_ADMIN"),
+                ),
+                "n/a",
+                listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
+            )
+            val adminContext = ReactiveSecurityContextHolder.withAuthentication(admin)
+            val early = java.time.Instant.parse("2026-10-08T10:00:00.001Z")
+            val middle = java.time.Instant.parse("2026-10-08T10:00:01.001Z")
+            val late = java.time.Instant.parse("2026-10-08T10:00:02.001Z")
+
+            fun import(sender: Key<Any>, text: String, time: java.time.Instant) =
+                composite.messageService()
+                    .importMessage(MessageImportRequest(text, sender.id, room.id, time, "cassandra-$keyType-$text"))
+                    .contextWrite(adminContext)
+                    .block(timeout)!!
+
+            import(secondSender, "late", late)
+            import(firstSender, "early", early)
+            import(firstSender, "middle", middle)
+
+            val messages = composite.messageService().listMessages(ByIdRequest(room.id))
+                .contextWrite(adminContext)
+                .collectList()
+                .block(timeout)!!
+            assertThat(messages.map { it.data }).containsExactly("early", "middle", "late")
+            assertThat(messages.map { it.key.from }).containsExactly(firstSender.id, firstSender.id, secondSender.id)
+        }
+    }
+
+    @Test
+    fun `three imported messages are ordered on a long cassandra deployment`() =
+        importAndReadOutOfOrder("long", 27)
+
+    @Test
+    fun `three imported messages are ordered on a uuid cassandra deployment`() =
+        importAndReadOutOfOrder("uuid", 28)
 }

@@ -150,7 +150,7 @@ failure.
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
 | `chat-deploy-cassandra` `CassandraAuthorizationMatrixTests` | 24 |
-| `chat-deploy-cassandra` `CassandraMessageSendTests` | 25 and 26 |
+| `chat-deploy-cassandra` `CassandraMessageSendTests` | 25 to 28 |
 | `chat-deploy-cassandra` `CassandraKeyAndPersistenceSafeRepeatTests` | 43 |
 | `chat-deploy-cassandra` `CassandraIndexSafeRepeatTests` | 44 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |

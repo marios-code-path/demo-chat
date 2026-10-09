@@ -7,6 +7,7 @@ import com.demo.chat.service.command.RequestIds
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import java.time.Instant
 
 /** The golden values were computed with an independent Perl encoder on 2026-10-07. */
 class CommandFingerprintTests {
@@ -43,6 +44,23 @@ class CommandFingerprintTests {
         assertThat(CommandFingerprint.of(op, "11", "100", "hello")).isNotEqualTo(base)
         assertThat(CommandFingerprint.of(op, "10", "101", "hello")).isNotEqualTo(base)
         assertThat(CommandFingerprint.of(op, "10", "100", "hello!")).isNotEqualTo(base)
+    }
+
+    @Test
+    fun `an import fingerprint includes time and publication`() {
+        val base = CommandFingerprint.of(
+            CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", Instant.parse("2026-10-08T10:00:00.001Z"), false,
+        )
+        assertThat(
+            CommandFingerprint.of(
+                CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", Instant.parse("2026-10-08T10:00:00.002Z"), false,
+            )
+        ).isNotEqualTo(base)
+        assertThat(
+            CommandFingerprint.of(
+                CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", Instant.parse("2026-10-08T10:00:00.001Z"), true,
+            )
+        ).isNotEqualTo(base)
     }
 
     @Test

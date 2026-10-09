@@ -27,7 +27,7 @@ data class CompletionRequirement(val backends: Set<BackendId>) {
     }
 }
 
-enum class CommandOperation { RECORD_MESSAGE }
+enum class CommandOperation { RECORD_MESSAGE, IMPORT_MESSAGE }
 
 /** `UNCERTAIN` stays pending for the caller. It contributes no success and is not a terminal failure. */
 enum class BackendState { PENDING, SUCCEEDED, FAILED, UNCERTAIN }
@@ -61,13 +61,16 @@ data class MessageSendResult<T>(
 /** One admission identity. The owner comes from the trusted service boundary. */
 data class RequestIdentity<T>(val owner: T, val requestId: String)
 
-/** The input of admission. Stage 1 has one operation, `RECORD_MESSAGE`. */
+/** The input of admission. Normal sends use `RECORD_MESSAGE`. Imports use `IMPORT_MESSAGE`. */
 data class CommandSubmission<T, V>(
     val owner: T,
     val requestId: String,
     val sender: T,
     val dest: T,
     val content: V,
+    val operation: CommandOperation = CommandOperation.RECORD_MESSAGE,
+    val timestamp: Instant? = null,
+    val publish: Boolean? = null,
 )
 
 /** One accepted command. Every attempt and every recovery uses these values. */
