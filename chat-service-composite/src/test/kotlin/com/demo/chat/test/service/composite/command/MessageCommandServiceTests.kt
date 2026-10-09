@@ -10,6 +10,7 @@ import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.command.BackendId
+import com.demo.chat.domain.command.BackendState
 import com.demo.chat.domain.command.CallerOutcome
 import com.demo.chat.domain.command.CommandPendingException
 import com.demo.chat.domain.command.CompletionRequirement
@@ -196,13 +197,29 @@ class MessageCommandServiceTests {
         CommandFixtures.waitUntil { s.pubsub.subscribers.get() == 0 }
     }
 
+    /**
+     * The runtime receives the failing `V` handler, so every command carries a
+     * `V` obligation. `ChatException` is no `NoEffectRefusal` and no transient
+     * type, so the policy classifies it as uncertain.
+     */
     @Test
     fun `a vector failure does not stop U or the P and I requirement`() {
-        val s = stack()
         val vector = ScriptedHandler(BackendId.VECTOR) { _, _ -> Mono.error(ChatException("vector down")) }
-        assertThat(vector.descriptor.backend.letter).isEqualTo("V")
+        val s = MessagingStack(CompletionRequirement.parse("P,I"), extraHandlers = listOf(vector)).also { stacks += it }
+
         val result = submit(s, "r-vector").block()!!
+        val commandId = result.receipt.commandId
         assertThat(result.outcome).isEqualTo(CallerOutcome.COMPLETED)
-        CommandFixtures.waitUntil { s.publications.publicationCount(ROOM) == 1 }
+
+        fun stateOf(backend: BackendId) =
+            s.service.commandStatus(CommandStatusRequest(commandId)).block()!!.backends.getValue(backend).state
+        CommandFixtures.waitUntil { stateOf(BackendId.VECTOR) == BackendState.UNCERTAIN }
+        assertThat(vector.attemptsOf(commandId)).isGreaterThanOrEqualTo(1)
+        assertThat(stateOf(BackendId.PERSISTENCE)).isEqualTo(BackendState.SUCCEEDED)
+        assertThat(stateOf(BackendId.INDEX)).isEqualTo(BackendState.SUCCEEDED)
+
+        CommandFixtures.waitUntil { stateOf(BackendId.PUBSUB) == BackendState.SUCCEEDED }
+        assertThat(s.publications.publicationCount(ROOM)).isEqualTo(1)
+        assertThat(stateOf(BackendId.VECTOR)).isEqualTo(BackendState.UNCERTAIN)
     }
 }

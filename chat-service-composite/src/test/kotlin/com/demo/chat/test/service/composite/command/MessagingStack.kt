@@ -52,6 +52,8 @@ internal class MessagingStack(
     timeout: Duration = Duration.ofSeconds(5),
     submitterKey: Key<Long>? = null,
     useSubmitter: Boolean = true,
+    /** Handlers beside P, I, and U, such as a `V` handler. Each adds its obligation to every command. */
+    extraHandlers: List<DomainCommandHandler<Long, String>> = emptyList(),
 ) : AutoCloseable {
     val roots = CommandFixtures.ROOTS
     val registry = FakeKeyServices.long(roots)
@@ -76,7 +78,7 @@ internal class MessagingStack(
             GatedHandler(MessagePersistenceHandler(registry, persistence), gate({ gatePersistence }, persistenceGate)),
             GatedHandler(MessageIndexHandler(index), gate({ gateIndex }, indexGate)),
             GatedHandler(MessagePubSubHandler(publications), gate({ gatePubsub }, pubsubGate)),
-        ),
+        ) + extraHandlers,
         CommandBusSettings(requirement, timeout, Duration.ofMillis(100)),
     )
 
