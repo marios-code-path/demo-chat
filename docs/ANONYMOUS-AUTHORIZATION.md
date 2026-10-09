@@ -168,11 +168,14 @@ same limit.
 
 **The server writes one `*` row for a new room, for the caller that created it.**
 `ContextRoomOwnerGrant` is the only writer, and `CHAT-zhjltbky` decided that.
+Since `CHAT-qojwcatx`, it applies the `roomowner` policy through
+`PolicyGrantWriter`. See
+`docs/superpowers/specs/2026-10-02-action-grant-policy-model-design.md`.
 
 **An anonymous caller owns no room.** The RSocket server seam calls `anonymous`,
 so a caller with no credential reaches the `Anon` root key rather than no
-identity. `ContextIdentity` rule 4 is what answers it. The writer drops that
-key, so the room is created with no owner row.
+identity. `ContextIdentity` rule 4 is what answers it. The `roomowner` policy
+gives that key no grant, so the room is created with no owner row.
 
 **A row for the `Anon` key would reach every caller.** The actor set of every
 query holds the `Anon` key, so every caller would be an owner of the room. A
@@ -189,7 +192,8 @@ room.
 **A join grants the member `SEND` and `SUBSCRIBE` on the room, and a leave
 expires both.** The owner decided `SEND` on 2026-10-02, under `CHAT-mfveaecc`,
 and `SUBSCRIBE` on the same day, under `CHAT-lfaajjcj`. `MembershipGrant` is the
-only writer.
+only writer. Since `CHAT-qojwcatx`, it applies the `roomjoin` and `roomleave`
+policies through `PolicyGrantWriter`.
 
 - A join writes one row `{member, room, SEND}` and one row
   `{member, room, SUBSCRIBE}`, each with the expiry 0, which never expires.

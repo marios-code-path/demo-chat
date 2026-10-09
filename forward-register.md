@@ -4860,3 +4860,51 @@ merged.** Spec: `docs/superpowers/specs/2026-10-02-action-grant-policy-model-des
 - `build-health.sh` default mode: exit 0, 30 modules, 1839 tests, 0 failures,
   0 errors, 41 skipped, and no drift. `drift check` reports ok, and
   `git diff --check` exits 0.
+
+## The action grant policy execution (2026-10-08)
+
+`CHAT-qojwcatx`. Branch `chat-qojwcatx-policy-execution`, stacked on PR #199.
+**This work is not merged.** Plan:
+`docs/superpowers/plans/2026-10-08-action-grant-policy-execution.md`.
+
+### What changed
+
+- `PolicyGrantWriter` in `chat-security` maps policy intents to `AuthMetadata`
+  rows. It holds the storage rules that `MembershipGrant` held before.
+- `ContextRoomOwnerGrant` applies `roomowner`. `MembershipGrant` applies
+  `roomjoin` and `roomleave`. Both constructors keep their parameters.
+- `GrantPolicyConfiguration` registers one writer, and it enables
+  `ShippedGrantPolicies.ALL` alone. **A policy that is not in that list has no
+  effect.**
+- `TopicServiceImpl` did not change. It calls the two ports, as before.
+
+### Rules that are easy to lose
+
+- **The member of a join is the active principal, not the caller.** A caller
+  that holds `JOIN` on another member can join that member.
+- **Each new row mints its own `AUTH_METADATA` key.** A target key never
+  becomes a grant row key.
+- **A new `*` row still meets the owner guard.** The writer calls
+  `AuthorizationService.authorize`.
+- **One unreachable edge case changed.** An expired owner row of the same
+  caller is now set to never expire in place. Before, that case wrote a second
+  row. A new room key has no stored row, so `addRoom` never meets it.
+- **No authorization topic exists.** The writer does not need one.
+
+### Measured
+
+- `PolicyGrantWriterTests` 11 of 11.
+- The five named tests pass with no change to their assertions:
+  `AnonymousAuthorizationMatrixTests` 40, `RoomOwnerGrantTests` 8,
+  `MembershipGrantTests` 9, `TopicServiceMemberGrantTests` 6, and
+  `StandardUserJoinSendTests` 3. The three grant wiring boot tests pass too.
+- Three mutations of `PolicyGrantWriter`, each run alone. Removing the
+  enablement check failed the two enablement tests. Using the target key as the
+  row key failed the key root test and eight row tests. Writing `0` on a leave
+  failed four leave tests.
+- `build-health.sh --ci`: exit 0, 30 modules, 2193 tests, 0 failures,
+  0 errors, 76 skipped, no drift, and `agent http gate: ok`. The run used an
+  empty `DOCKER_CONFIG`. The image id moved from `36ac0b967c84` to
+  `5d334eed0cfa`. `docker events` reported no OOM kill in the run window.
+- `drift check` reports ok after a reviewed relink of
+  `docs/ANONYMOUS-AUTHORIZATION.md`. Its bound seed passage did not change.
