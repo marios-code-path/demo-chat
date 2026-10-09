@@ -60,7 +60,8 @@ class McpAdapterServerTests {
         assertEquals(setOf("topicId", "text", "requestId"), send.inputSchema.properties!!.keys)
         assertEquals(setOf("topicId", "text", "requestId"), send.inputSchema.required!!.toSet())
         assertFalse(send.annotations!!.readOnlyHint == true)
-        assertTrue(send.annotations!!.idempotentHint == true)
+        // The request mapping ends with the server process, so a repeat is not unconditionally safe.
+        assertEquals(false, send.annotations!!.idempotentHint)
         assertFalse(send.annotations!!.destructiveHint == true)
     }
 

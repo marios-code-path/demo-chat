@@ -19,8 +19,9 @@ fun registerMessagingTools(server: Server, service: MessagingToolService, enable
             description = description,
             inputSchema = messagingInput(arguments),
             outputSchema = messagingOutput(name),
+            // A send repeat is safe only with the same request ID in one server process, so its hint is false.
             annotations = ToolAnnotations(
-                readOnlyHint = !send, destructiveHint = false, idempotentHint = true, openWorldHint = true,
+                readOnlyHint = !send, destructiveHint = false, idempotentHint = !send, openWorldHint = true,
             ),
         )) { request -> messagingAnswer(name, request, arguments.toSet(), send, body) }
     }
