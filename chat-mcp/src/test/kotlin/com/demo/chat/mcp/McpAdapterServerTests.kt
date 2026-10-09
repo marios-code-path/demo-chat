@@ -45,10 +45,23 @@ class McpAdapterServerTests {
         assertNotNull(server)
     }
 
-    /** Task 4 owns the first two tools. No other tool belongs here. */
+    /** Sending remains optional. All five read tools stay available. */
     @Test
-    fun `the server registers the two topic tools`() {
-        assertEquals(setOf(LIST_TOPICS_TOOL_NAME, GET_TOPIC_TOOL_NAME), server().tools.keys)
+    fun `the server registers five read tools`() {
+        assertEquals(setOf(LIST_TOPICS_TOOL_NAME, GET_TOPIC_TOOL_NAME,
+            "chat_list_messages", "chat_get_message", "chat_get_command_status"), server().tools.keys)
+    }
+
+    @Test
+    fun `sending adds one tool and search adds none`() {
+        val configured = createMcpServer(config().copy(enableSend = true, enableSearch = true), http)
+        assertEquals(6, configured.tools.size)
+        val send = configured.tools.getValue("chat_send_message").tool
+        assertEquals(setOf("topicId", "text", "requestId"), send.inputSchema.properties!!.keys)
+        assertEquals(setOf("topicId", "text", "requestId"), send.inputSchema.required!!.toSet())
+        assertFalse(send.annotations!!.readOnlyHint == true)
+        assertTrue(send.annotations!!.idempotentHint == true)
+        assertFalse(send.annotations!!.destructiveHint == true)
     }
 
     @Test

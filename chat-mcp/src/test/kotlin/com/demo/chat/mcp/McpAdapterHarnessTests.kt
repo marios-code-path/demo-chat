@@ -191,9 +191,10 @@ class McpAdapterHarnessTests {
             // Rule 9. The adapter ran on the JVM build. This is not native.
             println("chat-mcp harness: the adapter ran on the JVM build. This is not the native acceptance test.")
 
-            // Rule 4. Discovery lists exactly the two tools.
+            // Discovery includes all five read tools.
             val tools = transcript.array("tools").map { it.jsonObject.string("name") }
-            assertEquals(listOf("chat_list_topics", "chat_get_topic"), tools)
+            assertEquals(listOf("chat_list_topics", "chat_get_topic", "chat_list_messages",
+                "chat_get_message", "chat_get_command_status"), tools)
 
             // Rule 5. Each call is compared against the backend that served it.
             val calls = transcript.array("calls").map { it.jsonObject }

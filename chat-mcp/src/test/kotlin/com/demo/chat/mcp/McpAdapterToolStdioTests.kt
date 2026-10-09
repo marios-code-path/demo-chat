@@ -87,7 +87,8 @@ class McpAdapterToolStdioTests {
                 val tools = client.listTools(2)["tools"]!!.jsonArray
                 val names = tools.map { it.jsonObject["name"]!!.jsonPrimitiveText() }
 
-                assertEquals(listOf("chat_list_topics", "chat_get_topic"), names)
+                assertEquals(listOf("chat_list_topics", "chat_get_topic", "chat_list_messages",
+                    "chat_get_message", "chat_get_command_status"), names)
             }
         }
     }

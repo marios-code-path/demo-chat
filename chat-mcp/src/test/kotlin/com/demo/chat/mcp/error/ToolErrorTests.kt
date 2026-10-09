@@ -14,6 +14,21 @@ import org.junit.jupiter.api.Test
  * The code set is closed. A client reads the code and not a sentence.
  */
 class ToolErrorTests {
+    @Test
+    fun `messaging errors use the approved fixed sentences`() {
+        val expected = mapOf(
+            ToolErrorCode.INVALID_INPUT to "the tool input is not valid",
+            ToolErrorCode.REQUEST_CONFLICT to "the request ID conflicts with an earlier submission",
+            ToolErrorCode.COMMAND_INCOMPLETE to "a required backend refused the command",
+            ToolErrorCode.OUTCOME_UNKNOWN to "the submission outcome is unknown. " +
+                "Repeat only with the same request ID while the server process remains unchanged.",
+        )
+        expected.forEach { (code, message) ->
+            assertEquals(message, ToolError.fixed(code).message)
+            assertFalse(ToolError.fixed(code).retryable)
+        }
+    }
+
     /** One reason, one code. The table is complete over [FailureReason]. */
     @Test
     fun `every failure class maps to its code`() {

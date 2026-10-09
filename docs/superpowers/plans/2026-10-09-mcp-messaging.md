@@ -385,9 +385,11 @@ Modify these files:
 
 - `chat-mcp/src/main/kotlin/com/demo/chat/mcp/McpAdapterServer.kt`
 - `chat-mcp/src/main/kotlin/com/demo/chat/mcp/error/ToolError.kt`
+- `chat-mcp/src/main/kotlin/com/demo/chat/mcp/tool/TopicToolRegistration.kt`
 - `chat-mcp/src/test/kotlin/com/demo/chat/mcp/error/ToolErrorTests.kt`
 - `chat-mcp/src/test/kotlin/com/demo/chat/mcp/McpAdapterToolStdioTests.kt`
 - `chat-mcp/src/test/kotlin/com/demo/chat/mcp/McpAdapterServerTests.kt`
+- `chat-mcp/src/test/kotlin/com/demo/chat/mcp/McpAdapterHarnessTests.kt`
 
 1. Add exact-shape tests for each result and failure before implementing registration.
 2. Verify those tests fail for the missing messaging tools.
@@ -405,6 +407,8 @@ Use `INVALID_INPUT` for these new-tool refusals.
 Preserve `NOT_AVAILABLE` and existing sentences for invalid input to the two original topic tools.
 Keep output contracts for the two topic tools unchanged.
 Their discovery tests must now permit three additional read tools.
+Update the pinned harness's discovery assertion in this task so the complete adapter test set remains valid.
+Share the existing diagnostic function and call counter through internal visibility without changing legacy behavior.
 Expect five tools with sending disabled and six with sending enabled.
 
 Register send only when `enableSend=true`.
@@ -484,7 +488,7 @@ Each messaging call writes one diagnostic line with the existing prefix and fiel
 4. Run the answer, error, server, and stdio contract tests.
 5. Add an extra metadata field temporarily and verify an exact-shape test fails.
 6. Restore the metadata and run all adapter tests.
-7. Commit the eight named files with the child issue ID.
+7. Commit the ten named files and this plan correction with the child issue ID.
 
 ## Task 5: pinned-client protocol evidence
 

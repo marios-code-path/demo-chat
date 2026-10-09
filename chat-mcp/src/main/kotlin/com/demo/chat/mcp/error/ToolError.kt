@@ -12,10 +12,7 @@ import kotlinx.serialization.json.put
  * A client reads this value and not a sentence. The set is closed, so a new
  * failure class needs a new code and a decision.
  *
- * `FEATURE_UNAVAILABLE` and `OUTCOME_UNKNOWN` have no producer in this phase.
- * Recall and send are later phases, and each code waits for its tool. A code
- * with no producer is declared here so the vocabulary is complete, and no path
- * invents one.
+ * `FEATURE_UNAVAILABLE` has no producer. Search remains outside this phase.
  */
 enum class ToolErrorCode {
     /** The backend refused the credential, or the credential file is unusable. */
@@ -33,8 +30,17 @@ enum class ToolErrorCode {
     /** A response or the configured work limit was exceeded. */
     LIMIT_EXCEEDED,
 
-    /** A send may have executed, and no reliable result arrived. No tool emits this yet. */
+    /** A send may have executed, and no reliable result arrived. */
     OUTCOME_UNKNOWN,
+
+    /** The new tool received invalid arguments. */
+    INVALID_INPUT,
+
+    /** An earlier submission used this request ID with different content. */
+    REQUEST_CONFLICT,
+
+    /** A required backend refused the command. */
+    COMMAND_INCOMPLETE,
 }
 
 /**
@@ -43,8 +49,8 @@ enum class ToolErrorCode {
  * The message is a sentence this adapter built. It carries no backend exception
  * text, no topic name, no argument value and no payload.
  *
- * A failed send also carries `outcome`. No send tool exists in this phase, so
- * this type carries no such field. The field arrives with that tool.
+ * An unknown submission adds its validated `requestId` through the messaging answer function.
+ * Other errors retain exactly these three metadata fields.
  */
 data class ToolError(
     val code: ToolErrorCode,
@@ -94,8 +100,7 @@ data class ToolError(
          * answer.
          *
          * **A failed send must always answer false.** This adapter holds no
-         * durable deduplication contract, so a repeat may send twice. No send
-         * tool exists yet. That rule binds the tool that adds one.
+         * durable deduplication contract. The messaging answer function forces false for each send error.
          *
          * **This function reads the reason of the failure and nothing else.**
          * The message of a `ClientException` can hold a URL, a header, a stored
@@ -131,8 +136,15 @@ data class ToolError(
                 ToolErrorCode.FEATURE_UNAVAILABLE -> "the backend does not offer a feature this call requires"
                 ToolErrorCode.BACKEND_UNAVAILABLE -> "the backend did not answer the call"
                 ToolErrorCode.LIMIT_EXCEEDED -> "the call passed a limit of this adapter"
-                ToolErrorCode.OUTCOME_UNKNOWN -> "the adapter cannot tell whether the call completed"
+                ToolErrorCode.OUTCOME_UNKNOWN -> "the submission outcome is unknown. " +
+                    "Repeat only with the same request ID while the server process remains unchanged."
+                ToolErrorCode.INVALID_INPUT -> "the tool input is not valid"
+                ToolErrorCode.REQUEST_CONFLICT -> "the request ID conflicts with an earlier submission"
+                ToolErrorCode.COMMAND_INCOMPLETE -> "a required backend refused the command"
             }
+
+        /** Construct an error from its fixed sentence. */
+        fun fixed(code: ToolErrorCode): ToolError = ToolError(code, messageOf(code), false)
 
         /**
          * The code of a failure that the adapter raised without a backend answer.
