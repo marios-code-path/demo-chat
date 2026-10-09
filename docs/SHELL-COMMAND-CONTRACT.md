@@ -59,10 +59,18 @@ See `Positional input` below.
 
 | Command | Method | Help | Options | By position |
 |---|---|---|---|---|
-| `send` | `send` | Send a Message | `--topic` `String` default `_`<br>`--userName` `String` default `_`<br>`--messageText` `String` required | `--messageText` |
+| `send` | `send` | Send a Message | `--topic` `String` default `_`<br>`--userName` `String` default `_`<br>`--messageText` `String` required<br>`--requestId` `String` default `_` | `--messageText` |
+| `command-status` | `commandStatus` | Show the status of a message command | `--commandId` `String` required | none |
 | `listen` | `listen` | Listen to a topic | `--topic` `String` required | `--topic` |
 | `hangup` | `hangup` | Stop listening to a topic | `--topic` `String` required | `--topic` |
 | `messages` | `messages` | List the messages of a topic | `--topic` `String` required<br>`--limit` `Integer` optional | `--topic` |
+
+`send` submits a message command. It prints the request ID, the message ID,
+the command ID, and the outcome. A `--requestId` of `_` makes a new ID. A
+repeat of `send` with the printed request ID and the same text recovers the
+same receipt and admits nothing new. The server binds the sender to the login,
+so `send` sends no sender. `command-status` prints the state of each backend of
+a command that the login owns. A command of another owner answers not found.
 
 ### TopicCommands
 

@@ -170,7 +170,7 @@ class ShellCommandDispatchTests {
                 .map { it.invoke(registrar) as Command }
         }
 
-        assertThat(beans).hasSize(27)
+        assertThat(beans).hasSize(28)
         beans.forEach { command -> run(command) }
     }
 }

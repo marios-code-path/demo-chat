@@ -55,7 +55,7 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
         topicCommands.addTopic("_", "pubsubA")
 
         assertDoesNotThrow {
-            pubSubCommands.send(topic = "pubsubA", userName = "_", messageText = "hello by name")
+            pubSubCommands.send(topic = "pubsubA", userName = "_", messageText = "hello by name", requestId = "_")
         }
     }
 
@@ -69,7 +69,7 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
         val topicId = raw!!.substringBefore(" | ")
 
         assertDoesNotThrow {
-            pubSubCommands.send(topic = topicId, userName = "_", messageText = "hello by id")
+            pubSubCommands.send(topic = topicId, userName = "_", messageText = "hello by id", requestId = "_")
         }
     }
 
@@ -95,7 +95,7 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
         // CHAT-scoizkpm.
         val topic = "no-such-room-${System.nanoTime()}"
         val error = assertThrows(UnknownRoomException::class.java) {
-            pubSubCommands.send(topic = topic, userName = "_", messageText = "hello nowhere")
+            pubSubCommands.send(topic = topic, userName = "_", messageText = "hello nowhere", requestId = "_")
         }
         Assertions.assertThat(error.message).isEqualTo("No room has the name or the id $topic.")
     }
@@ -154,11 +154,11 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
         val password = java.util.UUID.randomUUID().toString()
         userCommands.passwd(userId, password)
         topicCommands.join(userId, room)
-        pubSubCommands.send(topic = room, userName = "_", messageText = "first stored")
+        pubSubCommands.send(topic = room, userName = "_", messageText = "first stored", requestId = "_")
         loginCommands.login(handle, password)
-        pubSubCommands.send(topic = room, userName = "_", messageText = "second stored")
+        pubSubCommands.send(topic = room, userName = "_", messageText = "second stored", requestId = "_")
         loginAsAdmin()
-        pubSubCommands.send(topic = room, userName = "_", messageText = "third stored\ncontinued")
+        pubSubCommands.send(topic = room, userName = "_", messageText = "third stored\ncontinued", requestId = "_")
         val topicId = topicCommands.topicByName("_", room)!!.substringBefore(" | ")
         val request = ByIdRequest(typeUtil.fromString(topicId))
         val stored = compositeServices.messageService().listMessages(request).collectList().block()!!
@@ -199,7 +199,7 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
     fun `a refused messages read reports Access Denied`() {
         loginAsAdmin()
         topicCommands.addTopic("_", "pubsubClosed")
-        pubSubCommands.send(topic = "pubsubClosed", userName = "_", messageText = "for members")
+        pubSubCommands.send(topic = "pubsubClosed", userName = "_", messageText = "for members", requestId = "_")
         ShellStateConfiguration.clearLogin()
 
         Assertions.assertThatThrownBy { pubSubCommands.messages("pubsubClosed") }
