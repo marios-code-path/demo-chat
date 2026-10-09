@@ -15,7 +15,9 @@ internal data class MessageHttpRequest(
     val text: String,
 )
 
-internal class MessagingTestBackend : AutoCloseable {
+internal class MessagingTestBackend(
+    private val specialResponse: (com.sun.net.httpserver.HttpExchange) -> Boolean = { false },
+) : AutoCloseable {
     private val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
     private val answers = ConcurrentHashMap<String, BackendResponse>()
     val requests = CopyOnWriteArrayList<MessageHttpRequest>()
@@ -30,6 +32,7 @@ internal class MessagingTestBackend : AutoCloseable {
                 exchange.requestHeaders.getFirst("Idempotency-Key"),
                 exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) },
             ))
+            if (specialResponse(exchange)) return@createContext
             val answer = answers[path] ?: BackendResponse(404, "not available")
             val bytes = answer.body.toByteArray(Charsets.UTF_8)
             exchange.sendResponseHeaders(answer.status, bytes.size.toLong())

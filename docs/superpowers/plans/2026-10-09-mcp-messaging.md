@@ -498,6 +498,7 @@ Modify these files:
 
 - `chat-mcp/src/test/client/harness.mjs`
 - `chat-mcp/src/test/kotlin/com/demo/chat/mcp/McpAdapterHarnessTests.kt`
+- `chat-mcp/src/test/kotlin/com/demo/chat/mcp/tool/MessagingTestFixtures.kt`
 
 Create this file:
 
@@ -567,7 +568,7 @@ This proves protocol behavior, not deployed authorization.
 4. Run `McpMessagingHarnessTests` and `McpAdapterHarnessTests`.
 5. Remove the send opt-in guard and verify the disabled-send test fails.
 6. Restore the guard and run all adapter tests.
-7. Commit the three named files with the child issue ID.
+7. Commit the four named files and this plan correction with the child issue ID.
 
 ## Task 6: authenticated deployment and deterministic pending
 

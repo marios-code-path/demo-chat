@@ -10,6 +10,7 @@
  * Usage:
  *
  *   node harness.mjs --read-id <id> --refused-id <id> -- <command> [args...]
+ *   node harness.mjs --calls-file <json-file> -- <command> [args...]
  *
  * Everything after `--` is the adapter command. The harness appends nothing to
  * it.
@@ -200,8 +201,28 @@ async function main() {
   if (command === undefined) {
     throw new Error("the harness requires an adapter command after --");
   }
-  const readId = flag("--read-id", own);
-  const refusedId = flag("--refused-id", own);
+  const messaging = own.includes("--calls-file");
+  const callBoundMillis = messaging ? 35000 : CALL_BOUND_MILLIS;
+  let script;
+  if (messaging) {
+    script = JSON.parse(readFileSync(flag("--calls-file", own), "utf8"));
+    if (!Array.isArray(script) || script.some((step) =>
+      step === null || typeof step !== "object" || Array.isArray(step) ||
+      Object.keys(step).sort().join(",") !== "arguments,name" ||
+      typeof step.name !== "string" || step.name.length === 0 ||
+      step.arguments === null || typeof step.arguments !== "object" || Array.isArray(step.arguments)
+    )) {
+      throw new Error("the call script must contain tool names and argument objects");
+    }
+  } else {
+    const readId = flag("--read-id", own);
+    const refusedId = flag("--refused-id", own);
+    script = [
+      { name: "chat_list_topics", arguments: {} },
+      { name: "chat_get_topic", arguments: { topicId: readId } },
+      { name: "chat_get_topic", arguments: { topicId: refusedId } },
+    ];
+  }
 
   const transport = new TeeingStdioTransport(command, commandArgs);
   const client = new Client(
@@ -220,7 +241,7 @@ async function main() {
     serverVersion = client.getServerVersion() ?? null;
     serverCapabilities = client.getServerCapabilities() ?? null;
 
-    const discovered = await client.listTools({}, { timeout: CALL_BOUND_MILLIS });
+    const discovered = await client.listTools({}, { timeout: callBoundMillis });
     tools = discovered.tools.map((tool) => ({
       name: tool.name,
       title: tool.title ?? null,
@@ -229,13 +250,8 @@ async function main() {
       annotations: tool.annotations ?? null,
     }));
 
-    const script = [
-      { name: "chat_list_topics", arguments: {} },
-      { name: "chat_get_topic", arguments: { topicId: readId } },
-      { name: "chat_get_topic", arguments: { topicId: refusedId } },
-    ];
     for (const step of script) {
-      const answer = await client.callTool(step, undefined, { timeout: CALL_BOUND_MILLIS });
+      const answer = await client.callTool(step, undefined, { timeout: callBoundMillis });
       calls.push({
         name: step.name,
         arguments: step.arguments,
