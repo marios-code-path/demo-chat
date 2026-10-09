@@ -3,6 +3,8 @@ package com.demo.chat.config
 import com.demo.chat.domain.command.BackendId
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.core.env.Environment
 import org.springframework.core.env.PropertyResolver
 
@@ -86,5 +88,17 @@ object CommandBusValidation {
 open class CommandBusValidationPostProcessor(private val environment: Environment) : BeanFactoryPostProcessor {
     override fun postProcessBeanFactory(beanFactory: ConfigurableListableBeanFactory) {
         if (CommandBusValidation.appliesTo(environment)) CommandBusValidation.validate(environment)
+    }
+}
+
+// The module does not enable the Kotlin all-open compiler plugin, so this class is open.
+@Configuration
+open class CommandBusValidationConfiguration {
+    companion object {
+        /** Static, as Spring requires of a `BeanFactoryPostProcessor` bean. */
+        @Bean
+        @JvmStatic
+        fun commandBusValidation(environment: Environment): BeanFactoryPostProcessor =
+            CommandBusValidationPostProcessor(environment)
     }
 }

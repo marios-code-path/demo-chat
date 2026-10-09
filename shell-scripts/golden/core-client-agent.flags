@@ -1,6 +1,7 @@
 # profiles: deploy,expose-rsocket
 --add-modules=jdk.incubator.vector
 --enable-native-access=ALL-UNNAMED
+-Dapp.command.bus=memory
 -Dapp.controller.index
 -Dapp.controller.key
 -Dapp.controller.message

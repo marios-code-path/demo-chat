@@ -322,6 +322,7 @@ CORE_SERVICE_FLAGS = [
     "-Dapp.service.core.secrets=memory",
     "-Dapp.service.composite",
     "-Dapp.service.composite.auth=true",
+    "-Dapp.command.bus=memory",
     "-Dapp.core.controllers=persistence,index,key,pubsub,secrets,user,topic,message",
     "-Dapp.controller.persistence",
     "-Dapp.controller.index",

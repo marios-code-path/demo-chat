@@ -81,7 +81,7 @@ private const val PLAIN_SECRET = "coreroutesplainsecret"
         "app.service.core.key=memory", "app.service.core.pubsub=memory",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
         "app.service.core.secrets=memory",
-        "app.service.composite", "app.service.composite.auth=true",
+        "app.service.composite", "app.command.bus=memory", "app.service.composite.auth=true",
         "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message", "app.controller.topic",
         "app.controller.pubsub", "app.controller.secrets",

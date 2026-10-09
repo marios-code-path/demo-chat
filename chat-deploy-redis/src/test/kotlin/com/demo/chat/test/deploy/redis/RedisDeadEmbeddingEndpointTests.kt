@@ -70,7 +70,7 @@ class RedisDeadEmbeddingEndpointTests {
         "--app.service.core.index=lucene",
         "--app.service.core.persistence=memory",
         "--app.service.core.secrets=memory",
-        "--app.service.composite=true",
+        "--app.service.composite=true", "--app.command.bus=memory",
         "--app.service.composite.auth=true",
         "--app.service.core.vector=redis",
         "--app.service.core.embedding=openai",

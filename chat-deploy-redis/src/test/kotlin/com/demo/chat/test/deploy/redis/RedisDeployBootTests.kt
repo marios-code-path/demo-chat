@@ -71,7 +71,7 @@ import java.time.Duration
         "app.service.core.index=lucene",
         "app.service.core.persistence=redis",
         "app.service.core.secrets=memory",
-        "app.service.composite",
+        "app.service.composite", "app.command.bus=memory",
         "app.service.composite.auth=true",
         "app.controller.persistence",
         "app.controller.index",

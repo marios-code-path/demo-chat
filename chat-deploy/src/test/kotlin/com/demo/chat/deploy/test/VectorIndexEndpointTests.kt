@@ -324,7 +324,7 @@ class VectorIndexEndpointTests {
             .withPropertyValues(
                 "app.nodeid=7",
                 "app.key.type=long",
-                "app.service.composite=true",
+                "app.service.composite=true", "app.command.bus=memory",
                 "app.service.core.vector=embedded",
             )
             .run { context ->
@@ -338,7 +338,7 @@ class VectorIndexEndpointTests {
             .withPropertyValues(
                 "app.nodeid=7",
                 "app.key.type=long",
-                "app.service.composite=true",
+                "app.service.composite=true", "app.command.bus=memory",
                 "app.service.core.vector=embedded",
                 "app.service.core.embedding=embedded",
             )

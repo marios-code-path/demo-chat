@@ -139,8 +139,8 @@ flowchart TD
 Three sources raise an authorization refusal. The first is a bearer token
 without the required scope. The second is `@PreAuthorize` in a composite
 handler. The third is `authorizePayload`, for the core routes:
-`persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, and
-`key.rem`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
+`persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, `key.rem`,
+and `key.register`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
 holds `ROLE_AGENT`, so the core refuses these routes to the agent.
 
 **A miss takes code `0x404`.** `CHAT-scoizkpm` added it on 2026-10-03. The

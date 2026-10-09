@@ -144,11 +144,15 @@ failure.
 | `chat-deploy-redis` `RedisClaimBootTests` | 11 and 12 |
 | `chat-deploy-redis` `RedisGrantRestartTests` | 13 to 17, 30 and 31 |
 | `chat-deploy-redis` `RedisLuceneFilesRestartTests` | 18 and 19 |
+| `chat-deploy-redis` `RedisKeyAndPersistenceSafeRepeatTests` | 40 |
+| `chat-deploy-redis` `RedisPubSubSafeRepeatTests` | 41 |
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
 | `chat-deploy-cassandra` `CassandraAuthorizationMatrixTests` | 24 |
 | `chat-deploy-cassandra` `CassandraMessageSendTests` | 25 and 26 |
+| `chat-deploy-cassandra` `CassandraKeyAndPersistenceSafeRepeatTests` | 43 |
+| `chat-deploy-cassandra` `CassandraIndexSafeRepeatTests` | 44 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |
 
 `chat-deploy-kafka` claims nothing, and it still reads `app.nodeid` for its

@@ -76,7 +76,7 @@ private const val AGENT_SECRET = "authenticationseamsecret"
         "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory", "app.service.core.pubsub=memory",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
-        "app.service.core.secrets=memory", "app.service.composite=true",
+        "app.service.core.secrets=memory", "app.service.composite=true", "app.command.bus=memory",
         "app.service.composite.auth=true",
         "app.controller.key=true", "app.controller.persistence=true", "app.controller.index=true",
         "app.controller.pubsub=true", "app.controller.secrets=true", "app.controller.user=true",

@@ -27,7 +27,7 @@ class RoomOwnerGrantAbsentPortTests {
                     "app.service.core.index=lucene",
                     "app.service.core.persistence=memory",
                     "app.service.core.secrets=memory",
-                    "app.service.composite=true",
+                    "app.service.composite=true", "app.command.bus=memory",
                     "app.controller.key=true",
                     "app.controller.persistence=true",
                     "app.controller.index=true",

@@ -350,7 +350,7 @@ class RestToCoreBearerDeploymentTests {
         "-Dspring.cloud.consul.discovery.enabled=false",
         "-Dapp.service.core.key=memory", "-Dapp.service.core.pubsub=memory",
         "-Dapp.service.core.index=lucene", "-Dapp.service.core.persistence=memory",
-        "-Dapp.service.core.secrets=memory", "-Dapp.service.composite=true",
+        "-Dapp.service.core.secrets=memory", "-Dapp.service.composite=true", "-Dapp.command.bus=memory",
         "-Dapp.service.composite.auth=true",
         "-Dapp.controller.key=true", "-Dapp.controller.persistence=true",
         "-Dapp.controller.index=true", "-Dapp.controller.pubsub=true",

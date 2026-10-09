@@ -1,7 +1,7 @@
 docs/ANONYMOUS-AUTHORIZATION.md -> chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt sig:d0078fb0a808409e
 docs/IDENTITY-POLICY.md -> chat-security/src/main/kotlin/com/demo/chat/security/access/ContextIdentity.kt sig:215ab7d48bd8c60a
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646
-docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:cb3869fa6db81d30
+docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:e6e9ebfd3865d989
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/UnsupportedCredentialRefusal.kt sig:339db8ce164133ae
 docs/LUCENE-INDEX-FILES.md -> chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt sig:d275a6ae77a73f71
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexLoad.kt sig:b23de4231f0070f4
@@ -20,7 +20,7 @@ docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/a
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityPropertiesGuard.kt sig:4b0824a3bf8fb896
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/security/rsocket/RSocketSecurityErrorCodes.kt sig:c40756a4935868cb
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646
-docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:cb3869fa6db81d30
+docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:e6e9ebfd3865d989
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityErrorInterceptor.kt sig:d59bb06ec39e4c08
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketServerConfiguration.kt sig:c08d16e4678c2848
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/UnsupportedCredentialRefusal.kt sig:339db8ce164133ae
