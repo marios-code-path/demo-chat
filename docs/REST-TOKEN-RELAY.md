@@ -163,6 +163,13 @@ composite in the same JVM, so its miss is `NotFoundException` and not
 added it on 2026-10-04. Before, it answered 500.
 `RestCoreNotFoundMappingTests` pins it.
 
+**The same advice maps the message command errors.** `CHAT-igqnydef` added
+them on 2026-10-08. A request conflict answers 409, and an invalid request ID
+answers 400. A sender that is not the login answers 403. A legacy send whose
+wait ended answers 504, and a failed required backend answers 424. These
+errors do not come from the relay, so they do not change the mappings above.
+`MessageSubmitRestTests` pins the submit statuses.
+
 ## REST client: which metadata a request carries
 
 `DeferredRequestSpec` chooses the metadata when the request is subscribed, not
