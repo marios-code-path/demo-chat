@@ -157,6 +157,7 @@ java --enable-native-access=ALL-UNNAMED -jar "$JAR" \
     --app.service.core.secrets=memory \
     --app.service.composite=true \
     --app.service.composite.auth=true \
+    --app.command.bus=memory \
     --app.service.security.userdetails=true \
     --app.users.create=true \
     --spring.config.additional-location=classpath:/config/userinit.yml \
