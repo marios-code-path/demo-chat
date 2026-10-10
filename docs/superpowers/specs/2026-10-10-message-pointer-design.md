@@ -21,7 +21,7 @@ The owner made these decisions on 2026-10-10.
 7. **No reader fetches a preview of the target.** A reader shows the target domain and the target id.
 8. **Security checks the room of a message.** `messageById` checks `SUBSCRIBE` on the `dest` of the returned message. This rule applies to every message, not to pointers alone.
 9. **A topic target uses `SUBSCRIBE`.** It does not use `GET`.
-10. **Tests cover the persistence stores, the creation checks, and the `messageById` rule.** Routes, the index, the shell, and MCP get no pointer test.
+10. **Tests cover the persistence stores, the creation checks, the `messageById` rule, and one MCP decoder test.** Routes, the index, and the shell get no pointer test.
 11. **The message value type stays `String`.** A pointer is a `Message<T, String>` with an empty `data` and a separate `target` field. This replaces an earlier decision of the same day to bind the value type to `Any`. That decision needed changes at 206 test sites in 96 test files, and at every Spring injection point of `CompositeServiceBeans<T, String>`.
 
 ## Domain type
@@ -97,7 +97,7 @@ The composite runs these checks in this order.
 1. The caller is not `Anon`. An anonymous caller is refused, as for `submit`.
 2. The caller holds `FORWARD` on the host room. Otherwise the route answers 403 or `0x403`.
 3. `targetDomain` is `Message` or `MessageTopic`. Otherwise the route answers 400.
-4. The server reads the target through the composite services. It applies the read rule of the next section.
+4. The server reads the target. A topic target reads the topic store, because the key registry keeps the key of a deleted room. A message target with `record` false counts as missing, because a Cassandra removal keeps the row. Then the server applies the read rule of the next section.
 5. A missing target and an unreadable target both answer 404. The message is `no such message` or `no such topic`.
 6. A message target that is a `PointerMessage` answers 400. The message is `a pointer cannot target a pointer`.
 7. The server admits one command with the operation `RECORD_POINTER`.
@@ -229,14 +229,16 @@ One test class drives the composite with method security on. It covers each refu
 | A target message in a room where the caller has no `SUBSCRIBE` | 404, `no such message` |
 | A target topic that does not exist | 404, `no such topic` |
 | A target topic where the caller has no `SUBSCRIBE` | 404, `no such topic` |
+| A target topic whose store row is gone, while the caller keeps `SUBSCRIBE` | 404, `no such topic` |
 | A target message that is a pointer | 400, `a pointer cannot target a pointer` |
 | A member with `FORWARD` and a readable target, the control | One pointer is stored. |
 
-Three mutations, each run alone, must each fail their own cases:
+Four mutations, each run alone, must each fail their own cases:
 
 1. Remove the `FORWARD` check.
 2. Remove the read check on the target.
 3. Remove the pointer-to-pointer refusal.
+4. Remove the topic store read.
 
 The owner first limited tests to the persistence stores on 2026-10-10. A review the same day recommended this class, and the owner accepted it.
 
@@ -249,11 +251,11 @@ A test of a non-`String` text value is not needed. The value type stays `String`
 - Removal of a pointer.
 - A target of another key type.
 - A target domain other than `Message` and `MessageTopic`.
-- Tests for the transport routes, the index, the shell, and MCP.
+- Tests for the transport routes, the index, and the shell. MCP gets one decoder test, because one pointer refused a whole MCP history before this change.
 
 ## Risks
 
-- **The routes, the index, the shell, and MCP have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
+- **The routes, the index, and the shell have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
 - **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.
 - **A reader that ignores the type shows a pointer as an empty message.** The pointer `data` is `""`. The shell, REST, and MCP readers in this repository each branch on `PointerMessage`. An outside client may not.
 - **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
