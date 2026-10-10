@@ -91,11 +91,12 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
     /**
      * **The operations answer the same on Cassandra as on a map store.**
      *
-     * `getRoom`, `whoami`, `messageById` and `listRooms` allow. `getRoom` and
-     * `messageById` read one object, and since `CHAT-rfzsnbco` the check reads
-     * the domain root of that object beside it. `userinit.yml` names both roots:
-     * `{User, MessageTopic, GET}` and `{Anon, Message, GET}`. `whoami` and
-     * `listRooms` name a domain root already.
+     * `getRoom`, `whoami` and `listRooms` allow. `getRoom` reads one object,
+     * and since `CHAT-rfzsnbco` the check reads the domain root of that object
+     * beside it. `userinit.yml` names that root: `{User, MessageTopic, GET}`.
+     * `whoami` and `listRooms` name a domain root already. `messageById`
+     * checks `SUBSCRIBE` on the room of the message since `CHAT-erkoxybm`,
+     * and the caller is not a member, so it denies.
      *
      * `addRoom`, `send` and `addUser` deny. No shipped row grants `NEW` on
      * `MessageTopic` or on `User`, and the `{User, Message, SEND}` row names
@@ -142,7 +143,7 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
                 "send room SEND" to false,
                 "getRoom GET" to true,
                 "whoami User FIND" to true,
-                "messageById GET" to true,
+                "messageById room SUBSCRIBE" to false,
                 "listRooms MessageTopic GET_ALL" to true,
                 "addUser User NEW" to false,
                 "deleteRoom MessageTopic REM" to false
@@ -183,7 +184,7 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
         "send room SEND" to answer({ it.hasAccessTo(room, "SEND") }, access, context),
         "getRoom GET" to answer({ it.hasAccessTo(room, "GET") }, access, context),
         "whoami User FIND" to answer({ it.hasAccessToDomain("User", "FIND") }, access, context),
-        "messageById GET" to answer({ it.hasAccessTo(message, "GET") }, access, context),
+        "messageById room SUBSCRIBE" to answer({ it.hasAccessTo(room, "SUBSCRIBE") }, access, context),
         "listRooms MessageTopic GET_ALL" to answer({ it.hasAccessToDomain("MessageTopic", "GET_ALL") }, access, context),
         "addUser User NEW" to answer({ it.hasAccessToDomain("User", "NEW") }, access, context),
         "deleteRoom MessageTopic REM" to answer({ it.hasAccessTo(room, "REM") }, access, context)

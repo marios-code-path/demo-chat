@@ -10,6 +10,7 @@ import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.command.CommandStatus
 import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.service.composite.ChatMessageService
+import org.springframework.security.access.prepost.PostAuthorize
 import org.springframework.security.access.prepost.PreAuthorize
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -28,7 +29,12 @@ interface MessageServiceAccess<T, V> : ChatMessageService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'SUBSCRIBE')")
     override fun listMessages(req: ByIdRequest<T>): Flux<out Message<T, V>>
 
-    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'GET')")
+    /**
+     * **A read checks the room of the message, after the read.** A raw id
+     * names no room, so the check needs the stored message. `dest` is a raw
+     * id, so the expression uses `hasAccessToId`. See `CHAT-erkoxybm`.
+     */
+    @PostAuthorize("@chatAccess.hasAccessToId(returnObject.key.dest, 'SUBSCRIBE')")
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.dest, 'SEND')")

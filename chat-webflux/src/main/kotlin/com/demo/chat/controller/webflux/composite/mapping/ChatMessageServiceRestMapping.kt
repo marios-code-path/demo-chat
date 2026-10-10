@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.security.access.prepost.PostAuthorize
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
@@ -65,7 +66,7 @@ interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
 
     @GetMapping("/id/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("@chatAccess.hasAccessToId(#id.key.id, 'GET')")
+    @PostAuthorize("@chatAccess.hasAccessToId(returnObject.key.dest, 'SUBSCRIBE')")
     fun restMessageById(@Resolved(ChatDomain.MESSAGE) id: VerifiedKey<T>): Mono<out Message<T, String>> =
         messageById(ByIdRequest(id.key.id))
 

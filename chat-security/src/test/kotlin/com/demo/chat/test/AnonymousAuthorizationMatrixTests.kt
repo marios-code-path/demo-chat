@@ -50,19 +50,21 @@ import java.util.concurrent.atomic.AtomicLong
  * deployment loads.
  *
  * The operations are the `@PreAuthorize` expressions of the access
- * interfaces in `chat-security`, copied exactly.
+ * interfaces in `chat-security`, copied exactly. `messageById` checks
+ * `SUBSCRIBE` on the room of the message since `CHAT-erkoxybm`, after the
+ * read, so its row asks about the room key.
  *
  * See `docs/IDENTITY-POLICY.md` and `docs/ANONYMOUS-AUTHORIZATION.md`.
  */
 class AnonymousAuthorizationMatrixTests {
 
     /**
-     * **An anonymous caller may read a user, read a message and add a room.**
+     * **An anonymous caller may read a user and add a room.**
      *
-     * `userinit.yml` grants the `Anon` key `User:FIND`, `User:PUT` and
-     * `Message:GET`. The two `User` grants reach `whoami`. `Message:GET` names
-     * the `Message` root, and `messageById` checks one message key. Since
-     * `CHAT-rfzsnbco` the check reads that root, so the row applies.
+     * `userinit.yml` grants the `Anon` key `User:FIND` and `User:PUT`. The two
+     * `User` grants reach `whoami`. `messageById` checks `SUBSCRIBE` on the
+     * room of the message since `CHAT-erkoxybm`. No shipped row grants
+     * `SUBSCRIBE` to a caller that is not a member.
      *
      * **The `MessageTopic:NEW` row names the `User` root**, so it reaches every
      * caller. The owner decided on 2026-10-01 that every user may add a room,
@@ -70,13 +72,13 @@ class AnonymousAuthorizationMatrixTests {
      * denies, because that caller reaches no actor set at all.
      */
     @Test
-    fun `an anonymous caller may read a user, read a message and add a room`() {
+    fun `an anonymous caller may read a user and add a room`() {
         assertThat(matrixFor(anonymousContext())).isEqualTo(
             mapOf(
                 "addRoom MessageTopic NEW" to true,
                 "send room SEND" to false,
                 "whoami User FIND" to true,
-                "messageById GET" to true,
+                "messageById room SUBSCRIBE" to false,
                 "listRooms MessageTopic GET_ALL" to true,
                 "addUser User NEW" to false,
                 "deleteRoom MessageTopic REM" to false
@@ -597,7 +599,7 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(admin.filter { it.value }.keys - agent.filter { it.value }.keys)
             .describedAs("the operations that the administrator holds and the agent does not")
             .containsExactlyInAnyOrder(
-                "send room SEND", "addUser User NEW", "deleteRoom MessageTopic REM"
+                "send room SEND", "messageById room SUBSCRIBE", "addUser User NEW", "deleteRoom MessageTopic REM"
             )
 
         assertThat(agent - admin.keys).describedAs("operations that only the agent holds").isEmpty()
@@ -607,7 +609,7 @@ class AnonymousAuthorizationMatrixTests {
                 "addRoom MessageTopic NEW" to true,
                 "send room SEND" to false,
                 "whoami User FIND" to true,
-                "messageById GET" to true,
+                "messageById room SUBSCRIBE" to false,
                 "listRooms MessageTopic GET_ALL" to true,
                 "addUser User NEW" to false,
                 "deleteRoom MessageTopic REM" to false
@@ -657,7 +659,7 @@ class AnonymousAuthorizationMatrixTests {
             "addRoom MessageTopic NEW" to { s -> s.hasAccessToDomain("MessageTopic", "NEW") },
             "send room SEND" to { s -> s.hasAccessTo(ROOM_KEY, "SEND") },
             "whoami User FIND" to { s -> s.hasAccessToDomain("User", "FIND") },
-            "messageById GET" to { s -> s.hasAccessTo(MESSAGE_KEY, "GET") },
+            "messageById room SUBSCRIBE" to { s -> s.hasAccessTo(ROOM_KEY, "SUBSCRIBE") },
             "listRooms MessageTopic GET_ALL" to { s -> s.hasAccessToDomain("MessageTopic", "GET_ALL") },
             "addUser User NEW" to { s -> s.hasAccessToDomain("User", "NEW") },
             "deleteRoom MessageTopic REM" to { s -> s.hasAccessTo(ROOM_KEY, "REM") }
