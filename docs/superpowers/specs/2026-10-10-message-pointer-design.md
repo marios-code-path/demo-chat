@@ -94,6 +94,29 @@ Step 4 leaks nothing. Step 6 runs after the read check, so the caller can alread
 override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 ```
 
+The check reads `key.dest` alone. It does not read the target domain of a pointer. The `key.dest` of a pointer is its host room. Following a pointer is a separate read, and that read gets its own check.
+
+### The access sites
+
+Two sites check `GET` on a message today. Both change in one commit.
+
+| Site | Today | After |
+|---|---|---|
+| `MessageServiceAccess.messageById`, `chat-security`. RSocket `message-by-id` uses it. | `@PreAuthorize` with `GET` on `#req.id` | `@PostAuthorize` with `SUBSCRIBE` on `returnObject.key.dest` |
+| `ChatMessageServiceRestMapping.restMessageById`, `chat-webflux`. REST `GET /message/id/{id}` uses it. | `@PreAuthorize` with `GET` on `#id.key.id` | `@PostAuthorize` with `SUBSCRIBE` on `returnObject.key.dest` |
+
+**The REST site needs its own change.** `restMessageById` calls `messageById` on the same object. That call crosses no proxy, so the check of `messageById` does not run there. A REST `GET` check that stays would also refuse a caller before the room check runs.
+
+The MCP adapter reads a message through REST `GET /message/id/{id}` in `MessagingClient`. So the REST site supplies its check. **The MCP room check in `MessagingToolService` stays as a second guard.** It also limits a read to the configured rooms, and the server check does not do that.
+
+The `GET` checks of `TopicServiceAccess` and `ChatTopicServiceRestMapping` name a topic, not a message. They do not change.
+
+### Removal of the `GET` row
+
+**The row `{Anon, Message, GET}` leaves `userinit.yml` in the same commit as the two site changes.** It must not leave earlier. A `GET` check that stays would refuse every caller once the row is gone.
+
+Before the removal, an audit reads every main source for a `GET` check on a message key. On 2026-10-10, the two sites above were the only ones. The audit runs again at implementation time.
+
 | Action | Check |
 |---|---|
 | Read a pointer in its host room | `SUBSCRIBE` on the host room. `listenTopic` and `listMessages` already check this. |
@@ -103,9 +126,8 @@ override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 
 **This changes `messageById` for every message.** Before this change, the shipped row `{Anon, Message, GET}` let any caller read any message by id. After it, a caller needs `SUBSCRIBE` on the room of the message.
 
-- The `messageById` row of `docs/ANONYMOUS-AUTHORIZATION.md` moves from allow to deny for a caller that is not a member.
-- The MCP adapter keeps its own room check. That check becomes a second defense.
-- **The row `{Anon, Message, GET}` leaves `userinit.yml`.** No check reads `GET` on a message after this change. The owner can reverse this removal at spec review.
+- The `messageById` row of `docs/ANONYMOUS-AUTHORIZATION.md` moves from allow to deny for a caller that is not a member. That document records the new rule and the removal of the `GET` row.
+- No deployment exists, so the change interrupts no running service. The next deployment gets the new rule.
 
 **The store read occurs before the denial.** `@PostAuthorize` needs the message to read its `dest`. A read has no effect, so this is safe.
 
@@ -123,7 +145,12 @@ A denied `messageById` answers 403, and that tells the caller that the id exists
 ## Command bus
 
 - `CommandOperation` gains `RECORD_POINTER`.
-- The command holds the four backends. The `V` handler returns success with no work for `RECORD_POINTER`. So the default `P,I` requirement and the status readers do not change.
+- **`V` is not an obligation of a pointer command.** `MemoryDomainCommandBus` already removes `U` from the obligations of an import with `publish=false`. It removes `V` from a `RECORD_POINTER` command the same way.
+- The dispatcher runs only the obligations, so `MessageVectorHandler` never receives a pointer. That handler casts the message data to `String`, so a pointer must not reach it.
+- The status store records only the obligations. So the status of a pointer command lists `P`, `I`, and `U`, and it does not list `V`.
+- The caller waits for the configured requirement minus `V`. The import route already subtracts `U` the same way. With the default `P,I`, nothing changes.
+- For `RECORD_POINTER`, the bus builds a `PointerMessage` in place of `Message.create`.
+- `MessageReindexService` reads the stored messages. It skips a `PointerMessage` row, so a rebuild never sends a pointer to the indexer.
 - A pointer writes no grant and no membership. It starts no join alert, no leave alert, and no vector work.
 
 ## Storage
@@ -168,7 +195,11 @@ The tests cover the persistence stores, plus one security test.
 | Redis persistence | The same round trip, through Jackson |
 | Cassandra persistence, `long` and `uuid` | The same round trip. A text message reads back with a null `kind`. A row with an unknown `kind` fails the read. |
 | Cassandra shape check | A store without `kind` fails the check. |
-| `messageById` security | A member of the room reads the message. A caller that is not a member is denied. Removing the `@PostAuthorize` rule fails the deny case. |
+| `messageById` security, RSocket and REST | A member of the room reads the message. A caller that is not a member is denied. Removing either `@PostAuthorize` rule fails its deny case. |
+
+### An exception to the repository test policy
+
+The repository policy asks for a regression or conformance proof of production behavior. **This spec makes an exception for the creation checks and the routes.** The owner limited tests to the persistence stores on 2026-10-10. The persistence tests and the `messageById` test do not prove the creation checks.
 
 ## Out of scope
 
