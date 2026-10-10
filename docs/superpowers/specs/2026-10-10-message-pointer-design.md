@@ -1,0 +1,185 @@
+# Message pointer design
+
+Issue: `CHAT-erkoxybm`. Date: 2026-10-10. Status: design approved in conversation. The owner reviews this written spec next.
+
+## Purpose
+
+A pointer is a message that names one target. The target is a message or a topic. A pointer carries no content of its own.
+
+A user posts a pointer into a room. Listeners of that room receive the pointer in history and live. A listener can follow the pointer to its target, if the listener can read the target.
+
+## Owner decisions
+
+The owner made these decisions on 2026-10-10.
+
+1. **A pointer lives in a host room.** `key.from` is the creator. `key.dest` is the host room. `data` is the target.
+2. **`FORWARD` is a new permission.** Creation checks `FORWARD` on the host room. It is not a new domain and it has no root key.
+3. **The creator must be able to read the target.** A target that the creator cannot read answers the same error as a missing target.
+4. **A pointer uses the backends `P`, `I`, and `U`.** It uses no `V`. A pointer is stored, it appears in history, and recall never returns it.
+5. **One nullable `kind` column marks a pointer row.** The column holds the domain name of the target.
+6. **A pointer to a pointer is refused at creation.** No stored chain can exist.
+7. **No reader fetches a preview of the target.** A reader shows the target domain and the target id.
+8. **Security checks the room of a message.** `messageById` checks `SUBSCRIBE` on the `dest` of the returned message. This rule applies to every message, not to pointers alone.
+9. **A topic target uses `SUBSCRIBE`.** It does not use `GET`.
+10. **Tests cover the persistence stores.** One exception: a test pins the new `messageById` rule.
+
+## Domain type
+
+```kotlin
+@JsonTypeName("PointerMessage")
+data class PointerMessage<T>(
+    override val key: MessageKey<T>,   // from = creator, dest = host room
+    override val data: Key<T>,         // the target: id and root
+) : Message<T, Key<T>> {
+    override val record: Boolean get() = true
+}
+```
+
+- `PointerMessage` goes into the `@JsonSubTypes` list of `Message`, beside `JoinAlert` and `LeaveAlert`.
+- The target `Key` keeps its own JSON wrapper.
+- The pointer and its target share the type `T`. So the compiler refuses a pointer across key types.
+- The target root is the `Message` root or the `MessageTopic` root. No other root is legal.
+
+### The request
+
+```kotlin
+@JsonTypeName("MessagePointerRequest")
+data class MessagePointerRequest<T>(
+    val dest: T,
+    val targetId: T,
+    val targetDomain: String,
+    val requestId: String,
+) : RequestResponse<T>()
+```
+
+- `targetDomain` accepts `Message` and `MessageTopic`. Any other value answers 400 or `KeyInputException`.
+- The request carries no creator. The server binds the creator to the authenticated user, as `submit` does.
+- `requestId` follows the rules of `submit`. A retry with the same ID and the same target recovers the same receipt.
+
+### The stream type
+
+`ChatMessageService<T, V>` streams `Message<T, V>`, and `V` is `String` in every deployment. A room stream now holds text messages and pointers.
+
+The stream, list, and read signatures widen to `Message<T, out Any>`. The text paths keep `String`. Each reader adds a branch for `PointerMessage`.
+
+## Routes
+
+| Transport | Route | Request ID |
+|---|---|---|
+| RSocket | `message.message-pointer` with `MessagePointerRequest` | The field `requestId` |
+| REST | `POST /message/pointer/{roomId}`, body `{targetDomain, targetId}` | The header `Idempotency-Key` |
+
+Both routes return `MessageSendResult`. The outcomes and the REST status codes are the same as for `submit`.
+
+## Creation checks
+
+The composite runs these checks in this order.
+
+1. The caller is not `Anon`. An anonymous caller is refused, as for `submit`.
+2. The caller holds `FORWARD` on the host room. Otherwise the route answers 403 or `0x403`.
+3. `targetDomain` is `Message` or `MessageTopic`. Otherwise the route answers 400.
+4. The server reads the target through the composite services. It applies the read rule of the next section.
+5. A missing target and an unreadable target both answer 404. The message is `no such message` or `no such topic`.
+6. A message target that is a `PointerMessage` answers 400. The message is `a pointer cannot target a pointer`.
+7. The server admits one command with the operation `RECORD_POINTER`.
+
+Step 4 leaks nothing. Step 6 runs after the read check, so the caller can already read the target.
+
+## The read rule
+
+**Security reads the message, and then checks its room.** The rule replaces the `GET` check on the message key.
+
+```kotlin
+@PostAuthorize("@chatAccess.hasAccessTo(returnObject.key.dest, 'SUBSCRIBE')")
+override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
+```
+
+| Action | Check |
+|---|---|
+| Read a pointer in its host room | `SUBSCRIBE` on the host room. `listenTopic` and `listMessages` already check this. |
+| Follow a message pointer with `messageById` | `SUBSCRIBE` on the `dest` of the target message |
+| Follow a topic pointer with a listen | `SUBSCRIBE` on the target topic. The listen route already checks this. |
+| Create a pointer | The two follow checks. A denial maps to 404, as step 5 states. |
+
+**This changes `messageById` for every message.** Before this change, the shipped row `{Anon, Message, GET}` let any caller read any message by id. After it, a caller needs `SUBSCRIBE` on the room of the message.
+
+- The `messageById` row of `docs/ANONYMOUS-AUTHORIZATION.md` moves from allow to deny for a caller that is not a member.
+- The MCP adapter keeps its own room check. That check becomes a second defense.
+- **The row `{Anon, Message, GET}` leaves `userinit.yml`.** No check reads `GET` on a message after this change. The owner can reverse this removal at spec review.
+
+**The store read occurs before the denial.** `@PostAuthorize` needs the message to read its `dest`. A read has no effect, so this is safe.
+
+A denied `messageById` answers 403, and that tells the caller that the id exists. Only the creation path maps a denial to 404.
+
+## Grants
+
+- `FORWARD` joins the permission names beside `SEND` and `SUBSCRIBE`.
+- `ShippedGrantPolicies.ROOM_JOIN` grants `FORWARD` to the member. `ROOM_LEAVE` sets it to expire at the time of the leave.
+- The owner `*` row of a room covers `FORWARD`. The `Admin` `*` rows on the domain roots cover it too.
+- No row for `FORWARD` goes into `userinit.yml`.
+- The typed operation policy schema of `CHAT-zcxgrtqc` must accept `FORWARD`.
+- `docs/ANONYMOUS-AUTHORIZATION.md` gains a pointer row. An anonymous caller is denied. A member is allowed. A caller that is not a member is denied. The agent is denied unless it joined.
+
+## Command bus
+
+- `CommandOperation` gains `RECORD_POINTER`.
+- The command holds the four backends. The `V` handler returns success with no work for `RECORD_POINTER`. So the default `P,I` requirement and the status readers do not change.
+- A pointer writes no grant and no membership. It starts no join alert, no leave alert, and no vector work.
+
+## Storage
+
+| Backend | Change |
+|---|---|
+| Cassandra persistence | `chat_message_id` gains `kind text`. The writer puts the target id in `text` and the target domain name in `kind`. |
+| Cassandra index | `chat_message_user` and `chat_message_topic` store a null `text` for a pointer. History resolves keys through `chat_message_id`, so these tables need no `kind`. |
+| Memory persistence | No change. The store holds the object. |
+| Redis persistence | No code change. Jackson reads the `PointerMessage` subtype through `@JsonSubTypes`. |
+| Lucene index | The encoder writes no `text` field for a pointer. It writes the key, `topic`, and `user` fields. So history by room finds the pointer, and a text search does not. |
+| Vector | `MessageReindexService` skips a `PointerMessage` row. |
+
+### The `kind` column
+
+| Value | Meaning |
+|---|---|
+| null | A text message. Every current write path stays the same. |
+| `Message` | A pointer to a message |
+| `MessageTopic` | A pointer to a topic |
+
+The values are `ChatDomain.wireName` values. The reader builds the target root from `RootKeys` for that domain. The reader converts the id in `text` with the exact id conversion. A value that does not convert fails the read. It does not truncate.
+
+Both `keyspace-*.cql` files gain the column. The Cassandra `StoreShapeCheck` requires it. The no-migration rule applies. A store without the column fails its start, and the operator recreates the store.
+
+## Readers
+
+No reader fetches the target.
+
+- The shell `messages` command prints `12:01 Agent → message <id> in room <id>` or `12:01 Agent → topic <id>`.
+- REST NDJSON and RSocket send the `PointerMessage` JSON shape.
+- An MCP history item and an MCP message item for a pointer carry `kind: "pointer"`, `targetDomain`, and `targetId`. They carry no `text`. `docs/MCP-ADAPTER.md` describes the item.
+- `messageById` on a pointer id returns the pointer itself.
+
+## Tests
+
+The tests cover the persistence stores, plus one security test.
+
+| Test | Proof |
+|---|---|
+| Memory persistence | A pointer to a message and a pointer to a topic each survive a write and a read. |
+| Redis persistence | The same round trip, through Jackson |
+| Cassandra persistence, `long` and `uuid` | The same round trip. A text message reads back with a null `kind`. A row with an unknown `kind` fails the read. |
+| Cassandra shape check | A store without `kind` fails the check. |
+| `messageById` security | A member of the room reads the message. A caller that is not a member is denied. Removing the `@PostAuthorize` rule fails the deny case. |
+
+## Out of scope
+
+- A preview of the target.
+- A resolve route.
+- Removal of a pointer.
+- A target of another key type.
+- A target domain other than `Message` and `MessageTopic`.
+- Tests for the routes, the creation checks, the index, the shell, and MCP. The owner limited tests to the persistence stores on 2026-10-10.
+
+## Risks
+
+- **The creation checks have no test.** A defect in steps 1 to 6 reaches `master` unseen. The owner accepted this on 2026-10-10.
+- **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
