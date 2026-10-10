@@ -10,9 +10,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
 import org.testcontainers.containers.CassandraContainer
-import org.testcontainers.containers.Network
 import java.nio.file.Files
-import java.time.Duration
 
 @EnableConfigurationProperties(CassandraProperties::class)
 open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
@@ -21,7 +19,13 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
     @Value("\${app.key.type:uuid}")
     private lateinit var keyType: String
 
-    @Bean(name = ["embeddedCassandra"], destroyMethod = "stop")
+    /**
+     * The shared container of this JVM. Each context reads it, and no context
+     * stops it. The empty destroy method is required: Spring infers `close`
+     * on an `AutoCloseable` bean, and that would stop the container for every
+     * other context. `CHAT-znodyvcc`.
+     */
+    @Bean(name = ["embeddedCassandra"], destroyMethod = "")
     open fun cassandraContainer(context: ConfigurableApplicationContext): CassandraContainer<*> {
         val ddlResource = "keyspace-${keyType}.cql"
         val resource = context.getResource(ddlResource)
@@ -34,19 +38,10 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
             log.info("DDL: {}", it)
         }
 
-        val container = CassandraContainer<Nothing>("cassandra:4.1.3").apply {
-            withExposedPorts(props.port)
-            withReuse(true)
-            withNetwork(Network.SHARED)
-            withStartupTimeout(Duration.ofSeconds(60))
-            withInitScript(ddlResource)
-            this.start()
-
-            log.debug("Test Container STARTED")
-        }
+        val container = SharedCassandraContainer.container
 
         val host = container.host
-        val mappedPort = container.getMappedPort(props.port)
+        val mappedPort = container.getMappedPort(SharedCassandraContainer.PORT)
         log.debug("Container is reachable on port: $mappedPort")
 
         // Spring Boot 4 types the contact points as nullable. An absent list

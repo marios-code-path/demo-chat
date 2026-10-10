@@ -5032,3 +5032,44 @@ Kafka durability, replication, search, and live subscriptions remain outside thi
 The Admin-only import route of `CHAT-ugsreefu` merged separately as PR #202, as recorded above.
 MCP exposes no import tool and no sender override.
 This branch merged `origin/master` at `23f8f3a0` before its pull request.
+
+## One Cassandra test container per JVM (2026-10-09)
+
+`CHAT-znodyvcc`. Branch `chat-znodyvcc-cassandra-nonode`. **This work is not
+merged.** `docs/BUILD-HEALTH.md` holds the measurements, under
+`Cassandra test containers and Docker memory`.
+
+### The cause, reproduced
+
+- `CassandraTestContainerConfiguration` started one container for each Spring
+  test context. `chat-persistence-cassandra` has 10 contexts, so 10 containers
+  ran at once, about 15 GiB on a 16 GiB Docker VM. `chat-index-cassandra`
+  reuses that configuration through the test jar.
+- Each container sized its heap from the VM: `-Xmx3930M`.
+- Baseline master passed alone. With a 5 GiB ballast container on the VM, it
+  failed with 5 `NoNodeAvailableException` errors, the signature of the issue,
+  and Docker reported 3 out-of-memory events. **The issue recorded no
+  out-of-memory event for its own failing run.** So the reproduction matches
+  the error signature, and not that one detail.
+
+### What changed
+
+- `SharedCassandraContainer` starts one container for each test JVM, with both
+  keyspaces. The `embeddedCassandra` bean returns it, with an empty destroy
+  method, because Spring infers `close` on an `AutoCloseable` bean.
+- Both Cassandra test containers set `MAX_HEAP_SIZE=1G` and
+  `HEAP_NEWSIZE=256M`. `withReuse(true)` is removed. It had no effect, because
+  `~/.testcontainers.properties` does not enable reuse.
+- `NodeClaimTableProbeTests` claims node ids 210 to 212. It claimed 201 to 203
+  before, and its live lease on 201 failed
+  `CassandraNodeIdClaimStoreTests` once both shared one keyspace.
+
+### Measured
+
+- Under a 5 GiB ballast: baseline 5 errors, the change 0 errors, with 1
+  container at peak and no out-of-memory event.
+- Without ballast, the run-3 shape of the issue on the change: every module
+  passed, with 1 Cassandra container at peak. `chat-persistence-cassandra`
+  took 5:51, against 7:15 on baseline.
+- `CassandraStoreShapeCheckTests` still takes about 285 s. `CHAT-pggtduxz`
+  holds it.

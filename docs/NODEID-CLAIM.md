@@ -136,10 +136,15 @@ Every container-backed test that activates a claim store uses its own
 would collide. That collision is correct behaviour, and it appears as a test
 failure.
 
+The test classes of one Cassandra test module share one container, so they
+share one keyspace. A node id that two classes claim collides in that keyspace.
+Give each class its own ids. `CHAT-znodyvcc`.
+
 | Module and test | `app.nodeid` |
 |---|---|
 | `chat-persistence-redis` claim store tests | 100 to 109 |
 | `chat-persistence-cassandra` claim store tests | 200 to 209 |
+| `chat-persistence-cassandra` `NodeClaimTableProbeTests` | 210 to 212 |
 | `chat-deploy-redis` `RedisDeployBootTests` | 1 |
 | `chat-deploy-redis` `RedisClaimBootTests` | 11 and 12 |
 | `chat-deploy-redis` `RedisGrantRestartTests` | 13 to 17, 30 and 31 |

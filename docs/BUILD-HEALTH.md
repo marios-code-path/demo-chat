@@ -381,6 +381,35 @@ locally after this change. A `--ci` verifier run at master `c6c21f12` reported
 1080 tests, 0 failures, 0 errors and 54 skipped, with no failure-list drift.
 The ten-run CI record that `CHAT-sgyaaivp` asks for is not complete.
 
+### Cassandra test containers and Docker memory
+
+`CHAT-znodyvcc` recorded intermittent `NoNodeAvailableException` failures,
+wrapped in `AllNodesFailedException` or `CassandraConnectionFailureException`.
+Measured on 2026-10-09 on a 16 GiB Docker VM:
+
+- `chat-persistence-cassandra` started one container for each Spring test
+  context, and it had 10 contexts. Spring keeps a context until the JVM ends,
+  so 10 containers ran at the same time, about 15 GiB in total. With
+  `chat-index-cassandra` in the run, the peak was 11.
+- Each container sized its heap from the VM memory: `-Xmx3930M`, and 4.5 GiB
+  in use with no load.
+- That run passed alone. With a 5 GiB ballast container on the VM, the same
+  run failed with 5 errors of the signature above, and Docker reported 3
+  out-of-memory events.
+
+`SharedCassandraContainer` now starts one container for each test JVM, with
+both keyspaces. `CassandraContainerBase` in `chat-deploy-cassandra` already
+started one. Both set `MAX_HEAP_SIZE=1G` and `HEAP_NEWSIZE=256M`, which gives
+1.6 GiB in use with no load. With the same 5 GiB ballast, the module passed
+with 1 container and no out-of-memory event.
+
+**The test classes of one module now share one keyspace.** A node id that two
+classes claim collides there. `docs/NODEID-CLAIM.md` holds the allocation.
+`truncate-*.cql` does not clear `node_claim` or `root_keys`.
+
+**Read `docker events --filter event=oom` before you trust a red Cassandra
+run.** Other sessions and other modules use the same VM memory.
+
 ## Resolved
 
 Kept so the list can be trusted — an entry disappearing without explanation is indistinguishable from an entry being forgotten.
