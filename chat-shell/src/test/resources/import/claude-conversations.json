@@ -1,0 +1,36 @@
+[
+  {
+    "uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    "name": "Sanitized import fixture",
+    "chat_messages": [
+      {
+        "uuid": "11111111-1111-4111-8111-111111111111",
+        "sender": "human",
+        "created_at": "2024-01-01T10:00:00.123Z",
+        "text": "First turn.",
+        "content": [],
+        "attachments": []
+      },
+      {
+        "uuid": "22222222-2222-4222-8222-222222222222",
+        "sender": "assistant",
+        "created_at": "2024-01-01T10:00:01.456Z",
+        "text": "This flat value is not selected.",
+        "content": [
+          { "type": "text", "text": "Second" },
+          { "type": "tool_use", "name": "ignored" },
+          { "type": "text", "text": " turn." }
+        ],
+        "attachments": [{ "name": "ignored.txt" }]
+      },
+      {
+        "uuid": "33333333-3333-4333-8333-333333333333",
+        "sender": "assistant",
+        "created_at": "2024-01-01T10:00:02.000Z",
+        "text": "",
+        "content": [{ "type": "tool_result", "text": "ignored" }],
+        "attachments": []
+      }
+    ]
+  }
+]
