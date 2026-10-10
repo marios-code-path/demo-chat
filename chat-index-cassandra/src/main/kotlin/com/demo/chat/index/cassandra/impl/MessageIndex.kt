@@ -9,6 +9,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.index.cassandra.domain.ChatMessageByTopic
 import com.demo.chat.index.cassandra.domain.ChatMessageByTopicKey
 import com.demo.chat.index.cassandra.domain.ChatMessageByUser
@@ -39,6 +40,8 @@ class MessageIndex<T : Any>(
      */
     override fun add(entity: Message<T, String>): Mono<Void> {
         val instant = entity.key.timestamp
+        // A pointer carries no text, so its index rows hold none. See CHAT-erkoxybm.
+        val text = entity.data.takeUnless { entity is PointerMessage<*> }
         return Flux.concat(
                 byUserRepo.save(
                     ChatMessageByUser(
@@ -48,7 +51,7 @@ class MessageIndex<T : Any>(
                                 entity.key.dest,
                                 instant
                         ),
-                        entity.data,
+                        text,
                         entity.record
                 )
                 ),
@@ -60,7 +63,7 @@ class MessageIndex<T : Any>(
                                 entity.key.dest,
                                 instant
                         ),
-                        entity.data,
+                        text,
                         entity.record
                 )
                 ),

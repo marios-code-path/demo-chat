@@ -14,12 +14,12 @@ import java.time.Instant
  */
 @Table("chat_message_user")
 class ChatMessageByUser<T>(@PrimaryKey val key: ChatMessageByUserKey<T>,
-                           @field:Column("text") val data: String,
+                           @field:Column("text") val data: String?,
                            @field:Column("visible") val record: Boolean)
 
 @Table("chat_message_topic")
 data class ChatMessageByTopic<T>(@PrimaryKey val key: ChatMessageByTopicKey<T>,
-                                 @field:Column("text") val data: String,
+                                 @field:Column("text") val data: String?,
                                  @field:Column("visible") val record: Boolean)
 
 @PrimaryKeyClass
