@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `02baae05`, in sync with `origin`. The working tree holds no untracked file. |
-| Register state | Updated 2026-10-09, after the message import merge of PR #202. |
-| Last merged PR | #202, merge commit `02baae05`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #193 to PR #202` lists the latest ten. |
+| Checkout | `master` at `69dbd2ee`, in sync with `origin`. The working tree holds no untracked file. |
+| Register state | Updated 2026-10-09, after the reindex test merge of PR #209. |
+| Last merged PR | #209, merge commit `69dbd2ee`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #203 to PR #209` lists the latest seven. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Six more hold one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-xcmpudyb-message-id` at `20f3d014`. **The branch refs are kept.** |
-| Worktrees | The main checkout, `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, and `.worktrees/chat-teujorxl-mcp-messaging` at `e2c77a7d`. The first belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The second holds `CHAT-teujorxl` work, which is in progress and not merged. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
-| Open PRs | None, measured on 2026-10-09. PR #202 merged on 2026-10-09 as `02baae05`, and it closed `CHAT-ugsreefu`. |
+| Worktrees | The main checkout, `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`. It belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The `chat-teujorxl-mcp-messaging` worktree and branch are gone, measured on 2026-10-09, after PR #205. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
+| Open PRs | None, measured on 2026-10-09. PR #209 merged on 2026-10-09 as `69dbd2ee`, and it closed `CHAT-okcfryup`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,8 +28,9 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh is `CHAT-ukiwartp`, and it follows PR #202. The refresh before it is
-`CHAT-texwkksv`, which followed PR #191 and merged as PR #192. The one before
+refresh is `CHAT-tatbvwjo`, and it follows PR #209. The refresh before it is
+`CHAT-ukiwartp`, which followed PR #202 and merged as PR #203. The one before
+that is `CHAT-texwkksv`, which followed PR #191 and merged as PR #192. The one before
 that is `CHAT-evdgjpwc`, which followed PR #189 and merged as PR #190. The one before
 that is `CHAT-fayckdfc`, which followed PR #184 and merged as PR #185. The one before
 that merged as PR #168, after the shell Admin identity merge. The one before that
@@ -4988,11 +4989,16 @@ head `e789acaa`. `MessageCommandServiceTests` case 21 failed with a
 Read from source and not measured: the test waits until the key registry holds
 the message key. `P` registers the key and then stores the message, so the read
 can fall between the two steps. `CHAT-udhhlrrb` holds it.
+**Merged since: PR #204, `d8e8c8ee`, on 2026-10-09.** The test now waits for
+`P` to succeed before case 21 reads the message. `CHAT-udhhlrrb` is done.
 
 ## MCP Stage 1 messaging on the implementation branch, 2026-10-09
 
 Issue: `CHAT-teujorxl`. Branch: `chat-teujorxl-mcp-messaging`.
 This section records branch work, not a merge.
+**Merged since: PR #205, `8965daa0`, on 2026-10-09.** `CHAT-teujorxl` is
+done. The worktree and the branch are gone. PR #206 then corrected the MCP
+records in `docs/BUILD-HEALTH.md` and the plan, under `CHAT-ppyxzpqo`.
 The accepted messaging spec is `docs/superpowers/specs/2026-10-09-mcp-messaging-design.md`.
 The execution plan is `docs/superpowers/plans/2026-10-09-mcp-messaging.md`.
 
@@ -5038,6 +5044,7 @@ This branch merged `origin/master` at `23f8f3a0` before its pull request.
 `CHAT-znodyvcc`. Branch `chat-znodyvcc-cassandra-nonode`. **This work is not
 merged.** `docs/BUILD-HEALTH.md` holds the measurements, under
 `Cassandra test containers and Docker memory`.
+**Merged since: PR #207, `867d614e`, on 2026-10-09.** `CHAT-znodyvcc` is done.
 
 ### The cause, reproduced
 
@@ -5079,6 +5086,8 @@ merged.** `docs/BUILD-HEALTH.md` holds the measurements, under
 
 `CHAT-pggtduxz`. Branch `chat-pggtduxz-shape-check-speed`. **This work is not
 merged.** Test code only.
+**Merged since: PR #208, `dfdf7b2d`, on 2026-10-09.** **`CHAT-pggtduxz` is
+still `todo`, measured on 2026-10-09.** Its close step did not run.
 
 - `CassandraStoreShapeCheckTests` built a full keyspace from
   `keyspace-long.cql` in 11 of its 12 tests, about 26 schema statements each,
@@ -5112,3 +5121,52 @@ verdict for the removed element.
   2460 tests, 0 failures, 0 errors, 82 skipped, agent HTTP gate ok, and no
   drift. The class took 71.1 s in that run. The shell image moved from
   `033f847c8150` to `c15e101bac92`, and Docker reported no OOM event.
+
+## Merges from PR #203 to PR #209 (2026-10-09)
+
+Each merge has two parents. Measured on 2026-10-09 with
+`git rev-list --parents` and `git diff <tip> <merge>`.
+
+| PR | Merge | Tip | Issue | What |
+|----|-------|-----|-------|------|
+| #203 | `23f8f3a0` | `3ada260a` | `CHAT-ukiwartp` | Refresh the forward register after PR #202 |
+| #204 | `d8e8c8ee` | `c93e94a3` | `CHAT-udhhlrrb` | Wait for `P` to succeed before case 21 reads the message |
+| #205 | `8965daa0` | `748a1348` | `CHAT-teujorxl` | MCP Stage 1 messaging: history, message read, submit, and command status |
+| #206 | `4ad96a27` | `a2357141` | `CHAT-ppyxzpqo` | Correct the MCP completion and gate records |
+| #207 | `867d614e` | `889cc05f` | `CHAT-znodyvcc` | One Cassandra test container per JVM, with a capped heap |
+| #208 | `dfdf7b2d` | `3478bc91` | `CHAT-pggtduxz` | Small keyspaces in the store shape check tests |
+| #209 | `69dbd2ee` | `94a280fd` | `CHAT-okcfryup` | The reindex test job list is safe for a concurrent reader |
+
+**Five merge trees equal their tips. Two differ, and each difference is
+expected.**
+
+- The PR #205 tree differs from `748a1348` in two test files:
+  `MessageCommandServiceTests.kt` and `MessagingStack.kt`. PR #204 changed
+  exactly those two files, and the branch merged `origin/master` before #204.
+- The PR #207 tree differs from `889cc05f` in two files:
+  `docs/BUILD-HEALTH.md` and the MCP messaging plan. PR #206 changed exactly
+  those two files, and the branch was cut before #206.
+
+### The concurrent job list read (2026-10-09)
+
+`CHAT-okcfryup`. PR #209. `FakeJobStore.written` in
+`MessageReindexServiceImplTests` was an `ArrayList`. The reindex run appends to
+it on its own thread, and `awaitDurableOutcome` iterates it on the
+`Flux.interval` thread. An append during that iteration raised
+`ConcurrentModificationException` in a default `build-health.sh` run on
+2026-10-07.
+
+**The reported line 758 is past the end of the 670-line file.** So it is the
+Kotlin inline line of `lastOrNull`, and that agrees with the race. The list is
+a `CopyOnWriteArrayList` now. Test code only.
+
+**The failure was not reproduced before the change.** The class passed 11 runs
+of 11 after it, with 23 tests each. Those passes do not prove the race is
+closed. A later failure of this test reopens the issue.
+
+### Open after these merges
+
+- **`CHAT-pggtduxz` is still `todo`.** PR #208 merged its work. The owner
+  decides whether it closes.
+- **`CHAT-gsddauhn` is still `todo`.** It holds the full REST-profile failure
+  that the MCP section names.
