@@ -30,7 +30,7 @@ class ClaudeExportParserTests {
     fun `content text blocks join and flat text handles empty content`() {
         val parsed = ClaudeExportParser().parse(fixture, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
 
-        assertThat(parsed.messages.map { it.text }).containsExactly("First turn.", "Second turn.")
+        assertThat(parsed.messages.map { it.text }).containsExactly("First turn.", "Second\n\nturn.")
         assertThat(parsed.messages.map { it.sender }).containsExactly("human", "assistant")
         assertThat(parsed.messages.map { it.createdAt }).containsExactly(
             Instant.parse("2024-01-01T10:00:00.123Z"), Instant.parse("2024-01-01T10:00:01.456Z")
@@ -45,6 +45,16 @@ class ClaudeExportParserTests {
         val parsed = ClaudeExportParser().parse(fixture, "Sanitized import fixture")
 
         assertThat(parsed.uuid).isEqualTo("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    }
+
+    @Test
+    fun `an untitled conversation does not block a UUID selection`() {
+        val parser = ClaudeExportParser()
+
+        assertThat(parser.parse(fixture, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa").name)
+            .isEqualTo("Sanitized import fixture")
+        assertThat(parser.parse(fixture, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb").name)
+            .isEmpty()
     }
 
     @Test

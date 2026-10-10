@@ -105,7 +105,7 @@ class ClaudeImportCommandsTests {
         val first = MessageImportRequest("First turn.", 11L, 5L,
             Instant.parse("2024-01-01T10:00:00.123Z"),
             "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:11111111-1111-4111-8111-111111111111")
-        val second = MessageImportRequest("Second turn.", 12L, 5L,
+        val second = MessageImportRequest("Second\n\nturn.", 12L, 5L,
             Instant.parse("2024-01-01T10:00:01.456Z"),
             "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa:22222222-2222-4222-8222-222222222222")
         val result = mock(Message::class.java) as Message<Long, String>

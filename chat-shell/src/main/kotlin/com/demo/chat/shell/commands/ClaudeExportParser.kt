@@ -30,10 +30,12 @@ data class ClaudeConversation(
 @Profile("shell")
 class ClaudeExportParser(private val mapper: ObjectMapper = ObjectMapper()) {
     fun parse(file: Path, selector: String): ClaudeConversation {
+        require(selector.isNotBlank()) { "A conversation selector is required." }
         val root = Files.newBufferedReader(file).use(mapper::readTree)
         require(root.isArray) { "The export must contain a conversation array." }
         val matches = root.filter { item ->
-            item.field("uuid") == selector || item.field("name") == selector
+            item.path("uuid").takeIf { it.isTextual }?.asText() == selector ||
+                item.path("name").takeIf { it.isTextual }?.asText() == selector
         }
         require(matches.size == 1) { "Expected one conversation for '$selector', found ${matches.size}." }
         val conversation = matches.single()
@@ -59,17 +61,17 @@ class ClaudeExportParser(private val mapper: ObjectMapper = ObjectMapper()) {
             val content = turn.get("content")
             require(content == null || content.isNull || content.isArray) { "Message $messageId has an invalid content field." }
             val text = if (content != null && content.isArray && content.size() > 0) {
-                buildString {
-                    for (block in content) {
-                        if (block.field("type") == "text") {
-                            val part = block.path("text")
-                            require(part.isTextual) { "Message $messageId has an invalid text block." }
-                            append(part.asText())
-                        } else {
-                            skippedBlocks++
-                        }
+                val textParts = mutableListOf<String>()
+                for (block in content) {
+                    if (block.field("type") == "text") {
+                        val part = block.path("text")
+                        require(part.isTextual) { "Message $messageId has an invalid text block." }
+                        textParts += part.asText()
+                    } else {
+                        skippedBlocks++
                     }
                 }
+                textParts.joinToString("\n\n")
             } else {
                 turn.path("text").takeIf { it.isTextual }?.asText().orEmpty()
             }
@@ -80,7 +82,9 @@ class ClaudeExportParser(private val mapper: ObjectMapper = ObjectMapper()) {
                 messages += ClaudeTurn(messageId, sender, createdAt, text)
             }
         }
-        return ClaudeConversation(uuid, conversation.field("name"), messages, skippedBlocks, skippedAttachments, skippedTurns)
+        val name = conversation.path("name")
+        require(name.isTextual) { "Conversation $uuid has no text name field." }
+        return ClaudeConversation(uuid, name.asText(), messages, skippedBlocks, skippedAttachments, skippedTurns)
     }
 
     private fun JsonNode.field(name: String): String {

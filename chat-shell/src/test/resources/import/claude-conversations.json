@@ -19,7 +19,7 @@
         "content": [
           { "type": "text", "text": "Second" },
           { "type": "tool_use", "name": "ignored" },
-          { "type": "text", "text": " turn." }
+          { "type": "text", "text": "turn." }
         ],
         "attachments": [{ "name": "ignored.txt" }]
       },
@@ -32,5 +32,10 @@
         "attachments": []
       }
     ]
+  },
+  {
+    "uuid": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    "name": "",
+    "chat_messages": []
   }
 ]
