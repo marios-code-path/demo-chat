@@ -56,11 +56,39 @@ data class MessagePointerRequest<T>(
 - The request carries no creator. The server binds the creator to the authenticated user, as `submit` does.
 - `requestId` follows the rules of `submit`. A retry with the same ID and the same target recovers the same receipt.
 
-### The stream type
+### The type boundary
 
-`ChatMessageService<T, V>` streams `Message<T, V>`, and `V` is `String` in every deployment. A room stream now holds text messages and pointers.
+**Today.** The composite, the command bus, and the core interfaces are generic in the message value `V`. The backend modules and the transports bind `V` to `String`. On 2026-10-10, 21 main files named `Message<T, String>` or a service bound to `String`. A pointer carries `Key<T>` as its data, so it does not fit that binding.
 
-The stream, list, and read signatures widen to `Message<T, out Any>`. The text paths keep `String`. Each reader adds a branch for `PointerMessage`.
+**The decision. Every composition binds `V` to `Any`.** `Message` is covariant in its value, so a `Message<T, String>` and a `PointerMessage<T>` are both a `Message<T, Any>`. One value type then carries both kinds through every boundary. The type of the data tells the two kinds apart:
+
+- `data is String` is a text message.
+- `PointerMessage` is a pointer.
+- Any other value is refused where it enters, as the next rule states.
+
+**The wire shape of a text message does not change.** Jackson writes the runtime value, and a text value is still a JSON string.
+
+**The text routes refuse a value that is not a `String`.** With `V = Any`, an RSocket client could send an object as the text of `submit`, `send`, or `import`. Each of those routes refuses it before admission with 400, and the refusal is a `NoEffectRefusal`. Today `CommandFingerprint.of` throws `IllegalArgumentException` for that case, after the route accepts the request.
+
+| Boundary | Type after the change | Text message | Pointer |
+|---|---|---|---|
+| `CommandSubmission<T, Any>.content` | `Any` | The `String` text | The target `Key<T>` |
+| `CommandFingerprint.of` | Takes `String` or `Key` | The text, as today | `pointer`, the target root id, and the target id. The operation name is a field too, so a pointer and a text with the same characters cannot collide. |
+| `MemoryDomainCommandBus.stage` | Builds the accepted message | `Message.create`. It requires `content is String`. | `PointerMessage`. It requires `content is Key<*>` and `RECORD_POINTER`. |
+| `AcceptedCommand<T, Any>.message` | `Message<T, Any>` | A text message | A `PointerMessage` |
+| `P`: `MessagePersistence<T, Any>` | `Message<T, Any>` | Stored as today | Stored with the `kind` column, or as the object in memory and Redis |
+| `I`: `MessageIndexService<T, Any, Q>` | `Message<T, Any>` | Indexed as today | The room and sender fields only. No text field. |
+| `U`: `RoomPublications<T, Any>` and the pub/sub services | `Message<T, Any>` | Published as today | Published. Redis and Kafka serialize the `PointerMessage` subtype through `@JsonSubTypes`. |
+| `V`: `MessageVectorHandler` | Receives `Message<T, Any>` | Sent to the indexer as `Message<T, String>` | Never received, because `V` is not an obligation. A value that is not a `String` fails with a `NoEffectRefusal`, not a `ClassCastException`. |
+| `MessageVectorIndexer<T>` | Unchanged, `Message<T, String>` | Embedded | Not reached |
+| `MessageReindexService` | Reads `Message<T, Any>` | Sent to the indexer | Skipped |
+| `ChatMessageService<T, Any>` reads | `Message<T, Any>` | Returned | Returned |
+
+**The text paths keep a `String` type where they create a value.** The REST submit body, the shell send, and the MCP send all still produce a `String`. Only the shared message boundary widens.
+
+#### The alternative that was not chosen
+
+A sealed message body, with one text kind and one pointer kind, keeps a closed type in place of `Any`. It changes the wire shape of every text message, and every stored Redis value and every client decoder changes with it. This spec does not choose it. A third pointer kind would make it worth a second look.
 
 ## Routes
 
@@ -233,4 +261,6 @@ The owner first limited tests to the persistence stores on 2026-10-10. A review 
 ## Risks
 
 - **The routes, the index, the shell, and MCP have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
+- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.
+- **The refusal of a text value that is not a `String` has no test.** Without it, such a value fails in `CommandFingerprint.of` after the route accepts the request.
 - **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
