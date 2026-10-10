@@ -50,7 +50,7 @@ open class UserServiceImpl<T, Q>(
                             .thenReturn(key)
                     }
             )
-    
+
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = userIndex
         .findBy(userHandleToQuery.apply(req))
         .flatMap(
