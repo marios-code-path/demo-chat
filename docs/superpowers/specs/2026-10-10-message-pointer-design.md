@@ -21,7 +21,7 @@ The owner made these decisions on 2026-10-10.
 7. **No reader fetches a preview of the target.** A reader shows the target domain and the target id.
 8. **Security checks the room of a message.** `messageById` checks `SUBSCRIBE` on the `dest` of the returned message. This rule applies to every message, not to pointers alone.
 9. **A topic target uses `SUBSCRIBE`.** It does not use `GET`.
-10. **Tests cover the persistence stores.** One exception: a test pins the new `messageById` rule.
+10. **Tests cover the persistence stores, the creation checks, and the `messageById` rule.** Routes, the index, the shell, and MCP get no pointer test.
 
 ## Domain type
 
@@ -187,7 +187,7 @@ No reader fetches the target.
 
 ## Tests
 
-The tests cover the persistence stores, plus one security test.
+The tests cover the persistence stores, the creation checks, and the `messageById` rule.
 
 | Test | Proof |
 |---|---|
@@ -197,9 +197,29 @@ The tests cover the persistence stores, plus one security test.
 | Cassandra shape check | A store without `kind` fails the check. |
 | `messageById` security, RSocket and REST | A member of the room reads the message. A caller that is not a member is denied. Removing either `@PostAuthorize` rule fails its deny case. |
 
-### An exception to the repository test policy
+### The creation checks
 
-The repository policy asks for a regression or conformance proof of production behavior. **This spec makes an exception for the creation checks and the routes.** The owner limited tests to the persistence stores on 2026-10-10. The persistence tests and the `messageById` test do not prove the creation checks.
+One test class drives the composite with method security on. It covers each refusal of the creation checks. After each refusal, the test reads the message store and finds no pointer.
+
+| Case | Expected |
+|---|---|
+| An anonymous caller | Refused, as for `submit` |
+| A caller without `FORWARD` on the host room | 403 or `0x403` |
+| A `targetDomain` other than `Message` or `MessageTopic` | 400 |
+| A target message that does not exist | 404, `no such message` |
+| A target message in a room where the caller has no `SUBSCRIBE` | 404, `no such message` |
+| A target topic that does not exist | 404, `no such topic` |
+| A target topic where the caller has no `SUBSCRIBE` | 404, `no such topic` |
+| A target message that is a pointer | 400, `a pointer cannot target a pointer` |
+| A member with `FORWARD` and a readable target, the control | One pointer is stored. |
+
+Three mutations, each run alone, must each fail their own cases:
+
+1. Remove the `FORWARD` check.
+2. Remove the read check on the target.
+3. Remove the pointer-to-pointer refusal.
+
+The owner first limited tests to the persistence stores on 2026-10-10. A review the same day recommended this class, and the owner accepted it.
 
 ## Out of scope
 
@@ -208,9 +228,9 @@ The repository policy asks for a regression or conformance proof of production b
 - Removal of a pointer.
 - A target of another key type.
 - A target domain other than `Message` and `MessageTopic`.
-- Tests for the routes, the creation checks, the index, the shell, and MCP. The owner limited tests to the persistence stores on 2026-10-10.
+- Tests for the transport routes, the index, the shell, and MCP.
 
 ## Risks
 
-- **The creation checks have no test.** A defect in steps 1 to 6 reaches `master` unseen. The owner accepted this on 2026-10-10.
+- **The routes, the index, the shell, and MCP have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
 - **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
