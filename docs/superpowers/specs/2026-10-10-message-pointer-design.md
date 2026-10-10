@@ -1,6 +1,6 @@
 # Message pointer design
 
-Issue: `CHAT-erkoxybm`. Date: 2026-10-10. Status: design approved in conversation. The owner reviews this written spec next.
+Issue: `CHAT-erkoxybm`. Date: 2026-10-10. Status: the owner approved this written spec on 2026-10-10.
 
 ## Purpose
 
@@ -21,7 +21,7 @@ The owner made these decisions on 2026-10-10.
 7. **No reader fetches a preview of the target.** A reader shows the target domain and the target id.
 8. **Security checks the room of a message.** `messageById` checks `SUBSCRIBE` on the `dest` of the returned message. This rule applies to every message, not to pointers alone.
 9. **A topic target uses `SUBSCRIBE`.** It does not use `GET`.
-10. **Tests cover the persistence stores, the creation checks, and the `messageById` rule.** Routes, the index, the shell, and MCP get no pointer test.
+10. **Tests cover the persistence stores, the creation checks, the text admission boundary, and the `messageById` rule.** Routes, the index, the shell, and MCP get no pointer test.
 
 ## Domain type
 
@@ -247,6 +247,18 @@ Three mutations, each run alone, must each fail their own cases:
 2. Remove the read check on the target.
 3. Remove the pointer-to-pointer refusal.
 
+### The text admission boundary
+
+One test drives `MessagingServiceImpl` at `submit`, `send`, and `import`. Each call passes a value that is not a `String` as the text.
+
+| Proof | Expected |
+|---|---|
+| The answer | A `NoEffectRefusal`, which REST maps to 400 |
+| The command bus | It accepted no command. No command status exists for the request ID. |
+| The message store | It holds no message. |
+
+A mutation that removes the `String` check makes the three cases fail.
+
 The owner first limited tests to the persistence stores on 2026-10-10. A review the same day recommended this class, and the owner accepted it.
 
 ## Out of scope
@@ -261,6 +273,4 @@ The owner first limited tests to the persistence stores on 2026-10-10. A review 
 ## Risks
 
 - **The routes, the index, the shell, and MCP have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
-- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.
-- **The refusal of a text value that is not a `String` has no test.** Without it, such a value fails in `CommandFingerprint.of` after the route accepts the request.
-- **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
+- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.- **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
