@@ -215,7 +215,7 @@ No reader fetches the target.
 
 ## Tests
 
-The tests cover the persistence stores, the creation checks, and the `messageById` rule.
+The tests cover the persistence stores, the creation checks, the text admission boundary, and the `messageById` rule.
 
 | Test | Proof |
 |---|---|
@@ -273,4 +273,5 @@ The owner first limited tests to the persistence stores on 2026-10-10. A review 
 ## Risks
 
 - **The routes, the index, the shell, and MCP have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
-- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.- **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
+- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.
+- **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
