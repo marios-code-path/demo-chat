@@ -151,6 +151,7 @@ Give each class its own ids. `CHAT-znodyvcc`.
 | `chat-deploy-redis` `RedisLuceneFilesRestartTests` | 18 and 19 |
 | `chat-deploy-redis` `RedisKeyAndPersistenceSafeRepeatTests` | 40 |
 | `chat-deploy-redis` `RedisPubSubSafeRepeatTests` | 41 |
+| `chat-deploy-redis` `RedisSharedStoreIndexTests` | 50 and 51 |
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
