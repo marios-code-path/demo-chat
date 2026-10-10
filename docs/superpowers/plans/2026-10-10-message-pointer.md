@@ -2215,7 +2215,7 @@ Add a section `## Message pointers (2026-10-10)` to `forward-register.md`. Write
 - the eleven owner decisions, in one line each;
 - the `messageById` behavior change and the removed `{Anon, Message, GET}` row;
 - the measured totals of both gates and the image id;
-- the three mutations of Task 8 and the mutation of Task 7;
+- every mutation and its measured result: the lost `kind` of Task 3, the `permitAll` post-read check of Task 7, the four creation mutations of Task 8 (`FORWARD` check, target read check, pointer-to-pointer refusal, topic store read), and the removed pointer branch of Task 10;
 - the risks of the spec that stay open.
 
 Do not move the `Checkout` row. See the rule under `Where things stand`.
