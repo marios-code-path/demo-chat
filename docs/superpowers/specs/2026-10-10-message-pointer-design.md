@@ -12,7 +12,7 @@ A user posts a pointer into a room. Listeners of that room receive the pointer i
 
 The owner made these decisions on 2026-10-10.
 
-1. **A pointer lives in a host room.** `key.from` is the creator. `key.dest` is the host room. `data` is the target.
+1. **A pointer lives in a host room.** `key.from` is the creator. `key.dest` is the host room. The field `target` names the target.
 2. **`FORWARD` is a new permission.** Creation checks `FORWARD` on the host room. It is not a new domain and it has no root key.
 3. **The creator must be able to read the target.** A target that the creator cannot read answers the same error as a missing target.
 4. **A pointer uses the backends `P`, `I`, and `U`.** It uses no `V`. A pointer is stored, it appears in history, and recall never returns it.
@@ -21,7 +21,8 @@ The owner made these decisions on 2026-10-10.
 7. **No reader fetches a preview of the target.** A reader shows the target domain and the target id.
 8. **Security checks the room of a message.** `messageById` checks `SUBSCRIBE` on the `dest` of the returned message. This rule applies to every message, not to pointers alone.
 9. **A topic target uses `SUBSCRIBE`.** It does not use `GET`.
-10. **Tests cover the persistence stores, the creation checks, the text admission boundary, and the `messageById` rule.** Routes, the index, the shell, and MCP get no pointer test.
+10. **Tests cover the persistence stores, the creation checks, and the `messageById` rule.** Routes, the index, the shell, and MCP get no pointer test.
+11. **The message value type stays `String`.** A pointer is a `Message<T, String>` with an empty `data` and a separate `target` field. This replaces an earlier decision of the same day to bind the value type to `Any`. That decision needed changes at 206 test sites in 96 test files, and at every Spring injection point of `CompositeServiceBeans<T, String>`.
 
 ## Domain type
 
@@ -29,14 +30,16 @@ The owner made these decisions on 2026-10-10.
 @JsonTypeName("PointerMessage")
 data class PointerMessage<T>(
     override val key: MessageKey<T>,   // from = creator, dest = host room
-    override val data: Key<T>,         // the target: id and root
-) : Message<T, Key<T>> {
+    val target: Key<T>,                // the target: id and root
+) : Message<T, String> {
+    override val data: String get() = ""
     override val record: Boolean get() = true
 }
 ```
 
 - `PointerMessage` goes into the `@JsonSubTypes` list of `Message`, beside `JoinAlert` and `LeaveAlert`.
-- The target `Key` keeps its own JSON wrapper.
+- The `target` key keeps its own JSON wrapper.
+- `data` is always the empty string. It carries no content. A pointer is told apart by its type, never by its `data`.
 - The pointer and its target share the type `T`. So the compiler refuses a pointer across key types.
 - The target root is the `Message` root or the `MessageTopic` root. No other root is legal.
 
@@ -56,39 +59,25 @@ data class MessagePointerRequest<T>(
 - The request carries no creator. The server binds the creator to the authenticated user, as `submit` does.
 - `requestId` follows the rules of `submit`. A retry with the same ID and the same target recovers the same receipt.
 
+### The wire shape
+
+A pointer serializes as a `PointerMessage` wrapper. It holds `key`, `data` with the value `""`, `record`, and `target`. The wire shape of a text message does not change.
+
 ### The type boundary
 
-**Today.** The composite, the command bus, and the core interfaces are generic in the message value `V`. The backend modules and the transports bind `V` to `String`. On 2026-10-10, 21 main files named `Message<T, String>` or a service bound to `String`. A pointer carries `Key<T>` as its data, so it does not fit that binding.
+The message value type `V` stays `String` in every composition. No service signature, bean type, or injection point changes its type arguments.
 
-**The decision. Every composition binds `V` to `Any`.** `Message` is covariant in its value, so a `Message<T, String>` and a `PointerMessage<T>` are both a `Message<T, Any>`. One value type then carries both kinds through every boundary. The type of the data tells the two kinds apart:
+| Boundary | Text message | Pointer |
+|---|---|---|
+| `CommandSubmission<T, String>` | `content` is the text. `target` is null. | `content` is `""`. `target` is the target key. |
+| `CommandFingerprint.of` | The fields of today | The fields of today, plus the target root id and the target id. The operation name is a field, so a pointer and a text cannot collide. |
+| `MemoryDomainCommandBus.stage` | `Message.create` | `PointerMessage`. It requires `RECORD_POINTER` and a non-null `target`. |
+| `AcceptedCommand<T, String>.message` | A text message | A `PointerMessage` |
+| `P`, `I`, `U` | As today | The backend reads the type, as the storage section states. |
+| `V` | Embedded | Not an obligation, so not reached |
+| `MessageReindexService` | Sent to the indexer | Skipped |
 
-- `data is String` is a text message.
-- `PointerMessage` is a pointer.
-- Any other value is refused where it enters, as the next rule states.
-
-**The wire shape of a text message does not change.** Jackson writes the runtime value, and a text value is still a JSON string.
-
-**The text routes refuse a value that is not a `String`.** With `V = Any`, an RSocket client could send an object as the text of `submit`, `send`, or `import`. Each of those routes refuses it before admission with 400, and the refusal is a `NoEffectRefusal`. Today `CommandFingerprint.of` throws `IllegalArgumentException` for that case, after the route accepts the request.
-
-| Boundary | Type after the change | Text message | Pointer |
-|---|---|---|---|
-| `CommandSubmission<T, Any>.content` | `Any` | The `String` text | The target `Key<T>` |
-| `CommandFingerprint.of` | Takes `String` or `Key` | The text, as today | `pointer`, the target root id, and the target id. The operation name is a field too, so a pointer and a text with the same characters cannot collide. |
-| `MemoryDomainCommandBus.stage` | Builds the accepted message | `Message.create`. It requires `content is String`. | `PointerMessage`. It requires `content is Key<*>` and `RECORD_POINTER`. |
-| `AcceptedCommand<T, Any>.message` | `Message<T, Any>` | A text message | A `PointerMessage` |
-| `P`: `MessagePersistence<T, Any>` | `Message<T, Any>` | Stored as today | Stored with the `kind` column, or as the object in memory and Redis |
-| `I`: `MessageIndexService<T, Any, Q>` | `Message<T, Any>` | Indexed as today | The room and sender fields only. No text field. |
-| `U`: `RoomPublications<T, Any>` and the pub/sub services | `Message<T, Any>` | Published as today | Published. Redis and Kafka serialize the `PointerMessage` subtype through `@JsonSubTypes`. |
-| `V`: `MessageVectorHandler` | Receives `Message<T, Any>` | Sent to the indexer as `Message<T, String>` | Never received, because `V` is not an obligation. A value that is not a `String` fails with a `NoEffectRefusal`, not a `ClassCastException`. |
-| `MessageVectorIndexer<T>` | Unchanged, `Message<T, String>` | Embedded | Not reached |
-| `MessageReindexService` | Reads `Message<T, Any>` | Sent to the indexer | Skipped |
-| `ChatMessageService<T, Any>` reads | `Message<T, Any>` | Returned | Returned |
-
-**The text paths keep a `String` type where they create a value.** The REST submit body, the shell send, and the MCP send all still produce a `String`. Only the shared message boundary widens.
-
-#### The alternative that was not chosen
-
-A sealed message body, with one text kind and one pointer kind, keeps a closed type in place of `Any`. It changes the wire shape of every text message, and every stored Redis value and every client decoder changes with it. This spec does not choose it. A third pointer kind would make it worth a second look.
+`CommandSubmission` gains one field, `target: Key<T>? = null`. A text submission leaves it null. The bus refuses a `RECORD_POINTER` submission with a null `target`, and it refuses any other operation with a non-null `target`.
 
 ## Routes
 
@@ -122,7 +111,7 @@ Step 4 leaks nothing. Step 6 runs after the read check, so the caller can alread
 override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 ```
 
-The check reads `key.dest` alone. It does not read the target domain of a pointer. The `key.dest` of a pointer is its host room. Following a pointer is a separate read, and that read gets its own check.
+The check reads `key.dest` alone. It does not read the target of a pointer. The `key.dest` of a pointer is its host room. Following a pointer is a separate read, and that read gets its own check.
 
 ### The access sites
 
@@ -174,11 +163,11 @@ A denied `messageById` answers 403, and that tells the caller that the id exists
 
 - `CommandOperation` gains `RECORD_POINTER`.
 - **`V` is not an obligation of a pointer command.** `MemoryDomainCommandBus` already removes `U` from the obligations of an import with `publish=false`. It removes `V` from a `RECORD_POINTER` command the same way.
-- The dispatcher runs only the obligations, so `MessageVectorHandler` never receives a pointer. That handler casts the message data to `String`, so a pointer must not reach it.
+- The dispatcher runs only the obligations, so `MessageVectorHandler` never receives a pointer.
 - The status store records only the obligations. So the status of a pointer command lists `P`, `I`, and `U`, and it does not list `V`.
 - The caller waits for the configured requirement minus `V`. The import route already subtracts `U` the same way. With the default `P,I`, nothing changes.
 - For `RECORD_POINTER`, the bus builds a `PointerMessage` in place of `Message.create`.
-- `MessageReindexService` reads the stored messages. It skips a `PointerMessage` row, so a rebuild never sends a pointer to the indexer.
+- `MessageReindexService` reads the stored messages. It skips a `PointerMessage`, so a rebuild never sends a pointer to the indexer.
 - A pointer writes no grant and no membership. It starts no join alert, no leave alert, and no vector work.
 
 ## Storage
@@ -189,8 +178,8 @@ A denied `messageById` answers 403, and that tells the caller that the id exists
 | Cassandra index | `chat_message_user` and `chat_message_topic` store a null `text` for a pointer. History resolves keys through `chat_message_id`, so these tables need no `kind`. |
 | Memory persistence | No change. The store holds the object. |
 | Redis persistence | No code change. Jackson reads the `PointerMessage` subtype through `@JsonSubTypes`. |
-| Lucene index | The encoder writes no `text` field for a pointer. It writes the key, `topic`, and `user` fields. So history by room finds the pointer, and a text search does not. |
-| Vector | `MessageReindexService` skips a `PointerMessage` row. |
+| Lucene index | `IndexEntryEncoder.ofMessage` writes `data` for every message today, even when it is empty. **For a pointer, the encoder omits the `data` field.** It writes the `id`, `topic`, and `user` fields. So history by room finds the pointer, and a text search does not. |
+| Vector | `MessageReindexService` skips a `PointerMessage`. |
 
 ### The `kind` column
 
@@ -215,7 +204,7 @@ No reader fetches the target.
 
 ## Tests
 
-The tests cover the persistence stores, the creation checks, the text admission boundary, and the `messageById` rule.
+The tests cover the persistence stores, the creation checks, and the `messageById` rule.
 
 | Test | Proof |
 |---|---|
@@ -247,19 +236,9 @@ Three mutations, each run alone, must each fail their own cases:
 2. Remove the read check on the target.
 3. Remove the pointer-to-pointer refusal.
 
-### The text admission boundary
-
-One test drives `MessagingServiceImpl` at `submit`, `send`, and `import`. Each call passes a value that is not a `String` as the text.
-
-| Proof | Expected |
-|---|---|
-| The answer | A `NoEffectRefusal`, which REST maps to 400 |
-| The command bus | It accepted no command. No command status exists for the request ID. |
-| The message store | It holds no message. |
-
-A mutation that removes the `String` check makes the three cases fail.
-
 The owner first limited tests to the persistence stores on 2026-10-10. A review the same day recommended this class, and the owner accepted it.
+
+A test of a non-`String` text value is not needed. The value type stays `String`, so a transport cannot admit an object as the text.
 
 ## Out of scope
 
@@ -274,4 +253,5 @@ The owner first limited tests to the persistence stores on 2026-10-10. A review 
 
 - **The routes, the index, the shell, and MCP have no pointer test.** A defect there reaches `master` unseen. The owner accepted this on 2026-10-10.
 - **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that does not serialize there fails `U` after `P` stores it. The room history still shows it.
+- **A reader that ignores the type shows a pointer as an empty message.** The pointer `data` is `""`. The shell, REST, and MCP readers in this repository each branch on `PointerMessage`. An outside client may not.
 - **The `messageById` change can refuse a reader that worked before.** The shell and MCP read history through `listMessages` and the listen route. Those routes already check `SUBSCRIBE`. A client that reads a message by id from a room it did not join gets 403 after this change.
