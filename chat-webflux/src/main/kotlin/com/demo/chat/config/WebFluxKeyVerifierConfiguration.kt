@@ -3,7 +3,9 @@ package com.demo.chat.config
 import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
 import com.demo.chat.domain.KeyInputException
 import com.demo.chat.domain.KeyVerificationException
+import com.demo.chat.domain.NoSuchPointerTargetException
 import com.demo.chat.domain.NotFoundException
+import com.demo.chat.domain.PointerToPointerException
 import com.demo.chat.domain.TypeUtil
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.web.reactive.config.WebFluxConfigurer
@@ -90,6 +92,15 @@ class KeyRefusalAdvice {
     @ExceptionHandler(NotFoundException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun inProcessNotFound(error: NotFoundException): String = error.message ?: "Object not Found"
+
+    /** A missing or unreadable pointer target. See `CHAT-erkoxybm`. */
+    @ExceptionHandler(NoSuchPointerTargetException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun noSuchPointerTarget(error: NoSuchPointerTargetException): String = error.message ?: "no such message"
+
+    @ExceptionHandler(PointerToPointerException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun pointerToPointer(error: PointerToPointerException): String = error.message ?: "a pointer cannot target a pointer"
 
     @ExceptionHandler(KeyInputException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

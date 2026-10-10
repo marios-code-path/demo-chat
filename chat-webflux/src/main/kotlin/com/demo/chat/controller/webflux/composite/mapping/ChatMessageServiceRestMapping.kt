@@ -7,6 +7,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.command.CommandStatus
@@ -97,9 +98,31 @@ interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
         submit(MessageSubmitRequest(message, id.key.id, requestId))
             .map { ResponseEntity.status(SubmitStatus.of(it.outcome)).body(it) }
 
+    /**
+     * A pointer into room [id]. The body carries the target id as a JSON
+     * string, and the composite converts it exactly. The facade carries its
+     * own check, because a facade call crosses no proxy. See `CHAT-erkoxybm`.
+     */
+    @PostMapping("/pointer/{id}", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PreAuthorize("@chatAccess.hasAccessToId(#id.key.id, 'FORWARD')")
+    fun restPointer(
+        @Resolved(ChatDomain.MESSAGE_TOPIC) id: VerifiedKey<T>,
+        @RequestBody body: RestPointerBody,
+        @RequestHeader("Idempotency-Key") requestId: String,
+    ): Mono<ResponseEntity<MessageSendResult<T>>> {
+        // The composite converts the text id with TypeUtil.exactFrom.
+        @Suppress("UNCHECKED_CAST")
+        val targetId = body.targetId as T
+        return pointer(MessagePointerRequest(id.key.id, targetId, body.targetDomain, requestId))
+            .map { ResponseEntity.status(SubmitStatus.of(it.outcome)).body(it) }
+    }
+
     /** Every caller may ask. The service answers not found for a command of another owner. */
     @GetMapping("/command/{commandId}", produces = [MediaType.APPLICATION_JSON_VALUE])
     @PreAuthorize("permitAll()")
     fun restCommandStatus(@PathVariable commandId: String): Mono<out CommandStatus<T>> =
         commandStatus(CommandStatusRequest(commandId))
 }
+
+/** The body of `POST /message/pointer/{id}`. See `CHAT-erkoxybm`. */
+data class RestPointerBody(val targetDomain: String, val targetId: String)
