@@ -7,6 +7,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.command.CommandStatus
 import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.service.composite.ChatMessageService
@@ -45,6 +46,10 @@ interface MessageServiceAccess<T, V> : ChatMessageService<T, V> {
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.dest, 'SEND')")
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>>
+
+    /** `FORWARD` on the host room. The composite checks the target. See `CHAT-erkoxybm`. */
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.dest, 'FORWARD')")
+    override fun pointer(req: MessagePointerRequest<T>): Mono<out MessageSendResult<T>>
 
     /** Every caller may ask. The service answers not found for a command of another owner. */
     @PreAuthorize("permitAll()")

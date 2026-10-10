@@ -332,9 +332,17 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 | `command status`, `permitAll()` | owner only | owner only | owner only | owner only | owner only |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
 | `messageById`, SUBSCRIBE on the room of the message | deny | deny, and allow for a member | deny | deny | deny |
+| `pointer`, FORWARD on the host room | deny | deny, and allow for a member | deny | deny | deny |
 | `listRooms`, MessageTopic GET_ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 | `getRoomByName`, no expression | **no check** | **no check** | **no check** | **no check** | **no check** |
+
+**`pointer` joined the matrix on 2026-10-10, under `CHAT-erkoxybm`.** A join
+grants `FORWARD` on the room, so a member allows. A caller that did not join
+the host room denies, and so does the agent. `Admin` allows through its `*` row
+on the `MessageTopic` root. No row in `userinit.yml` names `FORWARD`. The
+composite then checks that the caller can read the target. A missing target
+and an unreadable target both answer `no such message` or `no such topic`.
 
 The RSocket `message-send` rejects a sender that is not the caller, since Stage 1.
 `submit` and `command status` are message commands. `docs/MESSAGE-COMMANDS.md`
