@@ -21,7 +21,9 @@
 - A missing target and an unreadable target give the same error text: `no such message` or `no such topic`.
 - A pointer command has the obligations `P`, `I`, `U`. It never has `V`.
 - No reader fetches a target.
-- Tests cover the persistence stores, the creation checks, and the `messageById` rule. Do not add tests for routes, indexes, the shell, or MCP beyond the existing suites.
+- Tests cover the persistence stores, the creation checks, the `messageById` rule, and one MCP decoder test for a history that holds a pointer. Do not add tests for routes, indexes, or the shell beyond the existing suites.
+- `git add` names exact files. Never stage a directory.
+- Push and pull request steps need the owner's approval at that time. No step pushes on its own.
 - Kotlin is the language. Match the comment density and naming of the file you edit.
 - Agent-authored prose (comments, docs, commits) follows ASD-STE100 strict mode from `AGENTS.md`.
 - One Maven build at a time in this checkout. A concurrent `clean` deletes the other build's output.
@@ -42,7 +44,7 @@ LOG=/private/tmp/claude-501/-Users-darkbit1001-workspace-demo-chat/27bc1f11-c75e
 
 These inputs are not exercised by any task's tests. Each one is likely to hurt a user. Each line says what a user should expect.
 
-1. **A room history that holds a pointer, read by MCP.** Before this work, the MCP decoder refused any wrapper other than `message`, so one pointer broke the whole history. Expect the history to return text items and pointer items. Task 10 changes the decoder.
+1. **A message target that a store marks as removed.** Cassandra `rem` sets `visible` to false and keeps the row. Expect such a message to be refused as missing. Task 8 refuses a target with `record == false`, and no test covers it, because the memory store deletes the row.
 2. **A pointer read back through Redis pub/sub or Kafka.** The codecs use Jackson 2 polymorphic reads. Expect a `PointerMessage`, not a decode error. Task 2 registers the deserializer that those codecs use.
 3. **A target id sent as a JSON number that fits in an `Int`.** Jackson reads it as `Integer` when `T` is erased. Expect the composite to convert it exactly to `Long`. Task 8 converts every target id with `TypeUtil.exactFrom`.
 4. **A text message read back from Cassandra after this change.** Expect a text message with its text, not a pointer. Task 3 tests a text row with a null `kind`.
@@ -79,6 +81,7 @@ These inputs are not exercised by any task's tests. Each one is likely to hurt a
 | `chat-core/src/main/kotlin/com/demo/chat/service/command/CommandFingerprint.kt` | 5 | Version 3 with target |
 | `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt` | 5 | Build pointer, drop `V` |
 | `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessageReindexServiceImpl.kt` | 5 | Skip pointers |
+| `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/handler/MessageCommandHandlers.kt` | 5 | Declare `RECORD_POINTER` on `P`, `I`, `U` |
 | `chat-core/src/main/kotlin/com/demo/chat/service/security/policy/ShippedGrantPolicies.kt` | 6 | `FORWARD` |
 | `chat-security/src/test/kotlin/com/demo/chat/test/MembershipGrantTests.kt`, `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/RoomMemberGrantWiringTests.kt` | 6 | Row sets gain `FORWARD` |
 | `chat-security/src/main/kotlin/com/demo/chat/security/access/composite/MessageServiceAccess.kt` | 7, 8 | `@PostAuthorize`, `pointer` check |
@@ -108,6 +111,7 @@ These inputs are not exercised by any task's tests. Each one is likely to hurt a
 | `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommands.kt` | 10 | Pointer lines |
 | `chat-mcp/src/main/kotlin/com/demo/chat/mcp/client/MessageEnvelope.kt` | 10 | Decode pointers |
 | `chat-mcp/src/main/kotlin/com/demo/chat/mcp/tool/MessagingSchemas.kt` | 10 | Pointer item shape |
+| `chat-mcp/src/test/kotlin/com/demo/chat/mcp/client/MessageEnvelopeTests.kt` | 10 | History with a pointer |
 | `docs/MESSAGE-COMMANDS.md`, `docs/MCP-ADAPTER.md`, `forward-register.md` | 10, 11 | Docs |
 
 ---
@@ -436,7 +440,11 @@ Expected: exit 0. `DomainWireShapeTests` and the deserializer tests still pass.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add chat-core/src/main/kotlin/com/demo/chat/domain/serializers chat-core/src/main/kotlin/com/demo/chat/config/ChatJackson3Modules.kt chat-persistence-redis/src/test/kotlin/com/demo/chat/test/persistence/redis/RedisPointerStoreTests.kt
+git add chat-core/src/main/kotlin/com/demo/chat/domain/serializers/ChatDeserializers.kt \
+  chat-core/src/main/kotlin/com/demo/chat/domain/serializers/JacksonModules.kt \
+  chat-core/src/main/kotlin/com/demo/chat/domain/serializers/ChatJackson3Deserializers.kt \
+  chat-core/src/main/kotlin/com/demo/chat/config/ChatJackson3Modules.kt \
+  chat-persistence-redis/src/test/kotlin/com/demo/chat/test/persistence/redis/RedisPointerStoreTests.kt
 git commit -m "Read a pointer with Jackson 2 and Jackson 3 (CHAT-erkoxybm)
 
 Each mapper resolves the PointerMessage type id to its own deserializer.
@@ -655,7 +663,16 @@ Restore the argument by hand. Do not use `git checkout` on this file, because th
 - [ ] **Step 10: Commit**
 
 ```bash
-git add shared-resources-cassandra/src/main/resources/keyspace-long.cql shared-resources-cassandra/src/main/resources/keyspace-uuid.cql chat-persistence-cassandra
+git add shared-resources-cassandra/src/main/resources/keyspace-long.cql \
+  shared-resources-cassandra/src/main/resources/keyspace-uuid.cql \
+  chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/domain/Message.kt \
+  chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/MessagePersistenceCassandra.kt \
+  chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/CassandraPersistenceServices.kt \
+  chat-persistence-cassandra/src/main/kotlin/com/demo/chat/config/persistence/cassandra/CorePersistenceServices.kt \
+  chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt \
+  chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreDomainTests.kt \
+  chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt \
+  chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/mock/TextMessageServiceTests.kt
 git commit -m "Store pointers in Cassandra with a kind column (CHAT-erkoxybm)
 
 A pointer row holds its target id in text and its target domain in kind.
@@ -733,7 +750,10 @@ Expected: exit 0 for both.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add chat-index-lucene chat-index-cassandra
+git add chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/domain/IndexEntryEncoder.kt \
+  chat-index-cassandra/src/main/kotlin/com/demo/chat/index/cassandra/domain/Message.kt \
+  chat-index-cassandra/src/main/kotlin/com/demo/chat/index/cassandra/impl/MessageIndex.kt
+# Add each reader that Step 3 changed, by its path.
 git commit -m "Index no text for a pointer (CHAT-erkoxybm)
 
 The Lucene encoder omits the data field for a pointer. The Cassandra index
@@ -752,6 +772,7 @@ fp comment CHAT-erkoxybm "Task 4 done: Lucene omits data, Cassandra index stores
 - Modify: `chat-core/src/main/kotlin/com/demo/chat/service/command/CommandFingerprint.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessageReindexServiceImpl.kt`
+- Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/handler/MessageCommandHandlers.kt`
 
 **Interfaces:**
 - Consumes: `PointerMessage`.
@@ -859,6 +880,26 @@ In `MessageReindexServiceImpl.scanWith`, after the existing exclusion filter, ad
 
 Import `com.demo.chat.domain.PointerMessage`.
 
+- [ ] **Step 4a: Declare the pointer operation on the handlers**
+
+In `MessageCommandHandlers.kt`, replace `descriptorOf` with:
+
+```kotlin
+private val MESSAGE_OPERATIONS = setOf(CommandOperation.RECORD_MESSAGE, CommandOperation.IMPORT_MESSAGE)
+
+/**
+ * `V` has no pointer obligation, so only `P`, `I` and `U` declare
+ * `RECORD_POINTER`. See `CHAT-erkoxybm`.
+ */
+private fun descriptorOf(backend: BackendId) = HandlerDescriptor(
+    backend, setOf(ChatDomain.MESSAGE),
+    if (backend == BackendId.VECTOR) MESSAGE_OPERATIONS else MESSAGE_OPERATIONS + CommandOperation.RECORD_POINTER,
+    SafeRepeatContracts.SUPPORTED.getValue(backend),
+)
+```
+
+No main code reads `HandlerDescriptor.operations` on 2026-10-10. The set is metadata, and it must still name what each handler receives.
+
 - [ ] **Step 5: Run the bus, fingerprint and reindex suites**
 
 ```bash
@@ -870,12 +911,16 @@ Expected: exit 0. `CommandFingerprintTests` passes unchanged, which proves versi
 - [ ] **Step 6: Commit**
 
 ```bash
-git add chat-core/src/main/kotlin/com/demo/chat/domain/command/CommandTypes.kt chat-core/src/main/kotlin/com/demo/chat/service/command/CommandFingerprint.kt chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessageReindexServiceImpl.kt
+git add chat-core/src/main/kotlin/com/demo/chat/domain/command/CommandTypes.kt \
+  chat-core/src/main/kotlin/com/demo/chat/service/command/CommandFingerprint.kt \
+  chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt \
+  chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessageReindexServiceImpl.kt \
+  chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/handler/MessageCommandHandlers.kt
 git commit -m "Record a pointer command with no vector obligation (CHAT-erkoxybm)
 
 RECORD_POINTER builds a PointerMessage and drops V from its obligations.
 The fingerprint gains version 3 with the target. The reindex skips
-pointers.
+pointers. The P, I and U handlers declare the operation.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 fp comment CHAT-erkoxybm "Task 5 done: RECORD_POINTER, fingerprint v3, no V obligation, reindex skip."
@@ -961,7 +1006,10 @@ Expected: exit 0. If another test fails because it lists the exact rows of a joi
 - [ ] **Step 5: Commit**
 
 ```bash
-git add chat-core/src/main/kotlin/com/demo/chat/service/security/policy/ShippedGrantPolicies.kt chat-security/src/test chat-deploy-memory/src/test
+git add chat-core/src/main/kotlin/com/demo/chat/service/security/policy/ShippedGrantPolicies.kt \
+  chat-security/src/test/kotlin/com/demo/chat/test/MembershipGrantTests.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/RoomMemberGrantWiringTests.kt
+# Add each other test file that Step 4 changed, by its path.
 git commit -m "Grant FORWARD on a join and expire it on a leave (CHAT-erkoxybm)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -1321,7 +1369,17 @@ If `drift check` reports the document STALE, read every bound passage. Fix any p
 - [ ] **Step 12: Commit**
 
 ```bash
-git add chat-security chat-webflux chat-deploy-memory/src/test chat-deploy-cassandra/src/test shared-deploy-configuration/src/main/config/userinit.yml docs/ANONYMOUS-AUTHORIZATION.md drift.lock
+git add chat-security/src/main/kotlin/com/demo/chat/security/access/composite/MessageServiceAccess.kt \
+  chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/composite/mapping/ChatMessageServiceRestMapping.kt \
+  shared-deploy-configuration/src/main/config/userinit.yml \
+  chat-security/src/test/kotlin/com/demo/chat/test/AnonymousAuthorizationMatrixTests.kt \
+  chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraAuthorizationMatrixTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/MessageRestAccessTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/MessageByIdRestRuleTests.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeploymentCallers.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageByIdRoomRuleTests.kt \
+  docs/ANONYMOUS-AUTHORIZATION.md
+# Add drift.lock only if Step 11 refreshed it. Add SendCheckExpressionTests.kt only if Step 9 changed it.
 git commit -m "Check SUBSCRIBE on the room of a message read by id (CHAT-erkoxybm)
 
 messageById and GET /message/id/{id} read the message, and then check
@@ -1452,6 +1510,20 @@ class MessagePointerCreationTests {
         assertRefused(scene.requester, request(scene.host, closed.id, "MessageTopic"), "no such topic", scene.host)
     }
 
+    /**
+     * `deleteRoom` removes the store row and the index row. The key registry
+     * keeps the key, so a registry check alone passes. The member still holds
+     * its `SUBSCRIBE` row. This test removes the store row the same way.
+     */
+    @Test
+    fun `a target topic whose store row is gone is refused as missing`() {
+        val scene = Scene()
+        val gone = callers.addRoom("ptrgone${scene.tag}")
+        callers.join(scene.requester, scene.member, gone)
+        stores.topicPersistence().rem(gone).block(callers.timeout)
+        assertRefused(scene.requester, request(scene.host, gone.id, "MessageTopic"), "no such topic", scene.host)
+    }
+
     @Test
     fun `a pointer to a pointer is refused`() {
         val scene = Scene()
@@ -1504,7 +1576,7 @@ Imports: the annotation imports of `StandardUserJoinSendTests`, plus `com.demo.c
 mvn -o -B -pl chat-deploy-memory -am test -Dtest=MessagePointerCreationTests -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|ERROR.*kt|No handler" $LOG | head -6
 ```
 
-Expected: exit 1. Every test fails, because no route `message.message-pointer` exists.
+Expected: exit 1. The test class does not compile, because `MessagePointerRequest` has no route and `pointer` does not exist yet. If it compiles, every test fails, because no route `message.message-pointer` exists.
 
 - [ ] **Step 3: Add the exceptions and the port**
 
@@ -1557,11 +1629,14 @@ In `ChatMessageService.kt`, import `com.demo.chat.domain.MessagePointerRequest`,
 
 - [ ] **Step 5: Implement `pointer` in the composite**
 
-In `MessagingServiceImpl.kt`, add the last constructor parameter:
+In `MessagingServiceImpl.kt`, add the last two constructor parameters:
 
 ```kotlin
     private val pointerTargets: PointerTargetAccess<T>? = null,
+    private val topicPersistence: TopicPersistence<T>? = null,
 ```
+
+Import `com.demo.chat.service.core.TopicPersistence`. A missing store answers every topic target as missing.
 
 Change `admitAndWait` to take an operation and a target:
 
@@ -1623,9 +1698,12 @@ Add the operation and its target check:
             .onErrorMap(KeyVerificationException::class.java) { missing }
             .flatMap<Key<T>> { verified ->
                 if (domain == ChatDomain.MESSAGE_TOPIC) {
-                    access.canSubscribe(verified.key.id).filter { it }.map { verified.key }
+                    // The registry keeps the key of a deleted room, so the store row decides.
+                    val topic = topicPersistence?.get(verified.key) ?: Mono.empty()
+                    topic.flatMap { access.canSubscribe(verified.key.id) }.filter { it }.map { verified.key }
                 } else {
-                    messagePersistence.get(verified.key).flatMap { target ->
+                    // A Cassandra removal keeps the row and sets record to false.
+                    messagePersistence.get(verified.key).filter { it.record }.flatMap { target ->
                         access.canSubscribe(target.key.dest).filter { it }.flatMap {
                             if (target is PointerMessage<*>) Mono.error<Key<T>>(PointerToPointerException())
                             else Mono.just(verified.key)
@@ -1688,7 +1766,14 @@ git grep -n "SubmitterIdentityConfiguration" -- '*/src/main/*'
 
 Register `PointerTargetAccessConfiguration` at every site that list names, in the same way.
 
-In `CompositeServiceBeansConfiguration.kt`, add the constructor parameter `private val pointerTargets: ObjectProvider<PointerTargetAccess<T>>,` after `roomMemberGrants`, and pass `pointerTargets = pointerTargets.ifAvailable,` in `messageService()`. Import `com.demo.chat.service.command.PointerTargetAccess`.
+In `CompositeServiceBeansConfiguration.kt`, add the constructor parameter `private val pointerTargets: ObjectProvider<PointerTargetAccess<T>>,` after `roomMemberGrants`. In `messageService()`, pass:
+
+```kotlin
+        pointerTargets = pointerTargets.ifAvailable,
+        topicPersistence = persistenceBeans.topicPersistence(),
+```
+
+Import `com.demo.chat.service.command.PointerTargetAccess`.
 
 - [ ] **Step 7: Add the checks and the route**
 
@@ -1750,15 +1835,16 @@ Expected: exit 0. A failure that names a class with no `pointer` member is an im
 mvn -o -B -pl chat-service-controller,chat-deploy-memory -am test -Dtest='MessagePointerCreationTests,RouteSignatureGuardTests,StandardUserJoinSendTests' -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|FAIL" $LOG | tail -8
 ```
 
-Expected: exit 0. `MessagePointerCreationTests` runs 9 tests. If `RouteSignatureGuardTests` reports a field of `MessagePointerRequest` that the entry does not name, add that field with the classification its message asks for.
+Expected: exit 0. `MessagePointerCreationTests` runs 10 tests. If `RouteSignatureGuardTests` reports a field of `MessagePointerRequest` that the entry does not name, add that field with the classification its message asks for.
 
-- [ ] **Step 10: Three mutations, each run alone**
+- [ ] **Step 10: Four mutations, each run alone**
 
 Run the Step 9 command after each change, and restore by hand before the next. Confirm each restore with `git diff`.
 
 1. In `MessageServiceAccess.pointer`, change the expression to `"permitAll()"`. Expected: only `a caller without FORWARD on the host room is refused` fails.
 2. In `pointerTarget`, change both `access.canSubscribe(...)` calls to `Mono.just(true)`. Expected: only the two `cannot read` cases fail.
 3. In `pointerTarget`, change `if (target is PointerMessage<*>)` to `if (false)`. Expected: only `a pointer to a pointer is refused` fails.
+4. In `pointerTarget`, change `val topic = topicPersistence?.get(verified.key) ?: Mono.empty()` to `val topic = Mono.just(true)`. Expected: only `a target topic whose store row is gone is refused as missing` fails.
 
 - [ ] **Step 11: Record the pointer row**
 
@@ -1767,16 +1853,32 @@ In `docs/ANONYMOUS-AUTHORIZATION.md`, add a `pointer` row to the matrix: anonymo
 - [ ] **Step 12: Commit**
 
 ```bash
-git add chat-core chat-service-composite chat-security chat-service-controller chat-client-rsocket chat-deploy-memory/src/test docs/ANONYMOUS-AUTHORIZATION.md drift.lock
+git add chat-core/src/main/kotlin/com/demo/chat/domain/PointerExceptions.kt \
+  chat-core/src/main/kotlin/com/demo/chat/service/command/PointerTargetAccess.kt \
+  chat-core/src/main/kotlin/com/demo/chat/service/composite/ChatMessageService.kt \
+  chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt \
+  chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/access/MessagingServiceAccess.kt \
+  chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/CompositeServiceBeansConfiguration.kt \
+  chat-security/src/main/kotlin/com/demo/chat/security/access/ContextPointerTargetAccess.kt \
+  chat-security/src/main/kotlin/com/demo/chat/config/auth/PointerTargetAccessConfiguration.kt \
+  chat-security/src/main/kotlin/com/demo/chat/security/access/composite/MessageServiceAccess.kt \
+  chat-service-controller/src/main/kotlin/com/demo/chat/controller/composite/mapping/MessageServiceControllerMapping.kt \
+  chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/composite/MessagingClient.kt \
+  chat-service-controller/src/test/kotlin/com/demo/chat/test/resolve/RSocketRouteCatalog.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessagePointerCreationTests.kt \
+  docs/ANONYMOUS-AUTHORIZATION.md
+# Add each registration site of Step 6 and each implementer of Step 8, by its path.
+# Add drift.lock only if Step 11 refreshed it.
 git commit -m "Create a pointer over RSocket (CHAT-erkoxybm)
 
 message.message-pointer checks FORWARD on the host room. The composite
-checks that the caller can read the target, refuses a pointer to a
-pointer, and admits one RECORD_POINTER command. A missing target and an
-unreadable target give the same error.
+checks that the caller can read the target, that the target store row
+exists, and that the target is no pointer. It then admits one
+RECORD_POINTER command. A missing target and an unreadable target give
+the same error.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-fp comment CHAT-erkoxybm "Task 8 done: pointer operation, PointerTargetAccess port, RSocket route, 9 creation tests, 3 mutations."
+fp comment CHAT-erkoxybm "Task 8 done: pointer operation, PointerTargetAccess port, RSocket route, 10 creation tests, 4 mutations."
 ```
 
 ---
@@ -1866,7 +1968,9 @@ Expected: exit 0. If the route guard reports a different signature or field for 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add chat-webflux
+git add chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/composite/mapping/ChatMessageServiceRestMapping.kt \
+  chat-webflux/src/main/kotlin/com/demo/chat/config/WebFluxKeyVerifierConfiguration.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/route/RestRouteCatalog.kt
 git commit -m "Add the REST pointer route (CHAT-erkoxybm)
 
 POST /message/pointer/{id} checks FORWARD on the room. The body carries
@@ -1891,7 +1995,55 @@ fp comment CHAT-erkoxybm "Task 9 done: REST pointer route, 404 and 400 mappings.
 - Consumes: `PointerMessage`.
 - Produces: shell lines `→ message <id>` and `→ topic <id>`. An MCP pointer item `{kind: "pointer", messageKey, senderId, topicId, timestamp, targetId, targetRoot}`.
 
-The owner excluded shell and MCP tests. Their existing suites are the regression proof.
+The owner excluded shell tests. The shell suite is the regression proof there. One MCP decoder test proves that a history with a pointer still decodes, because one pointer broke the whole MCP history before this task.
+
+- [ ] **Step 0: Write the MCP history test**
+
+Append to `chat-mcp/src/test/kotlin/com/demo/chat/mcp/client/MessageEnvelopeTests.kt`, inside the class:
+
+```kotlin
+    /** A history that holds a pointer returns the text item and the pointer item. See `CHAT-erkoxybm`. */
+    @Test
+    fun `a history with a pointer returns the text item and the pointer item`() {
+        for (kind in KeyType.entries) {
+            val text = Json.parseToJsonElement(messagingFixture(kind, "message.json")).toString()
+            val inner = Json.parseToJsonElement(text).jsonObject.getValue("message").jsonObject
+            val messageKey = inner.getValue("key").jsonObject.getValue("key").jsonObject
+            val pointer = buildJsonObject {
+                put("PointerMessage", buildJsonObject {
+                    put("key", inner.getValue("key"))
+                    put("data", "")
+                    put("record", true)
+                    put("target", buildJsonObject {
+                        put("key", buildJsonObject {
+                            put("id", messageKey.getValue("id"))
+                            put("root", messageKey.getValue("root"))
+                            put("empty", false)
+                        })
+                    })
+                })
+            }.toString()
+
+            val items = decodeHistory("$text\n$pointer\n", kind)
+
+            assertEquals(2, items.size)
+            assertEquals(decodeMessage(text, kind), items[0])
+            val item = items[1]
+            assertEquals(setOf("kind", "messageKey", "senderId", "topicId", "timestamp", "targetId", "targetRoot"), item.keys)
+            assertEquals("pointer", item.getValue("kind").jsonPrimitive.content)
+            assertEquals(items[0].getValue("messageKey").jsonObject.getValue("id"), item.getValue("targetId"))
+            assertEquals(items[0].getValue("messageKey").jsonObject.getValue("root"), item.getValue("targetRoot"))
+        }
+    }
+```
+
+Run it:
+
+```bash
+mvn -o -B -pl chat-mcp test -Dtest=MessageEnvelopeTests > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|ClientException" $LOG | head -4
+```
+
+Expected: exit 1. The new test fails with `ClientException`, because the decoder refuses the `PointerMessage` wrapper.
 
 - [ ] **Step 1: Print a pointer in the shell**
 
@@ -1899,7 +2051,8 @@ In `PubSubCommands.kt`, change the constructor parameter `rootKeys: RootKeys<T>,
 
 ```kotlin
     /** A pointer shows its target and no text. No read of the target runs. See `CHAT-erkoxybm`. */
-    // The static type fixes T, so the compiler accepts the generic type check.
+    // The static type Message<T, String> fixes T, so `is PointerMessage<T>` compiles.
+    // Measured with kotlinc, K1 and K2, on 2026-10-10. A subject of type Any fails.
     private fun body(message: Message<T, String>): String =
         if (message is PointerMessage<T>) {
             val domain = when (roots.domainOfRoot(message.target.root)) {
@@ -1979,7 +2132,9 @@ The two existing callers of `messageShape()` stay unchanged.
 mvn -o -B -pl chat-shell,chat-mcp -am test > $LOG 2>&1; echo exit=$?; grep -E "Tests run:.*Fail|FAIL|BUILD" $LOG | tail -4
 ```
 
-Expected: exit 0. If a `chat-mcp` test pins the old message schema text, update that test to the `anyOf` shape and name it in the commit message.
+Expected: exit 0, and `a history with a pointer returns the text item and the pointer item` passes. If a `chat-mcp` test pins the old message schema text, update that test to the `anyOf` shape and name it in the commit message.
+
+Mutation: in `decodeMessage`, remove the `document["PointerMessage"]` line. Run `MessageEnvelopeTests` again. Expected: only the new test fails. Restore the line by hand, and confirm it with `git diff`.
 
 - [ ] **Step 5: Describe the item**
 
@@ -1988,7 +2143,12 @@ In `docs/MCP-ADAPTER.md`, in the section that describes a message item, add: `A 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add chat-shell chat-mcp docs/MCP-ADAPTER.md drift.lock
+git add chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommands.kt \
+  chat-mcp/src/main/kotlin/com/demo/chat/mcp/client/MessageEnvelope.kt \
+  chat-mcp/src/main/kotlin/com/demo/chat/mcp/tool/MessagingSchemas.kt \
+  chat-mcp/src/test/kotlin/com/demo/chat/mcp/client/MessageEnvelopeTests.kt \
+  docs/MCP-ADAPTER.md
+# Add drift.lock only if Step 5 refreshed it. Add each MCP test that Step 4 changed, by its path.
 git commit -m "Show pointers in the shell and MCP (CHAT-erkoxybm)
 
 The shell prints the target domain and id. MCP decodes a PointerMessage
@@ -2080,4 +2240,4 @@ fp comment CHAT-erkoxybm "Task 11 done: documents, register, both gates green. T
 
 - [ ] **Step 7: Hand off**
 
-Use superpowers:finishing-a-development-branch. Push the branch and open the pull request before the owner merges, as the memory note `Push a complete PR` requires.
+Report the gate totals to the owner, and stop. Ask the owner whether to push the branch and open a pull request. Do not push and do not open a pull request without that answer. If the owner says yes, use superpowers:finishing-a-development-branch.
