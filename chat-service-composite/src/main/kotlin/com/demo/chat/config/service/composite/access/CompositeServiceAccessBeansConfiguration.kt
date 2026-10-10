@@ -39,7 +39,6 @@ class CompositeServiceAccessBeansConfiguration<T : Any, V, Q>(
     override fun topicService() = TopicServiceAccess(
         authMetadataAccessBroker = accessBroker,
         principalSupplier = principalKeyPublisher,
-        rootKeys = rootKeys,
         that = compositeServiceBeansConfiguration.topicService(),
         verifier = verifier,
     )

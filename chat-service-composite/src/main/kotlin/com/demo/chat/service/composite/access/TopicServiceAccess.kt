@@ -4,7 +4,6 @@ import com.demo.chat.service.core.KeyVerifier
 
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.ChatDomain
-import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.security.AccessBroker
 import org.reactivestreams.Publisher
@@ -14,7 +13,6 @@ import reactor.core.publisher.Mono
 open class TopicServiceAccess<T, V>(
     private val authMetadataAccessBroker: AccessBroker<T>,
     private val principalSupplier: () -> Publisher<Key<T>>,
-    private val rootKeys: RootKeys<T>,
     private val that: ChatTopicService<T, V>,
     private val verifier: KeyVerifier<T>,
 ) : ChatTopicService<T, V> {
