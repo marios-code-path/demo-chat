@@ -36,7 +36,7 @@ open class UserServiceImpl<T, Q>(
             .switchIfEmpty (
                 userPersistence
                     .key()
-                    .doOnNext { key ->
+                    .flatMap { key ->
                         // The minted key already carries the USER root. C41.
                         val user = User.create(
                             key,
@@ -44,15 +44,13 @@ open class UserServiceImpl<T, Q>(
                             userReq.handle,
                             userReq.imgUri
                         )
-                        Flux.concat(
-                            userPersistence.add(user),
-                            userIndex.add(user)
-                        ).subscribe()
+                        userPersistence
+                            .add(user)
+                            .then(userIndex.add(user))
+                            .thenReturn(key)
                     }
             )
-
-
-
+    
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = userIndex
         .findBy(userHandleToQuery.apply(req))
         .flatMap(
