@@ -5072,4 +5072,43 @@ merged.** `docs/BUILD-HEALTH.md` holds the measurements, under
   passed, with 1 Cassandra container at peak. `chat-persistence-cassandra`
   took 5:51, against 7:15 on baseline.
 - `CassandraStoreShapeCheckTests` still takes about 285 s. `CHAT-pggtduxz`
-  holds it.
+  holds it. **Since `CHAT-pggtduxz`, the class takes 80.5 s.** See the next
+  section.
+
+## The shape check tests build small keyspaces (2026-10-10)
+
+`CHAT-pggtduxz`. Branch `chat-pggtduxz-shape-check-speed`. **This work is not
+merged.** Test code only.
+
+- `CassandraStoreShapeCheckTests` built a full keyspace from
+  `keyspace-long.cql` in 11 of its 12 tests, about 26 schema statements each,
+  and dropped none of them.
+- **Only `a complete keyspace passes` builds the full keyspace now.** It proves
+  that the real script satisfies the full required map.
+- Each refusal case builds the tables it names, from the same script
+  statements, and limits the required map to those tables. A table name that
+  matches no statement fails the test.
+- **Each refusal case first passes the check**, so the removed element alone
+  causes the refusal. The `TIMESTAMP` case passes with the script type before
+  it gets the old type.
+- Each test drops its keyspace. The module shares one Cassandra container since
+  `CHAT-znodyvcc`.
+
+**The check evaluates each required table and column on its own.**
+`ColumnShapeCheck` reads that way, so a smaller required map gives the same
+verdict for the removed element.
+
+### Measured
+
+- The class alone, with `-Pintegration`: 296.6 s before, 80.5 s after.
+  12 tests, 0 failures.
+- Three mutations, each run alone and restored from git. The check ignores
+  the `root` column: only the `keys.root` case fails. The small keyspaces get
+  no table: the 10 cases with a pass check fail at it. The type check is off:
+  only the `TIMESTAMP` case fails.
+- `chat-persistence-cassandra` alone: 2:17, against 5:51 after `CHAT-znodyvcc`
+  and 7:15 before it. 131 tests, 0 failures.
+- `build-health.sh --ci` with an empty `DOCKER_CONFIG`: exit 0, 30 modules,
+  2460 tests, 0 failures, 0 errors, 82 skipped, agent HTTP gate ok, and no
+  drift. The class took 71.1 s in that run. The shell image moved from
+  `033f847c8150` to `c15e101bac92`, and Docker reported no OOM event.
