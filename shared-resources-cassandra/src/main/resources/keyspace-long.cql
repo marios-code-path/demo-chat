@@ -90,6 +90,7 @@ CREATE TABLE chat_long.chat_message_id (
     text    varchar,
     msg_time TIMESTAMP,
     visible Boolean,
+    kind text,
     PRIMARY KEY (msg_id, msg_time))
 WITH CLUSTERING ORDER BY (msg_time DESC);
 

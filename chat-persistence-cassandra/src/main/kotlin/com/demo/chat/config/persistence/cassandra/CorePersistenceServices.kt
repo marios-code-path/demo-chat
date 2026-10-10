@@ -30,9 +30,10 @@ class CorePersistenceServices<T : Any>(
     membershipRepo: TopicMembershipRepository<T>,
     authmetaRepo: AuthMetadataRepository<T>,
     keyValueRepo: KeyValuePairRepository<T>,
+    typeUtil: TypeUtil<T>,
     @Qualifier(JACKSON_2_OBJECT_MAPPER) mapper: ObjectMapper
 ) : CassandraPersistenceServices<T>(keyService, rootKeys, userRepo, topicRepo,
-    messageRepo, membershipRepo, authmetaRepo, keyValueRepo, mapper) {
+    messageRepo, membershipRepo, authmetaRepo, keyValueRepo, typeUtil, mapper) {
     /**
      * The shape of the persistence tables. It runs before the root keys load,
      * also when another backend provides the keys. See `CHAT-avduuqwp`, T7.

@@ -1,5 +1,6 @@
 package com.demo.chat.persistence.cassandra
 
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.persistence.cassandra.impl.*
@@ -17,6 +18,7 @@ open class CassandraPersistenceServices<T : Any>(
     private val membershipRepo: TopicMembershipRepository<T>,
     private val authMetadataRepo: AuthMetadataRepository<T>,
     private val keyValueRepo: KeyValuePairRepository<T>,
+    private val typeUtil: TypeUtil<T>,
     private val mapper: ObjectMapper = ObjectMapper()
 ) : PersistenceServiceBeans<T, String> {
 
@@ -27,7 +29,7 @@ open class CassandraPersistenceServices<T : Any>(
         TopicPersistenceCassandra(keyService, rootKeys, topicRepo)
 
     override fun messagePersistence(): MessagePersistence<T, String> =
-        MessagePersistenceCassandra(keyService, rootKeys, messageRepo)
+        MessagePersistenceCassandra(keyService, rootKeys, messageRepo, typeUtil)
 
     override fun membershipPersistence(): MembershipPersistence<T> =
         MembershipPersistenceCassandra(keyService, rootKeys, membershipRepo)

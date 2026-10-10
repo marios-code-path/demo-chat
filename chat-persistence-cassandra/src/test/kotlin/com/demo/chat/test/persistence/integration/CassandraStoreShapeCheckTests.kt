@@ -133,7 +133,7 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
             "keys.root", "root_keys", "auth_metadata.principal_root", "auth_metadata.target_root",
             "auth_metadata_principal.principal_root", "auth_metadata_principal.target_root",
             "auth_metadata_target.principal_root", "auth_metadata_target.target_root",
-            "auth_metadata_by_id",
+            "auth_metadata_by_id", "chat_message_id.kind",
         ]
     )
     fun `a store without a required element fails at start`(element: String) {
