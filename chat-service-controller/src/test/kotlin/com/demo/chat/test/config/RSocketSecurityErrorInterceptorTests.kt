@@ -2,7 +2,9 @@ package com.demo.chat.test.config
 
 import com.demo.chat.config.rsocket.RSocketSecurityErrorInterceptor
 import com.demo.chat.domain.KeyVerificationException
+import com.demo.chat.domain.NoSuchPointerTargetException
 import com.demo.chat.domain.NotFoundException
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.security.rsocket.RSocketNotFound
 import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
 import io.rsocket.exceptions.CustomRSocketException
@@ -36,6 +38,20 @@ class RSocketSecurityErrorInterceptorTests {
 
         assertThat(codeOf(error)).isEqualTo(RSocketNotFound.CODE)
         assertThat(RSocketSecurityErrorInterceptor.toSecurityError(error)).hasMessage("Key 99 is not in the registry.")
+    }
+
+    /**
+     * A REST facade reads the code, so a pointer target miss must leave as a
+     * miss. With `0x201`, the facade answered 500. See `CHAT-erkoxybm`.
+     */
+    @Test
+    fun `a missing pointer target leaves with the not found code`() {
+        for (domain in listOf(ChatDomain.MESSAGE, ChatDomain.MESSAGE_TOPIC)) {
+            val error = NoSuchPointerTargetException(domain)
+
+            assertThat(codeOf(error)).describedAs("the code for $domain").isEqualTo(RSocketNotFound.CODE)
+            assertThat(RSocketSecurityErrorInterceptor.toSecurityError(error)).hasMessage(error.message)
+        }
     }
 
     @Test
