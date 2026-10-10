@@ -40,6 +40,7 @@ open class JacksonModules(
     @Bean
     open fun messageModule() = SimpleModule("MessageModule", Version.unknownVersion()).apply {
         addDeserializer(Message::class.java, MessageDeserializer(keyConverter, dataConverter))
+        addDeserializer(PointerMessage::class.java, PointerMessageDeserializer(keyConverter))
     }
 
     @Bean

@@ -8,6 +8,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.domain.SimpleMessageKey
 import java.time.Instant
 import com.demo.chat.domain.MessageTopic
@@ -136,6 +137,21 @@ class Jackson3MessageDeserializer<T : Any, E : Any> : ValueDeserializer<Message<
 
         return when (key) {
             is MessageKey<T> -> Message.create(key, decoded, visible)
+            else -> throw ChatException("Invalid Message Key")
+        }
+    }
+}
+
+/** A pointer. See `PointerMessageDeserializer` and `CHAT-erkoxybm`. */
+class Jackson3PointerMessageDeserializer<T : Any> : ValueDeserializer<PointerMessage<T>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): PointerMessage<T> {
+        val node: JsonNode = readTimestampTree(p, ctxt)
+
+        val key = Jackson3NodeToAny.key<T>(node.get("key").values().first(), ctxt)
+        val target = Jackson3NodeToAny.key<T>(node.get("target").values().first(), ctxt)
+
+        return when (key) {
+            is MessageKey<T> -> PointerMessage(key, target)
             else -> throw ChatException("Invalid Message Key")
         }
     }
