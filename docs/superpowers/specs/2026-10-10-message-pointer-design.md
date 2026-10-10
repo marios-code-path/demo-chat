@@ -84,7 +84,9 @@ The message value type `V` stays `String` in every composition. No service signa
 | Transport | Route | Request ID |
 |---|---|---|
 | RSocket | `message.message-pointer` with `MessagePointerRequest` | The field `requestId` |
-| REST | `POST /message/pointer/{roomId}`, body `{targetDomain, targetId}` | The header `Idempotency-Key` |
+| REST | `POST /message/pointer/{roomId}`, JSON body `{"targetDomain": "...", "targetId": "..."}` | The header `Idempotency-Key` |
+
+The REST body carries `targetId` as a JSON string. A JSON body cannot carry the key type, so the composite converts every target id with `TypeUtil.exactFrom`. A value that does not convert exactly answers 400 with `KeyInputException`. The same conversion repairs an RSocket id that the decoder read as a narrower number.
 
 Both routes return `MessageSendResult`. The outcomes and the REST status codes are the same as for `submit`.
 
@@ -107,11 +109,11 @@ Step 4 leaks nothing. Step 6 runs after the read check, so the caller can alread
 **Security reads the message, and then checks its room.** The rule replaces the `GET` check on the message key.
 
 ```kotlin
-@PostAuthorize("@chatAccess.hasAccessTo(returnObject.key.dest, 'SUBSCRIBE')")
+@PostAuthorize("@chatAccess.hasAccessToId(returnObject.key.dest, 'SUBSCRIBE')")
 override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 ```
 
-The check reads `key.dest` alone. It does not read the target of a pointer. The `key.dest` of a pointer is its host room. Following a pointer is a separate read, and that read gets its own check.
+The check reads `key.dest` alone. `dest` is a raw id, so the expression uses `hasAccessToId`. The two argument `hasAccessTo` takes a `Key`, and a raw id fails there with `EL1004E`. It does not read the target of a pointer. The `key.dest` of a pointer is its host room. Following a pointer is a separate read, and that read gets its own check.
 
 ### The access sites
 
@@ -119,8 +121,8 @@ Two sites check `GET` on a message today. Both change in one commit.
 
 | Site | Today | After |
 |---|---|---|
-| `MessageServiceAccess.messageById`, `chat-security`. RSocket `message-by-id` uses it. | `@PreAuthorize` with `GET` on `#req.id` | `@PostAuthorize` with `SUBSCRIBE` on `returnObject.key.dest` |
-| `ChatMessageServiceRestMapping.restMessageById`, `chat-webflux`. REST `GET /message/id/{id}` uses it. | `@PreAuthorize` with `GET` on `#id.key.id` | `@PostAuthorize` with `SUBSCRIBE` on `returnObject.key.dest` |
+| `MessageServiceAccess.messageById`, `chat-security`. RSocket `message-by-id` uses it. | `@PreAuthorize` with `GET` on `#req.id` | `@PostAuthorize` with `hasAccessToId` and `SUBSCRIBE` on `returnObject.key.dest` |
+| `ChatMessageServiceRestMapping.restMessageById`, `chat-webflux`. REST `GET /message/id/{id}` uses it. | `@PreAuthorize` with `GET` on `#id.key.id` | `@PostAuthorize` with `hasAccessToId` and `SUBSCRIBE` on `returnObject.key.dest` |
 
 **The REST site needs its own change.** `restMessageById` calls `messageById` on the same object. That call crosses no proxy, so the check of `messageById` does not run there. A REST `GET` check that stays would also refuse a caller before the room check runs.
 
@@ -197,9 +199,9 @@ Both `keyspace-*.cql` files gain the column. The Cassandra `StoreShapeCheck` req
 
 No reader fetches the target.
 
-- The shell `messages` command prints `12:01 Agent → message <id> in room <id>` or `12:01 Agent → topic <id>`.
+- The shell `messages` command prints `→ message <id>` or `→ topic <id>` after the time and the sender. It does not print the room of a target message, because that needs a read of the target. The shell maps the target root to a domain with `RootKeys.domainOfRoot`.
 - REST NDJSON and RSocket send the `PointerMessage` JSON shape.
-- An MCP history item and an MCP message item for a pointer carry `kind: "pointer"`, `targetDomain`, and `targetId`. They carry no `text`. `docs/MCP-ADAPTER.md` describes the item.
+- An MCP history item and an MCP message item for a pointer carry `kind: "pointer"`, `targetId`, and `targetRoot`. They carry no `text`. The adapter holds no root keys, so it cannot name the target domain. A text item does not change. Before this change, the adapter refused a whole history that held any wrapper other than `message`. `docs/MCP-ADAPTER.md` describes the item.
 - `messageById` on a pointer id returns the pointer itself.
 
 ## Tests
