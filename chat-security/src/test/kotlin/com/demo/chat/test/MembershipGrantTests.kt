@@ -27,7 +27,7 @@ import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * The membership writer: `SEND` and `SUBSCRIBE`.
+ * The membership writer: `SEND`, `SUBSCRIBE` and `FORWARD`.
  *
  * **This wires the real authorization stack.** `CoreAuthorizationService`,
  * `AuthSummarizer` and `AuthMetadataAccessBroker` are the production classes.
@@ -57,7 +57,7 @@ class MembershipGrantTests {
 
         writer.grantMembership(MEMBER, ROOM).block()
 
-        assertThat(store.rows.values.map { it.permission }).containsExactlyInAnyOrder("SEND", "SUBSCRIBE")
+        assertThat(store.rows.values.map { it.permission }).containsExactlyInAnyOrder("SEND", "SUBSCRIBE", "FORWARD")
         assertThat(store.rows.values).allSatisfy { row ->
             assertThat(row.principal).describedAs("the member").isEqualTo(MEMBER)
             assertThat(row.target).describedAs("the room").isEqualTo(ROOM)
@@ -93,7 +93,7 @@ class MembershipGrantTests {
 
         writer.grantMembership(MEMBER, ROOM).block()
 
-        assertThat(store.rows).hasSize(2)
+        assertThat(store.rows).hasSize(3)
         assertThat(store.rows.values.map { it.expires }).containsOnly(0L)
         assertThat(can(MEMBER, ROOM, "SEND")).isTrue()
         assertThat(can(MEMBER, ROOM, "SUBSCRIBE")).isTrue()
@@ -104,7 +104,7 @@ class MembershipGrantTests {
         writer.grantMembership(MEMBER, ROOM).block()
         writer.grantMembership(MEMBER, ROOM).block()
 
-        assertThat(store.rows).hasSize(2)
+        assertThat(store.rows).hasSize(3)
     }
 
     /** **A row that one permission lost is written again**, and the other row is kept. */
@@ -117,7 +117,7 @@ class MembershipGrantTests {
 
         writer.grantMembership(MEMBER, ROOM).block()
 
-        assertThat(store.rows.values.map { it.permission }).containsExactlyInAnyOrder("SEND", "SUBSCRIBE")
+        assertThat(store.rows.values.map { it.permission }).containsExactlyInAnyOrder("SEND", "SUBSCRIBE", "FORWARD")
         assertThat(store.rows).containsKey(send.key)
     }
 
@@ -149,7 +149,7 @@ class MembershipGrantTests {
 
         writer.expireMembership(MEMBER, ROOM).block()
 
-        for (permission in listOf("SEND", "SUBSCRIBE")) {
+        for (permission in listOf("SEND", "SUBSCRIBE", "FORWARD")) {
             assertThat(can(MEMBER, ROOM, permission)).describedAs("$permission, the member in the room").isFalse()
             assertThat(can(OTHER, ROOM, permission)).describedAs("$permission, another member").isTrue()
             assertThat(can(MEMBER, OTHER_ROOM, permission)).describedAs("$permission, another room").isTrue()

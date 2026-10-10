@@ -66,7 +66,7 @@ class RoomMemberGrantWiringTests {
     private val timeout = Duration.ofSeconds(10)
 
     @Test
-    fun `a join grants SEND and SUBSCRIBE, a leave expires both, and a second join grants both again`() {
+    fun `a join grants SEND, SUBSCRIBE and FORWARD, a leave expires them, and a second join grants them again`() {
         val member = newUser("wiringmember")
         val room = composite.topicService().addRoom(ByStringRequest("wiringmemberroom")).block(timeout)!!
         val request = MembershipRequest(member.key.id, room.id)
@@ -98,7 +98,7 @@ class RoomMemberGrantWiringTests {
         composite.topicService().joinRoom(request).block(timeout)
 
         assertThat(membershipRows(member.key, room).map { it.expires }).describedAs("after the second join")
-            .containsExactly(0L, 0L)
+            .containsExactly(0L, 0L, 0L)
         for (permission in PERMISSIONS) {
             assertThat(can(member.key, room, permission)).describedAs("$permission after the second join").isTrue()
         }
@@ -142,7 +142,7 @@ class RoomMemberGrantWiringTests {
             .block(timeout)!!
 
     private companion object {
-        val PERMISSIONS = listOf("SEND", "SUBSCRIBE")
+        val PERMISSIONS = listOf("SEND", "SUBSCRIBE", "FORWARD")
     }
 
     /** The handle index tokenizes on a hyphen, so each handle is one token. */

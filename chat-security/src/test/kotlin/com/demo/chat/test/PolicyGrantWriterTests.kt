@@ -63,10 +63,11 @@ class PolicyGrantWriterTests {
         assertThat(rows()).containsExactlyInAnyOrder(
             Row(MEMBER, ROOM, "SEND", 0L),
             Row(MEMBER, ROOM, "SUBSCRIBE", 0L),
+            Row(MEMBER, ROOM, "FORWARD", 0L),
         )
     }
 
-    /** **`NOW` reads the clock once.** Both rows carry the same expiry. */
+    /** **`NOW` reads the clock once.** Every row carries the same expiry. */
     @Test
     fun `a leave policy sets each live row to expire at the action time`() {
         writer().apply(ShippedGrantPolicies.ROOM_JOIN, ActionContext(MEMBER, ROOM)).block()
@@ -78,6 +79,7 @@ class PolicyGrantWriterTests {
         assertThat(rows()).containsExactlyInAnyOrder(
             Row(MEMBER, ROOM, "SEND", NOW),
             Row(MEMBER, ROOM, "SUBSCRIBE", NOW),
+            Row(MEMBER, ROOM, "FORWARD", NOW),
         )
     }
 
@@ -118,7 +120,7 @@ class PolicyGrantWriterTests {
         writer().apply(ShippedGrantPolicies.ROOM_JOIN, ActionContext(MEMBER, ROOM)).block()
 
         val keys = store.rows.values.map { it.key }
-        assertThat(keys).hasSize(3).doesNotHaveDuplicates()
+        assertThat(keys).hasSize(4).doesNotHaveDuplicates()
         assertThat(keys).allSatisfy { key ->
             assertThat(key.root).describedAs("the grant key root").isEqualTo(AUTH_ROOT.id)
             assertThat(key.empty).describedAs("a minted key").isFalse()
