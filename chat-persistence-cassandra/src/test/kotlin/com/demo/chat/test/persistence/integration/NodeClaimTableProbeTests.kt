@@ -24,6 +24,11 @@ import java.time.Duration
  *
  * Node ids 200 to 209 belong to this package. truncate-long.cql does not
  * clear node_claim, so a reused node id would meet an earlier claim.
+ *
+ * This class claims 210 to 212, and no other class claims them. The test
+ * classes of this module share one Cassandra container, so one keyspace, since
+ * `CHAT-znodyvcc`. A claim on 201 here once left a live lease that
+ * `CassandraNodeIdClaimStoreTests` read as its own.
  */
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(
@@ -47,16 +52,16 @@ class NodeClaimTableProbeTests {
 
     @Test
     fun `a second owner cannot take a live claim`() {
-        Assertions.assertTrue(claim(201, "owner-one", 30))
-        Assertions.assertFalse(claim(201, "owner-two", 30))
+        Assertions.assertTrue(claim(210, "owner-one", 30))
+        Assertions.assertFalse(claim(210, "owner-two", 30))
     }
 
     @Test
     fun `an expired claim is absent for IF NOT EXISTS`() {
-        Assertions.assertTrue(claim(202, "owner-one", 1))
+        Assertions.assertTrue(claim(211, "owner-one", 1))
         Thread.sleep(Duration.ofSeconds(3).toMillis())
         Assertions.assertTrue(
-            claim(202, "owner-two", 30),
+            claim(211, "owner-two", 30),
             "A TTL expired row must be absent for IF NOT EXISTS. " +
                 "If this fails, the design needs an explicit expires_at column."
         )
@@ -64,8 +69,8 @@ class NodeClaimTableProbeTests {
 
     @Test
     fun `a deleted claim is absent for IF NOT EXISTS`() {
-        Assertions.assertTrue(claim(203, "owner-one", 30))
-        cql.execute("DELETE FROM node_claim WHERE node_id = ?", 203).block()
-        Assertions.assertTrue(claim(203, "owner-two", 30))
+        Assertions.assertTrue(claim(212, "owner-one", 30))
+        cql.execute("DELETE FROM node_claim WHERE node_id = ?", 212).block()
+        Assertions.assertTrue(claim(212, "owner-two", 30))
     }
 }

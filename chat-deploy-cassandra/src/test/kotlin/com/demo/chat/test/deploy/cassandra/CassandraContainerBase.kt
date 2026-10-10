@@ -28,8 +28,11 @@ open class CassandraContainerBase {
         // RedisTestContainer starts its container the same way.
         val cassandraContainer = CassandraContainer(CASSANDRA_IMAGE).apply {
             withExposedPorts(9042)
-            withReuse(true)
             withNetwork(Network.SHARED)
+            // The image sizes the heap from the memory of the Docker VM. One
+            // container used up to 2 GiB on a 16 GiB VM. The image requires
+            // both values together. `CHAT-znodyvcc`.
+            withEnv(mapOf("MAX_HEAP_SIZE" to "1G", "HEAP_NEWSIZE" to "256M"))
             withStartupTimeout(Duration.ofSeconds(120))
             // Load the UUID keyspace as the primary init script.
             withInitScript("keyspace-uuid.cql")
