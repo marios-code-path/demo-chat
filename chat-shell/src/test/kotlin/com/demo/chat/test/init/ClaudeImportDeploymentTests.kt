@@ -7,6 +7,7 @@ import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.demo.chat.shell.commands.ClaudeImportCommands
 import com.demo.chat.shell.commands.LoginCommands
+import com.demo.chat.shell.commands.PubSubCommands
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Tag
@@ -20,6 +21,7 @@ class ClaudeImportDeploymentTests : ShellIntegrationTestBase() {
     @Autowired private lateinit var importer: ClaudeImportCommands<Long>
     @Autowired private lateinit var login: LoginCommands<Long>
     @Autowired private lateinit var services: CompositeServiceBeans<Long, String>
+    @Autowired private lateinit var pubsub: PubSubCommands<Long>
     @Autowired private lateinit var environment: ConfigurableEnvironment
 
     @Test
@@ -38,16 +40,23 @@ class ClaudeImportDeploymentTests : ShellIntegrationTestBase() {
         val roomId = services.topicService().getRoomByName(ByStringRequest(room)).block()!!.key.id
         val humanId = services.userService().findByUsername(ByStringRequest(human)).collectList().block()!!.single().key.id
         val assistantId = services.userService().findByUsername(ByStringRequest(assistant)).collectList().block()!!.single().key.id
-        val messages = services.messageService().listMessages(ByIdRequest(roomId))
-            .collectList().block()!!.sortedBy { it.key.timestamp }
+        val messages = services.messageService().listMessages(ByIdRequest(roomId)).collectList().block()!!
         assertThat(messages).hasSize(2)
         assertThat(messages.map { it.data }).containsExactly("First turn.", "Second\n\nturn.")
         assertThat(messages.map { it.key.from }).containsExactly(humanId, assistantId)
 
+        val shown = pubsub.messages(room)
+        val lines = shown.lines()
+        assertThat(lines).hasSize(4)
+        assertThat(lines[0]).endsWith(" | $human | First turn.")
+        assertThat(lines[1]).endsWith(" | $assistant | Second")
+        assertThat(lines[2]).isBlank()
+        assertThat(lines[3].trim()).isEqualTo("turn.")
+
         importer.importConversation(fixture, "Sanitized import fixture", room, human, assistant)
-        val rerunMessages = services.messageService().listMessages(ByIdRequest(roomId))
-            .collectList().block()!!.sortedBy { it.key.timestamp }
+        val rerunMessages = services.messageService().listMessages(ByIdRequest(roomId)).collectList().block()!!
         assertThat(rerunMessages.map { it.key.id }).containsExactlyElementsOf(messages.map { it.key.id })
+        assertThat(pubsub.messages(room)).isEqualTo(shown)
     }
 
     @Test
