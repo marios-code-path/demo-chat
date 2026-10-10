@@ -8,6 +8,7 @@ import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -23,6 +24,16 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * A keyspace without a required element fails the start check, and the
  * message names the element and the recreation. See `CHAT-avduuqwp`, T7.
+ *
+ * **Only one test builds the full keyspace.** It proves that the real script
+ * satisfies the full required map. Each refusal case builds the tables it
+ * names, from the same script statements. The check evaluates each required
+ * table and column on its own, so a smaller map gives the same verdict for the
+ * removed element. Each refusal case first passes the check, so the removed
+ * element alone causes the refusal. `CHAT-pggtduxz`.
+ *
+ * Each test drops its keyspace. The test classes of this module share one
+ * Cassandra container since `CHAT-znodyvcc`.
  */
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [RepositoryTestConfiguration::class])
@@ -42,28 +53,47 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
 
         /** The column types of a long store. */
         val LONG_TYPES = CassandraStoreShapeCheck.persistenceTypes(TypeUtil.LongUtil)
+
+        /** The statements of keyspace-long.cql, with no comment line. */
+        val SCRIPT: List<String> = ClassPathResource("keyspace-long.cql").inputStream.bufferedReader().readText()
+            .lines().filterNot { it.trim().startsWith("--") }.joinToString("\n")
+            .split(";").map { it.trim() }.filter { it.isNotEmpty() }
     }
+
+    private val created = mutableListOf<String>()
+
+    @AfterEach
+    fun dropKeyspaces() {
+        created.forEach { session.execute("DROP KEYSPACE IF EXISTS $it") }
+        created.clear()
+    }
+
+    private fun newKeyspaceName(): String = "shape_${next.incrementAndGet()}".also { created += it }
 
     /** A new keyspace from keyspace-long.cql, with every table this release reads. */
     private fun completeKeyspace(): String {
-        val name = "shape_${next.incrementAndGet()}"
-        val script = ClassPathResource("keyspace-long.cql").inputStream.bufferedReader().readText()
-            .lines().filterNot { it.trim().startsWith("--") }.joinToString("\n")
-            .replace("chat_long", name)
-        script.split(";").map { it.trim() }.filter { it.isNotEmpty() }.forEach { session.execute(it) }
+        val name = newKeyspaceName()
+        SCRIPT.map { it.replace("chat_long", name) }.forEach { session.execute(it) }
         return name
     }
 
-    /** The keyspace without [element]: a whole table, or one `table.column`. */
-    private fun keyspaceWithout(element: String): String {
-        val keyspace = completeKeyspace()
-        if ("." in element) {
-            val (table, column) = element.split(".")
-            session.execute("ALTER TABLE $keyspace.$table DROP $column")
-        } else {
-            session.execute("DROP TABLE $keyspace.$element")
+    /** The statement of keyspace-long.cql that creates [table]. A name that matches nothing fails the test. */
+    private fun tableStatement(table: String): String {
+        val pattern = Regex("^CREATE TABLE\\s+chat_long\\.${Regex.escape(table)}\\s*\\(")
+        return checkNotNull(SCRIPT.singleOrNull { pattern.containsMatchIn(it) }) {
+            "keyspace-long.cql creates no table named $table."
         }
-        return keyspace
+    }
+
+    /** A new keyspace that holds [tables] alone, each from its keyspace-long.cql statement. */
+    private fun keyspaceWith(vararg tables: String): String {
+        val name = newKeyspaceName()
+        val keyspace = checkNotNull(SCRIPT.singleOrNull { it.startsWith("CREATE KEYSPACE") }) {
+            "keyspace-long.cql holds no CREATE KEYSPACE statement."
+        }
+        session.execute(keyspace.replace("chat_long", name))
+        tables.forEach { session.execute(tableStatement(it).replace("chat_long", name)) }
+        return name
     }
 
     @Test
@@ -76,14 +106,17 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
     // the wrong type. Such a store started, and failed at the first message write.
     @Test
     fun `a long store with a TIMESTAMP message id fails at start`() {
-        val keyspace = completeKeyspace()
+        val keyspace = keyspaceWith("chat_message_id")
+        assertThatCode { CassandraStoreShapeCheck(session, keyspace, emptyMap(), LONG_TYPES).check() }
+            .doesNotThrowAnyException()
+
         session.execute("DROP TABLE $keyspace.chat_message_id")
         session.execute(
             "CREATE TABLE $keyspace.chat_message_id (msg_id TIMESTAMP, user_id BIGINT, topic_id BIGINT, " +
                 "text varchar, msg_time TIMESTAMP, visible Boolean, PRIMARY KEY (msg_id, msg_time))"
         )
 
-        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace, ALL, LONG_TYPES).check() }
+        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace, emptyMap(), LONG_TYPES).check() }
             .hasMessageContaining("chat_message_id.msg_id is timestamp, required bigint")
             .hasMessageContaining("Recreate the store")
     }
@@ -104,9 +137,21 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
         ]
     )
     fun `a store without a required element fails at start`(element: String) {
-        val keyspace = keyspaceWithout(element)
+        val table = element.substringBefore(".")
+        val required = ALL.filterKeys { it == table }
+        assertThat(required).describedAs("the required map names $table").isNotEmpty
+        val keyspace = keyspaceWith(table)
+        assertThatCode { CassandraStoreShapeCheck(session, keyspace, required).check() }
+            .describedAs("the keyspace passes before $element is removed")
+            .doesNotThrowAnyException()
 
-        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace, ALL, LONG_TYPES).check() }
+        if ("." in element) {
+            session.execute("ALTER TABLE $keyspace.$table DROP ${element.substringAfter(".")}")
+        } else {
+            session.execute("DROP TABLE $keyspace.$table")
+        }
+
+        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace, required).check() }
             .hasMessageContaining(element)
             .hasMessageContaining("Recreate the store")
     }
