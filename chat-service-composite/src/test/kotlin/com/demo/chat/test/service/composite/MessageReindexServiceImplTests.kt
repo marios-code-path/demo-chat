@@ -37,6 +37,7 @@ import reactor.core.scheduler.Schedulers
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
 class MessageReindexServiceImplTests {
@@ -372,7 +373,10 @@ class MessageReindexServiceImplTests {
      */
     /** Opens the job topic, as the real store does, so a send can be delivered. */
     private class FakeJobStore(private val pubsub: FakePubSub) : VectorIndexJobStore<Long> {
-        val written = mutableListOf<IndexJob<Long>>()
+        // The run appends on its own thread while a reader polls on the
+        // interval thread. An ArrayList iterator then fails with
+        // ConcurrentModificationException. This list iterates a snapshot.
+        val written: MutableList<IndexJob<Long>> = CopyOnWriteArrayList()
         val topics = mutableListOf<MessageTopic<Long>>()
         var failListing = false
         var failFinish = false
