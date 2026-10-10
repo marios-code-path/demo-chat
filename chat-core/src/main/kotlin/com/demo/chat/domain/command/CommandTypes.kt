@@ -1,5 +1,6 @@
 package com.demo.chat.domain.command
 
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import java.time.Instant
@@ -27,7 +28,7 @@ data class CompletionRequirement(val backends: Set<BackendId>) {
     }
 }
 
-enum class CommandOperation { RECORD_MESSAGE, IMPORT_MESSAGE }
+enum class CommandOperation { RECORD_MESSAGE, IMPORT_MESSAGE, RECORD_POINTER }
 
 /** `UNCERTAIN` stays pending for the caller. It contributes no success and is not a terminal failure. */
 enum class BackendState { PENDING, SUCCEEDED, FAILED, UNCERTAIN }
@@ -61,7 +62,11 @@ data class MessageSendResult<T>(
 /** One admission identity. The owner comes from the trusted service boundary. */
 data class RequestIdentity<T>(val owner: T, val requestId: String)
 
-/** The input of admission. Normal sends use `RECORD_MESSAGE`. Imports use `IMPORT_MESSAGE`. */
+/**
+ * The input of admission. Normal sends use `RECORD_MESSAGE`. Imports use
+ * `IMPORT_MESSAGE`. Pointers use `RECORD_POINTER`, and only a pointer names a
+ * [target]. See `CHAT-erkoxybm`.
+ */
 data class CommandSubmission<T, V>(
     val owner: T,
     val requestId: String,
@@ -71,6 +76,7 @@ data class CommandSubmission<T, V>(
     val operation: CommandOperation = CommandOperation.RECORD_MESSAGE,
     val timestamp: Instant? = null,
     val publish: Boolean? = null,
+    val target: Key<T>? = null,
 )
 
 /** One accepted command. Every attempt and every recovery uses these values. */
