@@ -8,6 +8,7 @@ import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.persistence.cassandra.domain.ChatMessageById
 import com.demo.chat.persistence.cassandra.domain.ChatMessageByIdKey
 import com.demo.chat.persistence.cassandra.repository.ChatMessageRepository
@@ -67,7 +68,7 @@ class TextMessageServiceTests {
                 .given(msgRepo.findAll())
                 .willReturn(Flux.just(newMessage))
 
-        persistence = MessagePersistenceCassandra(keyService, roots, msgRepo)
+        persistence = MessagePersistenceCassandra(keyService, roots, msgRepo, UUIDUtil())
     }
 
     @Test

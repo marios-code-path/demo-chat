@@ -8,6 +8,10 @@ What a caller may do, and what the `Anon` root key may do.
 under `CHAT-mahevldm`, and `messageById` went from deny to allow under
 `CHAT-rfzsnbco`.
 
+**`messageById` went back to deny on 2026-10-10, under `CHAT-erkoxybm`.** It
+now checks `SUBSCRIBE` on the room of the message, and the `{Anon, Message,
+GET}` row left `userinit.yml`. See `messageById checks the room (2026-10-10)`.
+
 **One row was added on 2026-10-01 by `CHAT-eoqkbqve`, and the owner reversed
 it on 2026-10-02.** That route carried a literal deny on 2026-10-01. The owner
 removed the check on 2026-10-02, so the route answers every caller. The
@@ -52,7 +56,8 @@ as on the map store**, for all five caller states. It carries one further row
 than the matrix below, a room read, and it was re-measured on 2026-09-30 for
 `CHAT-rfzsnbco`.
 
-That test sends a real message, and the `messageById` row checks its key.
+That test sends a real message. The `messageById` row checks the room of that
+message since `CHAT-erkoxybm`.
 Until `CHAT-xcmpudyb`, `send` failed on a cassandra deployment, so the test
 minted a message key and sent nothing.
 
@@ -87,7 +92,6 @@ three `Anon` rows alone.
 | `Admin` | `Admin` | `*` | the `Admin` key alone, and the self rule already covers it |
 | `Anon` | `User` | FIND | yes |
 | `Anon` | `User` | PUT | yes |
-| `Anon` | `Message` | GET | yes, and it reaches `messageById` since `CHAT-rfzsnbco` |
 | `User` | `Message` | SEND | yes, and it reaches no room, because a room is another domain |
 | `User` | `MessageTopic` | NEW | yes, and it reaches `addRoom` since 2026-10-01 |
 | `User` | `MessageTopic` | GET_ALL | yes |
@@ -327,10 +331,18 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 | `submit`, room SEND | deny | deny | deny | deny | deny |
 | `command status`, `permitAll()` | owner only | owner only | owner only | owner only | owner only |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
-| `messageById`, GET | **allow** | **allow** | deny | deny | deny |
+| `messageById`, SUBSCRIBE on the room of the message | deny | deny, and allow for a member | deny | deny | deny |
+| `pointer`, FORWARD on the host room | deny | deny, and allow for a member | deny | deny | deny |
 | `listRooms`, MessageTopic GET_ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 | `getRoomByName`, no expression | **no check** | **no check** | **no check** | **no check** | **no check** |
+
+**`pointer` joined the matrix on 2026-10-10, under `CHAT-erkoxybm`.** A join
+grants `FORWARD` on the room, so a member allows. A caller that did not join
+the host room denies, and so does the agent. `Admin` allows through its `*` row
+on the `MessageTopic` root. No row in `userinit.yml` names `FORWARD`. The
+composite then checks that the caller can read the target. A missing target
+and an unreadable target both answer `no such message` or `no such topic`.
 
 The RSocket `message-send` rejects a sender that is not the caller, since Stage 1.
 `submit` and `command status` are message commands. `docs/MESSAGE-COMMANDS.md`
@@ -378,6 +390,22 @@ carries no check, so the five reach the delegate. Measured on 2026-10-02:
 `RSocketBoundaryProbeDeniedTests` sends one call through a broker that denies
 everything, and the delegate answers the room.
 
+## messageById checks the room (2026-10-10)
+
+`messageById` reads the message, and then checks `SUBSCRIBE` on its room. The
+row `{Anon, Message, GET}` left `userinit.yml`. A denied read answers 403. See
+`CHAT-erkoxybm`.
+
+- The RSocket check is a `@PostAuthorize` on `MessageServiceAccess.messageById`.
+- The REST check is a `@PostAuthorize` on `restMessageById`, because that route
+  calls `messageById` on the same object and crosses no proxy.
+- Both read `returnObject.key.dest` with `hasAccessToId`, because `dest` is a
+  raw id.
+- The store read occurs before the denial. A read has no effect.
+- A member reads the message. A caller that did not join the room is denied,
+  and so is the agent. `Admin` reads it through its `*` row on the
+  `MessageTopic` root.
+
 ## Three results that are easy to miss
 
 1. **An anonymous grant is a floor for every caller, and so is a `User` root
@@ -410,6 +438,8 @@ everything, and the delegate answers the room.
    `Anon` holds `Message:GET`, and `messageById` checks one message key. The
    check now reads the `Message` root beside that key, so the row applies.
    `send` stays denied, because the `Message` root is not the root of a room.
+   **Read that paragraph as of 2026-09-30.** Since `CHAT-erkoxybm`, the row is
+   gone, and `messageById` checks the room of the message.
 
    **Five checks name a root as the target already.** `hasAccessToDomain`
    passes the domain root, so `addRoom`, `listRooms`, `addUser`,
@@ -430,7 +460,7 @@ everything, and the delegate answers the room.
    `CHAT-mfveaecc`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
-`MessageTopic:NEW`, `MessageTopic:GET_ALL`, `Message:GET` and three named
+`MessageTopic:NEW`, `MessageTopic:GET_ALL` and three named
 `MessageTopic` permissions to every caller that reaches an identity.
 
 **Four matrix operations denied for every caller on 2026-10-01, and three do
@@ -504,7 +534,7 @@ and it was enforced from its first commit.
 | `TopicServiceAccess` | `roomMembers` | MEMBERS | |
 | `MessageServiceAccess` | `listenTopic` | SUBSCRIBE | |
 | `MessageServiceAccess` | `listMessages` | SUBSCRIBE | |
-| `MessageServiceAccess` | `messageById` | GET | **messageById** |
+| `MessageServiceAccess` | `messageById` | SUBSCRIBE on the room, after the read | **messageById** |
 | `MessageServiceAccess` | `send` | SEND | **send** |
 | `UserServiceAccess` | `addUser` | NEW | **addUser** |
 | `UserServiceAccess` | `findByUsername` | FIND | |
@@ -628,7 +658,7 @@ each `{id}` resolves through the registry first.
 |---|---|---|---|
 | `listenTopic` | `GET /topic/{id}` | NDJSON, stays open | SUBSCRIBE on the room |
 | `listMessages` | `GET /list/{id}` | NDJSON, completes | SUBSCRIBE on the room |
-| `messageById` | `GET /id/{id}` | JSON | GET on the message |
+| `messageById` | `GET /id/{id}` | JSON | SUBSCRIBE on the room of the message, after the read |
 | `send` | `POST /send/{id}` | JSON | SEND on the room |
 
 **`listMessages` reads the stored messages of one room, and the response
@@ -723,7 +753,7 @@ allows since 2026-10-01. An earlier version of this line named `addRoom` and
 
 ### The agent against the administrator
 
-The two matrices differ at three operations. `AnonymousAuthorizationMatrixTests`
+The two matrices differ at four operations since `CHAT-erkoxybm`. `AnonymousAuthorizationMatrixTests`
 pins the pair, and it pins the difference set.
 
 | Operation | Agent | Admin |
@@ -732,12 +762,12 @@ pins the pair, and it pins the difference set.
 | `listRooms`, `GET_ALL` | allow | allow |
 | `addRoom`, `NEW` | allow | allow |
 | `whoami`, `User FIND` | allow | allow |
-| `messageById`, `Message GET` | allow | allow |
+| `messageById`, `SUBSCRIBE` on a room the caller did not join | **deny** | allow |
 | `send` to a room the caller does not own | **deny** | allow |
 | `addUser`, `User NEW` | **deny** | allow |
 | `deleteRoom`, `REM` | **deny** | allow |
 
-**The last three rows are the agent's narrowing, and they are the whole of it.**
+**The four deny rows are the agent's narrowing, and they are the whole of it.**
 The scope ceiling applies here as it does everywhere: the actor set carries the
 `Anon` key and the `User` root, so no grant change can narrow a caller below the
-floor. The agent therefore also holds `addRoom`, `listRooms` and `messageById`.
+floor. The agent therefore also holds `addRoom` and `listRooms`.

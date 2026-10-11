@@ -156,6 +156,7 @@ Give each class its own ids. `CHAT-znodyvcc`.
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
 | `chat-deploy-cassandra` `CassandraAuthorizationMatrixTests` | 24 |
 | `chat-deploy-cassandra` `CassandraMessageSendTests` | 25 to 28 |
+| `chat-deploy-cassandra` `CassandraMessagePointerTests` | 29 |
 | `chat-deploy-cassandra` `CassandraKeyAndPersistenceSafeRepeatTests` | 43 |
 | `chat-deploy-cassandra` `CassandraIndexSafeRepeatTests` | 44 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |

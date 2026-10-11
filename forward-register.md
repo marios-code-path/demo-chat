@@ -5010,6 +5010,9 @@ The default `P,I` requirement does not prove vector completion or recipient deli
 
 The adapter checks every returned message's room.
 This check is necessary because the shipped message-by-ID route permits reads from any authenticated agent.
+**Read that sentence as of 2026-10-09.** The server checks `SUBSCRIBE` on the
+room of a message read by ID since `CHAT-erkoxybm`, so the adapter check is a
+second guard now.
 Room setup requires creation or `PUT /topic/join/{id}`, followed by successful history and submission probes.
 The agent has no grants-read route.
 Operator schemas, error metadata, and limits are in `docs/MCP-ADAPTER.md`.
@@ -5170,3 +5173,174 @@ closed. A later failure of this test reopens the issue.
   decides whether it closes.
 - **`CHAT-gsddauhn` is still `todo`.** It holds the full REST-profile failure
   that the MCP section names.
+
+## Message pointers (2026-10-10)
+
+`CHAT-erkoxybm`. Branch `chat-erkoxybm-message-pointer`. **This work is not
+merged.** Spec:
+`docs/superpowers/specs/2026-10-10-message-pointer-design.md`. Plan:
+`docs/superpowers/plans/2026-10-10-message-pointer.md`.
+
+A pointer is a message that names one message or one topic. It carries no
+text. It enters through a new `pointer` operation on `ChatMessageService`.
+
+### The eleven owner decisions
+
+1. A pointer lives in a host room. `key.from` is the creator and `key.dest` is
+   the host room. The field `target` names the target.
+2. `FORWARD` is a new permission on the host room. It is not a domain and it
+   has no root key.
+3. The creator must read the target. An unreadable target answers the same
+   error as a missing target.
+4. A pointer uses the backends `P`, `I` and `U`. It never uses `V`, so recall
+   never returns it.
+5. One nullable `kind` column marks a pointer row. It holds the target domain
+   name.
+6. A pointer to a pointer is refused at creation. No stored chain can exist.
+7. No reader fetches the target. A reader shows the target domain and id.
+8. `messageById` checks `SUBSCRIBE` on the `dest` of the returned message.
+   **The rule applies to every message, not to pointers alone.**
+9. A topic target uses `SUBSCRIBE`. It does not use `GET`.
+10. Tests cover the persistence stores, the creation checks, the `messageById`
+    rule, and one MCP decoder test. Routes, the index and the shell get no
+    pointer test.
+11. The message value type stays `String`. A pointer is `Message<T, String>`
+    with `data` of `""` and a separate `target`.
+
+**Decision 11 replaced a decision of the same morning.** That one bound the
+value type to `Any`, and it needed 206 test sites in 96 test files.
+
+### The `messageById` change
+
+`messageById` reads the message, and then checks `SUBSCRIBE` on its room.
+**This is a behavior change for every message.** The `{Anon, Message, GET}`
+row left `userinit.yml`. A caller that reads a message by id from a room it
+did not join answers 403.
+
+The two `GET` sites moved together: the RSocket composite and the REST
+mapping. `MessageByIdRoomRuleTests` and `MessageByIdRestRuleTests` pin them.
+
+**One existing test asserted the old behavior.**
+`McpMessagingDeploymentTests` read a message of another room and expected 200
+with the text. It expects 403 now, and it asserts that the text is absent.
+Commit `9be6e705`.
+
+### Mutations, each measured
+
+| Task | Mutation | Measured result |
+|---|---|---|
+| 3 | Drop the `kind` write | The four Cassandra pointer round trips failed alone |
+| 7 | Permit every read (`permitAll`) | The REST deny, the RSocket outsider read and the expression pin failed |
+| 8 | Drop the `FORWARD` check | Only its own creation cases failed |
+| 8 | Drop the target read check | Only its own creation cases failed |
+| 8 | Admit a pointer to a pointer | Only its own creation cases failed |
+| 8 | Read the registry instead of the topic store | Only its own creation cases failed |
+| 10 | Drop the pointer branch of the MCP decoder | Only the MCP decoder test failed |
+
+### The gates
+
+Measured on 2026-10-10 at the branch tip, before the documents commit.
+
+- Default mode: exit 0, 30 modules, 2104 tests, 0 failures, 0 errors, 47
+  skipped, and no drift.
+- `--ci` mode: exit 0, 30 modules, 2486 tests, 0 failures, 0 errors, 82
+  skipped, no drift, and `agent http gate: ok`. The run used an empty
+  `DOCKER_CONFIG`.
+- The shell test image is `sha256:f90664f4`. Its `LastTagTime` is
+  `2026-10-11 03:23:57 UTC`, which is inside the run window, so the run
+  rebuilt it. **The id before the run was not captured**, so this reading does
+  not prove a change of id. It proves a rebuild.
+- The agent HTTP gate ran three classes with 0 skipped:
+  `RestAgentSelectionTests` 2, `McpMessagingDeploymentTests` 6, and
+  `RestToCoreBearerDeploymentTests` 7.
+- `docker events` reported no OOM kill in the run window.
+
+**`McpMessagingDeploymentTests` runs only under `expose-webflux`**, so the
+reactor skips all six of its tests. That is why the `--ci` skip count is 82
+and not 76.
+
+### Risks that stay open
+
+- **The routes, the index and the shell have no pointer test.** A defect there
+  reaches `master` unseen. The owner accepted this on 2026-10-10.
+- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that
+  does not serialize there fails `U` after `P` stores it. The room history
+  still shows it.
+- **A reader that ignores the type shows a pointer as an empty message.** The
+  pointer `data` is `""`. The shell, REST and MCP readers of this repository
+  each branch on `PointerMessage`. An outside client may not.
+- **The `messageById` change refuses a reader that worked before.** A client
+  that reads a message by id from a room it did not join answers 403.
+
+### The removed pointer row (2026-10-11)
+
+The review of PR #213 found one defect. **No read of a live pointer changed.**
+
+`MessagePersistenceCassandra.message` rebuilt every pointer with a live flag.
+The Cassandra removal keeps the row and clears the flag, so a removed pointer
+read back as a live record. `MessagingServiceImpl.pointerTarget` filters on
+`record`, so its filter could not reject that row. The call then read a live
+pointer and refused it with `a pointer cannot target a pointer` rather than
+`no such message`.
+
+`PointerMessage` carries `record` as a constructor field now, with a default of
+`true`. The default keeps every existing construction site and the pinned wire
+JSON unchanged. **Cassandra is the only backend with a soft removal**, so it is
+the only backend that read a removed pointer back.
+
+Three readings carry the evidence.
+
+- `PointerStoreTestBase` gains `a removed pointer does not read back as a live
+  record`. It runs on the memory, Redis, Cassandra long and Cassandra uuid
+  stores.
+- `CassandraMessagePointerTests` is new, at node id 29. It measures the refusal
+  text through the composite service on a Cassandra deployment.
+- **The mutation, run alone, reproduces the review text.** A mapper that drops
+  `row.record` fails the store test in both Cassandra key types, and fails the
+  composite test at its refusal assertion with the measured text
+  `a pointer cannot target a pointer`.
+
+**The composite test was reordered for that reading.** Its flag assertion ran
+before the refusal, so the mutation tripped the flag and masked the consequence
+the reviewer named. The refusal is asserted first now.
+
+Both gates pass on the repaired tree. Default mode: 30 modules, 2105 tests, 0
+failures, 0 errors, 47 skipped. `--ci` mode: 30 modules, 2491 tests, 0 failures,
+0 errors, 82 skipped, `agent http gate: ok`, and no drift.
+
+### The flag crosses the JSON boundary (2026-10-11)
+
+A second review found the same flag lost at the wire. **The store fix alone did
+not close the defect for a client.**
+
+Both pointer deserializers built `PointerMessage(key, target)` and took the
+constructor default of `true`. The sibling `MessageDeserializer` and
+`Jackson3MessageDeserializer` already read `node.get("record")`, and the two
+pointer ones did not. So a Cassandra read returned a removed pointer with
+`record = false`, and a client that decoded that answer saw a live pointer.
+
+Both deserializers read the flag now. **The serializer side needed no change**,
+and the wire tests prove it: the flag is on the wire, and both `true` and
+`false` survive a round trip.
+
+`PointerWireShapeTests` is new, with six cases. Two decode a removed pointer,
+two decode a live one, and two assert the wire carries the flag. **Both
+generations need their own reading**, because each one holds its own pointer
+deserializer. Its Jackson 2 mapper is built from `Jackson2ObjectMapperBuilder`,
+as `Jackson2MapperConfiguration` builds the deployment mapper. **A plain
+`ObjectMapper` cannot serialize a `MessageKey`**, because the timestamp needs
+the JavaTime module that builder installs.
+
+Four construction sites exist in main source, and each is now sound. Two
+deserializers read the wire flag, the Cassandra mapper reads `row.record`, and
+`MemoryDomainCommandBus` makes a new pointer, which is live by definition.
+
+The mutation, run alone, fails exactly the two removed-pointer cases, in both
+generations.
+
+Both gates pass again. Default mode: 30 modules, 2111 tests, 0 failures, 0
+errors, 47 skipped. `--ci` mode: 30 modules, 2497 tests, 0 failures, 0 errors,
+82 skipped, `agent http gate: ok`, and no drift.
+
+**The `Checkout` row of this file is not moved by this section.** See the rule
+under `Where things stand`.

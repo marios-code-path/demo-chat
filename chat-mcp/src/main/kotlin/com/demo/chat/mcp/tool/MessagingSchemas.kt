@@ -52,13 +52,28 @@ private fun backendsShape(): JsonObject = buildJsonObject {
     put("additionalProperties", false)
 }
 
-private fun messageShape(): JsonObject = objectShape(buildJsonObject {
+private fun textMessageShape(): JsonObject = objectShape(buildJsonObject {
     put("messageKey", keyShape())
     put("senderId", stringShape())
     put("topicId", stringShape())
     put("text", stringShape())
     put("timestamp", timeShape())
 })
+
+private fun pointerMessageShape(): JsonObject = objectShape(buildJsonObject {
+    put("kind", enumShape(listOf("pointer")))
+    put("messageKey", keyShape())
+    put("senderId", stringShape())
+    put("topicId", stringShape())
+    put("timestamp", timeShape())
+    put("targetId", stringShape())
+    put("targetRoot", stringShape())
+})
+
+/** A text item or a pointer item. See `CHAT-erkoxybm`. */
+private fun messageShape(): JsonObject = buildJsonObject {
+    put("anyOf", JsonArray(listOf(textMessageShape(), pointerMessageShape())))
+}
 
 internal fun messagingInput(arguments: List<String>): ToolSchema = ToolSchema(
     properties = buildJsonObject { arguments.forEach { put(it, stringShape()) } },

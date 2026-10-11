@@ -39,11 +39,12 @@ fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>> {
                 )
             }
 
+        /** A pointer carries no text, so it writes no data field. See `CHAT-erkoxybm`. */
         fun <T> ofMessage(): IndexEntryEncoder<Message<T, String>> =
             IndexEntryEncoder { t ->
-                listOf(
+                listOfNotNull(
                     Pair(MessageIndexService.ID, t.key.id.toString()),
-                    Pair(MessageIndexService.DATA, t.data),
+                    Pair(MessageIndexService.DATA, t.data).takeUnless { t is PointerMessage<*> },
                     Pair(MessageIndexService.TOPIC, t.key.dest.toString()),
                     Pair(MessageIndexService.USER, t.key.from.toString()),
                 )

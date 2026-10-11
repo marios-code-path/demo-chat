@@ -1,6 +1,7 @@
 package com.demo.chat.config.rsocket
 
 import com.demo.chat.domain.KeyVerificationException
+import com.demo.chat.domain.NoSuchPointerTargetException
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.security.rsocket.RSocketNotFound
 import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
@@ -33,6 +34,9 @@ import reactor.core.publisher.Mono
  * and a store failure both left as `0x201`, and only the text told them
  * apart. REST already answers 404 for `KeyVerificationException`. See
  * `CHAT-scoizkpm`.
+ *
+ * A pointer target miss takes the same code, so a REST facade answers 404.
+ * See `CHAT-erkoxybm`.
  */
 class RSocketSecurityErrorInterceptor : RSocketInterceptor {
 
@@ -59,7 +63,7 @@ class RSocketSecurityErrorInterceptor : RSocketInterceptor {
                 CustomRSocketException(RSocketSecurityErrorCodes.AUTHENTICATION, error.message ?: "Authentication failed")
             is AccessDeniedException ->
                 CustomRSocketException(RSocketSecurityErrorCodes.AUTHORIZATION, error.message ?: "Access Denied")
-            is NotFoundException, is KeyVerificationException ->
+            is NotFoundException, is KeyVerificationException, is NoSuchPointerTargetException ->
                 CustomRSocketException(RSocketNotFound.CODE, error.message ?: "Object not Found")
             else -> error
         }

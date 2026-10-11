@@ -6,6 +6,7 @@ import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.Jackson3AuthMetadataDeserializer
@@ -14,6 +15,7 @@ import com.demo.chat.domain.serializers.Jackson3KeyValuePairDeserializer
 import com.demo.chat.domain.serializers.Jackson3MembershipDeserializer
 import com.demo.chat.domain.serializers.Jackson3MessageDeserializer
 import com.demo.chat.domain.serializers.Jackson3MessageKeyDeserializer
+import com.demo.chat.domain.serializers.Jackson3PointerMessageDeserializer
 import com.demo.chat.domain.serializers.Jackson3TopicDeserializer
 import com.demo.chat.domain.serializers.Jackson3UserDeserializer
 import org.springframework.context.annotation.Bean
@@ -47,6 +49,7 @@ open class ChatJackson3Modules {
         module.addDeserializer(Key::class.java, Jackson3KeyDeserializer<Any>())
         module.addDeserializer(MessageKey::class.java, Jackson3MessageKeyDeserializer<Any>())
         module.addDeserializer(Message::class.java, Jackson3MessageDeserializer<Any, Any>())
+        module.addDeserializer(PointerMessage::class.java, Jackson3PointerMessageDeserializer<Any>())
         module.addDeserializer(KeyValuePair::class.java, Jackson3KeyValuePairDeserializer<Any, Any>())
         module.addDeserializer(User::class.java, Jackson3UserDeserializer<Any>())
         module.addDeserializer(TopicMembership::class.java, Jackson3MembershipDeserializer<Any>())

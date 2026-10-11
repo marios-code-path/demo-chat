@@ -18,6 +18,7 @@ import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.service.security.RoomMemberGrant
 import com.demo.chat.service.security.RoomOwnerGrant
 import com.demo.chat.config.CommandBusSettings
+import com.demo.chat.service.command.PointerTargetAccess
 import com.demo.chat.service.command.SubmitterIdentity
 import com.demo.chat.service.composite.command.memory.MemoryCommandRuntime
 import com.demo.chat.service.composite.command.publication.RoomPublications
@@ -41,6 +42,7 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
     private val submitters: ObjectProvider<SubmitterIdentity<T>>,
     private val roomOwnerGrants: ObjectProvider<RoomOwnerGrant<T>>,
     private val roomMemberGrants: ObjectProvider<RoomMemberGrant<T>>,
+    private val pointerTargets: ObjectProvider<PointerTargetAccess<T>>,
     keyService: IKeyService<T>,
     private val rootKeys: RootKeys<T>,
 ) : CompositeServiceBeans<T, V> {
@@ -62,6 +64,8 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
         requirement = commandSettings.requirement,
         timeout = commandSettings.timeout,
         rootKeys = rootKeys,
+        pointerTargets = pointerTargets.ifAvailable,
+        topicPersistence = persistenceBeans.topicPersistence(),
     )
 
     @Bean

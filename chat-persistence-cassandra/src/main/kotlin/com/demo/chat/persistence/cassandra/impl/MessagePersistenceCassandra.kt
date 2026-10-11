@@ -2,9 +2,12 @@ package com.demo.chat.persistence.cassandra.impl
 
 import com.demo.chat.service.core.StoreDomain
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.domain.SimpleMessageKey
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.persistence.cassandra.domain.ChatMessageById
@@ -20,7 +23,8 @@ import reactor.core.publisher.Mono
 open class MessagePersistenceCassandra<T : Any>(
     private val keyService: IKeyService<T>,
     private val rootKeys: RootKeys<T>,
-    private val messageRepo: ChatMessageRepository<T>
+    private val messageRepo: ChatMessageRepository<T>,
+    private val typeUtil: TypeUtil<T>,
 ) : MessagePersistence<T, String> {
     override fun key(): Mono<out Key<T>> =
         keyService.key(ChatDomain.MESSAGE)
@@ -48,17 +52,35 @@ open class MessagePersistenceCassandra<T : Any>(
      * write mints nothing. It minted a new id and stored the message id as the
      * sender, so a stored message could not be read by its own key. See
      * `CHAT-avduuqwp`, E20.
+     *
+     * A pointer stores its target id in `text` and its target domain in
+     * `kind`. A text message leaves `kind` null. See `CHAT-erkoxybm`.
      */
     private fun write(ent: Message<T, String>): Mono<Void> =
         messageRepo.add(
             ChatMessageById(
                 ChatMessageByIdKey(ent.key.id, ent.key.from, ent.key.dest, ent.key.timestamp),
-                ent.data, ent.record)
+                if (ent is PointerMessage<T>) typeUtil.toString(ent.target.id) else ent.data,
+                ent.record,
+                if (ent is PointerMessage<T>) targetDomain(ent.target).wireName else null,
+            )
         )
 
-    private fun message(row: ChatMessageById<T>): Message<T, String> = Message.create(
-        SimpleMessageKey(row.key.id, rootKeys.of(ChatDomain.MESSAGE).id, row.key.from, row.key.dest, row.key.timestamp),
-        row.data,
-        row.record,
-    )
+    private fun message(row: ChatMessageById<T>): Message<T, String> {
+        val key = SimpleMessageKey(row.key.id, rootKeys.of(ChatDomain.MESSAGE).id, row.key.from, row.key.dest, row.key.timestamp)
+        val kind = row.kind ?: return Message.create(key, row.data, row.record)
+        val domain = ChatDomain.parse(kind)?.takeIf { it in POINTER_TARGETS }
+            ?: throw ChatException("Message ${row.key.id} has the unknown kind '$kind'.")
+        // The row keeps its flag. A removal clears it and keeps the row, so a
+        // removed pointer reads back as removed. See `CHAT-erkoxybm`.
+        return PointerMessage(key, Key.of(typeUtil.exactFrom(row.data), rootKeys.of(domain).id), row.record)
+    }
+
+    private fun targetDomain(target: Key<T>): ChatDomain =
+        rootKeys.domainOfRoot(target.root)?.takeIf { it in POINTER_TARGETS }
+            ?: throw ChatException("A pointer target must carry the Message root or the MessageTopic root. The root is ${target.root}.")
+
+    private companion object {
+        val POINTER_TARGETS = setOf(ChatDomain.MESSAGE, ChatDomain.MESSAGE_TOPIC)
+    }
 }

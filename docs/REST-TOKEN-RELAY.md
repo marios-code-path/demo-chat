@@ -163,6 +163,16 @@ composite in the same JVM, so its miss is `NotFoundException` and not
 added it on 2026-10-04. Before, it answered 500.
 `RestCoreNotFoundMappingTests` pins it.
 
+**The same advice maps the two pointer refusals.** `CHAT-erkoxybm` added them
+on 2026-10-10. A missing or unreadable pointer target answers 404, with
+`no such message` or `no such topic`. A pointer to a pointer answers 400.
+
+A target miss crosses the relay as `0x404`, so a REST facade answers 404 too.
+`RSocketSecurityErrorInterceptorTests` pins the code. **A pointer to a pointer
+and a bad target domain have no relay code.** They cross as `0x201`, so a REST
+facade answers 500 for them. That facade status is read from source and not
+measured.
+
 **The same advice maps the message command errors.** `CHAT-igqnydef` added
 them on 2026-10-08. A request conflict answers 409, and an invalid request ID
 answers 400. A sender that is not the login answers 403. A legacy send whose

@@ -7,7 +7,7 @@ Optional sending uses caller-selected request IDs and command status.
 The adapter holds no database credential and no direct store access. It calls
 the deployment over HTTP. The deployment checks route access.
 For message-by-ID reads, the adapter also enforces the configured room limit.
-The shipped backend policy permits any authenticated agent to read any message by ID.
+The server checks `SUBSCRIBE` on the room of a message read by ID since `CHAT-erkoxybm`.
 
 The adapter serves protocol revision `2025-11-25`.
 
@@ -122,6 +122,9 @@ Long IDs retain every digit, including values above `2^53`.
 
 A `Topic` contains string fields `id`, `root`, and `name`.
 A `Message` contains `messageKey`, `senderId`, `topicId`, `text`, and `timestamp`.
+A pointer item carries kind "pointer", targetId and targetRoot, and no text.
+The adapter holds no root keys, so it does not name the target domain.
+A history can hold text items and pointer items. See `CHAT-erkoxybm`.
 A `messageKey` contains string fields `id` and `root`.
 The timestamp uses ISO-8601 UTC form.
 A receipt contains `commandId` and `messageKey`.
@@ -138,7 +141,8 @@ An `ACCEPTED` result can contain an empty `backends` object.
 It omits topics that the deployment denies or does not serve.
 `chat_get_topic` and room-based message tools reject unconfigured rooms before HTTP.
 Message reads also check each returned room before emitting any result.
-This check is the room restriction for the broadly permitted message-by-ID route.
+The server checks `SUBSCRIBE` on the room of a message read by ID, since `CHAT-erkoxybm`.
+This adapter check stays as a second guard, and it limits a read to the configured rooms.
 History uses stored messages, without pagination or a live subscription.
 An oversized history fails completely, without partial output.
 

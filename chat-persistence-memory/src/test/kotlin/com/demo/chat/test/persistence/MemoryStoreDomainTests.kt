@@ -51,3 +51,8 @@ class MemoryKeyValueStoreDomainTests : StoreDomainTestBase<Long, KeyValuePair<Lo
     InMemoryKeyValueStore(KEYS, ROOTS) { it.key }, KEYS, ROOTS, ChatDomain.KEY_VALUE_PAIR,
     { KeyValuePair.create(it, "v" as Any) }, { it.key },
 )
+
+/** The memory store holds the object, so a pointer reads back unchanged. See `CHAT-erkoxybm`. */
+class MemoryPointerStoreTests : PointerStoreTestBase<Long>(
+    MessagePersistenceInMemory(KEYS, ROOTS) { it.key }, KEYS, ROOTS,
+)

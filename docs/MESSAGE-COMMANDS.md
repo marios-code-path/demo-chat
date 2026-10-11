@@ -59,6 +59,25 @@ A conflict answers 409. A missing or invalid request ID answers 400.
 
 With `none`, a message lookup can answer not found until `P` completes.
 
+## Pointer
+
+A pointer names one message or one topic. It carries no text. See `CHAT-erkoxybm`.
+
+| Transport | Route | Request ID |
+|---|---|---|
+| REST | `POST /message/pointer/{roomId}`, JSON body `{"targetDomain": "Message", "targetId": "123"}` | Header `Idempotency-Key` |
+| RSocket | `message.message-pointer` with `MessagePointerRequest` | Field `requestId` |
+
+The caller needs `FORWARD` on the room. A join grants it, and a leave expires it.
+
+The caller must be able to read the target. A message target needs `SUBSCRIBE` on its room. A topic target needs `SUBSCRIBE` on the topic.
+
+A missing target and an unreadable target both answer 404, with `no such message` or `no such topic`. A pointer to a pointer answers 400.
+
+A pointer command uses the backends `P`, `I`, and `U`. It has no `V` obligation, so its status lists no `V`. The caller waits for the configured requirement without `V`.
+
+The outcomes and status codes are the same as for `submit`.
+
 ## Status
 
 REST: `GET /message/command/{commandId}`. RSocket: `message.message-command-status`.
