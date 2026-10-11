@@ -149,9 +149,12 @@ class Jackson3PointerMessageDeserializer<T : Any> : ValueDeserializer<PointerMes
 
         val key = Jackson3NodeToAny.key<T>(node.get("key").values().first(), ctxt)
         val target = Jackson3NodeToAny.key<T>(node.get("target").values().first(), ctxt)
+        // The flag is read, and not defaulted. A decoder that dropped it read a
+        // removed pointer as a live one. See `CHAT-erkoxybm`.
+        val visible = node.get("record").asBoolean()
 
         return when (key) {
-            is MessageKey<T> -> PointerMessage(key, target)
+            is MessageKey<T> -> PointerMessage(key, target, visible)
             else -> throw ChatException("Invalid Message Key")
         }
     }

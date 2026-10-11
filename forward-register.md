@@ -5308,5 +5308,39 @@ Both gates pass on the repaired tree. Default mode: 30 modules, 2105 tests, 0
 failures, 0 errors, 47 skipped. `--ci` mode: 30 modules, 2491 tests, 0 failures,
 0 errors, 82 skipped, `agent http gate: ok`, and no drift.
 
+### The flag crosses the JSON boundary (2026-10-11)
+
+A second review found the same flag lost at the wire. **The store fix alone did
+not close the defect for a client.**
+
+Both pointer deserializers built `PointerMessage(key, target)` and took the
+constructor default of `true`. The sibling `MessageDeserializer` and
+`Jackson3MessageDeserializer` already read `node.get("record")`, and the two
+pointer ones did not. So a Cassandra read returned a removed pointer with
+`record = false`, and a client that decoded that answer saw a live pointer.
+
+Both deserializers read the flag now. **The serializer side needed no change**,
+and the wire tests prove it: the flag is on the wire, and both `true` and
+`false` survive a round trip.
+
+`PointerWireShapeTests` is new, with six cases. Two decode a removed pointer,
+two decode a live one, and two assert the wire carries the flag. **Both
+generations need their own reading**, because each one holds its own pointer
+deserializer. Its Jackson 2 mapper is built from `Jackson2ObjectMapperBuilder`,
+as `Jackson2MapperConfiguration` builds the deployment mapper. **A plain
+`ObjectMapper` cannot serialize a `MessageKey`**, because the timestamp needs
+the JavaTime module that builder installs.
+
+Four construction sites exist in main source, and each is now sound. Two
+deserializers read the wire flag, the Cassandra mapper reads `row.record`, and
+`MemoryDomainCommandBus` makes a new pointer, which is live by definition.
+
+The mutation, run alone, fails exactly the two removed-pointer cases, in both
+generations.
+
+Both gates pass again. Default mode: 30 modules, 2111 tests, 0 failures, 0
+errors, 47 skipped. `--ci` mode: 30 modules, 2497 tests, 0 failures, 0 errors,
+82 skipped, `agent http gate: ok`, and no drift.
+
 **The `Checkout` row of this file is not moved by this section.** See the rule
 under `Where things stand`.

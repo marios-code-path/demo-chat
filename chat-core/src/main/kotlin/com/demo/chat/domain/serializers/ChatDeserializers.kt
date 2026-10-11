@@ -208,9 +208,12 @@ class PointerMessageDeserializer<T>(keyCodec: Converter<JsonNode, T>) : JsonDese
 
         val key = kd.deserialize(node.get("key").first().traverse(oc), ctxt)
         val target = kd.deserialize(node.get("target").first().traverse(oc), ctxt)
+        // The flag is read, and not defaulted. A decoder that dropped it read a
+        // removed pointer as a live one. See `CHAT-erkoxybm`.
+        val visible = node.get("record").asBoolean()
 
         return when (key) {
-            is MessageKey<T> -> PointerMessage(key, target)
+            is MessageKey<T> -> PointerMessage(key, target, visible)
             else -> throw ChatException("Invalid Message Key")
         }
     }
