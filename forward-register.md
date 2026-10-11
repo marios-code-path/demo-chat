@@ -5272,5 +5272,41 @@ and not 76.
 - **The `messageById` change refuses a reader that worked before.** A client
   that reads a message by id from a room it did not join answers 403.
 
+### The removed pointer row (2026-10-11)
+
+The review of PR #213 found one defect. **No read of a live pointer changed.**
+
+`MessagePersistenceCassandra.message` rebuilt every pointer with a live flag.
+The Cassandra removal keeps the row and clears the flag, so a removed pointer
+read back as a live record. `MessagingServiceImpl.pointerTarget` filters on
+`record`, so its filter could not reject that row. The call then read a live
+pointer and refused it with `a pointer cannot target a pointer` rather than
+`no such message`.
+
+`PointerMessage` carries `record` as a constructor field now, with a default of
+`true`. The default keeps every existing construction site and the pinned wire
+JSON unchanged. **Cassandra is the only backend with a soft removal**, so it is
+the only backend that read a removed pointer back.
+
+Three readings carry the evidence.
+
+- `PointerStoreTestBase` gains `a removed pointer does not read back as a live
+  record`. It runs on the memory, Redis, Cassandra long and Cassandra uuid
+  stores.
+- `CassandraMessagePointerTests` is new, at node id 29. It measures the refusal
+  text through the composite service on a Cassandra deployment.
+- **The mutation, run alone, reproduces the review text.** A mapper that drops
+  `row.record` fails the store test in both Cassandra key types, and fails the
+  composite test at its refusal assertion with the measured text
+  `a pointer cannot target a pointer`.
+
+**The composite test was reordered for that reading.** Its flag assertion ran
+before the refusal, so the mutation tripped the flag and masked the consequence
+the reviewer named. The refusal is asserted first now.
+
+Both gates pass on the repaired tree. Default mode: 30 modules, 2105 tests, 0
+failures, 0 errors, 47 skipped. `--ci` mode: 30 modules, 2491 tests, 0 failures,
+0 errors, 82 skipped, `agent http gate: ok`, and no drift.
+
 **The `Checkout` row of this file is not moved by this section.** See the rule
 under `Where things stand`.

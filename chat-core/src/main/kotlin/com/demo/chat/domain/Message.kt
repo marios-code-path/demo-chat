@@ -57,9 +57,16 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
  * `key.from` is the creator and `key.dest` is the host room. [data] is always
  * empty. A reader tells a pointer apart by its type, never by its data. The
  * target root is the `Message` root or the `MessageTopic` root.
+ *
+ * [record] carries the stored flag. A new pointer carries true. The Cassandra
+ * backend keeps a removed row and clears the flag, so its reader rebuilds a
+ * removed pointer with false. That backend alone removes this way.
  */
 @JsonTypeName("PointerMessage")
-data class PointerMessage<T>(override val key: MessageKey<T>, val target: Key<T>) : Message<T, String> {
+data class PointerMessage<T>(
+    override val key: MessageKey<T>,
+    val target: Key<T>,
+    override val record: Boolean = true,
+) : Message<T, String> {
     override val data: String get() = ""
-    override val record: Boolean get() = true
 }

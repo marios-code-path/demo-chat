@@ -71,7 +71,9 @@ open class MessagePersistenceCassandra<T : Any>(
         val kind = row.kind ?: return Message.create(key, row.data, row.record)
         val domain = ChatDomain.parse(kind)?.takeIf { it in POINTER_TARGETS }
             ?: throw ChatException("Message ${row.key.id} has the unknown kind '$kind'.")
-        return PointerMessage(key, Key.of(typeUtil.exactFrom(row.data), rootKeys.of(domain).id))
+        // The row keeps its flag. A removal clears it and keeps the row, so a
+        // removed pointer reads back as removed. See `CHAT-erkoxybm`.
+        return PointerMessage(key, Key.of(typeUtil.exactFrom(row.data), rootKeys.of(domain).id), row.record)
     }
 
     private fun targetDomain(target: Key<T>): ChatDomain =
