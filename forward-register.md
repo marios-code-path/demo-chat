@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `69dbd2ee`, in sync with `origin`. The working tree holds no untracked file. |
-| Register state | Updated 2026-10-09, after the reindex test merge of PR #209. |
-| Last merged PR | #209, merge commit `69dbd2ee`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #203 to PR #209` lists the latest seven. |
+| Checkout | `master` at `dc116ea7`, in sync with `origin`. The working tree holds two untracked owner files, `conversations.json` and `conversations.jsonl`, and nothing else. |
+| Register state | Updated 2026-10-11, after the message pointer merge of PR #213. |
+| Last merged PR | #213, merge commit `dc116ea7`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #210 to PR #213` lists the latest four. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Six more hold one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-xcmpudyb-message-id` at `20f3d014`. **The branch refs are kept.** |
-| Worktrees | The main checkout, `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`. It belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The `chat-teujorxl-mcp-messaging` worktree and branch are gone, measured on 2026-10-09, after PR #205. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
-| Open PRs | None, measured on 2026-10-09. PR #209 merged on 2026-10-09 as `69dbd2ee`, and it closed `CHAT-okcfryup`. |
+| Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Eight more hold one commit that master lacks, measured on 2026-10-11: `backup/chat-bmmtojqm-before-review` at `93cada30`, `chat-emwhnlay-import` at `06ccda4f`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-lswjobhz-shared-store-index` at `863b6d00`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-xcmpudyb-message-id` at `20f3d014`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** Two of the eight are live work: `chat-emwhnlay-import` and `chat-lswjobhz-shared-store-index` each carry a worktree. |
+| Worktrees | Four, measured on 2026-10-11. The main checkout, on `master`. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, which belongs to the `CHAT-bmmtojqm` work, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/f019/demo-chat` at `06ccda4f`, on `chat-emwhnlay-import`, which belongs to a Codex session. The pointer branch lived in the main checkout, so PR #213 left no worktree behind. The `chat-teujorxl-mcp-messaging` worktree and branch are gone, measured on 2026-10-09, after PR #205. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
+| Open PRs | None, measured on 2026-10-11. PR #213 merged on 2026-10-11 as `dc116ea7`, and it closed `CHAT-erkoxybm`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -5169,15 +5169,18 @@ closed. A later failure of this test reopens the issue.
 
 ### Open after these merges
 
-- **`CHAT-pggtduxz` is still `todo`.** PR #208 merged its work. The owner
-  decides whether it closes.
+- **`CHAT-pggtduxz` closed.** PR #208 merged its work, and the issue is `done`
+  as of 2026-10-11. The owner closed it.
 - **`CHAT-gsddauhn` is still `todo`.** It holds the full REST-profile failure
   that the MCP section names.
 
 ## Message pointers (2026-10-10)
 
-`CHAT-erkoxybm`. Branch `chat-erkoxybm-message-pointer`. **This work is not
-merged.** Spec:
+`CHAT-erkoxybm`. Branch `chat-erkoxybm-message-pointer`. **This work is
+merged.** PR #213 merged on 2026-10-11 as `dc116ea7`, a merge commit with two
+parents, `3e8d8b03` and `5c24e6e9`. The merge tree is byte-identical to the
+branch tip `5c24e6e9`, because `git diff 5c24e6e9 dc116ea7` was empty. The
+branch is deleted, local and remote. Spec:
 `docs/superpowers/specs/2026-10-10-message-pointer-design.md`. Plan:
 `docs/superpowers/plans/2026-10-10-message-pointer.md`.
 
@@ -5343,4 +5346,98 @@ errors, 47 skipped. `--ci` mode: 30 modules, 2497 tests, 0 failures, 0 errors,
 82 skipped, `agent http gate: ok`, and no drift.
 
 **The `Checkout` row of this file is not moved by this section.** See the rule
-under `Where things stand`.
+under `Where things stand`. **The refresh that carries this section moves the
+row**, and it reads `dc116ea7`, the last substantive merge before the refresh.
+
+## Merges from PR #210 to PR #213 (2026-10-10/11)
+
+Each merge was measured on 2026-10-11 with `git rev-list --parents` and
+`git diff <tip> <merge>`.
+
+| PR | Merge | Tip | Issue | What |
+|----|-------|-----|-------|------|
+| #210 | `13a3e56b` | `13a3e56b` | `CHAT-tatbvwjo` | Refresh the forward register after PR #209 |
+| #211 | `f6639abc` | `17d388de` | `CHAT-flhgiule` | Remove the unused topic access root keys |
+| #212 | `3e8d8b03` | `30a54db7` | `CHAT-ircckvrs` | Wait for user writes before returning the key |
+| #213 | `dc116ea7` | `5c24e6e9` | `CHAT-erkoxybm` | Message pointer: a message that names a message or a topic |
+
+Three merge trees equal their tips. **PR #210 has no tip of its own**, and the
+reason follows.
+
+### PR #210 landed without a merge commit
+
+**`13a3e56b` has one parent, `69dbd2ee`.** The merge commit and the pull
+request head share one sha, so the branch landed by fast-forward. That is not
+a merge commit.
+
+The repository takes merge commits only since 2026-09-17. Squash and rebase
+are both disabled. So this tip is worth questioning, and it is recorded rather
+than corrected. **Nothing is lost.** The tree that `13a3e56b` holds is the tree
+the refresh commit wrote, and that content is on `master`.
+
+**PRs #211, #212 and #213 each carry two parents.** So the rule holds for
+every merge after #210.
+
+### The stale issue that the sprint close found
+
+**`CHAT-flhgiule` was `in-progress` while its work was merged.** PR #211
+merged it as `f6639abc`, and the pull request body names the issue. The status
+was never moved. It is `done` now, closed on 2026-10-11.
+
+**This is the second occurrence of one class.** `CHAT-ubmrxyqo` carries the
+first, recorded under `Housekeeping`. A merged issue that keeps an active
+status makes the tracker lie about the sprint.
+
+### The scheduled dependency audit is red, and the owner deferred it
+
+**Five consecutive runs have failed**, and each one names the same finding.
+
+| Run | Date |
+|---|---|
+| `37615558346` | 2026-10-07 |
+| `37773162122` | 2026-10-08 |
+| `37925766480` | 2026-10-09 |
+| `38047078329` | 2026-10-10 |
+| `38135195213` | 2026-10-11 |
+
+Every failure reads one line:
+
+    kotlin-sdk-server-jvm-0.15.0.jar
+      (pkg:maven/io.modelcontextprotocol/kotlin-sdk-server-jvm@0.15.0,
+       cpe:2.3:a:jetbrains:kotlin:0.15.0:*:*:*:*:*:*:*)
+      : CVE-2026-53914(9.8)
+
+**The CPE is probably wrong.** JetBrains Kotlin never published a 0.15.0
+release. The run of 2026-10-07 names five older Kotlin CVEs on the same CPE,
+such as CVE-2019-10101. Those CVEs describe the Kotlin language, and not this
+adapter.
+
+**The caution is the suppression.** CVE-2026-53914 is also recorded against
+`kotlin-stdlib` 2.4.10, which this repository holds. So a suppression must
+name the MCP SDK `packageUrl` alone. A suppression by CVE would hide a real
+finding.
+
+**The owner deferred the repair on 2026-10-11.** `CHAT-wgiwqodp` holds it.
+The workflow runs on a schedule, so it never gates a pull request. **The three
+pull-request jobs are green.**
+
+### The pull-request workflow is green
+
+Run `38126053450` tested the PR #213 head `5c24e6e9`. All three jobs passed:
+`build` in 8m48s, `integration` in 17m4s, and `agent-http` in 2m32s.
+
+**This is the first sprint close in this file with three green pull-request
+jobs.** Every section from 2026-10-01 to 2026-10-03 records a red integration
+job, under B12.
+
+### Open after these merges
+
+- **`CHAT-aysfqhnm` holds this refresh.** It follows PR #213.
+- **`CHAT-mpfuifei` is teed up, and it is `todo`.** No branch and no worktree
+  exist for it. The TEE UP comment holds the verified claim, one corrected
+  line of the description, and the repair shape.
+- **`CHAT-wgiwqodp` holds the red scheduled audit.** The owner deferred it.
+- **`CHAT-pggtduxz` closed on 2026-10-11.** PR #208 merged its work, and the
+  owner closed the issue.
+- **Two live branches carry worktrees**, `chat-emwhnlay-import` and
+  `chat-lswjobhz-shared-store-index`. Neither is part of this sprint.
