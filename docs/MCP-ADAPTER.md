@@ -7,7 +7,7 @@ Optional sending uses caller-selected request IDs and command status.
 The adapter holds no database credential and no direct store access. It calls
 the deployment over HTTP. The deployment checks route access.
 For message-by-ID reads, the adapter also enforces the configured room limit.
-The shipped backend policy permits any authenticated agent to read any message by ID.
+The server checks `SUBSCRIBE` on the room of a message read by ID since `CHAT-erkoxybm`.
 
 The adapter serves protocol revision `2025-11-25`.
 
