@@ -86,3 +86,93 @@ deploy-core-cassandra-lucene-redis node_id="7" action="":
 	else
 	    ./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id "${node_id#node_id=}"
 	fi
+
+# Start the authorization server after checking its dependencies.
+deploy-authserv jwk:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	CHAT_SERVICE_PASSWORD="${CHAT_SERVICE_PASSWORD:-}"
+	SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-}"
+	SPRING_DATASOURCE_PASSWORD="${SPRING_DATASOURCE_PASSWORD:-}"
+	jwk={{quote(jwk)}}
+	jwk="${jwk#jwk=}"
+	for variable in CHAT_SERVICE_PASSWORD SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD; do
+	    if [[ -z "${!variable}" ]]; then
+	        echo "deploy-authserv: set $variable before starting" >&2
+	        exit 2
+	    fi
+	done
+	if [[ ! -f "$jwk" ]]; then
+	    echo "deploy-authserv: JWK file does not exist: $jwk" >&2
+	    exit 2
+	fi
+	jwk="$(cd "$(dirname "$jwk")" && pwd)/$(basename "$jwk")"
+	core_health_url="http://127.0.0.1:${CORE_MGMT_PORT:-6791}/actuator/health"
+	if ! curl --connect-timeout 2 --max-time 3 --fail --silent "$core_health_url" >/dev/null; then
+	    echo "deploy-authserv: core is not healthy at $core_health_url" >&2
+	    exit 1
+	fi
+	auth_health_url="http://127.0.0.1:${AUTHSERV_MGMT_PORT:-9001}/actuator/health"
+	auth_status="$(curl --connect-timeout 2 --max-time 3 --silent --output /dev/null --write-out '%{http_code}' "$auth_health_url" || true)"
+	if [[ "$auth_status" == 200 ]]; then
+	    echo "Authorization server is already healthy at $auth_health_url"
+	    exit 0
+	fi
+	if [[ "$auth_status" != 000 ]]; then
+	    echo "deploy-authserv: authorization server responded with HTTP $auth_status" >&2
+	    exit 1
+	fi
+	docker compose -f chat-authorization-server/docker-compose.yaml up -d postgres
+	for ((attempt = 1; attempt <= 30; attempt++)); do
+	    if docker compose -f chat-authorization-server/docker-compose.yaml exec -T \
+	        -e PGPASSWORD="$SPRING_DATASOURCE_PASSWORD" postgres \
+	        psql -U "$SPRING_DATASOURCE_USERNAME" -d authserver -Atqc 'SELECT 1' \
+	        >/dev/null 2>&1; then
+	        break
+	    fi
+	    if ((attempt == 30)); then
+	        echo "deploy-authserv: Postgres did not become ready" >&2
+	        exit 1
+	    fi
+	    sleep 1
+	done
+	./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk "$jwk"
+
+# Generate a private ES256 signing key for the authorization server.
+generate-authserv-jwk:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	set +x
+	repo_root="$(git rev-parse --show-toplevel)"
+	output="$repo_root/encrypt-keys/authserv.jwk"
+	if [[ -e "$output" ]]; then
+	    echo "Authorization signing key already exists: $output"
+	    exit 0
+	fi
+	mkdir -p "$repo_root/encrypt-keys"
+	tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/authserv-jwk.XXXXXX")"
+	trap 'rm -rf -- "$tmp_dir"' EXIT
+	classpath_file="$tmp_dir/classpath"
+	mvn -q -f "$repo_root/chat-authorization-server/pom.xml" -Pjdbc \
+	    dependency:build-classpath -Dmdep.includeScope=runtime \
+	    -Dmdep.outputFile="$classpath_file"
+	classpath="$(cat "$classpath_file")"
+	if [[ -z "$classpath" ]]; then
+	    echo "generate-authserv-jwk: Maven returned an empty classpath" >&2
+	    exit 1
+	fi
+	umask 077
+	chmod 700 "$repo_root/encrypt-keys"
+	export AUTHSERV_JWK_PATH="$output"
+	jshell_script="$tmp_dir/generate.jsh"
+	printf '%s\n' \
+	    'var jwk = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose.jwk.Curve.P_256).keyID(java.util.UUID.randomUUID().toString()).generate();' \
+	    'java.nio.file.Files.writeString(java.nio.file.Path.of(System.getenv("AUTHSERV_JWK_PATH")), jwk.toJSONString(), java.nio.file.StandardOpenOption.CREATE_NEW);' \
+	    '/exit' > "$jshell_script"
+	jshell --feedback silent --class-path "$classpath" "$jshell_script"
+	chmod 600 "$output"
+	if [[ ! -s "$output" ]]; then
+	    echo "generate-authserv-jwk: no key was written to $output" >&2
+	    exit 1
+	fi
+	echo "Created authorization signing key: $output"
