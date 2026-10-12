@@ -7,12 +7,14 @@ import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
 import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 interface TopicRepository<T : Any> :
         ReactiveCassandraRepository<ChatTopic<T>, T>,
     TopicRepositoryCustom<T> {
     fun findByKeyId(id: T): Mono<ChatTopic<T>>
+    fun findByKeyIdIn(ids: List<T>): Flux<ChatTopic<T>>
 }
 
 interface TopicRepositoryCustom<T> {

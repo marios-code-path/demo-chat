@@ -26,6 +26,9 @@ open class TopicPersistenceCassandra<T : Any>(
 
     override fun get(key: Key<T>): Mono<out MessageTopic<T>> = roomRepo.findByKeyId(key.id).map(::topic)
 
+    override fun byIds(keys: List<Key<T>>): Flux<out MessageTopic<T>> =
+        roomRepo.findByKeyIdIn(keys.map { it.id }).map(::topic)
+
     override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.MESSAGE_TOPIC)
 
     /** The key must be in MESSAGE_TOPIC before the write. See `CHAT-avduuqwp`, T5. */
