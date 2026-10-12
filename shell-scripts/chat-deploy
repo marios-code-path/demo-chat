@@ -180,6 +180,11 @@ fi
 build_env=(CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host")
 if [[ -n "${CHAT_BUILD_DOCKER_CONFIG:-}" ]]; then
     build_env+=(DOCKER_CONFIG="$CHAT_BUILD_DOCKER_CONFIG")
+else
+    build_docker_config_dir="$(mktemp -d "${TMPDIR:-/tmp}/chat-build-docker.XXXXXX")"
+    printf '{}\n' > "$build_docker_config_dir/config.json"
+    trap 'rm -rf -- "$build_docker_config_dir"' EXIT
+    build_env+=(DOCKER_CONFIG="$build_docker_config_dir")
 fi
 env CONDA_NO_PLUGINS=true conda run -n base mvn -f "$script_dir/../pom.xml" \
     -pl "${module##*/}" -am -Pregister-consul -Dmaven.test.skip=true \

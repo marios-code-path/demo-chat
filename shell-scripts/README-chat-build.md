@@ -153,10 +153,10 @@ default `IMAGE_REPO_PREFIX`, memory uses
 `docker.io/library/chat-deploy-memory:0.0.1`. Cassandra uses
 `docker.io/library/cassandra-core-service-rsocket:0.0.1`.
 
-If Maven reports `'username' must not be null` during image creation, put `{}`
-in a temporary Docker `config.json`. Set `CHAT_BUILD_DOCKER_CONFIG` to that
-directory. The launcher uses it for the image build and keeps the normal Docker
-configuration for Compose.
+The launcher uses a temporary Docker config without registry credentials for
+the image build. It removes that config after the command. Compose still uses
+the normal Docker config. Set `CHAT_BUILD_DOCKER_CONFIG` to a config directory
+when the image build needs registry credentials.
 
 On 2026-10-12, the mixed command started Cassandra, Redis, and a healthy core
 container. Consul reported one passing core service. The launcher checks core
