@@ -71,3 +71,18 @@ dry-run-shell node_id="1":
 # Build a Cassandra core service image.
 build-cassandra node_id:
 	./shell-scripts/chat-build core --cassandra --build --notls --node-id {{node_id}}
+
+# Deploy or stop core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
+deploy-core-cassandra-lucene-redis node_id="7" action="":
+	#!/usr/bin/env bash
+	set -euo pipefail
+	node_id={{quote(node_id)}}
+	action={{quote(action)}}
+	if [[ "$node_id" == --stop || "$action" == --stop ]]; then
+	    ./shell-scripts/chat-deploy core --stop
+	elif [[ -n "$action" ]]; then
+	    echo "Unknown deployment flag: $action" >&2
+	    exit 2
+	else
+	    ./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id "${node_id#node_id=}"
+	fi

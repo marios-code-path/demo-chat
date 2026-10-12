@@ -48,13 +48,130 @@ chat-build core --memory --run --notls --node-id 0 --dry-run
 `JAVA_TOOL_OPTIONS` flag one per line, and the env file path. It is the fastest
 way to answer "why is this property set".
 
-All launch examples pass `--node-id`.
+## Container launch
 
-The value has no default.
+`chat-deploy` builds one core RSocket image through `chat-build` and starts one
+core container. It selects the providers inside that image. It does not start
+the REST facade, authorization server, gateway, or a separate pub/sub service.
 
-Choose a value that is unique for deployments that write to one Redis or Cassandra store.
+| Backend flag | Key | Persistence | Index | Secrets | Pub/sub |
+|---|---|---|---|---|---|
+| `--memory` | memory | memory | Lucene | memory | memory |
+| `--cassandra` | Cassandra | Cassandra | Cassandra | Cassandra | memory |
+| `--cassandra --index lucene --pubsub redis-pubsub` | Cassandra | Cassandra | Lucene | Cassandra | Redis |
 
-These examples use `0`.
+The selected persistence provider serves all core domains in its deploy
+module. `chat-build core` enables the user, topic, message, persistence,
+index, key, pub/sub, and secrets controllers. It also enables composite
+services. The backend flag selects a deploy module. The Cassandra module now
+contains both index providers and both pub/sub providers. The selectors choose
+one provider for each capability. `chat-build core` sets
+`app.command.bus=memory` for every row. The memory command bus keeps its
+handlers in the core process. The launcher requires an explicit pub/sub choice.
+On a terminal, it asks when `--pubsub` is absent. In a script, pass either
+`--pubsub memory` or `--pubsub redis-pubsub` with Cassandra.
+
+### Requirements
+
+Install Docker with Compose and Miniforge with a `base` environment. The
+launcher runs `chat-build` through `conda run -n base`. Choose a unique
+`--node-id` for deployments that write to the same Cassandra store. The node
+id has no default. Supply `CHAT_SERVICE_PASSWORD` before a live launch. The
+current container path supports `--notls` only.
+
+With no `CASSANDRA_CONTACT_POINTS`, the launcher starts the existing Compose
+Cassandra service. It uses `cassandra:9042` inside the Docker network. It
+applies the matching schema only when the keyspace is absent. The repository
+schema starts with `DROP KEYSPACE`, so never apply it to an existing keyspace.
+With an explicit Cassandra address, the launcher checks for the keyspace.
+It does not change an external Cassandra cluster. The address must be
+reachable from the core container. `localhost` and `127.0.0.1` are rejected.
+
+With Redis pub/sub, the launcher starts the existing Compose Redis service
+when `REDIS_TOPICS_HOST` is absent. Set `REDIS_TOPICS_HOST` and, if needed,
+`REDIS_TOPICS_PORT` to use another reachable Redis server. The Redis gate
+requires `PONG` before the core build starts.
+
+### Commands
+
+Inspect a memory launch without starting services or building an image:
+
+```bash
+./shell-scripts/chat-deploy core --memory --pubsub memory --notls --node-id 7 --dry-run
+```
+
+Start a memory core container:
+
+```bash
+export CHAT_SERVICE_PASSWORD='<service password>'
+./shell-scripts/chat-deploy core --memory --pubsub memory --notls --node-id 7
+```
+
+Start the mixed Cassandra, Lucene, and Redis core container:
+
+```bash
+export CHAT_SERVICE_PASSWORD='<service password>'
+just deploy-core-cassandra-lucene-redis
+```
+
+The task uses node ID 7. Use `node_id=16` or `16` to select node ID 16.
+The task selects the memory command bus through `chat-build`.
+Stop this composition with the same task:
+
+```bash
+just deploy-core-cassandra-lucene-redis --stop
+```
+
+The stop flag stops core, Redis, Cassandra, and Consul in that order. It uses
+their current Compose container names. It also stops Consul when other services
+use that registry. Docker keeps the Cassandra and Lucene named volumes.
+The launcher command with `--dry-run` prints the resolved module, selectors,
+and image. It starts no service. Use `--uuid` to select the UUID Cassandra schema.
+Use `--index cassandra --pubsub memory` for the original Cassandra composition.
+
+### Start order and gates
+
+1. The launcher checks the provider choices and password.
+2. It checks `CONSUL_HOST:CONSUL_PORT` for a leader. The defaults are `127.0.0.1:8500`.
+3. If local Consul is absent, it starts the existing Compose `consul` service.
+4. It checks the Docker network, Cassandra keyspace, and Redis `PONG` when selected.
+5. It asks `chat-build --dry-run` to resolve the module and provider flags.
+6. It installs reactor dependencies, then builds the selected image through `chat-build`.
+7. It starts the core Compose service and waits for Actuator health and passing Consul registration.
+
+An unavailable configured remote Consul address stops the launch. The launcher
+does not start another registry for that address. Its `--dry-run` skips
+Consul, data services, image creation, and container startup.
+
+The Lucene Compose overlay mounts a named volume at `/var/lib/chat/lucene`.
+It sets `app.index.lucene.root` through `APP_INDEX_LUCENE_ROOT`. An init
+container makes the volume writable by the image user. The overlay limits
+core memory to 3 GiB by default. Set `CORE_MEMORY_LIMIT` to change the limit.
+It reserves 256 MiB of direct memory for Netty. The other compositions do
+not use this overlay.
+
+The core container joins `${CHAT_NETWORK:-docker_chatnet}`. Locally started
+Consul uses `docker_chatnet`. An existing Consul must reach the core container
+for its health check. Set `CHAT_NETWORK` for an existing Docker network.
+The Compose project publishes core ports on host loopback. The defaults are
+6790 for RSocket and 6791 for management. Set `CORE_PORT` and `CORE_MGMT_PORT`
+to change them.
+
+The launcher reads the image name from the selected module POM. With the
+default `IMAGE_REPO_PREFIX`, memory uses
+`docker.io/library/chat-deploy-memory:0.0.1`. Cassandra uses
+`docker.io/library/cassandra-core-service-rsocket:0.0.1`.
+
+The launcher uses a temporary Docker config without registry credentials for
+the image build. It removes that config after the command. Compose still uses
+the normal Docker config. Set `CHAT_BUILD_DOCKER_CONFIG` to a config directory
+when the image build needs registry credentials.
+
+On 2026-10-12, the mixed command started Cassandra, Redis, and a healthy core
+container. Consul reported one passing core service. The launcher checks core
+health and Consul registration. It does not check message reads or restart
+state. The launcher still starts only core.
+Authorization, REST, and gateway services need separate launches.
 
 ---
 
@@ -84,7 +201,7 @@ JVM flags. Options within a group are mutually exclusive.
 | Flag | Module or Maven profile | Notes |
 |---|---|---|
 | `--memory` | module `chat-deploy-memory` | Memory persistence + pubsub + Lucene index. Default for `core`. |
-| `--cassandra` | module `chat-deploy-cassandra` | Cassandra persistence + index. |
+| `--cassandra` | module `chat-deploy-cassandra` | Cassandra keys, persistence, and secrets. The default index is Cassandra. |
 | `--kafka` | module `chat-deploy-kafka` | Kafka messaging with memory persistence + Lucene index. Reads `KAFKA_BOOTSTRAP_SERVERS`. |
 | `--redis` | module `chat-deploy-redis` | Redis persistence, keys and Pub/Sub, with memory secrets and the Lucene index. |
 | `--client` | profile `client-backend` | RSocket client, no local datastore. Default for `rest`, `gateway`, `authserv`, `shell`. |
@@ -92,6 +209,11 @@ JVM flags. Options within a group are mutually exclusive.
 A store backend selects its own deploy module, and `chat-build` runs Maven in
 that module directory. `--client` keeps `chat-deploy` and adds the
 `client-backend` profile. `--dry-run` prints the module.
+
+For `core --cassandra`, use `--index lucene` to select Lucene. Use
+`--pubsub redis-pubsub` to select Redis pub/sub. These options keep
+`app.command.bus=memory`. The default selectors remain the Cassandra index
+and memory pub/sub. Other backend flags do not accept these overrides.
 
 ### Add-ons
 
@@ -175,16 +297,16 @@ Without it, the Lucene indexes stay in memory. `chat-build` expands `~`, then
 requires an absolute path. The directory can be absent, because the index start
 creates it. See `docs/LUCENE-INDEX-FILES.md` and `CHAT-eesnvnad`.
 
-The files help only `--redis`, because its store survives a restart. With
-`--memory` or `--kafka`, the store starts empty. So each start builds the
-indexes again from an empty store.
+The files help `--redis` and `--cassandra --index lucene`, because their stores
+survive a restart. With `--memory` or `--kafka`, the store starts empty. So
+each start builds the indexes again from an empty store.
 
 `chat-build` refuses these values, with exit 1:
 
 - An empty value, such as `--index-root=`.
 - A relative path.
 - A service other than `core`.
-- `--cassandra`. That backend uses the Cassandra index, not Lucene.
+- `--cassandra` without `--index lucene`. That selection uses the Cassandra index.
 - `--build`. A host path does not exist inside a container. Mount a volume
   and set `app.index.lucene.root` when you run the image.
 
