@@ -1,7 +1,10 @@
 package com.demo.chat.config.deploy.cassandra
 
+import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexSearchRequestConverters
 import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.domain.RequestToQueryConverters
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -25,5 +28,10 @@ import org.springframework.web.reactive.config.EnableWebFlux
 @EnableWebFlux
 class CassandraAppConfiguration {
     @Bean
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
     fun requestToQueryConverters(): RequestToQueryConverters<Map<String, String>> = MapRequestConverters()
+
+    @Bean
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "lucene")
+    fun luceneRequestToQueryConverters(): RequestToQueryConverters<IndexSearchRequest> = IndexSearchRequestConverters()
 }

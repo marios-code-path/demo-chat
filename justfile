@@ -71,3 +71,7 @@ dry-run-shell node_id="1":
 # Build a Cassandra core service image.
 build-cassandra node_id:
 	./shell-scripts/chat-build core --cassandra --build --notls --node-id {{node_id}}
+
+# Deploy core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
+deploy-core-cassandra-lucene-redis node_id="7":
+	./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id {{node_id}}
