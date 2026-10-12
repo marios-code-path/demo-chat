@@ -38,9 +38,24 @@ class KeyTests : RSocketTestBase() {
 
     private val svcPrefix: String = "key."
 
+    /**
+     * This test names its own cause, on purpose. See `CHAT-ivtnvgyg`.
+     *
+     * One CI run answered this read with a completion that carried no value.
+     * Two halves can produce that answer, and the log of that run cannot tell
+     * them apart. This test can.
+     *
+     * 1. The server never reached [keyService]. The reach check below fails.
+     * 2. The server reached [keyService] and the answer was lost before the
+     *    wire. The reach check passes, and the value check fails.
+     *
+     * The reach check runs after the value check on purpose. The answer of a
+     * healthy run always arrives after the mock call, so the order adds no race.
+     */
     @Test
     fun `client should call exists`() {
         val keyService = keyBeans.keyService()
+        val key = TestKeys.key(UUID.randomUUID())
 
         BDDMockito
             .given(keyService.exists(anyObject()))
@@ -48,14 +63,33 @@ class KeyTests : RSocketTestBase() {
 
         val client: IKeyService<UUID> = KeyClient(svcPrefix, requester, UUIDUtil())
 
-        StepVerifier
-            .create(client.exists(TestKeys.key(UUID.randomUUID())))
-            .assertNext {
-                Assertions
-                    .assertThat(it)
-                    .isTrue()
-            }
-            .verifyComplete()
+        val valueFailure = runCatching {
+            StepVerifier
+                .create(client.exists(key))
+                .assertNext {
+                    Assertions
+                        .assertThat(it)
+                        .isTrue()
+                }
+                .verifyComplete()
+        }.exceptionOrNull()
+
+        val reachFailure = runCatching {
+            BDDMockito
+                .then(keyService)
+                .should()
+                .exists(key)
+        }.exceptionOrNull()
+
+        if (reachFailure != null) {
+            throw AssertionError(
+                "The server never reached the key service, so no route answered " +
+                    "this read. See CHAT-ivtnvgyg.",
+                reachFailure
+            )
+        }
+
+        valueFailure?.let { throw it }
     }
 
     @Test
