@@ -116,6 +116,15 @@ just deploy-core-cassandra-lucene-redis
 
 The task uses node ID 7. Use `node_id=16` or `16` to select node ID 16.
 The task selects the memory command bus through `chat-build`.
+Stop this composition with the same task:
+
+```bash
+just deploy-core-cassandra-lucene-redis --stop
+```
+
+The stop flag stops core, Redis, Cassandra, and Consul in that order. It uses
+their current Compose container names. It also stops Consul when other services
+use that registry. Docker keeps the Cassandra and Lucene named volumes.
 The launcher command with `--dry-run` prints the resolved module, selectors,
 and image. It starts no service. Use `--uuid` to select the UUID Cassandra schema.
 Use `--index cassandra --pubsub memory` for the original Cassandra composition.

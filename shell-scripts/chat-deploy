@@ -7,10 +7,27 @@ lucene_compose_file="$script_dir/../devops/docker/compose-core-lucene.yaml"
 redis_compose_file="$script_dir/../devops/docker/compose-core-redis.yaml"
 
 if [[ "${1:-}" != core ]]; then
-    echo 'Usage: chat-deploy core --cassandra --pubsub memory --notls --node-id ID' >&2
+    echo 'Usage: chat-deploy core --stop OR chat-deploy core --cassandra --pubsub PROVIDER --notls --node-id ID' >&2
     exit 2
 fi
 shift
+
+if [[ "${1:-}" == --stop ]]; then
+    if (($# != 1)); then
+        echo 'chat-deploy: --stop takes no other options' >&2
+        exit 2
+    fi
+    docker info --format '{{.ServerVersion}}' >/dev/null
+    for container in chat-deploy-core-core-service-rsocket-1 \
+        docker-redis-1 docker-cassandra-1 docker-consul-1; do
+        running="$(docker container inspect --format '{{.State.Running}}' "$container" 2>/dev/null)" || running=''
+        if [[ "$running" == true ]]; then
+            docker stop --time 60 "$container"
+        fi
+    done
+    echo 'Deployment containers are stopped'
+    exit 0
+fi
 
 backend=''
 pubsub=''
