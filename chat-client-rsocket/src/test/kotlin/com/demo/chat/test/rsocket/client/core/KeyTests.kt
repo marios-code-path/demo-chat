@@ -49,14 +49,17 @@ class KeyTests : RSocketTestBase() {
      * This test names its own cause, on purpose. See `CHAT-ivtnvgyg`.
      *
      * One CI run answered this read with a completion that carried no value.
-     * Two halves can produce that answer, and the log of that run cannot tell
+     * Three halves can produce that answer, and the log of that run cannot tell
      * them apart. This test can.
      *
-     * 1. The server never reached [keyService]. The reach check below fails.
-     * 2. The server reached [keyService] and the answer was lost before the
-     *    wire. The reach check passes, and the value check fails.
+     * 1. The server never reached [keyService]. The call check fails.
+     * 2. The server reached [keyService] with a different key. The call check
+     *    passes, and the key check fails.
+     * 3. The server reached [keyService] with this key. Both reach checks
+     *    pass, and the value check fails. So the answer was lost before the
+     *    wire.
      *
-     * The reach check runs after the value check on purpose. The answer of a
+     * The reach checks run after the value check on purpose. The answer of a
      * healthy run always arrives after the mock call, so the order adds no race.
      */
     @Test
@@ -81,18 +84,35 @@ class KeyTests : RSocketTestBase() {
                 .verifyComplete()
         }.exceptionOrNull()
 
-        val reachFailure = runCatching {
+        // The call check reads the call alone, and no argument. A check that
+        // read the argument first would name a changed key as no call at all.
+        val noCallFailure = runCatching {
+            BDDMockito
+                .then(keyService)
+                .should(Mockito.atLeastOnce())
+                .exists(anyObject())
+        }.exceptionOrNull()
+
+        if (noCallFailure != null) {
+            throw AssertionError(
+                "The server never reached the key service, so no route answered " +
+                    "this read. See CHAT-ivtnvgyg.",
+                noCallFailure
+            )
+        }
+
+        val changedKeyFailure = runCatching {
             BDDMockito
                 .then(keyService)
                 .should()
                 .exists(key)
         }.exceptionOrNull()
 
-        if (reachFailure != null) {
+        if (changedKeyFailure != null) {
             throw AssertionError(
-                "The server never reached the key service, so no route answered " +
-                    "this read. See CHAT-ivtnvgyg.",
-                reachFailure
+                "The server reached the key service with a different key, so the " +
+                    "sent key did not survive the wire. See CHAT-ivtnvgyg.",
+                changedKeyFailure
             )
         }
 
