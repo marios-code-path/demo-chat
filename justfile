@@ -74,4 +74,4 @@ build-cassandra node_id:
 
 # Deploy core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
 deploy-core-cassandra-lucene-redis node_id="7":
-	./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id {{node_id}}
+	./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id {{quote(replace_regex(node_id, "^node_id=", ""))}}

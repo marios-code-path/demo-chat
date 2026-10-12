@@ -114,7 +114,7 @@ export CHAT_SERVICE_PASSWORD='<service password>'
 just deploy-core-cassandra-lucene-redis
 ```
 
-The task uses node ID 7. Pass another ID as its argument when necessary.
+The task uses node ID 7. Use `node_id=16` or `16` to select node ID 16.
 The task selects the memory command bus through `chat-build`.
 The launcher command with `--dry-run` prints the resolved module, selectors,
 and image. It starts no service. Use `--uuid` to select the UUID Cassandra schema.
