@@ -11,14 +11,20 @@ import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.UUIDKeyServiceBeans
 import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RSocketTestRegistry
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
+import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Import
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
@@ -32,6 +38,7 @@ import java.util.*
         UUIDKeyServiceBeans::class, TestKeyController::class
     ]
 )
+@Import(KeyTests.KeyVerifierTestConfiguration::class)
 class KeyTests : RSocketTestBase() {
     @Autowired
     private lateinit var keyBeans: KeyServiceBeans<UUID>
@@ -92,9 +99,17 @@ class KeyTests : RSocketTestBase() {
         valueFailure?.let { throw it }
     }
 
+    /**
+     * A removal answers no value. Its transport is `REQUEST_FNF`, so the client
+     * completes when it sends the frame, before the server handles it.
+     *
+     * So the completion alone proves nothing. This test waits for the server to
+     * reach [keyBeans], and the wait has a bound. See `CHAT-liomkoer`.
+     */
     @Test
     fun `Client should remove a key`() {
         val keyService = keyBeans.keyService()
+        val key = RSocketTestRegistry.registered(ChatDomain.MESSAGE)
 
         BDDMockito
             .given(keyService.rem(anyObject()))
@@ -103,23 +118,55 @@ class KeyTests : RSocketTestBase() {
         val client: IKeyService<UUID> = KeyClient(svcPrefix, requester, UUIDUtil())
 
         StepVerifier
-            .create(client.rem(TestKeys.key(UUID.randomUUID())))
+            .create(client.rem(key))
             .verifyComplete()
+
+        BDDMockito
+            .then(keyService)
+            .should(Mockito.timeout(REMOVAL_BOUND_MILLIS))
+            .rem(key)
     }
 
     @Test
     fun `Client should create a key`() {
         val keyService = keyBeans.keyService()
+        val minted = TestKeys.key(UUID.randomUUID())
 
         BDDMockito
             .given(keyService.key(anyObject()))
-            .willReturn(Mono.empty())
+            .willReturn(Mono.just(minted))
 
         val client: IKeyService<UUID> = KeyClient(svcPrefix, requester, UUIDUtil())
 
         StepVerifier
             .create(client.key(ChatDomain.USER))
+            .assertNext {
+                Assertions
+                    .assertThat(it.id)
+                    .isEqualTo(minted.id)
+            }
             .verifyComplete()
+
+        BDDMockito
+            .then(keyService)
+            .should()
+            .key(ChatDomain.USER)
+    }
+
+    @TestConfiguration
+    class KeyVerifierTestConfiguration {
+        /**
+         * The `key.rem` route carries `@Verified`, so this context owes it a
+         * verifier. Without one the route answers no frame, and a test that
+         * reads a completion alone cannot see that. See `CHAT-liomkoer`.
+         */
+        @Bean
+        fun testKeyVerifier(): KeyVerifier<UUID> = RSocketTestRegistry.verifier
+    }
+
+    companion object {
+        /** A bound on the wait for a removal to reach the service. */
+        private const val REMOVAL_BOUND_MILLIS: Long = 2000
     }
 }
 
