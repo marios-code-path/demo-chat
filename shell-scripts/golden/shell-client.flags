@@ -43,4 +43,5 @@
 -Dspring.security.user.name=actuator
 -Dspring.security.user.password=actuator
 -Dspring.security.user.roles=ACTUATOR
+-Dspring.shell.context.close=true
 -Dspring.shell.interactive.enabled=true
