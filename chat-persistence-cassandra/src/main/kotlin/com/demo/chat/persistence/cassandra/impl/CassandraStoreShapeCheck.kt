@@ -31,6 +31,8 @@ class CassandraStoreShapeCheck(
 
         val PERSISTENCE_TABLES: Map<String, Set<String>> = mapOf(
             "auth_metadata" to setOf("principal_root", "target_root"),
+            // A pointer row marks its target domain here. See CHAT-erkoxybm.
+            "chat_message_id" to setOf("kind"),
         )
 
         /**

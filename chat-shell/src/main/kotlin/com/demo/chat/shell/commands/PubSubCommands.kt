@@ -3,6 +3,7 @@ package com.demo.chat.shell.commands
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.domain.*
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
@@ -19,9 +20,9 @@ import reactor.core.publisher.Mono
 class PubSubCommands<T : Any>(
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val typeUtil: TypeUtil<T>,
-    rootKeys: RootKeys<T>,
+    private val roots: RootKeys<T>,
     private val rooms: ShellRooms<T>,
-) : CommandsUtil<T>(typeUtil, rootKeys) {
+) : CommandsUtil<T>(typeUtil, roots) {
 
     private val messageService: ChatMessageService<T, String> = compositeServices.messageService()
     private val userService: ChatUserService<T> = compositeServices.userService()
@@ -77,7 +78,7 @@ class PubSubCommands<T : Any>(
         // error was dropped, and a refused listen printed nothing. CHAT-lfaajjcj.
         val d = messageService.listenTopic(ByIdRequest(id))
             .doOnNext { message ->
-                println("Message: ${message.key.from} : ${message.data}\n")
+                println("Message: ${message.key.from} : ${body(message)}\n")
             }
             .doOnError { error ->
                 ShellStateConfiguration.listeners.remove(topicId)
@@ -126,7 +127,19 @@ class PubSubCommands<T : Any>(
             .withZone(ZoneId.systemDefault())
         return selected.joinToString("\n") { message ->
             val prefix = "${formatter.format(message.key.timestamp)} | ${handles.getValue(message.key.from)} | "
-            prefix + message.data.lines().joinToString("\n" + " ".repeat(prefix.length))
+            prefix + body(message).lines().joinToString("\n" + " ".repeat(prefix.length))
         }
     }
+
+    /** A pointer shows its target and no text. No read of the target runs. See `CHAT-erkoxybm`. */
+    // The static type Message<T, String> fixes T, so `is PointerMessage<T>` compiles.
+    // Measured with kotlinc, K1 and K2, on 2026-10-10. A subject of type Any fails.
+    private fun body(message: Message<T, String>): String =
+        if (message is PointerMessage<T>) {
+            val domain = when (roots.domainOfRoot(message.target.root)) {
+                ChatDomain.MESSAGE_TOPIC -> "topic"
+                else -> "message"
+            }
+            "→ $domain ${typeUtil.toString(message.target.id)}"
+        } else message.data
 }

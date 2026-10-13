@@ -1,0 +1,22 @@
+services:
+  lucene-volume-init:
+    image: busybox:1.36
+    user: root
+    command: chown -R ${LUCENE_OWNER:-1002:1001} /var/lib/chat/lucene
+    volumes:
+      - chat_lucene:/var/lib/chat/lucene
+
+  core-service-rsocket:
+    mem_limit: ${CORE_MEMORY_LIMIT:-3g}
+    depends_on:
+      lucene-volume-init:
+        condition: service_completed_successfully
+    environment:
+      APP_INDEX_LUCENE_ROOT: /var/lib/chat/lucene
+      BPL_JVM_HEAD_ROOM: "15"
+      JAVA_TOOL_OPTIONS: -XX:MaxDirectMemorySize=256M
+    volumes:
+      - chat_lucene:/var/lib/chat/lucene
+
+volumes:
+  chat_lucene:

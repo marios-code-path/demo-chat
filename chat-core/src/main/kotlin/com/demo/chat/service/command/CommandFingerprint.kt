@@ -10,6 +10,7 @@ import java.util.HexFormat
 /**
  * The version 1 fingerprint detects changed normal-send intent under one
  * request identity. Import fingerprints use version 2 and include time and publication.
+ * Pointer fingerprints use version 3 and include the target.
  *
  * The encoding writes the version as a 4-byte big-endian integer. Each field
  * then writes a 4-byte big-endian length and its UTF-8 bytes. SHA-256 hashes
@@ -25,6 +26,7 @@ object CommandFingerprint {
         content: Any?,
         timestamp: Instant? = null,
         publish: Boolean? = null,
+        target: String? = null,
     ): String {
         val text = content as? String
             ?: throw IllegalArgumentException(
@@ -32,11 +34,17 @@ object CommandFingerprint {
             )
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use { out ->
-            out.writeInt(if (timestamp == null && publish == null) VERSION else VERSION + 1)
-            val fields = if (timestamp == null && publish == null) {
-                listOf(operation.name, senderId, destinationId, text)
-            } else {
-                listOf(operation.name, senderId, destinationId, text, timestamp.toString(), publish.toString())
+            out.writeInt(
+                when {
+                    target != null -> VERSION + 2
+                    timestamp == null && publish == null -> VERSION
+                    else -> VERSION + 1
+                }
+            )
+            val fields = when {
+                target != null -> listOf(operation.name, senderId, destinationId, text, target)
+                timestamp == null && publish == null -> listOf(operation.name, senderId, destinationId, text)
+                else -> listOf(operation.name, senderId, destinationId, text, timestamp.toString(), publish.toString())
             }
             fields.forEach { field ->
                 val encoded = field.toByteArray(Charsets.UTF_8)

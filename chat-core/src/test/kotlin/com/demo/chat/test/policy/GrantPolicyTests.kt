@@ -40,20 +40,22 @@ class GrantPolicyTests {
             .containsExactly(GrantIntent(MEMBER, ROOM, "*", GrantExpiry.NONE))
     }
 
-    /** **One action gives two intents.** */
+    /** **One action gives three intents.** */
     @Test
-    fun `the join policy gives the member SEND and SUBSCRIBE with no expiry`() {
+    fun `the join policy gives the member SEND, SUBSCRIBE and FORWARD with no expiry`() {
         assertThat(ShippedGrantPolicies.ROOM_JOIN.intents(ActionContext(MEMBER, ROOM), rootKeys)).containsExactly(
             GrantIntent(MEMBER, ROOM, "SEND", GrantExpiry.NONE),
             GrantIntent(MEMBER, ROOM, "SUBSCRIBE", GrantExpiry.NONE),
+            GrantIntent(MEMBER, ROOM, "FORWARD", GrantExpiry.NONE),
         )
     }
 
     @Test
-    fun `the leave policy expires SEND and SUBSCRIBE of the member now`() {
+    fun `the leave policy expires SEND, SUBSCRIBE and FORWARD of the member now`() {
         assertThat(ShippedGrantPolicies.ROOM_LEAVE.intents(ActionContext(MEMBER, ROOM), rootKeys)).containsExactly(
             GrantIntent(MEMBER, ROOM, "SEND", GrantExpiry.NOW),
             GrantIntent(MEMBER, ROOM, "SUBSCRIBE", GrantExpiry.NOW),
+            GrantIntent(MEMBER, ROOM, "FORWARD", GrantExpiry.NOW),
         )
     }
 

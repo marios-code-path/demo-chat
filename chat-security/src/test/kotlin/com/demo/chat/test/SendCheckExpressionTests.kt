@@ -6,6 +6,7 @@ import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import com.demo.chat.domain.User
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.expression.BeanResolver
 import org.springframework.expression.spel.standard.SpelExpressionParser
 import org.springframework.expression.spel.support.StandardEvaluationContext
+import org.springframework.security.access.prepost.PostAuthorize
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
@@ -121,15 +123,16 @@ class SendCheckExpressionTests {
     }
 
     @Test
-    fun `the message by id expression binds a raw id`() {
-        val access = access(listOf(grant(CALLER, ROOM, "GET")))
+    fun `the message by id expression checks SUBSCRIBE on the room of the read message`() {
+        val expression = MessageServiceAccess::class.java.methods
+            .first { it.name == "messageById" && it.parameterCount == 1 }
+            .getAnnotation(PostAuthorize::class.java)!!.value
+        val read = Message.create(MessageKey.of(MESSAGE.id, MESSAGE.root, CALLER.id, ROOM.id), "text", true)
 
-        assertThat(
-            evaluate(
-                expressionOf(MessageServiceAccess::class.java, "messageById"),
-                "req", ByIdRequest(ROOM.id), access
-            )
-        ).describedAs("the message by id expression").isTrue()
+        assertThat(evaluate(expression, "req", ByIdRequest(MESSAGE.id), access(listOf(grant(CALLER, ROOM, "SUBSCRIBE"))), ReturnRoot(read)))
+            .describedAs("a read with SUBSCRIBE on the room").isTrue()
+        assertThat(evaluate(expression, "req", ByIdRequest(MESSAGE.id), access(listOf(grant(CALLER, MESSAGE, "GET"))), ReturnRoot(read)))
+            .describedAs("a read with GET on the message alone").isFalse()
     }
 
     @Test
@@ -251,9 +254,10 @@ class SendCheckExpressionTests {
         expression: String,
         variable: String,
         value: Any,
-        access: SpringSecurityAccessBrokerService<Long>
+        access: SpringSecurityAccessBrokerService<Long>,
+        root: Any? = null,
     ): Boolean {
-        val context = StandardEvaluationContext()
+        val context = if (root == null) StandardEvaluationContext() else StandardEvaluationContext(root)
         // The resolver answers a non-null bean. `BeanResolver` declares `Any`,
         // so a null arm does not type check. A test asks for one name.
         context.setBeanResolver(BeanResolver { _, name ->
@@ -280,6 +284,9 @@ class SendCheckExpressionTests {
             )
             .block() ?: false
     }
+
+    /** The root of a post check. Spring names the returned value `returnObject`. */
+    class ReturnRoot(val returnObject: Any)
 
     // `MessageSendRequest` carries raw ids, and `dest` is the room id. The
     // shell builds one the same way, with `topic.key.id`.

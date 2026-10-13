@@ -5,6 +5,7 @@ import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.command.CommandStatus
@@ -30,6 +31,9 @@ interface ChatMessageService<T, V> {
 
     /** Admits a message command and waits for the configured requirement. Decision 10 of the spec. */
     fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>>
+
+    /** Admits a pointer to a message or a topic into a room. See `CHAT-erkoxybm`. */
+    fun pointer(req: MessagePointerRequest<T>): Mono<out MessageSendResult<T>>
 
     /** The status of a command that the caller owns. Another owner's command answers not found. */
     fun commandStatus(req: CommandStatusRequest): Mono<out CommandStatus<T>>

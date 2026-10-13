@@ -1,7 +1,9 @@
 package com.demo.chat.service.composite.command.memory
 
+import com.demo.chat.domain.DefinitiveRefusalException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.domain.SimpleMessageKey
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.command.AcceptedCommand
@@ -70,6 +72,10 @@ class MemoryDomainCommandBus<T : Any, V>(
     fun stagedMappings(): Int = mappings.values.count { !it.marker.committed }
 
     private fun admit(submission: CommandSubmission<T, V>): Receipt<T> {
+        // Only a pointer names a target, and a pointer always names one. CHAT-erkoxybm.
+        if ((submission.operation == CommandOperation.RECORD_POINTER) != (submission.target != null)) {
+            throw DefinitiveRefusalException("A RECORD_POINTER command needs a target, and no other operation takes one.")
+        }
         RequestIds.requireValid(submission.requestId)
         val identity = RequestIdentity(submission.owner, submission.requestId)
         val fingerprint = CommandFingerprint.of(
@@ -79,6 +85,7 @@ class MemoryDomainCommandBus<T : Any, V>(
             submission.content,
             submission.timestamp,
             submission.publish,
+            submission.target?.let { "${typeUtil.toString(it.root)}:${typeUtil.toString(it.id)}" },
         )
         val lock = locks.computeIfAbsent(identity) { Any() }
         val receipt = synchronized(lock) {
@@ -114,9 +121,15 @@ class MemoryDomainCommandBus<T : Any, V>(
             operation = submission.operation,
             orderingKey = submission.dest,
             schemaVersion = SCHEMA_VERSION,
-            message = Message.create(messageKey, submission.content, true),
-            obligations = when (submission.publish) {
-                false -> obligations - BackendId.PUBSUB
+            message = submission.target?.let {
+                // A pointer is a Message<T, String>. Every composition binds V to String.
+                @Suppress("UNCHECKED_CAST")
+                PointerMessage(messageKey, it) as Message<T, V>
+            } ?: Message.create(messageKey, submission.content, true),
+            obligations = when {
+                // A pointer has no text to embed. CHAT-erkoxybm.
+                submission.operation == CommandOperation.RECORD_POINTER -> obligations - BackendId.VECTOR
+                submission.publish == false -> obligations - BackendId.PUBSUB
                 else -> obligations
             },
             executionPolicyVersion = policy.version,

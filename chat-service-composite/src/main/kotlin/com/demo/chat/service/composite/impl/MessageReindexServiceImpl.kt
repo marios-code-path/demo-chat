@@ -4,6 +4,7 @@ import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageVectorIndexer
@@ -178,6 +179,8 @@ class MessageReindexServiceImpl<T : Any, V>(
             // Job records live in the same message store. The filter runs
             // before every counter, so attempted describes user messages.
             .filter { message -> message.key.dest !in exclusion }
+            // A pointer has no text to embed. The filter runs before every counter. CHAT-erkoxybm.
+            .filter { message -> message !is PointerMessage<*> }
             .concatMap { message ->
                 attempted.incrementAndGet()
                 // record is not an inclusion rule here. MessagingServiceImpl

@@ -11,6 +11,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.command.CommandStatus
 import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.service.composite.ChatMessageService
@@ -49,6 +50,10 @@ open class MessagingServiceAccess<T, V> (
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>> = verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC)
         .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "SEND") }
         .then(that.submit(req))
+
+    override fun pointer(req: MessagePointerRequest<T>): Mono<out MessageSendResult<T>> = verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC)
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "FORWARD") }
+        .then(that.pointer(req))
 
     override fun commandStatus(req: CommandStatusRequest): Mono<out CommandStatus<T>> = that.commandStatus(req)
 }

@@ -12,7 +12,7 @@ docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/in
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusSettings.kt sig:c8c3008bbf745a1c
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusValidation.kt sig:80fedc67d1b0bf61
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/service/command/BackendExecutionPolicy.kt sig:596cedd2fb4df983
-docs/MESSAGE-COMMANDS.md -> chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt sig:4b7849013617671f
+docs/MESSAGE-COMMANDS.md -> chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt sig:920d91db08eef888
 docs/MESSAGE-COMMANDS.md -> chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/composite/mapping/SubmitStatus.kt sig:8c5a6e291e314fd5
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/CoreSecurityErrorDecoder.kt sig:59ee4b32bebf84ef
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/MetadataRSocketRequester.kt sig:5a8d41ce7cdeacb3
@@ -26,10 +26,10 @@ docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/a
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/security/rsocket/RSocketSecurityErrorCodes.kt sig:c40756a4935868cb
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:e6e9ebfd3865d989
-docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityErrorInterceptor.kt sig:d59bb06ec39e4c08
+docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityErrorInterceptor.kt sig:542d4280adbda925
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketServerConfiguration.kt sig:c08d16e4678c2848
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/UnsupportedCredentialRefusal.kt sig:339db8ce164133ae
-docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/WebFluxKeyVerifierConfiguration.kt sig:c2bcdcb639510804
+docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/WebFluxKeyVerifierConfiguration.kt sig:3611f8a2af1af7a5
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentResourceServerChain.kt sig:aa88a1ecd09ec0b5
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt sig:cfca97170f7b02f2
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/CoreRestControllers.kt sig:7535afb3ee97d1a4

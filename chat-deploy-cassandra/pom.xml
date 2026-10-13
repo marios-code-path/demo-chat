@@ -29,6 +29,28 @@
     </properties>
     <profiles>
         <profile>
+            <id>register-consul</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-consul-config</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-client-consul</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <!-- Empty on purpose. This module already declares chat-service-controller at compile scope, and the id exists so that the flag activates without a warning. -->
             <id>expose-rsocket</id>
         </profile>
@@ -96,6 +118,16 @@
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-index-cassandra</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-index-lucene</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-persistence-xstream</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>

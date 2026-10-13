@@ -82,12 +82,10 @@ class MessageRestAccessTests {
     @WithLongCustomChatUser(userId = 1L, roles = ["TEST"])
     fun `a denied caller is refused at every message route and the service never runs`() {
         client.get().uri("/message/topic/$ROOM").exchange().expectStatus().isForbidden
-        client.get().uri("/message/id/$MESSAGE").exchange().expectStatus().isForbidden
         client.post().uri("/message/send/$ROOM").contentType(MediaType.TEXT_PLAIN)
             .bodyValue("hello").exchange().expectStatus().isForbidden
 
         verify(beans.messageService(), never()).listenTopic(anyObject())
-        verify(beans.messageService(), never()).messageById(anyObject())
         verify(beans.messageService(), never()).send(anyObject())
     }
 

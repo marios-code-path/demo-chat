@@ -1,0 +1,5 @@
+services:
+  core-service-rsocket:
+    environment:
+      REDIS_TOPICS_HOST: ${REDIS_TOPICS_HOST:-redis}
+      REDIS_TOPICS_PORT: ${REDIS_TOPICS_PORT:-6379}

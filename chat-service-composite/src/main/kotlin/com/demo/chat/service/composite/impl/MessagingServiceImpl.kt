@@ -4,11 +4,17 @@ import com.demo.chat.domain.AccessDeniedException
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyInputException
+import com.demo.chat.domain.KeyVerificationException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
+import com.demo.chat.domain.NoSuchPointerTargetException
 import com.demo.chat.domain.NotFoundException
+import com.demo.chat.domain.PointerMessage
+import com.demo.chat.domain.PointerToPointerException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.command.BackendId
 import com.demo.chat.domain.command.BackendState
@@ -26,12 +32,14 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.command.CommandCompletionService
 import com.demo.chat.service.command.DomainCommandBus
+import com.demo.chat.service.command.PointerTargetAccess
 import com.demo.chat.service.command.SubmitterIdentity
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.command.publication.RoomPublications
 import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
+import com.demo.chat.service.core.TopicPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Clock
@@ -56,6 +64,8 @@ open class MessagingServiceImpl<T : Any, V, Q>(
     private val requestIds: () -> String = { UUID.randomUUID().toString() },
     private val rootKeys: RootKeys<T> = RootKeys(),
     private val clock: Clock = Clock.systemUTC(),
+    private val pointerTargets: PointerTargetAccess<T>? = null,
+    private val topicPersistence: TopicPersistence<T>? = null,
 ) : ChatMessageService<T, V> {
 
     /**
@@ -101,6 +111,53 @@ open class MessagingServiceImpl<T : Any, V, Q>(
 
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>> =
         owner().flatMap { owner -> admitAndWait(owner, req.requestId, req.dest, req.msg) }
+
+    /**
+     * The checks of the spec, steps 1 and 3 to 7. Step 2, `FORWARD` on the
+     * host room, is the `@PreAuthorize` of `MessageServiceAccess`. See
+     * `CHAT-erkoxybm`.
+     */
+    override fun pointer(req: MessagePointerRequest<T>): Mono<out MessageSendResult<T>> =
+        owner().flatMap { owner ->
+            pointerTarget(req).flatMap { target ->
+                // A pointer carries no content. Every composition binds V to String.
+                @Suppress("UNCHECKED_CAST")
+                admitAndWait(owner, req.requestId, req.dest, "" as V, CommandOperation.RECORD_POINTER, target)
+            }
+        }
+
+    /**
+     * The target key, when the caller can read it. A missing target and an
+     * unreadable target give the same error. The id converts exactly, because
+     * a JSON body cannot carry the key type.
+     */
+    private fun pointerTarget(req: MessagePointerRequest<T>): Mono<Key<T>> = Mono.defer {
+        val domain = ChatDomain.parse(req.targetDomain)?.takeIf { it in POINTER_TARGETS }
+            ?: return@defer Mono.error<Key<T>>(
+                KeyInputException("A pointer target domain must be Message or MessageTopic. The value is ${req.targetDomain}.")
+            )
+        val access = pointerTargets ?: return@defer Mono.error<Key<T>>(AccessDeniedException)
+        val targetId = typeUtil.exactFrom(req.targetId as Any)
+        val missing = NoSuchPointerTargetException(domain)
+        verifier.resolve(targetId, domain)
+            .onErrorMap(KeyVerificationException::class.java) { missing }
+            .flatMap<Key<T>> { verified ->
+                if (domain == ChatDomain.MESSAGE_TOPIC) {
+                    // The registry keeps the key of a deleted room, so the store row decides.
+                    val topic = topicPersistence?.get(verified.key) ?: Mono.empty()
+                    topic.flatMap { access.canSubscribe(verified.key.id) }.filter { it }.map { verified.key }
+                } else {
+                    // A Cassandra removal keeps the row and sets record to false.
+                    messagePersistence.get(verified.key).filter { it.record }.flatMap { target ->
+                        access.canSubscribe(target.key.dest).filter { it }.flatMap {
+                            if (target is PointerMessage<*>) Mono.error<Key<T>>(PointerToPointerException())
+                            else Mono.just(verified.key)
+                        }
+                    }
+                }
+            }
+            .switchIfEmpty(Mono.error(missing))
+    }
 
     override fun importMessage(req: MessageImportRequest<T, V>): Mono<out Message<T, V>> =
         owner().flatMap { owner ->
@@ -187,12 +244,29 @@ open class MessagingServiceImpl<T : Any, V, Q>(
         (submitter?.current() ?: Mono.error(SubmitterUnavailableException()))
             .switchIfEmpty(Mono.error(AccessDeniedException))
 
-    private fun admitAndWait(owner: Key<T>, requestId: String, dest: T, content: V): Mono<MessageSendResult<T>> =
-        verifier.resolve(owner.id, ChatDomain.USER)
+    private fun admitAndWait(
+        owner: Key<T>,
+        requestId: String,
+        dest: T,
+        content: V,
+        operation: CommandOperation = CommandOperation.RECORD_MESSAGE,
+        target: Key<T>? = null,
+    ): Mono<MessageSendResult<T>> {
+        // A pointer has no V obligation, so the caller does not wait for V. CHAT-erkoxybm.
+        val waitFor = if (operation == CommandOperation.RECORD_POINTER)
+            requirement.copy(backends = requirement.backends - BackendId.VECTOR) else requirement
+        return verifier.resolve(owner.id, ChatDomain.USER)
             .then(verifier.resolve(dest, ChatDomain.MESSAGE_TOPIC))
-            .then(Mono.defer { commandBus.submit(CommandSubmission(owner.id, requestId, owner.id, dest, content)) })
+            .then(Mono.defer {
+                commandBus.submit(CommandSubmission(owner.id, requestId, owner.id, dest, content, operation, target = target))
+            })
             .flatMap { receipt ->
-                if (requirement.backends.isEmpty()) Mono.just(MessageSendResult(receipt, CallerOutcome.ACCEPTED, emptyMap()))
-                else completions.await(receipt.commandId, requirement, timeout)
+                if (waitFor.backends.isEmpty()) Mono.just(MessageSendResult(receipt, CallerOutcome.ACCEPTED, emptyMap()))
+                else completions.await(receipt.commandId, waitFor, timeout)
             }
+    }
+
+    private companion object {
+        val POINTER_TARGETS = setOf(ChatDomain.MESSAGE, ChatDomain.MESSAGE_TOPIC)
+    }
 }

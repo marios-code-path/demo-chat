@@ -94,6 +94,7 @@ CREATE TABLE chat_uuid.chat_message_id (
                                       text    varchar,
                                       msg_time timestamp,
                                       visible Boolean,
+                                      kind text,
                                       PRIMARY KEY (msg_id, msg_time))
     WITH CLUSTERING ORDER BY (msg_time DESC);
 

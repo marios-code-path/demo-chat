@@ -9,7 +9,10 @@ import java.time.Instant
 import java.time.format.DateTimeParseException
 
 fun decodeMessage(body: String, keyType: KeyType): JsonObject {
-    val message = wireObject(wireField(wireDocument(body), "message"))
+    val document = wireDocument(body)
+    // A pointer has its own wrapper. Before CHAT-erkoxybm, one pointer refused the whole history.
+    document["PointerMessage"]?.let { return decodePointer(wireObject(it), keyType) }
+    val message = wireObject(wireField(document, "message"))
     val key = wireMessageKey(wireField(message, "key"), keyType)
     val text = wireText(wireField(message, "data"))
     val record = wireField(message, "record") as? JsonPrimitive ?: wireRefused()
@@ -23,6 +26,28 @@ fun decodeMessage(body: String, keyType: KeyType): JsonObject {
         put("topicId", key.getValue("dest"))
         put("text", text)
         put("timestamp", key.getValue("timestamp"))
+    }
+}
+
+/**
+ * A pointer item. It carries the target id and the target root, and no text.
+ * The adapter holds no root keys, so it cannot name the target domain. See
+ * `CHAT-erkoxybm`.
+ */
+private fun decodePointer(message: JsonObject, keyType: KeyType): JsonObject {
+    val key = wireMessageKey(wireField(message, "key"), keyType)
+    val target = wireObject(wireField(wireObject(wireField(message, "target")), "key"))
+    return buildJsonObject {
+        put("kind", "pointer")
+        put("messageKey", buildJsonObject {
+            put("id", key.getValue("id"))
+            put("root", key.getValue("root"))
+        })
+        put("senderId", key.getValue("from"))
+        put("topicId", key.getValue("dest"))
+        put("timestamp", key.getValue("timestamp"))
+        put("targetId", wireId(wireField(target, "id"), keyType))
+        put("targetRoot", wireId(wireField(target, "root"), keyType))
     }
 }
 

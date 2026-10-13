@@ -62,6 +62,40 @@ class MessageEnvelopeTests {
             assertThrows(ClientException::class.java) { decodeMessage(body, KeyType.UUID) }
         }
     }
+
+    /** A history that holds a pointer returns the text item and the pointer item. See `CHAT-erkoxybm`. */
+    @Test
+    fun `a history with a pointer returns the text item and the pointer item`() {
+        for (kind in KeyType.entries) {
+            val text = Json.parseToJsonElement(messagingFixture(kind, "message.json")).toString()
+            val inner = Json.parseToJsonElement(text).jsonObject.getValue("message").jsonObject
+            val messageKey = inner.getValue("key").jsonObject.getValue("key").jsonObject
+            val pointer = buildJsonObject {
+                put("PointerMessage", buildJsonObject {
+                    put("key", inner.getValue("key"))
+                    put("data", "")
+                    put("record", true)
+                    put("target", buildJsonObject {
+                        put("key", buildJsonObject {
+                            put("id", messageKey.getValue("id"))
+                            put("root", messageKey.getValue("root"))
+                            put("empty", false)
+                        })
+                    })
+                })
+            }.toString()
+
+            val items = decodeHistory("$text\n$pointer\n", kind)
+
+            assertEquals(2, items.size)
+            assertEquals(decodeMessage(text, kind), items[0])
+            val item = items[1]
+            assertEquals(setOf("kind", "messageKey", "senderId", "topicId", "timestamp", "targetId", "targetRoot"), item.keys)
+            assertEquals("pointer", item.getValue("kind").jsonPrimitive.content)
+            assertEquals(items[0].getValue("messageKey").jsonObject.getValue("id"), item.getValue("targetId"))
+            assertEquals(items[0].getValue("messageKey").jsonObject.getValue("root"), item.getValue("targetRoot"))
+        }
+    }
 }
 
 internal fun messagingFixture(kind: KeyType, shape: String): String =

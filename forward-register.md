@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `69dbd2ee`, in sync with `origin`. The working tree holds no untracked file. |
-| Register state | Updated 2026-10-09, after the reindex test merge of PR #209. |
-| Last merged PR | #209, merge commit `69dbd2ee`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #203 to PR #209` lists the latest seven. |
+| Checkout | `master` at `dc116ea7`, in sync with `origin`. The working tree holds two untracked owner files, `conversations.json` and `conversations.jsonl`, and nothing else. |
+| Register state | Updated 2026-10-11, after the message pointer merge of PR #213. |
+| Last merged PR | #213, merge commit `dc116ea7`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #210 to PR #213` lists the latest four. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Six more hold one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-xcmpudyb-message-id` at `20f3d014`. **The branch refs are kept.** |
-| Worktrees | The main checkout, `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`. It belongs to the `CHAT-bmmtojqm` work, and its branch is merged. It is kept. The `chat-teujorxl-mcp-messaging` worktree and branch are gone, measured on 2026-10-09, after PR #205. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
-| Open PRs | None, measured on 2026-10-09. PR #209 merged on 2026-10-09 as `69dbd2ee`, and it closed `CHAT-okcfryup`. |
+| Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Eight more hold one commit that master lacks, measured on 2026-10-11: `backup/chat-bmmtojqm-before-review` at `93cada30`, `chat-emwhnlay-import` at `06ccda4f`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-lswjobhz-shared-store-index` at `863b6d00`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-xcmpudyb-message-id` at `20f3d014`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** Two of the eight are live work: `chat-emwhnlay-import` and `chat-lswjobhz-shared-store-index` each carry a worktree. |
+| Worktrees | Four, measured on 2026-10-11. The main checkout, on `master`. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, which belongs to the `CHAT-bmmtojqm` work, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/f019/demo-chat` at `06ccda4f`, on `chat-emwhnlay-import`, which belongs to a Codex session. The pointer branch lived in the main checkout, so PR #213 left no worktree behind. The `chat-teujorxl-mcp-messaging` worktree and branch are gone, measured on 2026-10-09, after PR #205. The `chat-ugsreefu-message-import` worktree and branch went on 2026-10-09, after PR #202. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.claude/worktrees` directory is empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
+| Open PRs | None, measured on 2026-10-11. PR #213 merged on 2026-10-11 as `dc116ea7`, and it closed `CHAT-erkoxybm`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -5010,6 +5010,9 @@ The default `P,I` requirement does not prove vector completion or recipient deli
 
 The adapter checks every returned message's room.
 This check is necessary because the shipped message-by-ID route permits reads from any authenticated agent.
+**Read that sentence as of 2026-10-09.** The server checks `SUBSCRIBE` on the
+room of a message read by ID since `CHAT-erkoxybm`, so the adapter check is a
+second guard now.
 Room setup requires creation or `PUT /topic/join/{id}`, followed by successful history and submission probes.
 The agent has no grants-read route.
 Operator schemas, error metadata, and limits are in `docs/MCP-ADAPTER.md`.
@@ -5166,7 +5169,275 @@ closed. A later failure of this test reopens the issue.
 
 ### Open after these merges
 
-- **`CHAT-pggtduxz` is still `todo`.** PR #208 merged its work. The owner
-  decides whether it closes.
+- **`CHAT-pggtduxz` closed.** PR #208 merged its work, and the issue is `done`
+  as of 2026-10-11. The owner closed it.
 - **`CHAT-gsddauhn` is still `todo`.** It holds the full REST-profile failure
   that the MCP section names.
+
+## Message pointers (2026-10-10)
+
+`CHAT-erkoxybm`. Branch `chat-erkoxybm-message-pointer`. **This work is
+merged.** PR #213 merged on 2026-10-11 as `dc116ea7`, a merge commit with two
+parents, `3e8d8b03` and `5c24e6e9`. The merge tree is byte-identical to the
+branch tip `5c24e6e9`, because `git diff 5c24e6e9 dc116ea7` was empty. The
+branch is deleted, local and remote. Spec:
+`docs/superpowers/specs/2026-10-10-message-pointer-design.md`. Plan:
+`docs/superpowers/plans/2026-10-10-message-pointer.md`.
+
+A pointer is a message that names one message or one topic. It carries no
+text. It enters through a new `pointer` operation on `ChatMessageService`.
+
+### The eleven owner decisions
+
+1. A pointer lives in a host room. `key.from` is the creator and `key.dest` is
+   the host room. The field `target` names the target.
+2. `FORWARD` is a new permission on the host room. It is not a domain and it
+   has no root key.
+3. The creator must read the target. An unreadable target answers the same
+   error as a missing target.
+4. A pointer uses the backends `P`, `I` and `U`. It never uses `V`, so recall
+   never returns it.
+5. One nullable `kind` column marks a pointer row. It holds the target domain
+   name.
+6. A pointer to a pointer is refused at creation. No stored chain can exist.
+7. No reader fetches the target. A reader shows the target domain and id.
+8. `messageById` checks `SUBSCRIBE` on the `dest` of the returned message.
+   **The rule applies to every message, not to pointers alone.**
+9. A topic target uses `SUBSCRIBE`. It does not use `GET`.
+10. Tests cover the persistence stores, the creation checks, the `messageById`
+    rule, and one MCP decoder test. Routes, the index and the shell get no
+    pointer test.
+11. The message value type stays `String`. A pointer is `Message<T, String>`
+    with `data` of `""` and a separate `target`.
+
+**Decision 11 replaced a decision of the same morning.** That one bound the
+value type to `Any`, and it needed 206 test sites in 96 test files.
+
+### The `messageById` change
+
+`messageById` reads the message, and then checks `SUBSCRIBE` on its room.
+**This is a behavior change for every message.** The `{Anon, Message, GET}`
+row left `userinit.yml`. A caller that reads a message by id from a room it
+did not join answers 403.
+
+The two `GET` sites moved together: the RSocket composite and the REST
+mapping. `MessageByIdRoomRuleTests` and `MessageByIdRestRuleTests` pin them.
+
+**One existing test asserted the old behavior.**
+`McpMessagingDeploymentTests` read a message of another room and expected 200
+with the text. It expects 403 now, and it asserts that the text is absent.
+Commit `9be6e705`.
+
+### Mutations, each measured
+
+| Task | Mutation | Measured result |
+|---|---|---|
+| 3 | Drop the `kind` write | The four Cassandra pointer round trips failed alone |
+| 7 | Permit every read (`permitAll`) | The REST deny, the RSocket outsider read and the expression pin failed |
+| 8 | Drop the `FORWARD` check | Only its own creation cases failed |
+| 8 | Drop the target read check | Only its own creation cases failed |
+| 8 | Admit a pointer to a pointer | Only its own creation cases failed |
+| 8 | Read the registry instead of the topic store | Only its own creation cases failed |
+| 10 | Drop the pointer branch of the MCP decoder | Only the MCP decoder test failed |
+
+### The gates
+
+Measured on 2026-10-10 at the branch tip, before the documents commit.
+
+- Default mode: exit 0, 30 modules, 2104 tests, 0 failures, 0 errors, 47
+  skipped, and no drift.
+- `--ci` mode: exit 0, 30 modules, 2486 tests, 0 failures, 0 errors, 82
+  skipped, no drift, and `agent http gate: ok`. The run used an empty
+  `DOCKER_CONFIG`.
+- The shell test image is `sha256:f90664f4`. Its `LastTagTime` is
+  `2026-10-11 03:23:57 UTC`, which is inside the run window, so the run
+  rebuilt it. **The id before the run was not captured**, so this reading does
+  not prove a change of id. It proves a rebuild.
+- The agent HTTP gate ran three classes with 0 skipped:
+  `RestAgentSelectionTests` 2, `McpMessagingDeploymentTests` 6, and
+  `RestToCoreBearerDeploymentTests` 7.
+- `docker events` reported no OOM kill in the run window.
+
+**`McpMessagingDeploymentTests` runs only under `expose-webflux`**, so the
+reactor skips all six of its tests. That is why the `--ci` skip count is 82
+and not 76.
+
+### Risks that stay open
+
+- **The routes, the index and the shell have no pointer test.** A defect there
+  reaches `master` unseen. The owner accepted this on 2026-10-10.
+- **The Redis and Kafka pub/sub codecs have no pointer test.** A pointer that
+  does not serialize there fails `U` after `P` stores it. The room history
+  still shows it.
+- **A reader that ignores the type shows a pointer as an empty message.** The
+  pointer `data` is `""`. The shell, REST and MCP readers of this repository
+  each branch on `PointerMessage`. An outside client may not.
+- **The `messageById` change refuses a reader that worked before.** A client
+  that reads a message by id from a room it did not join answers 403.
+
+### The removed pointer row (2026-10-11)
+
+The review of PR #213 found one defect. **No read of a live pointer changed.**
+
+`MessagePersistenceCassandra.message` rebuilt every pointer with a live flag.
+The Cassandra removal keeps the row and clears the flag, so a removed pointer
+read back as a live record. `MessagingServiceImpl.pointerTarget` filters on
+`record`, so its filter could not reject that row. The call then read a live
+pointer and refused it with `a pointer cannot target a pointer` rather than
+`no such message`.
+
+`PointerMessage` carries `record` as a constructor field now, with a default of
+`true`. The default keeps every existing construction site and the pinned wire
+JSON unchanged. **Cassandra is the only backend with a soft removal**, so it is
+the only backend that read a removed pointer back.
+
+Three readings carry the evidence.
+
+- `PointerStoreTestBase` gains `a removed pointer does not read back as a live
+  record`. It runs on the memory, Redis, Cassandra long and Cassandra uuid
+  stores.
+- `CassandraMessagePointerTests` is new, at node id 29. It measures the refusal
+  text through the composite service on a Cassandra deployment.
+- **The mutation, run alone, reproduces the review text.** A mapper that drops
+  `row.record` fails the store test in both Cassandra key types, and fails the
+  composite test at its refusal assertion with the measured text
+  `a pointer cannot target a pointer`.
+
+**The composite test was reordered for that reading.** Its flag assertion ran
+before the refusal, so the mutation tripped the flag and masked the consequence
+the reviewer named. The refusal is asserted first now.
+
+Both gates pass on the repaired tree. Default mode: 30 modules, 2105 tests, 0
+failures, 0 errors, 47 skipped. `--ci` mode: 30 modules, 2491 tests, 0 failures,
+0 errors, 82 skipped, `agent http gate: ok`, and no drift.
+
+### The flag crosses the JSON boundary (2026-10-11)
+
+A second review found the same flag lost at the wire. **The store fix alone did
+not close the defect for a client.**
+
+Both pointer deserializers built `PointerMessage(key, target)` and took the
+constructor default of `true`. The sibling `MessageDeserializer` and
+`Jackson3MessageDeserializer` already read `node.get("record")`, and the two
+pointer ones did not. So a Cassandra read returned a removed pointer with
+`record = false`, and a client that decoded that answer saw a live pointer.
+
+Both deserializers read the flag now. **The serializer side needed no change**,
+and the wire tests prove it: the flag is on the wire, and both `true` and
+`false` survive a round trip.
+
+`PointerWireShapeTests` is new, with six cases. Two decode a removed pointer,
+two decode a live one, and two assert the wire carries the flag. **Both
+generations need their own reading**, because each one holds its own pointer
+deserializer. Its Jackson 2 mapper is built from `Jackson2ObjectMapperBuilder`,
+as `Jackson2MapperConfiguration` builds the deployment mapper. **A plain
+`ObjectMapper` cannot serialize a `MessageKey`**, because the timestamp needs
+the JavaTime module that builder installs.
+
+Four construction sites exist in main source, and each is now sound. Two
+deserializers read the wire flag, the Cassandra mapper reads `row.record`, and
+`MemoryDomainCommandBus` makes a new pointer, which is live by definition.
+
+The mutation, run alone, fails exactly the two removed-pointer cases, in both
+generations.
+
+Both gates pass again. Default mode: 30 modules, 2111 tests, 0 failures, 0
+errors, 47 skipped. `--ci` mode: 30 modules, 2497 tests, 0 failures, 0 errors,
+82 skipped, `agent http gate: ok`, and no drift.
+
+**The `Checkout` row of this file is not moved by this section.** See the rule
+under `Where things stand`. **The refresh that carries this section moves the
+row**, and it reads `dc116ea7`, the last substantive merge before the refresh.
+
+## Merges from PR #210 to PR #213 (2026-10-10/11)
+
+Each merge was measured on 2026-10-11 with `git rev-list --parents` and
+`git diff <tip> <merge>`.
+
+| PR | Merge | Tip | Issue | What |
+|----|-------|-----|-------|------|
+| #210 | `13a3e56b` | `13a3e56b` | `CHAT-tatbvwjo` | Refresh the forward register after PR #209 |
+| #211 | `f6639abc` | `17d388de` | `CHAT-flhgiule` | Remove the unused topic access root keys |
+| #212 | `3e8d8b03` | `30a54db7` | `CHAT-ircckvrs` | Wait for user writes before returning the key |
+| #213 | `dc116ea7` | `5c24e6e9` | `CHAT-erkoxybm` | Message pointer: a message that names a message or a topic |
+
+Three merge trees equal their tips. **PR #210 has no tip of its own**, and the
+reason follows.
+
+### PR #210 landed without a merge commit
+
+**`13a3e56b` has one parent, `69dbd2ee`.** The merge commit and the pull
+request head share one sha, so the branch landed by fast-forward. That is not
+a merge commit.
+
+The repository takes merge commits only since 2026-09-17. Squash and rebase
+are both disabled. So this tip is worth questioning, and it is recorded rather
+than corrected. **Nothing is lost.** The tree that `13a3e56b` holds is the tree
+the refresh commit wrote, and that content is on `master`.
+
+**PRs #211, #212 and #213 each carry two parents.** So the rule holds for
+every merge after #210.
+
+### The stale issue that the sprint close found
+
+**`CHAT-flhgiule` was `in-progress` while its work was merged.** PR #211
+merged it as `f6639abc`, and the pull request body names the issue. The status
+was never moved. It is `done` now, closed on 2026-10-11.
+
+**This is the second occurrence of one class.** `CHAT-ubmrxyqo` carries the
+first, recorded under `Housekeeping`. A merged issue that keeps an active
+status makes the tracker lie about the sprint.
+
+### The scheduled dependency audit is red, and the owner deferred it
+
+**Five consecutive runs have failed**, and each one names the same finding.
+
+| Run | Date |
+|---|---|
+| `37615558346` | 2026-10-07 |
+| `37773162122` | 2026-10-08 |
+| `37925766480` | 2026-10-09 |
+| `38047078329` | 2026-10-10 |
+| `38135195213` | 2026-10-11 |
+
+Every failure reads one line:
+
+    kotlin-sdk-server-jvm-0.15.0.jar
+      (pkg:maven/io.modelcontextprotocol/kotlin-sdk-server-jvm@0.15.0,
+       cpe:2.3:a:jetbrains:kotlin:0.15.0:*:*:*:*:*:*:*)
+      : CVE-2026-53914(9.8)
+
+**The CPE is probably wrong.** JetBrains Kotlin never published a 0.15.0
+release. The run of 2026-10-07 names five older Kotlin CVEs on the same CPE,
+such as CVE-2019-10101. Those CVEs describe the Kotlin language, and not this
+adapter.
+
+**The caution is the suppression.** CVE-2026-53914 is also recorded against
+`kotlin-stdlib` 2.4.10, which this repository holds. So a suppression must
+name the MCP SDK `packageUrl` alone. A suppression by CVE would hide a real
+finding.
+
+**The owner deferred the repair on 2026-10-11.** `CHAT-wgiwqodp` holds it.
+The workflow runs on a schedule, so it never gates a pull request. **The three
+pull-request jobs are green.**
+
+### The pull-request workflow is green
+
+Run `38126053450` tested the PR #213 head `5c24e6e9`. All three jobs passed:
+`build` in 8m48s, `integration` in 17m4s, and `agent-http` in 2m32s.
+
+**This is the first sprint close in this file with three green pull-request
+jobs.** Every section from 2026-10-01 to 2026-10-03 records a red integration
+job, under B12.
+
+### Open after these merges
+
+- **`CHAT-aysfqhnm` holds this refresh.** It follows PR #213.
+- **`CHAT-mpfuifei` is teed up, and it is `todo`.** No branch and no worktree
+  exist for it. The TEE UP comment holds the verified claim, one corrected
+  line of the description, and the repair shape.
+- **`CHAT-wgiwqodp` holds the red scheduled audit.** The owner deferred it.
+- **`CHAT-pggtduxz` closed on 2026-10-11.** PR #208 merged its work, and the
+  owner closed the issue.
+- **Two live branches carry worktrees**, `chat-emwhnlay-import` and
+  `chat-lswjobhz-shared-store-index`. Neither is part of this sprint.

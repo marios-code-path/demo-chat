@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import reactor.core.publisher.Mono
 import java.util.*
-import kotlin.system.exitProcess
 
 @Component
 @Profile("shell")
@@ -26,9 +25,6 @@ class LoginCommands<T>(
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     val userService: ChatUserService<T> = compositeServices.userService()
-    fun bye(): Unit {
-        exitProcess(0)
-    }
     fun rootKeys(): String {
         return RootKeys.rootKeySummary(rootKeys)
     }

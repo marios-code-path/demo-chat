@@ -7,6 +7,7 @@ import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.command.CommandStatus
 import com.demo.chat.domain.command.MessageSendResult
 import com.demo.chat.service.composite.ChatMessageService
@@ -27,6 +28,8 @@ interface MessageServiceControllerMapping<T, V> : ChatMessageService<T, V> {
     override fun importMessage(req: MessageImportRequest<T, V>): Mono<out Message<T, V>>
     @MessageMapping("message-submit")
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>>
+    @MessageMapping("message-pointer")
+    override fun pointer(req: MessagePointerRequest<T>): Mono<out MessageSendResult<T>>
     @MessageMapping("message-command-status")
     override fun commandStatus(req: CommandStatusRequest): Mono<out CommandStatus<T>>
 }
