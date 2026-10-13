@@ -1,17 +1,48 @@
-version: '3'
-
 services:
   postgres:
     image: postgres:15.2
     environment:
       POSTGRES_DB: authserver
-      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME:-user}
-      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-password}
+      POSTGRES_USER: ${SPRING_DATASOURCE_USERNAME:?Set SPRING_DATASOURCE_USERNAME}
+      POSTGRES_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Set SPRING_DATASOURCE_PASSWORD}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./sql-scripts:/docker-entrypoint-initdb.d   # Mount the local sql_scripts directory
+      - ./sql-scripts:/docker-entrypoint-initdb.d
+    networks:
+      chatnet:
+        aliases:
+          - authserv-postgres
+
+  authserv:
+    image: chat-authserv:0.0.1
+    depends_on:
+      - postgres
+    user: "${AUTHSERV_UID:?Set AUTHSERV_UID}:${AUTHSERV_GID:?Set AUTHSERV_GID}"
+    environment:
+      CHAT_SERVICE_PASSWORD: ${CHAT_SERVICE_PASSWORD:?Set CHAT_SERVICE_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://authserv-postgres:5432/authserver
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:?Set SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Set SPRING_DATASOURCE_PASSWORD}
+      APP_OAUTH2_JWK_PATH: file:/run/secrets/authserv.jwk
+    volumes:
+      - type: bind
+        source: ${AUTHSERV_JWK_PATH:?Set AUTHSERV_JWK_PATH}
+        target: /run/secrets/authserv.jwk
+        read_only: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${AUTHSERV_HTTP_PORT:-9000}:${AUTHSERV_HTTP_PORT:-9000}"
+      - "127.0.0.1:${AUTHSERV_MGMT_PORT:-9001}:${AUTHSERV_MGMT_PORT:-9001}"
+    networks:
+      - chatnet
+
+networks:
+  chatnet:
+    external: true
+    name: ${CHAT_NETWORK:-docker_chatnet}
 
 volumes:
   db_data:
