@@ -109,19 +109,6 @@ class ShellParsedInputTests {
         assertThat(execute(beans, "hangup --topic lobby")).isEqualTo("Stopped listening to topic 9")
     }
 
-    /** **`exit` and `quit` run `bye`.** The registry falls back to the aliases. */
-    @Suppress("UNCHECKED_CAST")
-    @Test
-    fun `exit and quit run bye`() {
-        val commands = mock(LoginCommands::class.java) as LoginCommands<Any>
-        val beans = commandsOf(LoginCommandsRegistrar(commands))
-
-        execute(beans, "exit")
-        execute(beans, "quit")
-
-        verify(commands, times(2)).bye()
-    }
-
     /**
      * **`login` prompts for an absent password.** The prompt does not echo, and
      * the password does not enter the command history.

@@ -485,6 +485,10 @@ SERVICES: dict[str, Service] = {
         ],
         opt_flags=[
             "-Dspring.shell.interactive.enabled=true",
+            # The shell runs a web server for its actuator endpoints, so the
+            # JVM would not exit when the shell loop ends. Spring Shell closes
+            # the context only when this property is true. See CHAT-ybmlcdiw.
+            "-Dspring.shell.context.close=true",
             "-Dspring.main.web-application-type=reactive",
             "-Dlogging.level.io.rsocket.FrameLogger=OFF",
         ],

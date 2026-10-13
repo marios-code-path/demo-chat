@@ -38,7 +38,6 @@ class ShellCommandContractTests {
     )
 
     private val expected = listOf(
-        Expected("bye", "bye", listOf(), aliases = listOf("exit", "quit")),
         Expected("root-keys", "rootkeys", listOf()),
         Expected("whoami", "whoami", listOf()),
         Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false)), positional = "username"),
@@ -157,11 +156,13 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty eight commands and thirty five options`() {
+    fun `the contract holds twenty seven commands and thirty five options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         // command-status and send --requestId raised them from 27 and 33.
-        assertThat(registered()).hasSize(28)
+        // `bye` left on 2026-10-12, because the runner owns the exit literals.
+        // See `CHAT-ybmlcdiw`.
+        assertThat(registered()).hasSize(27)
         assertThat(registered().sumOf { it.options.size }).isEqualTo(35)
     }
 }
