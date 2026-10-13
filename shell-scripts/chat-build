@@ -119,7 +119,6 @@ FEATURES: dict[str, Feature] = {
         description="Memory persistence + pubsub + Lucene index",
         module="chat-deploy-memory",
         spring_profiles=["prod"],
-        additional_configs=["classpath:/config/server-rsocket-consul.yml"],
         group="backend",
     ),
     "cassandra": Feature(
@@ -199,6 +198,7 @@ FEATURES: dict[str, Feature] = {
         name="rsocket",
         description="RSocket server transport",
         maven_profiles=["expose-rsocket"],
+        additional_configs=["classpath:/config/server-rsocket-consul.yml"],
         service_flags=[
             "-Dapp.server.proto=rsocket",
             "-Dspring.main.web-application-type=reactive",
