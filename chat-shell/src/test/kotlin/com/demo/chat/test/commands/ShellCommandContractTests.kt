@@ -46,7 +46,7 @@ class ShellCommandContractTests {
         Expected("command-status", "Show the status of a message command", listOf(Opt("commandId", null))),
         Expected("import-claude", "Import one Claude conversation", listOf(
             Opt("file", null), Opt("conversation", null), Opt("topic", null),
-            Opt("human", null), Opt("assistant", null))),
+            Opt("generation", null), Opt("human", null), Opt("assistant", null))),
         Expected("listen", "Listen to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("hangup", "Stop listening to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false)), positional = "topic"),
@@ -161,11 +161,11 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty eight commands and forty options`() {
+    fun `the contract holds twenty eight commands and forty one options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         // command-status and send --requestId raised them from 27 and 33.
         assertThat(registered()).hasSize(28)
-        assertThat(registered().sumOf { it.options.size }).isEqualTo(40)
+        assertThat(registered().sumOf { it.options.size }).isEqualTo(41)
     }
 }

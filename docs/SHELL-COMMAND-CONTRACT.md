@@ -76,12 +76,16 @@ a command that the login owns. A command of another owner answers not found.
 
 | Command | Method | Help | Options | By position |
 |---|---|---|---|---|
-| `import-claude` | `importConversation` | Import one Claude conversation | `--file` `String` required<br>`--conversation` `String` required<br>`--topic` `String` required<br>`--human` `String` required<br>`--assistant` `String` required | none |
+| `import-claude` | `importConversation` | Import one Claude conversation | `--file` `String` required<br>`--conversation` `String` required<br>`--topic` `String` required<br>`--generation` `String` required<br>`--human` `String` required<br>`--assistant` `String` required | none |
 
 Set `CHAT_IMPORT_ADMIN_PASSWORD` before this command. The command reads one
 conversation from the file. It uses the Admin login for the import route. It
-checks both user handles before it creates a room. It rejects a room name with
-a hyphen. The command reports processed text turns and skipped content.
+checks both user handles before it creates a topic. It imports every leaf path,
+and each path receives its own topic. A topic name is
+`<topic>:<conversation-uuid>:<generation>:<leaf-uuid>`. The operator supplies
+the generation as a decimal value. The importer never computes one. A hyphen
+and a colon are accepted in the name. The command reports the topics created,
+the messages imported, the missing parents, and the skipped content.
 
 ### TopicCommands
 
@@ -112,7 +116,7 @@ a hyphen. The command reports processed text turns and skipped content.
 | `all-permissions` | `allPermissions` | Get all Perms | none | none |
 | `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required | none |
 
-**28 commands and 40 options.** `ShellCommandContractTests` pins every
+**28 commands and 41 options.** `ShellCommandContractTests` pins every
 command, option, and positional argument. The migration table held 26
 commands. `messages` and `command-status` raised the count to 28. `CHAT-ybmlcdiw`
 removed `bye`. `CHAT-emwhnlay` adds `import-claude`.

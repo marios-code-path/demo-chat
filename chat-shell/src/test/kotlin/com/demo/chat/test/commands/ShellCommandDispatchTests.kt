@@ -151,7 +151,7 @@ class ShellCommandDispatchTests {
 
     @Suppress("UNCHECKED_CAST")
     @Test
-    fun `the Claude import command passes all five options`() {
+    fun `the Claude import command passes all six options in order`() {
         val commands = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
         val command = ClaudeImportCommandsRegistrar(commands).importClaudeCommand()
 
@@ -159,11 +159,26 @@ class ShellCommandDispatchTests {
             "file" to "/tmp/conversations.json",
             "conversation" to "conversation-id",
             "topic" to "roomname",
+            "generation" to "3",
             "human" to "alice",
             "assistant" to "claude",
         ))
 
-        verify(commands).importConversation("/tmp/conversations.json", "conversation-id", "roomname", "alice", "claude")
+        verify(commands).importConversation(
+            "/tmp/conversations.json", "conversation-id", "roomname", "3", "alice", "claude")
+    }
+
+    /**
+     * **The retired leaf selector must not return.** A leaf selector imports
+     * one path alone, and the import takes every path now.
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `the Claude import command declares no leaf message selector`() {
+        val commands = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
+        val command = ClaudeImportCommandsRegistrar(commands).importClaudeCommand()
+
+        assertThat(command.options.map { it.longName() }).doesNotContain("leaf-message")
     }
 
     @Suppress("UNCHECKED_CAST")

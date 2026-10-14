@@ -17,16 +17,16 @@ class ClaudeImportCommandsRegistrar<T : Any>(private val commands: ClaudeImportC
         .description("Import one Claude conversation")
         .group("Import")
         .options(
-            option("file"), option("conversation"), option("topic"),
+            option("file"), option("conversation"), option("topic"), option("generation"),
             option("human"), option("assistant"),
         )
         .execute(Function<CommandContext, String> { ctx ->
             commands.importConversation(
                 ctx.optionValue("file"), ctx.optionValue("conversation"), ctx.optionValue("topic"),
-                ctx.optionValue("human"), ctx.optionValue("assistant"),
+                ctx.optionValue("generation"), ctx.optionValue("human"), ctx.optionValue("assistant"),
             )
         })
 
-    private fun option(name: String): CommandOption =
-        CommandOption.with().longName(name).required(true).type(String::class.java).build()
+    private fun option(name: String, required: Boolean = true): CommandOption =
+        CommandOption.with().longName(name).required(required).type(String::class.java).build()
 }

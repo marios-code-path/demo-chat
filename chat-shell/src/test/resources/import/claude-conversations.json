@@ -9,7 +9,9 @@
         "created_at": "2024-01-01T10:00:00.123Z",
         "text": "First turn.",
         "content": [],
-        "attachments": []
+        "attachments": [],
+        "files": [],
+        "parent_message_uuid": "99999999-9999-4999-8999-999999999999"
       },
       {
         "uuid": "22222222-2222-4222-8222-222222222222",
@@ -18,10 +20,16 @@
         "text": "This flat value is not selected.",
         "content": [
           { "type": "text", "text": "Second" },
+          { "type": "text", "text": "" },
           { "type": "tool_use", "name": "ignored" },
           { "type": "text", "text": "turn." }
         ],
-        "attachments": [{ "name": "ignored.txt" }]
+        "attachments": [{ "file_name": "ignored.txt" }],
+        "parent_message_uuid": "11111111-1111-4111-8111-111111111111",
+        "files": [
+          { "file_name": "ignored.txt", "file_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01" },
+          { "file_name": "extra.txt", "file_uuid": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02" }
+        ]
       },
       {
         "uuid": "33333333-3333-4333-8333-333333333333",
@@ -29,7 +37,9 @@
         "created_at": "2024-01-01T10:00:02.000Z",
         "text": "",
         "content": [{ "type": "tool_result", "text": "ignored" }],
-        "attachments": []
+        "attachments": [],
+        "files": [],
+        "parent_message_uuid": "22222222-2222-4222-8222-222222222222"
       }
     ]
   },
