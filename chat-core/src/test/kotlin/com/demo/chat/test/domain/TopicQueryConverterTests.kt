@@ -2,6 +2,7 @@ package com.demo.chat.test.domain
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.IndexSearchRequestConverters
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.TopicIndexService
@@ -25,7 +26,7 @@ class TopicQueryConverterTests {
     fun `the lucene converter names the message topic field`() {
         val query = searchConverters.topicIdToQuery(ByIdRequest(30L))
 
-        Assertions.assertThat(query.first).isEqualTo(MessageIndexService.TOPIC)
+        Assertions.assertThat(query.first).isEqualTo(IndexFieldKinds.EXACT_PREFIX + MessageIndexService.TOPIC)
         Assertions.assertThat(query.second).isEqualTo("30")
         Assertions.assertThat(query.config).isEqualTo(100)
     }
@@ -57,12 +58,12 @@ class TopicQueryConverterTests {
         Assertions.assertThat(query).doesNotContainKey(TopicIndexService.ID)
     }
 
-    // Only the message query moved. A topic name still reads the topic index.
+    // A topic name still reads the topic index through its exact field.
     @Test
     fun `a topic name query still names the topic index field`() {
         Assertions
             .assertThat(searchConverters.topicNameToQuery(com.demo.chat.domain.ByStringRequest("room")).first)
-            .isEqualTo(TopicIndexService.NAME)
+            .isEqualTo(IndexFieldKinds.EXACT_PREFIX + TopicIndexService.NAME)
         Assertions
             .assertThat(mapConverters.topicNameToQuery(com.demo.chat.domain.ByStringRequest("room")).keys.first())
             .isEqualTo(TopicIndexService.NAME)

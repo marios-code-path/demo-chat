@@ -11,12 +11,12 @@ class EntryEncodingTests {
 
     private fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(it) }
 
-    /** Format 1 for key "7" with a repeated field name. The fields keep encoder order. */
+    /** Format 2 for key "7" with a repeated field name. The fields keep encoder order. */
     @Test
-    fun `format 1 bytes are pinned`() {
+    fun `format 2 bytes are pinned`() {
         val bytes = EntryEncoding.encode("7", listOf("name" to "a", "name" to "b"))
         assertThat(hex(bytes)).isEqualTo(
-            "00000001" + "00000001" + "37" + "00000002" +
+            "00000002" + "00000001" + "37" + "00000002" +
                 "00000004" + "6e616d65" + "00000001" + "61" +
                 "00000004" + "6e616d65" + "00000001" + "62"
         )

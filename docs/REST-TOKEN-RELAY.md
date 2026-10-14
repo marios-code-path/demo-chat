@@ -319,8 +319,9 @@ with `0x401`, and REST answers 401. `chat-build --agent` emits the same list for
 both processes.
 
 `AgentIdentityLifecycle` keeps only a user whose handle equals the configured
-handle. The Lucene user index lowercases the handle, so a lookup for `admin`
-answers the user `Admin`. For the same reason, the reserved check and the
+handle. The Lucene user handle field uses whole-value matching and lowercases
+both stored and lookup values. A lookup for `admin` therefore answers the user
+`Admin`. For the same reason, the reserved check and the
 duplicate check compare handles without case. `Admin`, `Anon` and each service
 account are reserved.
 

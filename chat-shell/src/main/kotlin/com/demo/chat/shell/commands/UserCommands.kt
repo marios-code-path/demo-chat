@@ -92,7 +92,7 @@ class UserCommands<T : Any>(
     }
     fun findUser(handle: String): String? = coreServices
         .userIndex()
-        .findBy(IndexSearchRequest(UserIndexService.HANDLE, handle, 100)).take(1)
+        .findBy(IndexFieldKinds.USER.query(UserIndexService.HANDLE, handle)).take(1)
         .flatMap(coreServices.userPersistence()::get)
         .map(::userToString)
         .reduce { t, u -> t + u }

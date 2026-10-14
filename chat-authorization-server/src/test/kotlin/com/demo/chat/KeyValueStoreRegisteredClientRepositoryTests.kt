@@ -11,6 +11,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 
 import com.demo.chat.auth.client.KeyValueStoreRegisteredClientRepository
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.UUIDUtil
@@ -101,7 +102,10 @@ class KeyValueStoreRegisteredClientRepositoryTests {
         override fun rem(key: Key<UUID>): Mono<Void> = Mono.empty()
         override fun findBy(query: IndexSearchRequest): Flux<out Key<UUID>> = Flux.defer {
             Flux.fromIterable(
-                added.filter { query.first == "id" && (it.data as RegisteredClient).id == query.second }
+                added.filter {
+                    query.first == IndexFieldKinds.EXACT_PREFIX + "id" &&
+                        (it.data as RegisteredClient).id == query.second
+                }
                     .map { it.key }
                     .distinct()
             )

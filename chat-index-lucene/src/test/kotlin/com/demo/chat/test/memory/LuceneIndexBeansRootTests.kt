@@ -3,6 +3,7 @@ package com.demo.chat.test.memory
 import com.demo.chat.config.LuceneIndexBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.Message
@@ -40,7 +41,7 @@ class LuceneIndexBeansRootTests {
     fun `the user index answers the USER root`() {
         val index = beans.userIndex().also { (it as LuceneIndex<*, *>).openInMemory() }
         index.add(User.create(Key.of(11L, root(ChatDomain.USER)), "name", "handle11", "http://u")).block()
-        assertThat(index.findBy(IndexSearchRequest(UserIndexService.HANDLE, "handle11", 10)).blockFirst()!!.root)
+        assertThat(index.findBy(IndexFieldKinds.USER.query(UserIndexService.HANDLE, "handle11", 10)).blockFirst()!!.root)
             .isEqualTo(root(ChatDomain.USER))
     }
 
@@ -48,7 +49,7 @@ class LuceneIndexBeansRootTests {
     fun `the topic index answers the MESSAGE_TOPIC root`() {
         val index = beans.topicIndex().also { (it as LuceneIndex<*, *>).openInMemory() }
         index.add(MessageTopic.create(Key.of(12L, root(ChatDomain.MESSAGE_TOPIC)), "room12")).block()
-        assertThat(index.findBy(IndexSearchRequest(TopicIndexService.NAME, "room12", 10)).blockFirst()!!.root)
+        assertThat(index.findBy(IndexFieldKinds.TOPIC.query(TopicIndexService.NAME, "room12", 10)).blockFirst()!!.root)
             .isEqualTo(root(ChatDomain.MESSAGE_TOPIC))
     }
 
@@ -56,7 +57,7 @@ class LuceneIndexBeansRootTests {
     fun `the message index answers the MESSAGE root`() {
         val index = beans.messageIndex().also { (it as LuceneIndex<*, *>).openInMemory() }
         index.add(Message.create(MessageKey.of(13L, root(ChatDomain.MESSAGE), 1L, 2L), "hello", true)).block()
-        assertThat(index.findBy(IndexSearchRequest(MessageIndexService.TOPIC, "2", 10)).blockFirst()!!.root)
+        assertThat(index.findBy(IndexFieldKinds.MESSAGE.query(MessageIndexService.TOPIC, "2", 10)).blockFirst()!!.root)
             .isEqualTo(root(ChatDomain.MESSAGE))
     }
 
@@ -64,7 +65,7 @@ class LuceneIndexBeansRootTests {
     fun `the membership index answers the TOPIC_MEMBERSHIP root`() {
         val index = beans.membershipIndex().also { (it as LuceneIndex<*, *>).openInMemory() }
         index.add(TopicMembership.create(14L, 3L, 4L)).block()
-        assertThat(index.findBy(IndexSearchRequest(MembershipIndexService.MEMBER, "3", 10)).blockFirst()!!.root)
+        assertThat(index.findBy(IndexFieldKinds.MEMBERSHIP.query(MembershipIndexService.MEMBER, "3", 10)).blockFirst()!!.root)
             .isEqualTo(root(ChatDomain.TOPIC_MEMBERSHIP))
     }
 
@@ -73,7 +74,7 @@ class LuceneIndexBeansRootTests {
         val index = beans.authMetadataIndex().also { (it as LuceneIndex<*, *>).openInMemory() }
         val user = root(ChatDomain.USER)
         index.add(AuthMetadata.create(Key.of(15L, root(ChatDomain.AUTH_METADATA)), Key.of(5L, user), Key.of(6L, user), "GET", false, Long.MAX_VALUE)).block()
-        assertThat(index.findBy(IndexSearchRequest(AuthMetaIndex.PRINCIPAL, "5", 10)).blockFirst()!!.root)
+        assertThat(index.findBy(IndexFieldKinds.AUTH.query(AuthMetaIndex.PRINCIPAL, "5", 10)).blockFirst()!!.root)
             .isEqualTo(root(ChatDomain.AUTH_METADATA))
     }
 }
