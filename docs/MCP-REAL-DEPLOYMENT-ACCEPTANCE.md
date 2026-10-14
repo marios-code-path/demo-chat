@@ -94,6 +94,9 @@ The name is one token. A hyphen splits the Lucene field, and two names that
 share one token match one query. `CHAT-hajmhslp` holds that defect, so this run
 avoids it.
 
+Correction for `CHAT-hajmhslp`: identity lookups now match whole values. This
+single-token name records the original run, not a current name restriction.
+
 The adapter reads through its own route, `GET /topic/id/{id}`. That route
 answered 200 for the topic:
 

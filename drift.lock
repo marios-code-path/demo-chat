@@ -3,10 +3,14 @@ docs/IDENTITY-POLICY.md -> chat-security/src/main/kotlin/com/demo/chat/security/
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:e6e9ebfd3865d989
 docs/IDENTITY-POLICY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/UnsupportedCredentialRefusal.kt sig:339db8ce164133ae
+docs/LUCENE-INDEX-FILES.md -> chat-core/src/main/kotlin/com/demo/chat/domain/IndexFieldKinds.kt sig:ef625e5e4952d16c
 docs/LUCENE-INDEX-FILES.md -> chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/LuceneIndexEndpoint.kt sig:d275a6ae77a73f71
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexLoad.kt sig:b23de4231f0070f4
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexRegistry.kt sig:bbd6363a345f4057
-docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/LuceneIndex.kt sig:35ec50896cee7f45
+docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/domain/IndexEntryEncoder.kt sig:dec9f4d3cc14092f
+docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/LuceneIndex.kt sig:acbbc09dcaba486a
+docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/EntryEncoding.kt sig:abe24489762ab8d3
+docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexEntry.kt sig:79b14d06ced58808
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexRequests.kt sig:38c6e55f52111248
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt sig:ea45ab71565e09e1
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusSettings.kt sig:c8c3008bbf745a1c
@@ -21,7 +25,7 @@ docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/a
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentities.kt sig:697f26513bdee0ce
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentityLifecycle.kt sig:ead36dff6c3e388b
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentJwtDecoderFactory.kt sig:7b1b1e0293559c1f
-docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt sig:1546999e22dd9b8c
+docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt sig:7794c2d2e4b976a9
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityPropertiesGuard.kt sig:4b0824a3bf8fb896
 docs/REST-TOKEN-RELAY.md -> chat-security/src/main/kotlin/com/demo/chat/security/rsocket/RSocketSecurityErrorCodes.kt sig:c40756a4935868cb
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt sig:9fca3355b59af646

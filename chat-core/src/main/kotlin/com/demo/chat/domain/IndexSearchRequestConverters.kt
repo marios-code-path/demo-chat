@@ -8,7 +8,7 @@ import com.demo.chat.service.security.AuthMetaIndex
 
 class IndexSearchRequestConverters : RequestToQueryConverters<IndexSearchRequest> {
     override fun topicNameToQuery(req: ByStringRequest) =
-            IndexSearchRequest(TopicIndexService.NAME, req.name, 100)
+            IndexFieldKinds.TOPIC.query(TopicIndexService.NAME, req.name)
 
     /**
      * Names the message destination field, not the topic id field.
@@ -19,31 +19,26 @@ class IndexSearchRequestConverters : RequestToQueryConverters<IndexSearchRequest
      * message document, so persisted room history never reached a caller.
      */
     override fun <T> topicIdToQuery(req: ByIdRequest<T>) =
-            IndexSearchRequest(MessageIndexService.TOPIC, req.id.toString(), 100)
+            IndexFieldKinds.MESSAGE.query(MessageIndexService.TOPIC, req.id.toString())
 
     override fun userHandleToQuery(req: ByStringRequest) =
-            IndexSearchRequest(UserIndexService.HANDLE, req.name, 100)
+            IndexFieldKinds.USER.query(UserIndexService.HANDLE, req.name)
 
     override fun <T> authPrincipalToQuery(req: ByIdRequest<T>) =
-            IndexSearchRequest(AuthMetaIndex.PRINCIPAL, req.id.toString(), 100)
+            IndexFieldKinds.AUTH.query(AuthMetaIndex.PRINCIPAL, req.id.toString())
 
     override fun <T> authTargetToQuery(req: ByIdRequest<T>) =
-            IndexSearchRequest(AuthMetaIndex.TARGET, req.id.toString(), 100)
+            IndexFieldKinds.AUTH.query(AuthMetaIndex.TARGET, req.id.toString())
 
     override fun <T> membershipIdToQuery(req: ByIdRequest<T>) =
-            IndexSearchRequest(MembershipIndexService.MEMBEROF, req.id.toString(), 100)
+            IndexFieldKinds.MEMBERSHIP.query(MembershipIndexService.MEMBEROF, req.id.toString())
 
     override fun <T> membershipRequestToQuery(req: MembershipRequest<T>) =
-            IndexSearchRequest(
-                MembershipIndexService.MEMBER,
-                "${req.uid.toString()} AND ${MembershipIndexService.MEMBEROF}:${req.roomId.toString()}",
-                100
+            IndexFieldKinds.MEMBERSHIP.query(
+                MembershipIndexService.MEMBER_PAIR,
+                MembershipIndexService.pairKeyOf(req.uid, req.roomId),
             )
 
-    /**
-     * The value is a phrase. An analyzed uuid splits at each hyphen, and an
-     * unquoted query would match every document that shares one segment.
-     */
     override fun keyValueFieldToQuery(field: String, value: String) =
-            IndexSearchRequest(field, "\"$value\"", 100)
+            IndexFieldKinds.KEY_VALUE.query(field, value)
 }

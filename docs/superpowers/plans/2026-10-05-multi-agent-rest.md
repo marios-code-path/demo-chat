@@ -2788,6 +2788,9 @@ Replace `assertOwnerIsConfiguredAgent(roomId: String)` with `assertOwnerIs(roomI
 
 Room names hold no hyphen, because of the Lucene name token defect `CHAT-hajmhslp`.
 
+Correction for `CHAT-hajmhslp`: identity fields now match whole values. The
+single-token names above record the earlier test condition.
+
 **Step 4: Run the opt-in test**
 
 ```bash

@@ -145,7 +145,7 @@ class RoomMemberGrantWiringTests {
         val PERMISSIONS = listOf("SEND", "SUBSCRIBE", "FORWARD")
     }
 
-    /** The handle index tokenizes on a hyphen, so each handle is one token. */
+    /** This test retains its original single-token handle. */
     private fun newUser(handle: String): User<Long> {
         val key = composite.userService()
             .addUser(UserCreateRequest("name-$handle", handle, "http://u")).block(timeout)!!

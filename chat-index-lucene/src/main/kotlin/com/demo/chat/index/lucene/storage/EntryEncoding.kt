@@ -15,7 +15,7 @@ object EntryEncoding {
      * analyzer configuration changes. The entry bytes do not show an analyzer
      * change, so only this value and the header can show it.
      */
-    const val FORMAT = 1
+    const val FORMAT = 2
 
     /** All integers are int32, big-endian. Text is UTF-8 with a byte length prefix. */
     fun encode(keyText: String, fields: List<Pair<String, String>>): ByteArray {

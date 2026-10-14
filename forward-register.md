@@ -5441,3 +5441,25 @@ job, under B12.
   owner closed the issue.
 - **Two live branches carry worktrees**, `chat-emwhnlay-import` and
   `chat-lswjobhz-shared-store-index`. Neither is part of this sprint.
+
+## Lucene identity fields (CHAT-hajmhslp, 2026-10-13)
+
+The `chat-hajmhslp-index-exact` branch changes Lucene identity fields to
+whole-value fields. An `_x_` field name selects `StringField` and `TermQuery`.
+Message `data` keeps text analysis. `IndexFieldKinds` owns the field rules and
+the NFC normalization used by both index writes and lookups. User handles also
+use `Locale.ROOT` lowercase. Topic names keep case.
+
+Entry format 2 makes a file index with format 1 rebuild at its next start.
+The request type is unchanged, and its `first` field carries the field name.
+**An exact query must send the `_x_` prefix in that field.** `IndexFieldKinds`
+refuses a plain name for an exact field and names the prefixed form.
+**No alias period exists**, because the refusal is a `ChatException`.
+The key-value field registration is unchanged.
+The membership index uses one exact field for each member-room pair.
+
+`CHAT-zxrgxdlx` still depends on this issue. It sets the imported message id to
+`nameUUID("<topicId>:<messageUuid>")`. The operator supplies a generation in
+the topic name only. The message gains no `source_id` or wire change. A
+room-specific JSON source map lives beside the export. An incompatible long
+key type must fail at startup. The importer remains separate work.

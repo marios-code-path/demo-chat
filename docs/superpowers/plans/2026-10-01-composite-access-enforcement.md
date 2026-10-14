@@ -1506,6 +1506,9 @@ class CompositeAccessEnforcementTests {
 Lucene, and the handle and topic-name fields split on a hyphen. So a name with a
 hyphen would match a query for a different name. See `CHAT-hajmhslp`.
 
+Correction for `CHAT-hajmhslp`: identity fields now match whole values. The
+single-token name above records the earlier test condition.
+
 **`spring.application.name` is distinct on purpose.** Spring caches a context
 by its configuration. A distinct value gives this class its own context, and
 its own empty memory stores.
