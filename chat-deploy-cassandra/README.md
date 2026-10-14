@@ -102,53 +102,27 @@ Showing Maven dependencies for Cassandra Persistence:
 
 # Connecting Cassandra with Spring
 
-Take a quick peek at the [Cassandra Properties](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/autoconfigure/cassandra/CassandraProperties.html) to indicate our server connection.
-Note that contact points are the 'gateway' into your cassandra cluster and are not 
-the ONLY server on the cluster that are connected - but it is the first.
+Set the Spring Boot Cassandra properties at launch or in the application configuration.
+The contact points identify the Cassandra nodes that start the connection.
+Use the correct address and port for the intended cluster.
 
-In this application, we have simple application properties that can also be sent in as application arguments - a good
-strategy when assigning network IPs and passwords at run-time.
-
-  Alternatively, we can consume cassandra connection details from Consul or ConfigMaps, but 
-  that is a topic of later discourse.
-
-Showing default cassandra properties:
+Example properties:
 ```properties
-spring.data.cassandra.schema-action=create_if_not_exists
-spring.data.cassandra.request.consistency=one
-spring.data.cassandra.request.serial-consistency=any
-spring.data.cassandra.keyspace-name=chat
-spring.data.cassandra.base-packages=com.demo.chat.repository.cassandra
-spring.data.cassandra.contact-points=some-host-ip
+spring.cassandra.keyspace-name=chat_long
+spring.cassandra.local-datacenter=datacenter1
+spring.cassandra.contact-points=cassandra.example
+spring.cassandra.port=9042
 ```
 
 ## Username Passwords and Contact Points
- 
-There is an [issue](https://github.com/spring-projects/spring-boot/issues/21487) in Boot 2.3.0, which prevents `cassandra-properties` configured
-instances not to pass in the username and password per usual.
 
-To fix this, we can simply configure `SessionBuilder` with [SessionBuilderConfigurer](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/SessionBuilderConfigurer.html) and tell it the details it's going
-to need to connect to the contact point.
-                                        
-```kotlin
-class ContactPointConfiguration(
-        val props: CassandraProperties,
-) : AbstractCassandraConfiguration() {
-    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer =
-            SessionBuilderConfigurer { sessionBuilder ->
-                sessionBuilder 
-                        .withAuthCredentials(props.username, props.password)
-                        .withLocalDatacenter(props.localDatacenter)
-            }
+`ContactPointConfiguration` uses `spring.cassandra.contact-points` and `spring.cassandra.port` for each Spring Data session.
+The configuration passes these values through Spring Data's contact point and port methods.
+This prevents Spring Data from adding its default `localhost:9042` address beside a configured address.
+If no contact point is set, Spring Data uses `localhost`.
 
-    override fun getKeyspaceName(): String {
-        return props.keyspaceName
-    }
-}
-```
-
-Doing this will allow our application to work per usual - just send in cassandra properties through application.* or 
-as [spring-boot-maven-plugin](https://docs.spring.io/spring-boot/docs/1.1.4.RELEASE/reference/html/build-tool-plugins-maven-plugin.html) command line arguments (e.g. `--spring.data.cassandra.request.serial-consistency=any`).
+The session builder applies credentials only when both `spring.cassandra.username` and `spring.cassandra.password` are set.
+It does not add contact points.
 
 # Launch the App
 
