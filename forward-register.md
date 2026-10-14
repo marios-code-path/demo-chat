@@ -5451,7 +5451,11 @@ the NFC normalization used by both index writes and lookups. User handles also
 use `Locale.ROOT` lowercase. Topic names keep case.
 
 Entry format 2 makes a file index with format 1 rebuild at its next start.
-The request wire shape and the key-value field registration remain the same.
+The request type is unchanged, and its `first` field carries the field name.
+**An exact query must send the `_x_` prefix in that field.** `IndexFieldKinds`
+refuses a plain name for an exact field and names the prefixed form.
+**No alias period exists**, because the refusal is a `ChatException`.
+The key-value field registration is unchanged.
 The membership index uses one exact field for each member-room pair.
 
 `CHAT-zxrgxdlx` still depends on this issue. It sets the imported message id to
