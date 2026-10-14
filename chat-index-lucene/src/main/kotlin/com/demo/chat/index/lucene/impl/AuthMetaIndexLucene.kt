@@ -6,6 +6,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.index.lucene.domain.IndexEntryEncoder
@@ -19,5 +20,6 @@ open class AuthMetaIndexLucene<T>(typeUtil: TypeUtil<T>, rootKeys: RootKeys<T>) 
     LuceneIndex<T, AuthMetadata<T>>(
         IndexEntryEncoder.ofAuthMeta(typeUtil),
         keyEncoder = { str -> Key.of(typeUtil.fromString(str), rootKeys.of(ChatDomain.AUTH_METADATA).id) },
-        keyReceiver = { t -> t.key }
+        keyReceiver = { t -> t.key },
+        fieldKinds = IndexFieldKinds.AUTH,
     )

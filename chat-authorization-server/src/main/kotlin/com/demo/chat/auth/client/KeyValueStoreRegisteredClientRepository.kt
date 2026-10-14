@@ -2,6 +2,7 @@ package com.demo.chat.auth.client
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
@@ -27,7 +28,7 @@ class KeyValueStoreRegisteredClientRepository<T>(
     // KEY_VALUE_PAIR key. A later save finds that key through the index field
     // `id` and replaces the entry under it. See CHAT-avduuqwp, E11.
     override fun save(registeredClient: RegisteredClient) {
-        val existing: Mono<Key<T>> = kvIndex.findUnique(IndexSearchRequest("id", registeredClient.id, 100)).map { it }
+        val existing: Mono<Key<T>> = kvIndex.findUnique(IndexFieldKinds.KEY_VALUE.query("id", registeredClient.id)).map { it }
         // A store that mints no key fails the save. An empty mint would store nothing and report success.
         val minted: Mono<Key<T>> = kvStore.key().map<Key<T>> { it }
             .switchIfEmpty(Mono.error { ChatException("The store minted no key for client '${registeredClient.id}'.") })
@@ -39,7 +40,7 @@ class KeyValueStoreRegisteredClientRepository<T>(
     }
 
     override fun findById(id: String): RegisteredClient? =
-        kvIndex.findUnique(IndexSearchRequest("id", id, 100))
+        kvIndex.findUnique(IndexFieldKinds.KEY_VALUE.query("id", id))
             .flatMap {
                 kvStore.typedGet(it, RegisteredClient::class.java)
                     .map {
@@ -48,7 +49,7 @@ class KeyValueStoreRegisteredClientRepository<T>(
             }.block()
 
     override fun findByClientId(clientId: String): RegisteredClient? =
-        kvIndex.findUnique(IndexSearchRequest("client_id", clientId, 100))
+        kvIndex.findUnique(IndexFieldKinds.KEY_VALUE.query("client_id", clientId))
             .flatMap {
                 kvStore.typedGet(it, RegisteredClient::class.java)
                     .map {

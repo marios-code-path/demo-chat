@@ -2,6 +2,7 @@ package com.demo.chat.test.deploy.redis
 
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.NodeIdClaimException
 import com.demo.chat.domain.User
@@ -98,7 +99,7 @@ class RedisLuceneFilesRestartTests {
         @Suppress("UNCHECKED_CAST")
         fun ConfigurableApplicationContext.findsHandle(handle: String): Boolean =
             (getBean("userIndex") as UserIndexService<Long, IndexSearchRequest>)
-                .findBy(IndexSearchRequest("handle", handle, 10)).collectList().block(Duration.ofSeconds(10))!!.isNotEmpty()
+                .findBy(IndexFieldKinds.USER.query(UserIndexService.HANDLE, handle, 10)).collectList().block(Duration.ofSeconds(10))!!.isNotEmpty()
     }
 
     private fun ConfigurableApplicationContext.report(name: String) =

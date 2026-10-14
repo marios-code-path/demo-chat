@@ -12,7 +12,7 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` at `dc116ea7`, in sync with `origin`. The working tree holds two untracked owner files, `conversations.json` and `conversations.jsonl`, and nothing else. |
-| Register state | Updated 2026-10-11, after the message pointer merge of PR #213. |
+| Register state | Updated 2026-10-14, after the Cassandra contact point merge of PR #225. |
 | Last merged PR | #213, merge commit `dc116ea7`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. The section `Merges from PR #210 to PR #213` lists the latest four. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Twelve local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, `review-pr150` at `a0065fcb`, and `chat-bmmtojqm-chat-log-view` at `925a1db8`. **So master already holds their work.** Eight more hold one commit that master lacks, measured on 2026-10-11: `backup/chat-bmmtojqm-before-review` at `93cada30`, `chat-emwhnlay-import` at `06ccda4f`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-lswjobhz-shared-store-index` at `863b6d00`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, `chat-xcmpudyb-message-id` at `20f3d014`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** Two of the eight are live work: `chat-emwhnlay-import` and `chat-lswjobhz-shared-store-index` each carry a worktree. |
@@ -5433,11 +5433,70 @@ job, under B12.
 ### Open after these merges
 
 - **`CHAT-aysfqhnm` holds this refresh.** It follows PR #213.
-- **`CHAT-mpfuifei` is teed up, and it is `todo`.** No branch and no worktree
-  exist for it. The TEE UP comment holds the verified claim, one corrected
-  line of the description, and the repair shape.
+- **`CHAT-mpfuifei` is done.** PR #215 merged on 2026-10-12 as `48e861ad`, a
+  merge commit with two parents, `e8ece7fd` and `f414b0ff`. The branch is gone,
+  local and remote, and no worktree remains. **This file recorded it as `todo`
+  from 2026-10-11 until this correction.** That reading came from the file
+  alone, and the issue had merged.
 - **`CHAT-wgiwqodp` holds the red scheduled audit.** The owner deferred it.
 - **`CHAT-pggtduxz` closed on 2026-10-11.** PR #208 merged its work, and the
   owner closed the issue.
 - **Two live branches carry worktrees**, `chat-emwhnlay-import` and
   `chat-lswjobhz-shared-store-index`. Neither is part of this sprint.
+
+## Lucene identity fields (CHAT-hajmhslp, 2026-10-13)
+
+The `chat-hajmhslp-index-exact` branch changes Lucene identity fields to
+whole-value fields. An `_x_` field name selects `StringField` and `TermQuery`.
+Message `data` keeps text analysis. `IndexFieldKinds` owns the field rules and
+the NFC normalization used by both index writes and lookups. User handles also
+use `Locale.ROOT` lowercase. Topic names keep case.
+
+Entry format 2 makes a file index with format 1 rebuild at its next start.
+The request type is unchanged, and its `first` field carries the field name.
+**An exact query must send the `_x_` prefix in that field.** `IndexFieldKinds`
+refuses a plain name for an exact field and names the prefixed form.
+**No alias period exists**, because the refusal is a `ChatException`.
+The key-value field registration is unchanged.
+The membership index uses one exact field for each member-room pair.
+
+`CHAT-zxrgxdlx` still depends on this issue. It sets the imported message id to
+`nameUUID("<topicId>:<messageUuid>")`. The operator supplies a generation in
+the topic name only. The message gains no `source_id` or wire change. A
+room-specific JSON source map lives beside the export. An incompatible long
+key type must fail at startup. The importer remains separate work.
+
+## Cassandra contact points (CHAT-fmvsylrv, 2026-10-14)
+
+PR #225 merged on 2026-10-14 as `cc934030`. The merge has two parents,
+`6a9b8b55` and `3e1c5682`, so it is a real merge commit. The merge tree is
+byte-identical to the branch tip `3e1c5682`.
+
+A Cassandra deployment carried a second contact point.
+`ContactPointConfiguration` called `sessionBuilder.addContactPoint`, and it
+never removed the point that `AbstractSessionConfiguration.getContactPoints()`
+supplies, which is `localhost` with port `9042`. `SessionBuilder` has no clear
+method.
+
+**The harm appeared on this host, and one test found it.** A docker compose
+stack of another session published `127.0.0.1:9042` and held the `chat_long`
+keyspace. `CassandraClaimBootTests` seeded node 21 in the test container and
+then booted the application. The claim store read the foreign cluster, which
+held no node 21 row, so the claim was granted and `assertThrows` found no
+exception. That is why the `--ci` gate of the `CHAT-hajmhslp` branch reported
+`chat-deploy-cassandra` as a new failing module.
+
+**The risk was wider than the test.** Any Cassandra deployment could bind to a
+foreign cluster that answers on `localhost:9042` and holds the same keyspace
+names. Reads and writes would then reach the wrong store.
+
+`ContactPointConfiguration` overrides `getContactPoints()` and `getPort()` with
+the configured values now. The session builder applies credentials alone.
+`ContactPointConfigurationTests` pins both. `docs/BUILD-HEALTH.md` records the
+failure signature and the check for a foreign listener.
+
+`CHAT-axkakbhl` added the contact point fallback that caused this. The module
+had this defect from that change until PR #225.
+
+One limit stays open. No deployment ran against a remote cluster. Every reading
+came from a test JVM.

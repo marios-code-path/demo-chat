@@ -416,6 +416,28 @@ classes claim collides there. `docs/NODEID-CLAIM.md` holds the allocation.
 **Read `docker events --filter event=oom` before you trust a red Cassandra
 run.** Other sessions and other modules use the same VM memory.
 
+### A foreign cluster on localhost:9042
+
+`CHAT-fmvsylrv` recorded a `chat-deploy-cassandra` failure that a `--ci` run
+reported as a new failing module. `CassandraClaimBootTests` seeds node 21 in
+the test container, then boots the application. The claim was granted, so
+`assertThrows` found no exception.
+
+The cause was a second contact point. `ContactPointConfiguration` added the
+configured address. `AbstractSessionConfiguration.getContactPoints()` returns
+`localhost`, and `getPort()` returns `9042`. `SessionBuilder` has no clear
+method. So the session carried both addresses. A docker compose stack of
+another session answered on `127.0.0.1:9042` and held the `chat_long` keyspace.
+The claim store read that cluster.
+
+`ContactPointConfiguration` overrides `getContactPoints()` and `getPort()` now.
+The session builder applies credentials alone, and it adds no contact point.
+PR #225 merged the fix on 2026-10-14.
+
+**A failure of this module is not always a defect in this repository.** Before
+you treat one as a regression, look for a foreign listener on the port. Run
+`lsof -nP -iTCP:9042 -sTCP:LISTEN`.
+
 ## Resolved
 
 Kept so the list can be trusted — an entry disappearing without explanation is indistinguishable from an entry being forgotten.

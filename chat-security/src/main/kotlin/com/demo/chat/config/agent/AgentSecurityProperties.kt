@@ -69,8 +69,9 @@ class AgentSecurityProperties {
     /**
      * An agent must be a plain user. See `CHAT-frcrctdp`.
      *
-     * **The comparison ignores case.** The Lucene user index lowercases the
-     * handle, so a lookup for `admin` answers the user `Admin`.
+     * **The comparison ignores case.** The Lucene user handle field uses
+     * `EXACT_IGNORE_CASE`. It lowercases the stored and lookup values, so a
+     * lookup for `admin` answers the user `Admin`.
      */
     private fun requireNoReserved() {
         val reserved = (RESERVED_IDENTITIES + serviceAccounts.filter { it.isNotBlank() })

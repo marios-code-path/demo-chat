@@ -9,6 +9,7 @@ import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MemberTopicRequest
@@ -157,7 +158,7 @@ class CoreRouteAccessTests {
     fun `the index boundary refuses an add and a query and indexes nothing`() {
         val key = stores.userPersistence().key().block(timeout)!!
         val user = User.create(key, "indexed", "coreroutesindexed", "http://u")
-        val byHandle = IndexSearchRequest(UserIndexService.HANDLE, "coreroutesindexed", 100)
+        val byHandle = IndexFieldKinds.USER.query(UserIndexService.HANDLE, "coreroutesindexed", 100)
 
         refusedCallers().forEach {
             assertRefused(it.route("index.user.add").data(user).retrieveMono(Void::class.java))

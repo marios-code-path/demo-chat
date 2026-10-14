@@ -1,10 +1,10 @@
 package com.demo.chat.index.lucene.impl
 
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.service.core.MembershipIndexService
-import org.apache.lucene.queryparser.classic.QueryParser
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
@@ -12,11 +12,11 @@ open class MembershipLuceneIndex<T>(
     entityEncoder: Function<TopicMembership<T>, List<Pair<String, String>>>,
     keyEncoder: Function<String, Key<T>>,
     keyReceiver: Function<TopicMembership<T>, Key<T>>,
-) : LuceneIndex<T, TopicMembership<T>>(entityEncoder, keyEncoder, keyReceiver),
+) : LuceneIndex<T, TopicMembership<T>>(entityEncoder, keyEncoder, keyReceiver, IndexFieldKinds.MEMBERSHIP),
     MembershipIndexService<T, IndexSearchRequest> {
     override fun size(query: IndexSearchRequest): Mono<Long> = Mono.fromCallable {
         withSearcher { searcher ->
-            searcher.search(QueryParser(query.first, analyzer).parse(query.second), query.config).totalHits.value
+            searcher.search(queryOf(query), query.config).totalHits.value
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.demo.chat.index.lucene.impl
 
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
+import com.demo.chat.domain.IndexMatch
 import com.demo.chat.domain.Key
 import com.demo.chat.index.lucene.storage.IndexEntry
 import com.demo.chat.index.lucene.storage.IndexFields
@@ -15,6 +17,8 @@ import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.Term
 import org.apache.lucene.queryparser.classic.QueryParser
 import org.apache.lucene.search.IndexSearcher
+import org.apache.lucene.search.Query
+import org.apache.lucene.search.TermQuery
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -37,6 +41,7 @@ open class LuceneIndex<T, E : Any>(
     private val entityEncoder: Function<E, List<Pair<String, String>>>,
     private val keyEncoder: Function<String, Key<T>>,
     private val keyReceiver: Function<E, Key<T>>,
+    private val fieldKinds: IndexFieldKinds = IndexFieldKinds(emptyMap(), IndexMatch.TEXT),
 ) : IndexService<T, E, IndexSearchRequest> {
 
     val analyzer = StandardAnalyzer()
@@ -109,13 +114,19 @@ open class LuceneIndex<T, E : Any>(
 
     override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> = Flux.defer {
         val keys = withSearcher { searcher ->
-            searcher.search(QueryParser(query.first, analyzer).parse(query.second), query.config).scoreDocs
+            searcher.search(queryOf(query), query.config).scoreDocs
                 .map { searcher.doc(it.doc).get(IndexFields.STORED_KEY) }
         }
         Flux.fromIterable(keys.map(keyEncoder::apply))
     }
 
     override fun findUnique(query: IndexSearchRequest): Mono<out Key<T>> = findBy(query).singleOrEmpty()
+
+    /** Resolve the declared field kind before the search can return an empty result. */
+    protected fun queryOf(request: IndexSearchRequest): Query = when (val match = fieldKinds.matchOf(request.first)) {
+        IndexMatch.TEXT -> QueryParser(request.first, analyzer).parse(request.second)
+        else -> TermQuery(Term(request.first, fieldKinds.storedValue(match, request.second)))
+    }
 
     protected fun <R> withSearcher(read: (IndexSearcher) -> R): R {
         val manager = requireOpen().manager

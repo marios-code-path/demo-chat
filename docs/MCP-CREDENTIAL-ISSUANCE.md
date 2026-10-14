@@ -291,6 +291,9 @@ HTTP/1.1 201 Created
 The name is one token. A hyphen splits the Lucene field, so this run avoids one.
 `CHAT-hajmhslp` holds that defect.
 
+Correction for `CHAT-hajmhslp`: identity lookups now match whole values. This
+single-token name records the original run, not a current name restriction.
+
 **The acceptance run used a second topic, `mcpcredential`.** The command above
 created `mcpissuance` to re-prove the create route on the day of this writing.
 So the two documents name two topics, and both are real.

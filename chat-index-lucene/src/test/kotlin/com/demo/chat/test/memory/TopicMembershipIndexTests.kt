@@ -24,10 +24,10 @@ class TopicMembershipIndexTests : IndexTests<Long, TopicMembership<Long>, IndexS
     LuceneIndex<Long, TopicMembership<Long>>(
         IndexEntryEncoder.ofTopicMembership(),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) },
-        { t -> Key.of(t.key, ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) }).openedInMemory(),
+        { t -> Key.of(t.key, ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) }, IndexFieldKinds.MEMBERSHIP).openedInMemory(),
     Supplier { TopicMembership.create(NEXT_ID.incrementAndGet(), 1234L, 12345L) },
     Function<TopicMembership<Long>, Key<Long>> { topicMembership -> Key.of(topicMembership.key, ROOTS.of(ChatDomain.TOPIC_MEMBERSHIP).id) },
-    Supplier { IndexSearchRequest(MembershipIndexService.MEMBER, LongUtil().toString(1234L), 1000) },
+    Supplier { IndexFieldKinds.MEMBERSHIP.query(MembershipIndexService.MEMBER, LongUtil().toString(1234L), 1000) },
     ROOTS,
     ChatDomain.TOPIC_MEMBERSHIP,
 ) {
@@ -39,10 +39,10 @@ class TopicMembershipIndexTests : IndexTests<Long, TopicMembership<Long>, IndexS
             .add(TopicMembership.create(123456L, 1234L, 12345L))
             .then(
                 getIndex().findUnique(
-                    IndexSearchRequest(
-                        MembershipIndexService.MEMBER,
-                        "1234 AND ${MembershipIndexService.MEMBEROF}:12345",
-                        1000
+                    IndexFieldKinds.MEMBERSHIP.query(
+                        MembershipIndexService.MEMBER_PAIR,
+                        MembershipIndexService.pairKeyOf(1234L, 12345L),
+                        1000,
                     )
                 )
             )

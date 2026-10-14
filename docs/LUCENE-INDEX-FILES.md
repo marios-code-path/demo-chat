@@ -44,6 +44,21 @@ lucene index user: built, reason=MISMATCH, 42 entries written
 The compare is exact only when no other process writes the store during the
 start. `CHAT-lswjobhz` holds that limit.
 
+## Field matching
+
+The `data` field of the message index uses the text analyzer. Encoder identity
+fields match one whole value. Their stored names start with `_x_`, and Lucene stores
+them as `StringField` values. A lookup uses a term query on the same field.
+The index also writes an analyzed internal key for result decoding. Application
+lookups do not read that key.
+
+The topic name uses NFC normalization and keeps case. The user handle uses NFC
+normalization and `Locale.ROOT` lowercase. Other identity fields use NFC
+normalization and keep case. Index writes and lookups call the same function.
+
+Entry format 2 records this field layout. A file index with format 1 has a
+different header, so the next start rebuilds it from the store.
+
 > A node can retain a stale index after another node changes the shared
 > store. At restart, differing indexed content causes a rebuild.
 

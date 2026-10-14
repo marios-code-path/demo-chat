@@ -8,6 +8,7 @@ import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.index.lucene.domain.IndexEntryEncoder
@@ -22,10 +23,10 @@ class AuthMetaIndexTests : IndexTests<Long, AuthMetadata<Long>, IndexSearchReque
     LuceneIndex<Long, AuthMetadata<Long>>(
         IndexEntryEncoder.ofAuthMeta(LongUtil()),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.AUTH_METADATA).id) },
-        { t -> t.key }).openedInMemory(),
+        { t -> t.key }, IndexFieldKinds.AUTH).openedInMemory(),
     Supplier { AuthMetadata.create(TestKeys.key(NEXT_ID.incrementAndGet()), TestKeys.key(1L), TestKeys.key(2L), "TESTROLE", Long.MAX_VALUE) },
     Function<AuthMetadata<Long>, Key<Long>> { msg -> msg.key },
-    Supplier { IndexSearchRequest(AuthMetaIndex.PRINCIPAL, LongUtil().toString(1L), 1000) },
+    Supplier { IndexFieldKinds.AUTH.query(AuthMetaIndex.PRINCIPAL, LongUtil().toString(1L), 1000) },
     ROOTS,
     ChatDomain.AUTH_METADATA,
 ) {

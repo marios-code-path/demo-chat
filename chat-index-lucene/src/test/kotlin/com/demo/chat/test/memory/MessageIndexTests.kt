@@ -21,10 +21,10 @@ class MessageIndexTests : IndexTests<Long, Message<Long, String>, IndexSearchReq
     LuceneIndex<Long, Message<Long, String>>(
         IndexEntryEncoder.ofMessage(),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.MESSAGE).id) },
-        { t -> t.key }).openedInMemory(),
+        { t -> t.key }, IndexFieldKinds.MESSAGE).openedInMemory(),
     Supplier { Message.create(TestKeys.message(NEXT_ID.incrementAndGet(), 1L, 2L), "Hello", true) },
     Function<Message<Long, String>, Key<Long>> { msg -> msg.key },
-    Supplier { IndexSearchRequest(MessageIndexService.TOPIC, LongUtil().toString(2L), 1000) },
+    Supplier { IndexFieldKinds.MESSAGE.query(MessageIndexService.TOPIC, LongUtil().toString(2L), 1000) },
     ROOTS,
     ChatDomain.MESSAGE,
 ) {
