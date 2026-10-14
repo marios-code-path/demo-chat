@@ -5433,9 +5433,11 @@ job, under B12.
 ### Open after these merges
 
 - **`CHAT-aysfqhnm` holds this refresh.** It follows PR #213.
-- **`CHAT-mpfuifei` is teed up, and it is `todo`.** No branch and no worktree
-  exist for it. The TEE UP comment holds the verified claim, one corrected
-  line of the description, and the repair shape.
+- **`CHAT-mpfuifei` is done.** PR #215 merged on 2026-10-12 as `48e861ad`, a
+  merge commit with two parents, `e8ece7fd` and `f414b0ff`. The branch is gone,
+  local and remote, and no worktree remains. **This file recorded it as `todo`
+  from 2026-10-11 until this correction.** That reading came from the file
+  alone, and the issue had merged.
 - **`CHAT-wgiwqodp` holds the red scheduled audit.** The owner deferred it.
 - **`CHAT-pggtduxz` closed on 2026-10-11.** PR #208 merged its work, and the
   owner closed the issue.
