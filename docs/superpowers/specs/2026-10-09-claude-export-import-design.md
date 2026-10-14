@@ -30,16 +30,20 @@ The parser tests need no container. A running deployment must accept the fixture
 
 ## Corrections, 2026-10-14
 
-Two passages above carry a reason that no longer holds. The behavior each one
-describes is still current, so both passages stand unchanged.
+Three passages above describe behavior that has changed since 2026-10-10.
+This section states what replaced each one. The passages stay in place,
+because they record what that session observed.
 
-1. **"It rejects a room name with a hyphen."** That rule is a naming policy
-   now, and not an index requirement. It rested on the Lucene name lookup,
-   which split a name on a non-alphanumeric character. PR #224 made the topic
-   name a whole-value match, so a colon and a hyphen are both safe in a name.
-   The command still refuses a hyphenated `--topic` base until a later change
-   removes that guard.
-2. **"The route checks history by sender, millisecond time, and text."** That
+1. **"It rejects a room name with a hyphen."** That rule is gone since commit
+   `d55e299e`. It rested on the Lucene name lookup, which split a name on a
+   non-alphanumeric character. PR #224 made the topic name a whole-value
+   match, so a colon and a hyphen are both safe in a name. The command accepts
+   a hyphenated `--topic` base now.
+2. **"The command accepts an optional `--leaf-message` UUID"** and **"A
+   conversation with multiple leaf paths therefore requires a leaf message
+   UUID."** That option is gone since commit `d55e299e`. The command imports
+   every leaf path, and each path receives its own topic.
+3. **"The route checks history by sender, millisecond time, and text."** That
    is the check today. `CHAT-zxrgxdlx` supersedes it. A rerun recomputes the
    derived message id and reads it directly, so the three-value match retires
    and two turns that share those values can no longer collapse.
