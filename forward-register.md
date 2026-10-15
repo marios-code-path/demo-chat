@@ -169,6 +169,17 @@ built on top of them inherits the risk.
   tests in one reactor. `--integration` alone does not build the image, and it
   prints a note that says so. A stale image caused 8 decode errors that looked
   like a code regression.
+- **A random test port can land on a port that IntelliJ holds.**
+  `chat-client-rsocket/src/test/resources/application.properties` sets
+  `spring.rsocket.server.port=0`, so the kernel picks the port. Java sets
+  `SO_REUSEADDR` on a server socket, and macOS then allows a wildcard bind
+  beside a listener on `127.0.0.1`. The server logs `started on port <p>`, and
+  the client connects to `localhost`, which reaches the specific listener. The
+  test then fails with `ClosedChannelException` after a 45 s wait, and the
+  server log names a port that no test traffic reached. Two occurrences:
+  63342 on 2026-10-07, and 64342 on 2026-10-15. IntelliJ held each one. **Run
+  `lsof -nP -iTCP:<p> -sTCP:LISTEN` before you read such a failure as a
+  regression.** `CHAT-ivtnvgyg` holds it.
 - **A stale compiled test class outlives its source across a branch switch.**
   `DomainWireShapeTests.class` stayed in `chat-core/target/test-classes` after a
   checkout that removed its source. Surefire runs compiled classes, not sources.
@@ -1019,14 +1030,17 @@ set a limit of 64 KB on 2026-10-15.
   output alone, under a header.
 - **`build-health.sh --ci` exited 1, and `chat-client-rsocket` caused it.**
   `UserClientTests` failed 4 of 5 with `ClosedChannelException` and two 45.01 s
-  waits, and `chat-authorization-server` and `chat-shell` then reported
-  SKIPPED. **This work changes no Kotlin and no pom.** The class passes alone,
-  5 of 5 in 2.1 s, and the test server bound 65115, which is not the IntelliJ
-  port. `CHAT-ivtnvgyg` records the same module failing a docs-only pull
-  request. **So that issue holds this failure, and not this work.**
+  waits. `chat-authorization-server` and `chat-shell` then reported SKIPPED.
+  **This work changes no Kotlin and no pom.** The class passes alone, 5 of 5 in
+  2.1 s.
+- **The failing context bound port 64342, and IntelliJ held
+  `127.0.0.1:64342`.** The client connects to `localhost`, so its frames
+  reached IntelliJ. **A first reading exonerated the port trap and it was
+  wrong.** It read the ports of other contexts, and missed the failing one.
+  Forcing the server port to 64342 fails the class the same way in 137 s.
 - **The second `--ci` run passed, on the same tree.** Exit 0, 30 modules, 2548
   tests, 0 failures, 0 errors, 82 skipped, `agent http gate: ok`, and no drift.
-  **So the `chat-client-rsocket` failure above is intermittent**, which is what
-  `CHAT-ivtnvgyg` records.
+  **So the failure above is intermittent**, because the kernel picks the port.
+  `CHAT-ivtnvgyg` holds it.
 - The register size check printed nothing in either run, because the live file
   is under the limit.
