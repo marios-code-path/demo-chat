@@ -15,15 +15,15 @@ artifact that is.
 
 | | |
 |---|---|
-| Checkout | `master` at `08a71e81`, the merge commit of PR #226, in sync with `origin`. The working tree holds two untracked owner files, `conversations.json` and `conversations.jsonl`. |
-| Register state | Restructured on 2026-10-15 into this file and three period logs. Measured on 2026-10-15. |
-| Last merged PR | #226, merge commit `08a71e81`, merged on 2026-10-15. |
+| Checkout | `master` at `04dbe77a`, the merge commit of PR #228, in sync with `origin`. The working tree holds three untracked owner files, `conversations.json`, `conversations.jsonl`, and `forward-register-archive.md`. |
+| Register state | Restructured on 2026-10-15 into this file and three period logs. Refreshed on 2026-10-15, after PR #228. |
+| Last merged PR | #228, merge commit `04dbe77a`, merged on 2026-10-15. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Local branches | Twenty-two, measured on 2026-10-15, `master` among them. **Fourteen others hold no commit that master lacks**, so master already holds their work: `boot4-bump` at `179c2fd8`, `chat-bmmtojqm-chat-log-view` at `925a1db8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-ivtnvgyg-reach-check` at `c2b5fe5d`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-nxbtadan-register-64kb`, which is this work, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **Every branch ref is kept.** Seven hold a commit that master lacks, and the next row names them. |
-| Unmerged branches | Seven, measured on 2026-10-15: `backup/chat-bmmtojqm-before-review` at `93cada30` (ahead 1), `chat-hazcatpc-review-fix` at `606d251a` (ahead 1), `chat-lswjobhz-shared-store-index` at `863b6d00` (ahead 2), `chat-mcp-spec` at `d29bac4a` (ahead 1), `chat-urhjrwbt-indexelastic` at `d8d797b3` (ahead 1), `chat-xcmpudyb-message-id` at `20f3d014` (ahead 1), and `chat-znprrzhn-composite-enforcement` at `91af1c96` (ahead 1). **The branch refs are kept.** `chat-lswjobhz-shared-store-index` is live work. |
-| Worktrees | Five, measured on 2026-10-15. The main checkout, on `master`. `.worktrees/chat-nxbtadan-register-64kb`, which is this work. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/7768/demo-chat` at `3e1c5682`, detached, which holds the pre-merge tip of PR #225. |
-| Open PRs | None, measured on 2026-10-15. |
-| In-progress issues | Eight, measured on 2026-10-15: `CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-aqpcacwv`, `CHAT-emwhnlay`, `CHAT-lswjobhz`, `CHAT-uxlstrdy`, `CHAT-pphwooqm`, and `CHAT-nxbtadan`. |
+| Local branches | Twenty-two, measured on 2026-10-15, `master` among them. **Eighteen others hold no commit that master lacks**, so master already holds their work: `boot4-bump` at `179c2fd8`, `chat-bmmtojqm-chat-log-view` at `925a1db8`, `chat-cdutiiyg-register-refresh`, which is this work, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-ivtnvgyg-reach-check` at `c2b5fe5d`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-mcp-spec` at `d29bac4a`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-xcmpudyb-message-id` at `20f3d014`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **Every branch ref is kept.** Three hold a commit that master lacks, and the next row names them. |
+| Unmerged branches | Three, measured on 2026-10-15: `backup/chat-bmmtojqm-before-review` at `93cada30` (ahead 1), `chat-lswjobhz-shared-store-index` at `863b6d00` (ahead 2), and `chat-urhjrwbt-indexelastic` at `d8d797b3` (ahead 1). **The branch refs are kept.** `chat-lswjobhz-shared-store-index` is live work. |
+| Worktrees | Five, measured on 2026-10-15. The main checkout, on `master`. `.worktrees/chat-cdutiiyg-register-refresh`, which is this work. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/7768/demo-chat` at `3e1c5682`, detached, which holds the pre-merge tip of PR #225. |
+| Open PRs | None, measured on 2026-10-15, after PR #228 merged. |
+| In-progress issues | Eight, measured on 2026-10-15: `CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-aqpcacwv`, `CHAT-emwhnlay`, `CHAT-lswjobhz`, `CHAT-uxlstrdy`, `CHAT-pphwooqm`, and `CHAT-cdutiiyg`, which is this work. |
 
 **The `Checkout` row records the last substantive merge before the refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -31,17 +31,23 @@ row. **That lag is not drift, and a reader must not correct it.** A row that
 chased the true tip would go stale the moment it merged, and it would spawn a
 refresh on every refresh. The owner set this rule on 2026-09-29.
 
-**Two of the seven unmerged branches carry no lost work.**
-`chat-xcmpudyb-message-id` at `20f3d014` holds a register correction that PR
-#188 already carried as `0bdd8684`, and `git cherry master` marks it `-`.
+**Four branches that master lacked now hold no lost work.**
+`chat-hazcatpc-review-fix`, `chat-mcp-spec`, `chat-xcmpudyb-message-id` and
+`chat-znprrzhn-composite-enforcement` reached that state by 2026-10-15.
+`git cherry master` marks each of their commits with a minus sign, so master
+holds an equivalent patch.
+
+**One of the three unmerged branches carries no lost work.**
 `backup/chat-bmmtojqm-before-review` at `93cada30` holds a chat log commit
 before its review repairs, and PR #186 merged the repaired version.
 
-**Four belong to other work.** `chat-hazcatpc-review-fix`, `chat-mcp-spec` and
-`chat-znprrzhn-composite-enforcement` each hold one commit that master lacks,
-and `chat-urhjrwbt-indexelastic` holds the module repair that PR #106
-superseded. **The `topic-by-name` branch is gone**, and PR #163 carried its
-work into master.
+**One belongs to other work.** `chat-urhjrwbt-indexelastic` at `d8d797b3`
+holds the module repair that PR #106 superseded. **The `topic-by-name` branch
+is gone**, and PR #163 carried its work into master.
+
+**Two merged branch refs are removed, local and remote.**
+`chat-nxbtadan-register-64kb` and `chat-ivtnvgyg-rsocket-loopback` are gone,
+and their worktrees with them.
 
 **One branch on the remote has no local ref.** `origin` holds
 `chat-eroapfub-vector-runtime-flags` at `3245d308`, titled "build: add Java 25
@@ -945,7 +951,7 @@ refusal and the derived-ID read are open with it.
   the source-to-chat map. It is `todo` and holds no code.
 - The `Checkout` row of this file is not moved by this section.
 
-## Merges from PR #214 to PR #226 (2026-10-12/15)
+## Merges from PR #214 to PR #228 (2026-10-12/15)
 
 Each merge was measured on 2026-10-15 with `git rev-list --parents` and
 `git diff <tip> <merge>`. **Every merge has two parents, and every merge tree
@@ -967,6 +973,8 @@ conflict repair.
 | #224 | `6a9b8b55` | `256e1b41` | `CHAT-hajmhslp` | Query the Lucene identity fields through the shared builder |
 | #225 | `cc934030` | `3e1c5682` | `CHAT-fmvsylrv` | Use the configured Cassandra contact points |
 | #226 | `08a71e81` | `77e544ae` | `CHAT-emwhnlay` | Import every Claude conversation thread into its own topic |
+| #227 | `b26704bf` | `24f10159` | `CHAT-nxbtadan` | Split the register into a live file and three period logs, with a size check |
+| #228 | `04dbe77a` | `c4ee22f6` | `CHAT-ivtnvgyg` | Bind the RSocket test server to loopback, and correct the trap entry |
 
 **PR #223 merged before PR #222, and the rows show it.** The first parent of
 `78bf538d` is `27ab4772`, the merge commit of #223. So a pull request number is
@@ -986,8 +994,10 @@ shell launch.
 
 ## The register split (CHAT-nxbtadan, 2026-10-15)
 
-`CHAT-nxbtadan`. Branch `chat-nxbtadan-register-64kb`. **This work is not
-merged.** `docs/BUILD-HEALTH.md` holds the check, under
+`CHAT-nxbtadan`. Branch `chat-nxbtadan-register-64kb`, removed after the
+merge. **PR #227 merged on 2026-10-15 as `b26704bf`**, a merge commit with two
+parents, `08a71e81` and `24f10159`. The merge tree equals the branch tip.
+`docs/BUILD-HEALTH.md` holds the check, under
 `The forward register size check`.
 
 ### The problem
@@ -1041,9 +1051,20 @@ set a limit of 64 KB on 2026-10-15.
   reached IntelliJ. **A first reading exonerated the port trap and it was
   wrong.** It read the ports of other contexts, and missed the failing one.
   Forcing the server port to 64342 fails the class the same way in 137 s.
+  **PR #228 repaired the trap on 2026-10-15.** The test server binds loopback
+  alone now, and a reader finds the mechanism under
+  `Things worth not relearning`.
 - **The second `--ci` run passed, on the same tree.** Exit 0, 30 modules, 2548
   tests, 0 failures, 0 errors, 82 skipped, `agent http gate: ok`, and no drift.
   **So the failure above is intermittent**, because the kernel picks the port.
   `CHAT-ivtnvgyg` holds it.
 - The register size check printed nothing in either run, because the live file
   is under the limit.
+- **CI run `38678368389` passed all three jobs** on the merged head
+  `24f10159`: `build` 8m30s, `agent-http` 3m1s, and `integration` 17m0s. The
+  integration job ran `UserClientTests` 5 of 5 in 0.466 s, and it held no
+  `ClosedChannelException`.
+- **The trap is local, and the Jackson 3 failure is not.** The trap needs an
+  IntelliJ listener on the same machine, so a CI runner cannot meet it.
+  `CHAT-ivtnvgyg` stays in progress for the codec error on `KeyTests`, and
+  PR #228 does not touch that path.
