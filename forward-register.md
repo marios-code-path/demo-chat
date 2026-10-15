@@ -1024,5 +1024,9 @@ set a limit of 64 KB on 2026-10-15.
   5 of 5 in 2.1 s, and the test server bound 65115, which is not the IntelliJ
   port. `CHAT-ivtnvgyg` records the same module failing a docs-only pull
   request. **So that issue holds this failure, and not this work.**
-- The register size check printed nothing in that run, because the live file is
-  under the limit.
+- **The second `--ci` run passed, on the same tree.** Exit 0, 30 modules, 2548
+  tests, 0 failures, 0 errors, 82 skipped, `agent http gate: ok`, and no drift.
+  **So the `chat-client-rsocket` failure above is intermittent**, which is what
+  `CHAT-ivtnvgyg` records.
+- The register size check printed nothing in either run, because the live file
+  is under the limit.
