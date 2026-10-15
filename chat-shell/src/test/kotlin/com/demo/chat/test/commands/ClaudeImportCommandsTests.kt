@@ -76,11 +76,27 @@ class ClaudeImportCommandsTests {
         return file.toString()
     }
 
+    /** A conversation whose root carries one child per given branch UUID. */
+    private fun branched(vararg branches: String): String {
+        val file = temp.resolve("branched-${branches.joinToString("-")}.json")
+        val children = branches.joinToString(",") { uuid ->
+            """{"uuid":"$uuid","sender":"assistant","created_at":"2024-01-01T10:00:01Z","text":"Branch $uuid","parent_message_uuid":"$rootUuid"}"""
+        }
+        Files.writeString(file, """[
+          {"uuid":"$conversationUuid","name":"Branched","chat_messages":[
+            {"uuid":"$rootUuid","sender":"human","created_at":"2024-01-01T10:00:00Z","text":"Root"},
+            $children
+          ]}
+        ]""")
+        return file.toString()
+    }
+
     private fun room(id: Long, name: String): MessageTopic<Long> =
         MessageTopic.create(Key.of(id, 6L), name)
 
+    /** The source ID carries the room, so one record can land in two topics. */
     private fun importRequest(text: String, sender: Long, room: Long, time: String, messageUuid: String) =
-        MessageImportRequest(text, sender, room, Instant.parse(time), "$conversationUuid:$messageUuid")
+        MessageImportRequest(text, sender, room, Instant.parse(time), "$room:$messageUuid")
 
     /** The two turns of the fixture, and the room the command resolves. */
     private fun fixtureTurns(room: Long): Pair<MessageImportRequest<Long, String>, MessageImportRequest<Long, String>> =
@@ -264,6 +280,80 @@ class ClaudeImportCommandsTests {
         assertThat(imported).hasSize(4)
         assertThat(imported.filter { it.dest == 5L }.map { it.msg }).containsExactly("Root", "First branch")
         assertThat(imported.filter { it.dest == 6L }.map { it.msg }).containsExactly("Root", "Second branch")
+    }
+
+    /**
+     * The route keys a request on the owner and the request ID, and it treats
+     * a differing room as a conflict. So one source ID cannot name the shared
+     * parent of two topics. The topic ID scopes the source ID.
+     */
+    @Test
+    fun `a shared root names one source ID per topic`() {
+        bothUsers()
+        val (first, second) = forkNames()
+        roomOf(first, 5L)
+        roomOf(second, 6L)
+        stubFork()
+
+        command().importConversation(forked(), "Forked", "lobby", "7", "alice", "claude")
+
+        val roots = importedRequests().filter { it.msg == "Root" }
+        assertThat(roots).hasSize(2)
+        assertThat(roots.map { it.messageId }).containsExactlyInAnyOrder("5:$rootUuid", "6:$rootUuid")
+    }
+
+    private fun stubMessages(request: MessageImportRequest<Long, String>) {
+        given(messages.importMessage(request)).willReturn(Mono.just(result))
+    }
+
+    /**
+     * A name carries the leaf UUID alone, so a second leaf adds a name. It
+     * never changes the name of a topic that exists.
+     */
+    @Test
+    fun `an added leaf renames no existing topic`() {
+        bothUsers()
+        val firstName = claudeTopicName("lobby", conversationUuid, "1", firstBranchUuid)
+        val secondName = claudeTopicName("lobby", conversationUuid, "1", leafUuid)
+
+        roomIsAbsent(firstName)
+        given(topics.addRoom(ByStringRequest(firstName))).willReturn(Mono.just(Key.of(5L, 6L)))
+        stubMessages(importRequest("Root", 11L, 5L, "2024-01-01T10:00:00Z", rootUuid))
+        stubMessages(importRequest("Branch $firstBranchUuid", 12L, 5L, "2024-01-01T10:00:01Z", firstBranchUuid))
+
+        command().importConversation(branched(firstBranchUuid), "Branched", "lobby", "1", "alice", "claude")
+
+        roomOf(firstName, 5L)
+        roomIsAbsent(secondName)
+        given(topics.addRoom(ByStringRequest(secondName))).willReturn(Mono.just(Key.of(6L, 6L)))
+        stubMessages(importRequest("Root", 11L, 6L, "2024-01-01T10:00:00Z", rootUuid))
+        stubMessages(importRequest("Branch $leafUuid", 12L, 6L, "2024-01-01T10:00:01Z", leafUuid))
+
+        val added = command()
+            .importConversation(branched(firstBranchUuid, leafUuid), "Branched", "lobby", "1", "alice", "claude")
+
+        assertThat(added).contains("Topics created: 1 of 2")
+        // The first import made the first topic, and the second import made
+        // the second one alone. So the second import found the first topic.
+        verify(topics, times(1)).addRoom(ByStringRequest(firstName))
+        verify(topics, times(1)).addRoom(ByStringRequest(secondName))
+    }
+
+    /** The route limits one request ID to 128 characters. */
+    @Test
+    fun `the largest room id fits the request limit`() {
+        bothUsers()
+        val roomId = Long.MAX_VALUE
+        roomOf(claudeTopicName("lobby", conversationUuid, "1", leafUuid), roomId)
+        val (first, second) = fixtureTurns(roomId)
+        stubMessages(first)
+        stubMessages(second)
+
+        command().importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
+
+        val requests = importedRequests()
+        assertThat(requests).hasSize(2)
+        assertThat(requests.maxOf { "import:${it.messageId}".length }).isLessThanOrEqualTo(128)
     }
 
     @Test

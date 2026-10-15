@@ -30,7 +30,7 @@ The parser tests need no container. A running deployment must accept the fixture
 
 ## Corrections, 2026-10-14
 
-Three passages above describe behavior that has changed since 2026-10-10.
+Four passages above describe behavior that has changed since 2026-10-10.
 This section states what replaced each one. The passages stay in place,
 because they record what that session observed.
 
@@ -47,6 +47,12 @@ because they record what that session observed.
    is the check today. `CHAT-zxrgxdlx` supersedes it. A rerun recomputes the
    derived message id and reads it directly, so the three-value match retires
    and two turns that share those values can no longer collapse.
+4. **"Each source ID contains the conversation UUID, a colon, and the message
+   UUID."** The source ID is `<topicId>:<messageUuid>` since 2026-10-14. The
+   route keys a request on the owner and the request ID, and it treats a
+   differing room as a conflict. A shared parent lands in two topics, so the
+   topic ID scopes the request ID. Measured on 2026-10-14: the old form failed
+   the second generation with `RequestConflictException`.
 
 The replacement design is
 `docs/superpowers/specs/2026-10-13-claude-thread-topic-import-work-order.md`.

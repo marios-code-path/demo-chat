@@ -33,7 +33,9 @@ The current command still refuses a hyphenated `--topic` base, at `ClaudeImportC
 
 ## Message identity
 
-Follow `CHAT-zxrgxdlx`: derive the message key with `UUID.nameUUIDFromBytes("<topicId>:<messageUuid>".encodeToByteArray())`. The topic ID makes a copied ancestor distinct in each topic. Keep the existing `import:` request ID and `MessageImportRequest.messageId` wire field. The source ID remains `<conversationUuid>:<messageUuid>`.
+Follow `CHAT-zxrgxdlx`: derive the message key with `UUID.nameUUIDFromBytes("<topicId>:<messageUuid>".encodeToByteArray())`. The topic ID makes a copied ancestor distinct in each topic. Keep the existing `import:` request ID and `MessageImportRequest.messageId` wire field.
+
+**The source ID is `<topicId>:<messageUuid>` since 2026-10-14.** This replaced "The source ID remains `<conversationUuid>:<messageUuid>`". The route keys a request on the owner and the request ID, and it treats a differing room as a conflict. Rule 4 puts one shared parent into two topics. So one request ID cannot name both records, and the topic ID must scope it. The source ID is now the derivation input above.
 
 **A rerun reads the derived message ID directly.** The importer recomputes the id from the topic id and the message UUID, then reads that id. One read proves a repeat. The sender, millisecond time and text match is not the repeat check, and it retires with this change. Two turns with those three values equal can no longer collapse.
 
@@ -56,6 +58,7 @@ Update `docs/SHELL-COMMAND-CONTRACT.md` when the command changes. Replace its hy
 - A rerun adds no records and creates no duplicate topics.
 - An additional leaf does not rename an existing topic.
 - Each request ID stays within the 128-character limit.
+- A shared parent receives one source ID in each topic that holds it.
 - A missing parent is reported for its thread, and other complete paths still import.
 - A missing user prevents all topic creation and message writes.
 - A long key deployment refuses the import at startup. The error names the key type and the derivation.

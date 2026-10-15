@@ -82,8 +82,11 @@ class ClaudeImportCommands<T : Any>(
                     omittedParents += thread.leafUuid
                 }
                 thread.messages.forEach { turn ->
-                    val sourceId = "${parsed.uuid}:${turn.uuid}"
-                    require("import:$sourceId".length <= 128) { "Message ${turn.uuid} has a source ID above 128 characters." }
+                    // A shared parent lands in each topic of a fork. The route
+                    // refuses one request ID across two rooms. The topic ID
+                    // scopes the request ID, so each topic admits the record.
+                    val sourceId = "$roomId:${turn.uuid}"
+                    require("import:$sourceId".length <= 128) { "Message ${turn.uuid} has a request ID above 128 characters." }
                     val senderId = if (turn.sender == "human") humanId else assistantId
                     requireNotNull(messages.importMessage(MessageImportRequest(turn.text, senderId, roomId, turn.createdAt, sourceId)).block()) {
                         "Message ${turn.uuid} returned no import result."

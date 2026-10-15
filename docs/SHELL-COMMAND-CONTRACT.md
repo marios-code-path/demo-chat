@@ -84,8 +84,10 @@ checks both user handles before it creates a topic. It imports every leaf path,
 and each path receives its own topic. A topic name is
 `<topic>:<conversation-uuid>:<generation>:<leaf-uuid>`. The operator supplies
 the generation as a decimal value. The importer never computes one. A hyphen
-and a colon are accepted in the name. The command reports the topics created,
-the messages imported, the missing parents, and the skipped content.
+and a colon are accepted in the name. The source ID of each record is
+`<topic-id>:<message-uuid>`, and the route prefixes `import:`. The command
+reports the topics created, the messages imported, the missing parents, and
+the skipped content.
 
 ### TopicCommands
 
