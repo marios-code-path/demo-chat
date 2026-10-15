@@ -24,6 +24,10 @@
 # stale in silence. --record writes the list of the mode from the run, and
 # skips that comparison. See CHAT-lantftth.
 #
+# Every mode also fails when forward-register.md passes 65,536 bytes. The
+# register loads in every session, so its size is a cost on every turn. See
+# CHAT-nxbtadan.
+#
 # --integration runs the container-backed tests, but it stops at the test
 # phase. The chat-shell tests reach the server through the
 # chat-deploy-memory-integration-test image, and the package phase builds that
@@ -174,6 +178,21 @@ new="$(comm -13 <(echo "$expected_sorted") <(echo "$actual"))"
 resolved="$(comm -23 <(echo "$expected_sorted") <(echo "$actual"))"
 
 status=0
+
+# The forward register loads in every session, because AGENTS.md imports it.
+# So its size is a cost on every turn, and it must stay under 64 KB. The oldest
+# dated sections move to a period archive when it grows past that. A size rule
+# with no check drifts back, so the limit is measured here on every run.
+# See CHAT-nxbtadan and the section "The archive" in the register.
+REGISTER="$ROOT/forward-register.md"
+REGISTER_MAX=65536
+register_bytes="$(wc -c < "$REGISTER" | tr -d ' ')"
+if [ "$register_bytes" -gt "$REGISTER_MAX" ]; then
+    echo "REGISTER TOO LARGE — forward-register.md is $register_bytes bytes, limit $REGISTER_MAX:"
+    echo "  → move the oldest dated sections to their period archive"
+    echo
+    status=1
+fi
 
 if [ -n "$actual" ]; then
     echo "failing modules:"

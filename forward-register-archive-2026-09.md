@@ -1,0 +1,2502 @@
+# Forward Register Archive — 2026-09
+
+Sections of `forward-register.md` from the 2026-09 period, kept verbatim. They
+moved here on 2026-10-15, when the live file gained a 64 KB limit. Nothing
+imports this file. **One section carries no date in its heading**, and it sits
+with the September sections it belongs to.
+
+## Send path and B8/B9 (2026-09-01)
+
+`CHAT-qonhhtuq` (B8) and `CHAT-ouzjdxun` (B9) are done and merged through
+PR #59, merge commit `83eaa2d1`. The first interactive shell `send`
+attempt failed twice: `For input string: "_"` client-side, then
+`Object not Found` server-side. Each error was a separate defect.
+
+Three facts that are expensive to relearn:
+
+1. **A provider factory method is not a bean.** The pubsub providers were
+   `@Component` classes whose `pubSubService()` constructed a new object
+   per call. Every Spring call site got its own instance. `@Configuration`
+   plus `@Bean` is what gives shared state, and the memory persistence
+   providers already used that pattern. Lite `@Bean` on a `@Component`
+   does not intercept calls; full-mode `@Configuration` does.
+2. **The memory backend keeps all pubsub state in instance maps.** With
+   split instances, `open()` and `sendMessage()` disagree on whether a
+   topic exists, and the error surfaced as the generic
+   `Object not Found`. The redis and kafka providers keep part of their
+   state externally, so the same split degrades quietly there.
+3. **`send` had zero test coverage, in any era.** That is why B8 and B9
+   coexisted for years. `LongPubSubCommandsTests` now pins both paths:
+   send by name, send by id. A server-code change requires an image
+   rebuild (`-Ptest-build`) before `-Pintegration` can see it.
+
+The sender identity in `PubSubCommands.send` is still hardcoded
+(`identity("_")`), and the `TODO` comments in that method stand. Not
+filed; owner judgment.
+
+## Topic name uniqueness (2026-09-01)
+
+`CHAT-qktlglfa` is done and merged through PR #61, merge commit
+`5c7fd056`. The decision is the owner's: a topic name names one room,
+and a second add with the same name fails with `DuplicateException`.
+
+Two facts that are expensive to relearn:
+
+1. **The index schemas never enforced uniqueness.** Cassandra's
+   `chat_room_name` primary key is `(name, room_id)`, so a duplicate
+   name inserts a second row. `findByKeyName` returns a `Mono`, so the
+   lookup took the newest row and silently orphaned the older room.
+   The memory deployment uses the Lucene index, where `findBy` returns
+   every match and `getRoomByName`'s `single()` threw a raw
+   `IllegalStateException`. Same action, two undesigned outcomes.
+2. **Enforcement sits in the composite, not the stores.** `addRoom`
+   checks `findBy(...).hasElements()` before creating. No backend ever
+   holds a duplicate, so `single()` in `getRoomByName` stays safe. The
+   check is check-then-act, not atomic. Two concurrent adds of one name
+   can both pass it. The stores offer no conditional write on the
+   index, so closing that race needs a design decision, not a patch.
+
+Not filed, recorded here so nobody rederives them: the cassandra index
+`rem` deletes `ChatTopicName` with the name `""`, so it never matches
+the real row and index removal is broken on that backend.
+`MemoryTopicPubSubService.listenTo` uses `getOrPut` and silently opens a
+sink for a topic that was never opened.
+
+## Message vector recall (2026-09-01)
+
+- New modules `chat-vector-simple` and `chat-vector-redis` provide the
+  `VectorStore` bean. They are gated on `app.service.core.vector`. No deploy
+  yml sets the selector yet: the vector and embedding selectors and the
+  `app.controller.recall` flag are test-only until the gateway embedding
+  integration lands.
+- Interim capability wiring: `VectorSelectorValidationConfiguration`
+  (chat-core) fails startup when `app.service.core.vector` and
+  `app.service.core.embedding` are set as an incomplete or illegal pair.
+  `@ConditionalOnProperty` stands in for `@ProvidesCapability` until the
+  capability mechanism lands.
+- The Redis vector path is Jedis-backed (Spring AI `RedisVectorStore`). The
+  repo data path stays Lettuce. Redis Stack is required for the Redis vector
+  tests.
+- Vector tests claim no node id: they activate memory key and persistence.
+  See docs/NODEID-CLAIM.md.
+- Two facts that cost time, recorded so nobody rederives them:
+  1. **`chat-core` does not enable the Kotlin all-open compiler plugin.** The
+     module declares the `kotlin-maven-allopen` dependency, but it has no
+     `<compilerPlugins><plugin>spring</plugin></compilerPlugins>` block. A
+     `@Configuration` class in `chat-core` must be `open`, and its `@Bean`
+     methods must be `open`. `chat-service-composite`,
+     `chat-service-controller`, and both vector modules do enable the plugin.
+  2. **`RSocketServerTestConfiguration` carries a bare `@ComponentScan`.** It
+     roots at `com.demo.chat.test.rsocket`, so every `@Controller` under that
+     package enters every RSocket test context. Put a new test controller
+     outside that package.
+
+## Toolchain modernization wave 1 (2026-09-03/05)
+
+Parent issue `CHAT-owiksxvz`. Seven commits on `message-vector-recall`. None is
+pushed. Head `b01d18e8`.
+
+Why this work started: phase 2 of vector search needs the Vectors library at
+https://integrallis.github.io/vectors/. That library needs JDK 25. The build
+targeted JDK 17 and Kotlin 1.8.0.
+
+### What landed
+
+| Commit | Issue | What |
+|--------|-------|------|
+| `08f276e6` | `CHAT-onzqrqox` | Removed `spring.version`, `jackson.version`, `io-reactor.version`, `spring-data-elastic.version`, and `lognet.version`. All five sat below the version the Boot BOM manages. |
+| `d9728bc8` | `CHAT-adezxbxs` | Removed the `spring-security.version` pin `6.1.0-M2` from `chat-shell` and `chat-authorization-server`. That value was a milestone build. |
+| `086e7f13` | `CHAT-gvrvfchz` | Fixed two malformed Maven declarations. `mvn validate` now prints no model warning. |
+| `fca1712c` | `CHAT-ornxhhcg` | Kotlin 1.8.0 to 1.9.25. kotlinx-serialization 1.2.2 to 1.6.3. `jvmTarget` stays 17. |
+| `a9dd3026` | `CHAT-dzvncoco` | Patch-line refresh. Spring Shell 3.0.0 to 3.4.3. |
+| `dda66dd3` | `CHAT-hduoesfr` | Spring Boot 3.3.13 to 3.5.16. Spring Cloud BOM 2023.0.6 to 2025.0.3. `java.version` stays 17. |
+| `b01d18e8` | `CHAT-yjmpjigt` | Removed the redundant `testcontainers.version` override and its stale comment, in the root pom and in `chat-shell`. |
+
+### The finding that reshaped the plan
+
+Boot 3.3.13 supports Java 17 through 23. Boot 3.5.16 supports Java 17 through 25.
+So JDK 25 does not need Spring Boot 4. A minor bump inside the 3.x line unlocks it.
+
+Spring Boot 4 and Spring AI 2.0 are now a parallel track. Neither blocks vector
+search. The critical path to phase 2 is now:
+
+`CHAT-dixbadbc` Kotlin 2.x, then `CHAT-hczlsjqu` JDK 25, then `CHAT-feodvffh` Vectors.
+
+### Verified facts, checked on 2026-09-03 and 2026-09-05
+
+- Boot 3.5.16 supports Java 17 to 25. It needs Spring Framework 6.2.19 or above.
+  Source: https://docs.spring.io/spring-boot/3.5/system-requirements.html
+- Vectors needs JDK 25. It needs `--add-modules jdk.incubator.vector`. The Vector
+  API is still an incubator module. Source: https://github.com/integrallis/vectors
+- `com.integrallis:vectors-spring-ai:0.1.19` declares no Spring AI dependency. The
+  module uses `compileOnly` for Spring AI. The consumer BOM selects the version.
+  So the adapter works with the pinned Spring AI 1.0.3. Spike `CHAT-uevmymkw`.
+- Boot 3.5.16 manages testcontainers at 1.21.4. The removed override set the same
+  value. `chat-shell` still resolves 1.21.4 from the BOM.
+- The `lognet` gRPC starter is gone from the repo. It was the first named blocking
+  risk for Boot 4. That risk is closed. Spring Shell is the last starter risk.
+
+### Build proof at `b01d18e8`
+
+- Default mode passes. The full reactor reports 29 modules SUCCESS.
+- Integration mode passes. `build-health.sh --integration --online` exits 0.
+- The integration verify at `dda66dd3` started 28 containers. It ran 736 tests
+  with zero failures and 52 skipped. Docker Engine reported 29.7.2.
+- `mvn -o -B validate` prints zero Maven model warnings.
+
+### Traps found in this work
+
+- **An offline build fails at `chat-webflux` after the Boot 3.5 move.** Boot 3.5.16
+  pulls `org.springframework.restdocs:spring-restdocs-asciidoctor:3.0.6`. Boot
+  3.3.13 managed an older version. A repository cache from before `dda66dd3` does
+  not hold 3.0.6. The asciidoctor goal then fails. The tests all pass first, so the
+  failure looks unrelated to the build. Prime the CI cache once after this commit.
+- **`drift check` and `git diff --check` cannot prove a removal is complete.** Both
+  inspect what changed. Neither reports what a task missed. The first `CHAT-yjmpjigt`
+  commit left `chat-shell/pom.xml` untouched, and all three reported checks passed.
+  A text search for the stale comment also passed, because `chat-shell` never held
+  that comment. Only `dependency:tree` and the container tests proved the state.
+
+### Open, not started
+
+- `CHAT-dixbadbc` Kotlin 2.x scope. Next on the critical path. Its first input is
+  the deprecation list from `CHAT-ornxhhcg`. Its named risk is the all-open
+  compiler plugin behaviour under K2. Every Spring `@Configuration` class in the
+  repo depends on that plugin.
+- `CHAT-incuynpc`. Both testcontainers dependencies in `chat-shell` resolve at
+  compile scope, not test scope. The pom declares no scope element. This predates
+  wave 1. Removing the version pins made it visible in the dependency tree.
+- `CHAT-pkolwuqm` Boot 4 and `CHAT-ygllyglb` Spring AI 2.0. Parallel track.
+
+## RSocket index query payload binding (2026-09-06)
+
+Issue `CHAT-fjhlnakc`.
+
+Spring 6.2 exposed an index-controller type erasure bug. The deployed RSocket
+index controllers used a generic `Q` query parameter. The server decoded query
+payloads as `LinkedHashMap`. Lucene index services require `IndexSearchRequest`.
+
+The controller layer now binds query payloads explicitly:
+
+- Lucene index controllers bind `IndexSearchRequest`.
+- Cassandra index controllers bind `Map<String,String>`.
+- The unused generic controller and mapping interface are removed.
+
+Proof:
+
+- `mvn -o -B -pl chat-client-rsocket -am -Dtest=MessageIndexRequesterTests,KeyValueIndexRequesterTests -Dsurefire.failIfNoSpecifiedTests=false test` passed.
+- `git diff --check` passed.
+- `drift check` returned ok.
+
+## JDK 25 vector runtime flags (2026-09-06)
+
+Issue `CHAT-eroapfub`.
+
+### What changed
+
+- Added `chat-vector-embedded` as the narrow compile and test ground for the
+  JDK Vector API.
+- Added `--add-modules jdk.incubator.vector` only to `chat-vector-embedded`.
+- Added `--enable-native-access=ALL-UNNAMED` to generated deploy runtime flags.
+- Added the native access flag to the static memory integration image flags.
+- Added the native access flag to legacy Redis deploy startup.
+- Added the native access flag to GraalVM native build arguments.
+
+### Flag reach
+
+Keep the incubator Vector API flag narrow. Only code that compiles or loads
+`jdk.incubator.vector` receives `--add-modules jdk.incubator.vector`.
+
+Keep native access broad for deploy runtimes. Netty uses native access on Java
+25. Future JDKs may block that path without `--enable-native-access=ALL-UNNAMED`.
+
+### Proof
+
+- `mvn -o -B -pl chat-vector-embedded test` passed.
+- `shell-scripts/test-flags.sh` passed all 15 golden cases.
+- The user reported the stacked `mvn -B clean verify -Ptest-build,integration -fae`
+  proof passed.
+
+## Toolchain modernization wave 2 (2026-09-05/06)
+
+Wave 1 ended at Spring Boot 3.5.16 on Java 17. Wave 2 finished the toolchain.
+
+| PR | Issue | What |
+|----|-------|------|
+| #64 | `CHAT-dixbadbc` | Kotlin 1.9.25 to 2.4.10 |
+| #65 | `CHAT-hczlsjqu` | `java.version` 17 to 25, and both CI jobs to JDK 25 |
+
+### Kotlin 2.x was five deletions
+
+The scope was measured before it was written. A probe with
+`-Dkotlin.version=2.4.10` failed five modules, and every failure read
+`Language version 1.9 is no longer supported`. No failure named a Kotlin source
+file.
+
+The cause was five hardcoded `<languageVersion>` elements. Delete them and the
+whole reactor compiles and tests clean. **No Kotlin source needed a change.**
+
+Kotlin warnings fell from 214 to 183. They did not reach zero. An earlier claim of
+zero came from searching for the string `warning:`, which Kotlin does not use.
+
+### JDK 25 needed Boot 3.5, not Boot 4
+
+Boot 3.3.13 supports Java 17 through 23. Boot 3.5.16 supports Java 17 through 25.
+That single fact removed Spring Boot 4 from the critical path and is why wave 1
+ended where it did.
+
+`java.version` drives two things: the compiler release and `BP_JVM_VERSION` for
+the images. Both moved together.
+
+The CI change had to ship in the same pull request. A JDK 17 toolchain cannot
+compile at release 25, so master breaks if the pom change lands alone.
+
+### Traps
+
+- **Do not check `java.version` with `mvn help:evaluate`.** The name is also a JVM
+  system property and it shadows the pom value. The goal reported `21.0.2` while
+  the pom said 25 and the compiler emitted class version 69. Read the class file
+  instead. Java 17 is major version 61, Java 21 is 65, Java 25 is 69.
+- **The build JDK and the image JRE differ.** The buildpack supplies its own Java
+  25 runtime. It does not copy the build JDK. Both are Java 25.
+
+## Message vector recall, embedded provider (2026-09-06/08)
+
+`CHAT-feodvffh` is done. All seven children are done. This is phase 2 of vector
+search.
+
+| PR | Issue | What |
+|----|-------|------|
+| #69 | `CHAT-ciuqgqge` | The Vectors adapter, pinned at 0.1.20, with a compile proof |
+| #70 | `CHAT-zsnzesqp`, `CHAT-sbpqlmki`, `CHAT-imnzrkci` | The configuration behind the selector, the `embedded` pair, and a boot test |
+
+### What exists
+
+`chat-vector-embedded` supplies a `VectorStore` when `app.service.core.vector` is
+`embedded`. It uses `com.integrallis:vectors-spring-ai`, an in-process store built
+on the JDK Vector API.
+
+The adapter declares Spring AI as `compileOnly`, so the consumer BOM picks the
+version. It binds to the pinned Spring AI 1.0.3. Spring Boot 4 and Spring AI 2.0
+are not needed for it.
+
+### Two decisions, both measured or stated
+
+**Index: FLAT, cosine, no quantization.** Measured on this hardware at 256
+dimensions and topK 50:
+
+| Vectors | Build | Query |
+|---------|-------|-------|
+| 1000 | 62 ms | 0.165 ms |
+| 10000 | 96 ms | 0.937 ms |
+| 100000 | 541 ms | 8.295 ms |
+
+`RecallRequestValidation` rejects a limit above 50, so topK 50 is the worst case.
+Revisit above 100000 vectors in one collection, where the linear cost stops being
+comfortable. Do not choose `CUVS_BRUTEFORCE` or `CUVS_CAGRA`; those are GPU index
+types.
+
+**Storage: rebuild on failure.** The owner decided this. The store is a derived
+cache and the persisted messages are the source of truth. So the default path is a
+temporary directory, container storage is ephemeral, and no deployment mounts a
+volume. That also closes the `app.nodeid` question, because per instance storage
+cannot be shared.
+
+### Three choices the tasks did not name
+
+1. The dimension comes from `embeddingModel.dimensions()`, not a property. A
+   property can disagree with the model, and the collection rejects a wrong width
+   only at the first add.
+2. Both beans declare `destroyMethod = "close"`. `VectorCollection` and
+   `JavaVectorsVectorStore` are `AutoCloseable`.
+3. `chat-vector-embedded` declares `kotlin-stdlib` itself. It has no `chat-core`
+   dependency, so it does not inherit the Kotlin runtime.
+
+### The Vector API flag is not optional and does not degrade
+
+A boot test that only asserted the bean type **passed** without
+`--add-modules jdk.incubator.vector`. It never touched the distance kernels, so it
+proved nothing.
+
+Adding a real `add` and `similaritySearch` made it fail:
+
+```
+java.lang.NoClassDefFoundError: jdk/incubator/vector/FloatVector
+  at com.integrallis.vectors.core.PanamaConstants.<clinit>
+```
+
+The library logs `provider panama unavailable, trying next`, then dies inside its
+own fallback logging, because that path reads `PanamaConstants`. **There is no
+scalar fallback.** A missing flag is a hard failure.
+
+`VectorSelectorValidation` now rejects `vector=embedded` at startup when
+`jdk.incubator.vector` is absent, so the failure lands at startup rather than at
+the first recall. The check runs after the legal pair check.
+
+### What phase 2 did not deliver
+
+- **No deployment sets `app.service.core.vector`.** Every proof is a test.
+- **No rebuild path.** `CHAT-oghjsnad` holds it for a following sprint.
+- **Embeddings are still mock only.** `DummyEmbeddingModel` makes character bigram
+  vectors at 256 dimensions. It is substring matching, not semantics. `local` and
+  `gateway` are reserved and fail at startup. **The store is real. The vectors are
+  not.** No issue tracks the real embedding model.
+
+## Dependency hygiene (2026-09-08/10)
+
+Seven pull requests, #72 to #78. `CHAT-mgtbicsq` is done.
+
+| PR | Issue | What |
+|----|-------|------|
+| #72 | `CHAT-ixazwico` | Removed the `jvmTarget` 1.8 pin in `chat-index-elastic` |
+| #73 | `CHAT-hcgmcuxp` | Removed inline pins below the Boot BOM, across 19 poms |
+| #74 | `CHAT-pjyvoeil` | Moved the Cassandra driver to the `org.apache.cassandra` groupId |
+| #75 | `CHAT-mgtbicsq` | Central `dependencyManagement`, a guard script, and the OWASP workflow |
+| #76 | `CHAT-mgtbicsq` | The audit gate at CVSS 9, plugin pinned |
+| #77 | `CHAT-xojupyhn` | `docs/DEPENDENCY-AUDIT.md` |
+| #78 | `CHAT-mgtbicsq` | The two enforcer rules |
+
+### One defect class, found three times
+
+A stale local override that the build accepts in silence.
+
+- `languageVersion` pins blocked Kotlin 2.4. Found only when the compiler rejected
+  them.
+- A `jvmTarget` 1.8 pin made `chat-index-elastic` emit **class version 52, which is
+  Java 8**, inside a Java 25 build. The issue called it latent and harmless. It was
+  not. Only reading the class file shows it.
+- Inline versions beat the managed ones. `jackson-dataformat-cbor` was pinned at
+  2.9.5 in five modules including `chat-core`, against a managed 2.21.4.
+  `reactor-core` was pinned at 3.3.0.RELEASE against a managed 3.7.19.
+
+Wave 1 removed five downward **properties**. It never looked at version elements
+inside dependency declarations, which is where these lived.
+
+### The rule, and three checks that hold it
+
+No module declares a third-party version. A BOM managed artifact is declared with
+no version. An unmanaged artifact takes its version from the parent
+`dependencyManagement`.
+
+- `shell-scripts/check-dependency-versions.sh`, or `just check-deps`, fails when a
+  module pom declares a third-party version.
+- `requireUpperBoundDeps` fails when a resolved version is lower than another path
+  requires.
+- `dependencyConvergence` fails when one artifact resolves to two versions.
+
+The first catches a pin being written. The other two catch the tree drifting
+underneath it. Both enforcer rules run in the `validate` phase in all 35 modules.
+
+**A future enforcer failure is a real tree change, not noise. Fix it with a parent
+entry, never a module pin.**
+
+### Two corrections of record
+
+- **The 106 conflicts were not 106 problems.** That count came from every
+  `omitted for conflict` line in a verbose tree. Most are benign, because Maven
+  already resolves the higher version. Only five artifacts violated a rule:
+  `org.jetbrains:annotations`, `HdrHistogram`, `snakeyaml`, `nimbus-jose-jwt`,
+  `httpclient`. Run the enforcer rule to count violations. Do not grep the tree.
+- **`spring-boot-starter-oauth2-client:2.5.0` and `spring-security-messaging:5.4.6`
+  are commented out.** A survey script read XML comments as declarations and
+  reported a Boot 2 starter in a Boot 3.5 build. `dependency:tree` showed neither,
+  and it was right.
+
+### Traps
+
+- **`native-protocol` kept the `com.datastax.oss` groupId.** Only the
+  `java-driver` artifacts moved to `org.apache.cassandra`. A blanket groupId change
+  breaks the build.
+- **A plugin dependency must carry its own version.** `pluginManagement` does not
+  cover it. The guard script excludes anything inside `<build>` for that reason.
+- **A scoped Maven run can cache a failed lookup of a `com.demo` artifact.** Later
+  runs then fail with an error naming `repo.spring.io` rather than the real cause.
+  Clear it with `find ~/.m2/repository/com/demo -name '*.lastUpdated' -delete` and
+  use the full reactor.
+
+## The first dependency audit (2026-09-10)
+
+Run `34425935490`. It took 56 minutes on a cold NVD cache and **failed at the CVSS
+9 gate, which is the intended behaviour**. Eleven artifacts carry a finding at or
+above 9.0. `CHAT-icgifzbv` holds the triage.
+
+### This changes the reason for Spring Boot 4
+
+Five of the worst findings sit inside versions that **Boot 3.5.16 chooses**, not
+versions this project picks:
+
+- `spring-core` 6.2.19: four findings at 9.8, one at 9.1.
+- `tomcat-embed-core` 10.1.55: eight findings, two at 9.8.
+- `spring-security-core` and `spring-security-oauth2-resource-server` 6.5.11:
+  CVE-2026-59270 at 9.1.
+
+**3.5.16 is the last release of the 3.5 line.** Maven Central lists no 3.5.17. So
+there is no patch to take, and the only route to a fixed Spring Framework, Tomcat
+and Spring Security is Spring Boot 4. Boot 4.1.1 is the current release.
+
+`CHAT-pkolwuqm` was written as a currency upgrade. It is now security driven, and
+its priority is high.
+
+`CHAT-ygllyglb` is the same. Spring AI 1.0.3 carries CVE-2026-22738 at 9.8, and the
+reason for that pin has expired. `CHAT-gidbchkx` is the same. Netty 4.1.135.Final
+carries CVE-2026-56820 at 9.1 beside the `Unsafe` deprecation already recorded
+there.
+
+### One large false positive
+
+`chat-persistence-xstream` reported nine XStream CVEs, including CVE-2021-21345 at
+9.9. **The module has no XStream dependency.** dependency-check matched the module
+artifactId against the XStream product CPE and read our version `0.0.1` as XStream
+`0.0.1`.
+
+Check `spring-cloud-consul-config` the same way. Its CPE reads
+`spring_cloud_config`, a different product.
+
+No suppression file exists. `CHAT-icgifzbv` adds one.
+
+### Two smaller real findings
+
+- `kotlin-stdlib-common` 1.9.22 is a stale transitive on a Kotlin 2.4.10 build.
+  Find what drags it in.
+- `kotlin-stdlib` 2.4.10 shows CVE-2026-53914 at 9.8 on the current release. Check
+  whether a fixed version exists at all.
+
+## The key-value index (2026-09-11)
+
+PR #83, merge commit `f9129f28`. Issues `CHAT-sgdtqhof` and `CHAT-bgumjhdn`.
+
+**Neither backend had a working key-value index.** The work started as a step
+towards root-key discovery for the vector index job record. It stands on its own,
+and the job design does not depend on it.
+
+- The lucene index raised `ConverterNotFoundException` on its first write, in every
+  composition. `IndexEntryEncoder.ofConversionService` converted the `KeyValuePair`
+  wrapper, not the value. It also cast the field list to `List<Pair<String,
+  String>>`. Neither mattered, because the only converter implements
+  `com.demo.chat.convert.Converter`, and `Codecs.kt:12` shows that interface no
+  longer extends the Spring one. The inheritance is commented out in place. A
+  `ConversionService` never held that converter, and nothing referenced it.
+- `CassandraIndexServices.KVPairIndex()` returned `DummyKeyValueIndexService`.
+  Writes vanished and reads returned empty, with no error.
+
+**The field contract is now shared.** `KeyValueIndexFields` in `chat-core` names the
+index fields of one value type. `TypedKeyValueIndexFields` selects them by the
+runtime class of a value. Both backends take the same instance, so one value type
+indexes the same fields everywhere. A module registers its own type with a
+`KeyValueIndexFieldsEntry` bean.
+
+An unregistered type throws and names the registered types. It does not index
+nothing. An index that silently stored no fields would answer every later query with
+an empty result, and an empty result cannot be told apart from a real miss.
+
+### Four facts that are expensive to relearn
+
+1. **A key-value entry is mutable, so both indexes replace.** An insert alone leaves
+   the entry of the earlier value, because a changed value writes a different
+   document or a different primary key. A job that reached `SUCCEEDED` still
+   answered a query for `RUNNING`. Both indexes now remove before they write.
+2. **The cassandra index needs two tables.** `kv_pair_index` partitions on the field
+   and the value. `kv_pair_index_by_id` partitions on the entity id, because `rem`
+   receives only the entity key and cannot otherwise name the partitions that hold
+   its rows. `TopicIndex.rem` is the cautionary case. It builds a row with an empty
+   name, never matches, and index removal is quietly broken there.
+3. **A lucene removal must match an exact term.** The `key` field is analyzed.
+   StandardAnalyzer split a uuid into segments, and QueryParser joined them with OR
+   inside one required group, measured on lucene 8.7 as `+(key:550e8400 key:e29b
+   key:41d4 key:a716 key:446655440000)`. A document that shared one segment matched
+   the group, so removing one uuid deleted every document that shared a segment.
+   Every document now carries a `StringField` named `_key` that is not analyzed, and
+   `rem` matches it with a `Term`. **A hyphen can mean NOT in other query positions.
+   It created no prohibited clause for this input.**
+4. **`_key` is reserved.** An encoder can name any field. The encoded field is
+   analyzed and the internal field is not, so lucene refuses the document and
+   reports `cannot change field "_key"`. A replacement removes before it writes, so
+   the refusal arrives after the removal and the entry is lost.
+   `requireNoReservedField` rejects it first. The key-value index checks before the
+   removal, and `addEntry` checks again for a caller that adds without removing.
+
+### Three smaller results
+
+- **The fields are read before the removal, and once.** An unregistered type and a
+  reserved name both fail without destroying the entry that the index holds.
+  `LuceneIndex.addEntry` stores fields the caller already read, so the encoder runs
+  once per add.
+- **The authorization save path never stored anything.** It discarded both
+  publishers inside `doOnNext`, so neither write received a subscription. It now
+  subscribes both and blocks, like the two reads beside it.
+- **The exact removal sits in the base index**, so every lucene index gained it. The
+  blast radius is the user, message, topic, membership, and auth indexes, not the
+  key-value one alone.
+
+### Two test notes
+
+- **`IndexTests.should save and find many` is now open.** A mutable index replaces
+  the entry of a key, so two adds of one key give one result. The key-value subclass
+  overrides it with two keys.
+- **A random uuid pair cannot prove exact removal.** The tests use keys that share
+  their first segment on purpose. A cassandra test that stores one value twice
+  proves an upsert, not a replacement, so a changed-value test is a separate case.
+
+### Deferred
+
+`CHAT-aedloxwd` defines backend-neutral index field semantics. It is **not** a
+request to remove the runtime check. A typed field name would move the validation,
+not remove it. Only a closed and backend-neutral field namespace could remove it.
+The current limits are recorded on that issue. Start it when one required semantic
+exceeds the text pair model.
+
+## CI action versions (2026-09-11)
+
+PR #84, merge commit `b3d98cb2`. Issue `CHAT-xzhpuixd`.
+
+`actions/setup-java` moved from v4 to v5 in three places. `maven.yml` has one per
+job, and `dependency-audit.yml` has one.
+
+The only breaking change in v5.0.0 is the node 24 runtime. A runner must be
+v2.327.1 or newer. All three jobs run on `ubuntu-latest`, which meets that. v5
+changes no input and no default.
+
+**`dependency-audit.yml` is unproven.** It runs on a schedule, not on a pull
+request, so PR #84 never exercised it. Its next scheduled run is the first proof.
+
+v6 exists. It removes the legacy Adopt distributions, and it renames `jdkFile` to
+`jdk-file` with an alias. Neither reaches this repository, because every job uses
+`temurin` and no job uses `jdkFile`. A move to v6 is a separate decision.
+
+## Cassandra CI flake, another occurrence (2026-09-11)
+
+`CHAT-sgyaaivp`. Run `34647802262` on the PR #83 branch failed with the recorded
+signature. `CassandraDriverTimeoutException: Query timed out after PT2S`, every
+failure in `chat-persistence-cassandra`, and a failing class set that differs from
+the one recorded on master. A rerun of the same commit passed.
+
+Four runs on that branch, on code that only moves forward: three passed and one
+failed.
+
+**One caution for whoever fixes it.** PR #83 adds two tables to `keyspace-long.cql`
+and `keyspace-uuid.cql`. Those scripts run in the test setup that times out. The
+same schema was present in all four runs and three passed, so the added tables are
+not sufficient to cause the failure. Four runs cannot show whether they raise its
+probability. Do not read this as proof that schema size has no effect.
+
+## Vector reindex, work in flight (2026-09-11)
+
+`CHAT-oghjsnad`. Nothing of this is on `origin/master`.
+
+- The branch is `chat-oghjsnad-vector-reindex`, in `.worktrees/vector-reindex`, head
+  `cd993995`. It has no remote upstream.
+- **The design documents are local only.** Three documentation commits sit on the
+  main checkout's `master` at `af30dfd2` and were never pushed. `origin/master` does
+  not hold the spec or the plan.
+- The branch was rebased onto `f9129f28` after PR #83 merged. Two superseded
+  key-value commits were removed, because they carried the defective versions of
+  code that PR #83 fixed. The recovery branch is
+  `recovery/vector-reindex-pre-pr83-rebase` at `74eaf254`.
+- `CHAT-bvmevhpq`, `CHAT-mwvhqoyt`, and `CHAT-iqtgwcqa` are done on that branch.
+- **One design decision is open and blocking.** The coverage rule compares a covered
+  generation with a current generation, and two values carry that name. The
+  in-process counter restarts at zero on every process start, so a clean earlier run
+  and a fresh process both read zero. Under `trust=stored` that grants coverage with
+  no evidence. Both values must come from the durable record, or the in-process
+  counter must be seeded from the covering job.
+- Two items were deferred out of that design. `CHAT-edzvpxil` holds the message
+  handling policy mask. `CHAT-tekzakdd` holds a data stream or data view strategy,
+  so a rebuild stops reading every stored message.
+
+**Read every line above as of 2026-09-11.** Three of them no longer hold.
+Measured on 2026-09-15: the branch has a remote upstream, and PR #87 carries it
+against `master`. The blocking generation decision is closed, because the
+durable job record supplies both values. The spec and the plan are on the
+branch. See `Vector index job record` and `Embedding provider modules` below.
+
+## The AGENTS.md imports (2026-09-11)
+
+`AGENTS.md` imported `@FP_AGENTS.md` and `@continuity_brief.md`. Neither file
+existed on `origin/master`. The repository holds `FP_CLAUDE.md` and
+`forward-register.md`, so both imports were dangling.
+
+`@continuity_brief.md` now reads `@forward-register.md`. That file exists, and it is
+the register that `AGENTS.md` tells a reader to treat as live operational context.
+
+**`@FP_AGENTS.md` still names a file that `origin/master` does not hold.** It is left
+alone on purpose. The main checkout holds an uncommitted rename of `FP_CLAUDE.md` to
+`FP_AGENTS.md`. That rename resolves this import, and it belongs to the owner. A
+change from this branch would collide with it.
+
+## Vector index job record (2026-09-11/13)
+
+Issue `CHAT-fpwpfrfj`, under `CHAT-oghjsnad`. Fifteen tasks. Spec:
+`docs/superpowers/specs/2026-09-11-vector-index-run-record-design.md`. Plan:
+`docs/superpowers/plans/2026-09-11-vector-index-job-record.md`.
+
+Recall now reports the coverage of the newest trusted successful rebuild job,
+rather than the phase of the active job.
+
+### What exists
+
+- `IndexJob` and `JobRecord`, each with its own root key. A job owns one
+  persisted topic, and the topic key is the job root key.
+- `VectorIndexJobStore` writes the job through the key-value store, and it
+  creates the topic through persistence, the topic index, and `pubsub.open()`.
+- `ComposedJobRecordWriter` publishes progress messages. It never calls
+  `MessagingServiceImpl.send()`, so a job record never enters vector recall.
+- `VectorCoveragePolicy` selects the covering job. `app.vector.index.trust`
+  takes `none` or `stored`, and `none` is the default.
+- `MessageRecallResult` carries `indexComplete` beside the bounded hits. Both
+  transports answer with one object.
+- `VectorIndexStartupAction` releases stale jobs, selects coverage, adopts it,
+  and only then starts a rebuild when `app.vector.index.startup` is `rebuild`.
+- The `vectorindex` actuator endpoint returns the status and the recent jobs.
+
+### Four production defects that the tests found
+
+Three took their own issue. The fourth was repaired inside `CHAT-fpwpfrfj`, in
+revision `c7dac773`, because the owner review found it before Task 8 started and
+it sat inside the store that task built. None was repaired with a special case
+in the test that found it.
+
+1. `CHAT-jhfptxiw`. `topicIdToQuery` named `TopicIndexService.ID`, and the
+   message index stores a destination under `topic`. **Persisted room history
+   had never been returned from the index, on either backend.** Live delivery
+   hid it, because `listenTopic` concatenates the pub/sub stream after the
+   history.
+2. `CHAT-muuaovqn`. The embedded provider refuses a repeated document id, so
+   every rebuild after the first one failed in one process. `VectorWriteMode`
+   now follows the provider. Only `embedded` removes before it writes, because
+   a removal that removes nothing makes `RedisVectorStore` log an error.
+3. `CHAT-auglbxrm`. `JsonNodeToAnyConverter` had no null branch, so a null node
+   became the four character string `"null"`. Redis and RSocket both failed to
+   read an `IndexJob` back. A `String?` field would have taken that text in
+   silence.
+4. The root key of a stored job was never checked. A record under key A holding
+   key B would make the policy adopt B while A stayed clean. `readJob` compares
+   the two keys now.
+
+### Rules that are easy to lose
+
+- **A repair keeps the coverage of the older successful job.** So the index
+  reports complete while a repair runs, and the `SUCCEEDED` filter must run
+  before the sort. Filtering after it would select the repair and report no
+  coverage.
+- **The write mode is per provider, and an unknown selector is refused.** A
+  default would give a new provider a policy with no decision, and the wrong
+  policy is silent on three of the four.
+- **The remove and write pair is not atomic, and the interval has no duration
+  bound.** It runs from the completion of the removal to the completion of the
+  write, which includes the embedding call and the provider commit. The index
+  reports complete throughout, so this is an accepted false positive.
+- **The claim generation cannot identify a run.** An invalidation raises it
+  during the same run, so `markActiveJob` guards on the running flag instead.
+- **An actuator operation may answer with a publisher.**
+  `ReactiveWebOperationAdapter` unwraps a `Mono`, so nothing blocks. A
+  `block(Duration)` throws outside the chain, where `onErrorResume` cannot see
+  it.
+- **An operator must enable an actuator id and expose it.**
+  `management-defaults.yml` disables endpoints by default, so exposure alone
+  answers 404.
+- **A scoped `-pl` run resolves upstream modules from `~/.m2`.** A stale jar
+  there reports a missing bean that the current source defines. Boot tests need
+  the full reactor.
+
+### What this work did not deliver
+
+- **No deployment sets `app.service.core.vector`.** Every proof is a test.
+- **Embeddings are still the mock model.** `DummyEmbeddingModel` makes character
+  bigram vectors. `local` and `gateway` still fail at startup.
+- **No job topic retention.** The first version reads every matching job topic.
+- **No deployment sets the actuator id or the exposure value.**
+- `CHAT-edzvpxil` the handling policy mask, and `CHAT-tekzakdd` a data stream in
+  place of the full scan, both stay out of scope.
+
+### Open, low priority
+
+- `CHAT-aoqghxmf`. An illegal selector pair fails with a missing provider bean
+  rather than the validation message, because the validation runs after regular
+  singleton creation.
+- `CHAT-cxduiwjj`. One reindex test is timing sensitive. It failed once under
+  load and passed every later run.
+
+### Gate at the end of the work
+
+- Default mode: 750 tests, 0 failures, 30 skipped.
+- Integration mode: 964 tests, 0 failures, 52 skipped.
+- `drift check` and `git diff --check` pass.
+
+## Where the next session starts
+
+The owner's direction on 2026-09-10: **move on to features. Make a security pass
+after vector lands.**
+
+### Vector is a provider, not yet a feature
+
+Three things stand between what exists and something usable. The first has no
+issue.
+
+1. **A real embedding model.** No issue tracks it. `local` and `gateway` are
+   reserved and fail at startup. The open decision is `local`, meaning in process
+   with a large model dependency and CPU cost, against `gateway`, meaning a network
+   hop, credentials, and a new failure mode on the recall path. **That decision is
+   the owner's.**
+2. **A deployment that sets the selector.** No yml sets
+   `app.service.core.vector`.
+3. **The rebuild path.** `CHAT-oghjsnad`. **Done on 2026-09-14**, verified at
+   `6cf2d193`. The rebuild lives in `MessageReindexService`, and recall answers
+   with one `MessageRecallResult` that carries `indexComplete`.
+
+### Are the embedding model and the reindex parallel
+
+Mostly yes. The file overlap is one line in `VectorSelectorValidation.legalPairs`.
+
+**They collide on a decision, not on code.** The reindex trigger, meaning a startup
+check against an operator command against a lazy rebuild, depends on how long a
+rebuild takes. The benchmark measured 541 ms for 100000 vectors **excluding
+embedding time**. Embedding is free with the mock model and will dominate with a
+real one. A `local` model and a `gateway` round trip give very different answers,
+and one of them makes rebuild at startup untenable.
+
+So the reindex **mechanism** is parallel safe and can be built against the mock
+model. The reindex **trigger** is not, and should be a separate task that lands
+after the embedding model reports a throughput number.
+
+### Open issues at high priority
+
+**This list was written on 2026-09-11 and it is stale.** Four of its six
+entries are done: `CHAT-pkolwuqm` Boot 4, `CHAT-gidbchkx` Netty,
+`CHAT-icgifzbv` audit triage, and `CHAT-ygllyglb` Spring AI 2.0.
+See the ordered list at the end of this file, written on 2026-09-21.
+
+`CHAT-sgyaaivp` Cassandra CI flake **closed on 2026-09-28 in PR #144**, and it
+was never in the list above. The driver kept its own `PT2S` default, because
+neither session config read `spring.cassandra.request.timeout`. Only
+`CHAT-cikgeefc` build health stays open from this pair.
+
+Open and not yet started, from the 2026-09-11 work: `CHAT-aedloxwd` index field
+semantics, `CHAT-edzvpxil` message handling policy mask, `CHAT-tekzakdd` data stream
+or data view for message scans. All three are deliberately deferred.
+
+`CHAT-sgyaaivp` is worth doing before any Cassandra work. While the integration job
+alternates red on unchanged code, every review has to re-derive whether a failure is
+real.
+
+The capability mechanism `CHAT-zqyrsrrg` still has six decomposed tasks and has not
+been started since the original design sprint.
+
+## Embedding provider modules (2026-09-14/15)
+
+`CHAT-etfnihnu`. Spec:
+`docs/superpowers/specs/2026-09-13-embedding-provider-modules-design.md`. Plan:
+`docs/superpowers/plans/2026-09-14-embedding-provider-modules.md`. Operator
+document: `docs/EMBEDDING-PROVIDERS.md`.
+
+### The defect this work closes
+
+`chat-deploy-memory` declared the `chat-core` test jar with no scope element,
+so it resolved at compile. The only `EmbeddingModel` in this repository lived
+in that jar, which means the recall feature ran on a mock in every test and
+would have failed at a launch.
+
+**No test could detect it.** A Spring Boot test puts test jars on its classpath
+by construction, so every test saw a model that no deployment would have.
+
+### What exists now
+
+- `chat-embedding-openai` supplies an `EmbeddingModel` when
+  `app.service.core.embedding` is `openai`. It reaches any OpenAI-compatible
+  endpoint through a base URL.
+- `chat-embedding-local` supplies one when the value is `local`. It loads an
+  ONNX model in the process.
+- Neither module depends on a Spring AI starter. A starter carries
+  auto-configuration, both modules sit on one classpath, and two starters would
+  let Spring AI build models that no selector asked for.
+- Both deployments declare both modules. `chat-deploy-memory` moved its test
+  jar to test scope.
+- The legal selector pair set grew from four to ten. A mock vector store
+  refuses a production model.
+
+### The identity
+
+`app.service.core.embedding.identity` names the model that wrote a corpus, and
+**the operator names it.** The code never derives one, because a base URL and a
+model name do not identify the output of a remote service. A compatible service
+can change its model behind both values and return different vectors for the
+same text.
+
+The value reaches five call sites: the redis index name, the embedded
+collection directory, the local resource cache directory, every new `IndexJob`,
+and the coverage filter.
+
+**A record written before this change carries null, and null never covers.** So
+the first start after this change reports an incomplete index and waits for a
+rebuild. Every existing redis index and every existing embedded directory
+orphans, because neither name carries an identity segment.
+
+### Two gates, and why each exists
+
+`just check-production-classpath` holds two rules. Rule one reads the poms and
+requires test scope on every test-jar dependency. Rule two resolves the runtime
+classpath of each module and refuses a known test library there.
+
+**Neither rule replaces the other.** A transitive leak never appears in a pom.
+An ordinary jar such as `testcontainers` is not a test jar, so rule one cannot
+see it either.
+
+`shell-scripts/vector/gate-embedding-launch.sh` runs the feature outside a test
+classpath. It packages a deployment, asserts that no test output is inside the
+artifact, launches it against a synthetic OpenAI endpoint, seeds, rebuilds, and
+searches. **Every test gate in this repository puts test outputs on the
+classpath, which is what hid the original defect.** That is the whole reason
+this gate exists, and it earned its place on its first run by finding a defect
+that no test could see.
+
+### Traps found, each of which cost a cycle
+
+- **A `@JvmInline value class` cannot be a Spring bean.** Kotlin unboxes a value
+  class at a return type, so the `@Bean` method compiled to
+  `embeddingIdentity-Xzz6TTw()` returning `java.lang.String`. `EmbeddingIdentity`
+  is a data class for that reason.
+- **A `SmartInitializingSingleton` check runs too late.** It runs after every
+  singleton exists, so an incomplete selector pair failed with
+  `NoSuchBeanDefinitionException` and an illegal pair loaded an 86.2 MiB model
+  before anything reported the pair. The selector check is a
+  `BeanFactoryPostProcessor` now.
+- **`TransformersEmbeddingModel` implements `InitializingBean`.** A factory
+  method that also calls `afterPropertiesSet` loads the model twice and builds
+  two ONNX sessions.
+- **Kotlin nests a block comment.** An actuator path pattern inside a KDoc opens
+  a nested comment, and the file fails to compile with `Unclosed comment` at the
+  last line.
+- **`conda activate base` does not put miniforge first on the PATH here.** A
+  bare `python3` resolves to the homebrew interpreter. Both new scripts name
+  `$CONDA_PREFIX/bin/python3` and refuse anything outside miniforge.
+- **The `expose-webflux` profile cannot run in a reactor build.** It declares
+  its dependencies on the parent, so `chat-webflux` reads itself as a dependency
+  and maven stops before it builds. `-pl` does not avoid it. `CHAT-xwycjyla`
+  holds it. **Fixed on 2026-09-16. See the section below.**
+- **A Spring AI client sends a chunked request body.** A stub that reads only
+  `Content-Length` sees no input, answers a vector for no text, and the caller
+  fails inside `dimensions()`. Reactor Netty also pools connections, so a
+  HTTP/1.0 stub breaks the next request on that connection.
+- **The default Spring AI retry policy needs 19 minutes to give up.** Ten
+  attempts make nine waits of 2, 10, 50, and then six of 180 seconds.
+  `app.service.core.embedding.openai.max-attempts` exists so a test of a dead
+  endpoint can set 1.
+- **The REST recall route could not start beside the RSocket controllers.**
+  `MessageRecallController` implements `MessageRecallService` by delegation, so
+  two beans of that type existed on one classpath. `CoreRecallBeans` closes it,
+  and every controller takes that interface now.
+
+### What this work did not deliver
+
+- **No deployment yml sets the vector or embedding selectors.** Every
+  composition still starts with the feature off.
+- **No automated run calls a paid service.** Both real model procedures are
+  manual, and `docs/EMBEDDING-PROVIDERS.md` carries them.
+- **The house endpoint serves 768 and only 768.** A request for a narrower
+  width answered 768, and this provider does not truncate.
+
+## Vector index status contract (2026-09-16)
+
+`CHAT-cxduiwjj`. Spec:
+`docs/superpowers/specs/2026-09-16-vector-index-status-contract-design.md`.
+Plan: `docs/superpowers/plans/2026-09-16-vector-index-status-contract.md`.
+
+### The defect
+
+`MessageReindexServiceImpl.finishRun` clears the running flag with a
+synchronous `state.finish`, then returns a chain that emits a record and only
+then writes the durable job. So `running=false` arrives before the durable
+record is terminal.
+
+**Three readers assumed those were one fact.** The test helper
+`awaitFinished`, both scenarios of `docs/VECTOR-RECALL-API.md`, and the
+packaged launch gate. Two tests raced that window and failed three times in
+eight runs, and once in CI on master.
+
+The gate passed by luck rather than by correctness. It asserted that the newest
+job carried the identity, and `createJob` stamps the identity on the RUNNING
+record too, so it read the right value from the wrong record.
+
+### The contract
+
+`running` and `complete` report in-process state. `IndexJob.outcome` is the
+durable fact after a restart. `SUCCEEDED`, `FAILED`, and `RELEASED` are
+terminal, and **only `SUCCEEDED` proves that a rebuild did its work**.
+
+The production ordering did not change. `state.finish` still runs first, so a
+failed durable write cannot leave a run active forever.
+
+### The one production change
+
+`start()` answers with `VectorIndexTriggerResult`, which carries `accepted`
+beside the status. The status could not carry that fact: a rejected trigger and
+an accepted one both report `running=true`, because the running claim belongs to
+another run in the first case. A reader that could not tell them apart waited
+for a job that no call had created, and then reported a missing durable record.
+
+The read operation keeps its status and jobs shape. A read never asks whether it
+started anything, and a wire test pins that separation.
+
+### Two bounds, and two reports
+
+A reader waits under an outer bound for the run and an inner bound for the
+durable write. An expired outer bound says the run did not finish. An expired
+inner bound says the run ended with no durable record. **A reader that bounded
+only the second one would hang on a run that never ends.**
+
+### Traps found while building it
+
+- **`Mono.block(Duration)` throws its own timeout error rather than returning
+  null.** An elvis after it never runs, so a helper that used one could not name
+  which bound expired. Use `timeout` with an explicit error.
+- **A reactor stream carries no null**, so a poll of a nullable store reads
+  through `Mono.justOrEmpty`.
+- **The job store holds the RUNNING record from the start of a run.** A failed
+  terminal write leaves that record in place, so an assertion reads the outcome
+  rather than the emptiness of the store.
+- **A trailing operator on `Mono.defer` removes the inferred type.** The lambda
+  branches then need an explicit one.
+- **A double trigger does not prove the rejection path.** A rebuild of three
+  messages finishes before the second call arrives, so the second trigger is
+  accepted. That mutation exited 0 three times out of three. The deterministic
+  proof feeds the reader a rejected answer instead.
+
+### Measured
+
+- The class passes 12 times out of 12. The same loop failed 3 of 8 before.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.
+- Five gates each exit 0.
+
+## The expose profiles (2026-09-16)
+
+`CHAT-xwycjyla`.
+
+### The defect
+
+Four profiles declared their dependencies on the parent pom: `expose-rsocket`,
+`expose-webflux`, `expose-gateway`, and `e2ee`. Every module inherits a parent
+dependency, so each profile made one module a dependency of itself, and maven
+stopped the whole reactor before it built anything.
+
+```
+'dependencies.dependency.[com.demo:chat-webflux:0.0.1]' for
+com.demo:chat-webflux:0.0.1 is referencing itself
+```
+
+Measured on 2026-09-16: all four failed, and each named its own artifact.
+`-pl` does not avoid it, because maven reads every module of the reactor first.
+
+**The defect stayed hidden because no launch path builds a reactor.**
+`chat-build` runs maven with `cwd` set to one module directory, so the reactor
+never forms and the self reference never appears.
+
+### The fix
+
+The four profile ids stay on the parent and carry no dependency. Each of the
+five deploy modules declares the same ids with the dependencies it needs.
+
+- `chat-deploy` declares all four in full. It holds none of those artifacts.
+- The four backend modules already declare `chat-service-controller` and
+  `shared-deploy-configuration` at compile scope, so their `expose-rsocket`
+  profile is empty and their `expose-webflux` profile adds `chat-webflux`
+  alone.
+
+**An empty profile is deliberate.** The id must exist in the module that a
+single module build names, or `-Pexpose-rsocket` prints an activation warning.
+
+### Two facts that cost a measurement
+
+- **A profile dependency overrides the scope of a base declaration.**
+  `chat-deploy` declares `chat-webflux` at test scope for
+  `SecurityChainOwnershipTests`. Its `expose-webflux` profile declares the same
+  artifact with no scope, and the effective pom then reports compile. Maven
+  prints no duplicate warning. That is what the profile is for, and the test
+  scope still holds without it.
+- **`-Pdeploy` with `-am` nested one fat jar inside another.** The deploy
+  profile sets the Boot repackage skip to false for every module of the reactor
+  it runs in. A run of `-pl chat-deploy-memory -am` repackaged `chat-deploy` as
+  its own executable jar, and that 49 MiB file landed in `BOOT-INF/lib` of the
+  artifact. **Fixed on 2026-09-17 by the exec classifier. See the section
+  below.**
+
+### One dependency pin
+
+`chat-webflux` reaches `asm` 9.7.1 through `oauth2-oidc-sdk` and
+`accessors-smart`. The cassandra driver reaches `asm` 9.2 through `jnr-ffi`,
+and maven picks the nearer 9.2. `requireUpperBoundDeps` fails on that pair,
+which meets only under `-Pexpose-webflux` on a cassandra deployment. The parent
+pins 9.7.1, which is the rule this repository already follows for five other
+artifacts.
+
+### Measured
+
+- Each of the four profiles passes `mvn -o -B -P<id> validate` over the
+  reactor, and all four together pass.
+- Each profile puts its artifact on the runtime classpath of the module that
+  needs it. Without the profile, `chat-webflux` stays off the memory runtime.
+- A single module build from the module directory still works, and it prints no
+  activation warning.
+- The launch gate drops its `-f` workaround for a scoped `-pl` command, and it
+  exits 0.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.
+
+## The exec classifier (2026-09-17)
+
+`CHAT-dasmldiw`.
+
+### The defect
+
+The root `deploy` profile repackages every module of the reactor it runs in,
+because a profile on the parent reaches them all. The repackaged jar replaced
+the plain one, so a module that is both an application and a library shipped as
+a fat jar to anything that depended on it.
+
+`chat-deploy` is exactly that module. It declares a main class, and the four
+backend deploy modules depend on it. A run of
+`-pl chat-deploy-memory -am -Pdeploy` gave a 229 MiB artifact whose
+`BOOT-INF/lib` held `chat-deploy-0.0.1.jar` at 49 MiB.
+
+### Why the obvious fix does not work
+
+`CHAT-dasmldiw` proposed gating the repackage on a property that only launchable
+modules set. **That does not fix this case.** `chat-deploy` is launchable, so it
+would set the property and repackage anyway, and the nesting would return.
+
+The property that matters is not "does this module declare a main class". It is
+"is this module a dependency of another module in this build", and maven offers
+no way to express that in plugin configuration.
+
+### The fix
+
+The repackage takes `<classifier>exec</classifier>`. The executable artifact
+becomes `<module>-0.0.1-exec.jar` and the plain `<module>-0.0.1.jar` stays the
+library. An upstream module then reaches `chat-deploy` as a 71 KiB library,
+whatever profile is active.
+
+Measured on 2026-09-17: the same `-am` command now gives 180 MiB, and
+`BOOT-INF/lib/chat-deploy-0.0.1.jar` is 71 KiB.
+
+### What follows the classifier
+
+- **`java -jar` names the `-exec` jar.** The launch gate and the operator
+  procedure in `docs/EMBEDDING-PROVIDERS.md` both do.
+- **`spring-boot:run` and `spring-boot:build-image` read the same plugin
+  configuration**, so both follow the classifier without a second entry. The
+  plugin descriptor carries the parameter on both goals.
+- **`chat-build` needs no change.** It runs `spring-boot:run` and
+  `spring-boot:build-image`, and it never names a jar.
+- **The `test-build` profile of `chat-deploy-memory-integration-test` is
+  untouched.** It configures the plugin inside its own module, so the root
+  profile never reaches it. That module pinned the plugin at 3.5.12 until
+  2026-09-17. `CHAT-cwsuybox` removed the pin, so the module now uses the
+  managed 3.5.16.
+
+### The payoff
+
+The launch gate builds with one command again, `-pl chat-deploy-memory -am`,
+because `-am` is safe now. It ran two commands before: an install of the whole
+reactor, then a scoped package.
+
+### Measured
+
+- `-pl chat-deploy-memory -am -Pexpose-webflux,deploy` gives a 180 MiB
+  executable holding a 71 KiB `chat-deploy`.
+- The launch gate exits 0 with 3 hits and `indexComplete` true.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped. That run
+  builds the test image, which is the image path this change could have broken.
+- Every expose profile and the deploy profile pass a reactor validate.
+
+## The Spring Boot 4 prerequisites (2026-09-17)
+
+`CHAT-pkolwuqm` is a scope issue and it is done. Four of its six children are
+merged, and **every one of them landed on Spring Boot 3.5.16**. That is the
+result the scope work bought.
+
+| PR | Issue | What |
+|----|-------|------|
+| #94 | `CHAT-ndqihvzh` | Reactor 3.8.7 and the JSpecify non-null bounds, 61 source files |
+| #95 | `CHAT-vjsbfecx` | Testcontainers 2 coordinates, 17 declarations in 9 modules |
+| #96 | `CHAT-eaobicll` | `spring-boot-starter-aop` removed, which Boot 4 does not publish |
+| #97 | `CHAT-jpvjwvje` | The gateway artifacts renamed to the webflux form |
+
+### The scope was measured with three probe builds
+
+1. Boot 4.0.8 with the Cloud train 2025.1.3: the reactor could not read 12
+   projects, and every failure named an artifact the new BOMs no longer manage.
+2. The same, coordinates repaired: the build reached the compiler and stopped in
+   `chat-core` with 44 errors in 6 files, all one cause.
+3. Boot 3.5.16 with `reactor-bom` 2025.0.7 alone: **the same 44 errors in the
+   same 6 files.**
+
+Probe 3 is why the work split the way it did. The largest part of the move was
+separable, so it left the critical path.
+
+### Reactor 3.8 is a Kotlin change, not a Reactor upgrade
+
+Reactor 3.8 adopts JSpecify. `Mono` and `Flux` annotate their type parameter as
+non-null, so Kotlin infers the bound `T : Any`. **Reactor requires no Kotlin
+syntax.** Kotlin reads the annotations and applies the stricter bound.
+
+61 source files took a bound and 64 lines added `: Any`. The cascade converged in
+eight compile rounds, because a bound on a base interface reaches every
+implementor.
+
+**The route matters more than the version.** `reactor-bom` 2025.0.7 also carries
+`reactor-netty` 1.3.7, which declares Netty 4.2.17.Final. Boot 3.5.16 manages
+Netty 4.1.135.Final and the Boot management wins, so the BOM route would run
+reactor-netty below the Netty line it requires. The parent names four artifacts
+instead: `reactor-core`, `reactor-test`, `reactor-kotlin-extensions` and
+`reactor-extra`. reactor-netty and Netty do not move.
+
+### Two source changes were not bounds
+
+- `MemoryTopicPubSubService.sendMessage` used `map` with a nullable sink lookup.
+  **`Mono.map` rejects a null from its mapper at runtime**, so a missing sink
+  would have thrown there. The call is `doOnNext` now, and nothing read the emit
+  result.
+- `Mono.toFuture()` completes with null for an empty Mono, so Reactor 3.8 types
+  it nullable. `SerialWriterTests` asserts the signal is present.
+
+### Testcontainers 2 renames every module artifact
+
+`cassandra` becomes `testcontainers-cassandra`. The core artifact keeps its name.
+
+**A clean compile was not evidence.** The first probe compiled with zero errors
+while two generations sat on one test classpath.
+`com.playtika.testcontainers:embedded-cassandra` names the old
+`org.testcontainers:cassandra` coordinate at 1.17.6, which the 2.x BOM does not
+manage. Both jars ship
+`org/testcontainers/containers/CassandraContainer.class`, so the compiler read
+whichever came first. Only `dependency:tree` showed it.
+
+Removing playtika exposed two defects older than that task. `chat-index-cassandra`
+had never declared Testcontainers and took the class transitively, and
+`UserIndexTests` imported the legacy 3.x driver that PR #74 had migrated away
+from.
+
+### The AOP starter was dead weight
+
+`spring-boot-starter-aop` carries `spring-boot-starter`, `spring-aop` and
+`aspectjweaver`. No source in this repository uses AspectJ. `spring-aop` arrives
+through `spring-context` anyway. **Every `@PreAuthorize` sits in `chat-security`,
+which has never held `aspectjweaver`**, so the method security path proves the
+weaver is not needed.
+
+`AopAutoConfiguration$ClassProxyingConfiguration` is annotated
+`@ConditionalOnMissingClass("org.aspectj.weaver.Advice")`, read from the compiled
+class. Boot activates that branch without the weaver and still forces class
+proxying, so the proxy strategy does not change.
+
+### The gateway rename has a migration window
+
+`spring-cloud-gateway-server` publishes 2.2.6.RELEASE through 4.3.5 and stops.
+`spring-cloud-gateway-server-webflux` publishes 4.3.0 through 5.0.3. Both exist
+between 4.3.0 and 4.3.5, and that window is what let the rename land early.
+
+At 4.3.5 the new artifact is a 3456 byte forwarding jar that depends on
+`spring-cloud-gateway-server`. At 5.0.x it becomes the real artifact.
+
+### What stays for the parent bump
+
+`CHAT-tvsgtjtm` carries the parent and two coordinate changes that cannot move
+earlier.
+
+- **The train.** `spring-cloud-commons` 5.0.3 requires `spring-security-crypto`
+  7.0.7, and Boot 3.5.16 manages 6.5.11. `requireUpperBoundDeps` refuses it.
+- **The contract BOM.** Spring Cloud Contract is still inside the 2025.0.3 train
+  at 4.3.4. It leaves the train at 2025.1.x.
+- **Spring AI 2.0**, `CHAT-ygllyglb`. `spring-ai-model` 2.0.1 depends on
+  `spring-messaging` 7.0.9, so it cannot ship separately.
+
+`CHAT-gidbchkx` is closed by measurement rather than by silence. Netty 4.2.2 adds
+the fall-back and 4.2.3 the preferred path. Boot 3.5.16 manages 4.1.135.Final and
+is the last 3.5 release, and Boot 4.0.0 manages 4.2.7.Final. **The
+`sun.misc.Unsafe::allocateMemory` warning still prints today.**
+
+### What is still unmeasured
+
+**Everything past `chat-core`.** All three scope probes stopped there on the
+reactor generics. So no module after it has compiled against Spring Framework 7
+or Spring Security 7. Do not read the absence of a finding as a clean module.
+
+### A deeper probe, run on 2026-09-17 after the four prerequisites merged
+
+Measured at master `d4349022`, with Boot 4.0.8, Cloud 2025.1.3, contract 5.0.3,
+Spring AI 2.0.1 and Spring Shell 4.0.3. Throwaway branch, nothing committed.
+
+The reactor **reads completely** now. The first scope probe could not read 12
+projects. This one could not read 1, `reactor-kafka`, which neither new BOM
+manages. One parent entry at 1.3.25 closed it.
+
+Two results follow.
+
+1. **`chat-core` main compiles against Spring Framework 7.** No module had
+   reached that point before. The failures are all in `chat-core` **test**
+   sources, so 32 modules still skip and Spring Security 7 stays unmeasured.
+2. **Boot 4.0.8 manages JUnit Jupiter 6.0.3**, up from 5.12.2, and JUnit 6
+   adopts JSpecify. Five `Mock*Resolver` classes in `chat-core` declare
+   `supportsParameter(param: ParameterContext?, ext: ExtensionContext?)` with
+   nullable platform types, and those no longer override. `resolveParameter`
+   must also return `Any?`. That is 30 of the 32 compile errors.
+   **This is the same shape as the Reactor 3.8 work**: a library adopts JSpecify
+   and Kotlin infers stricter types. The repair is mechanical.
+
+The other two errors sit in `SpringAiApiProbe`, where Spring AI 2.0 expects
+`Map<String, Any>` and the probe passes `Map<String, Any?>`.
+
+One enforcer violation appeared before the compiler: Spring AI 2.0.1 requires
+micrometer 1.17.1 and Boot 4.0.8 manages 1.16.7. A `micrometer-bom` import at
+1.17.1 in the parent closes it, which is the rule this repository already
+follows.
+
+Jackson is the smaller risk than it first appeared. Boot 4.0.8 manages both
+lines, `jackson-bom` 3.1.5 and `jackson-2-bom` 2.21.5, so the 69 files that
+import `com.fasterxml.jackson` may still compile. The risk moves to the
+auto-configuration default, and `DomainWireShapeTests` and `E2eeWireShapeTests`
+are the readers that matter.
+
+## The Spring Boot 4 stack, state on 2026-09-19
+
+This section describes the stacked Boot 4 branches, not master. The combined
+branch is `boot4-gate-probe`. `boot4-bump` stays paused at `179c2fd8`.
+
+### The gate reading
+
+`build-health.sh` exits 0 and reports that reality matches
+`docs/BUILD-HEALTH.md`. 36 modules succeed, 1 fails and 0 are skipped, of 37.
+27 modules run tests, giving 829 tests with 0 failures, 0 errors and 30
+skipped.
+
+The one failure is `chat-index-elastic`, which B11 records and which the owner
+parked. **An exit code of 0 here does not mean every module builds.** It means
+the failures match the document.
+
+The owner ran the integration profile on 2026-09-19. 26 modules ran 1043 tests
+with zero failures and zero errors. `chat-persistence-redis` passed 57 tests
+against a Redis container, `chat-vector-redis` passed 4 Redis Stack tests, and
+`chat-deploy-redis` passed 6.
+
+### A client contract changed, and it is breaking
+
+**Every OAuth client of `chat-authorization-server` must now implement PKCE.**
+
+`ClientSettings.builder()` calls `requireProofKey(false)` at Authorization
+Server 1.5.8 and `requireProofKey(true)` at 7.0.7, read from the bytecode of
+each. `RegisteredClientFactory` never sets the value, so every registered
+client takes the default.
+
+A client that sends no `code_challenge` gets 302 to its redirect uri with
+`error=invalid_request` and `OAuth 2.0 Parameter: code_challenge`.
+
+**The owner kept the new default on 2026-09-19.** This is the OAuth 2.1
+direction and the stronger posture. It is recorded here because no code change
+marks it, and a reader of `RegisteredClientFactory` sees no mention of PKCE.
+`CHAT-qvyptrcv` holds the decision.
+
+### Three claims that have no direct evidence
+
+Each is open on purpose. Do not quote any of them as verified.
+
+1. **reactor-kafka against kafka-clients 4.1.2.** `CHAT-ajehabnw` repaired a
+   Kafka failure, and that repair was `AdminClient` alone. It measured nothing
+   about reactor-kafka. Neither enforcer rule fires on the pair, because one
+   version resolves and no path asks for more. `CHAT-hazcatpc` still owns this.
+2. **Deployment injection of the Jackson 3 domain module.**
+   `RSocketServerStrategiesTests` drives the production customizer and passes
+   the module list by hand. No test shows that a deployment supplies it. The
+   component scan reaches `ChatJackson3Modules`, and that is read from source
+   and never run. `CHAT-rmfuqcwi`.
+3. **The RSocket CBOR path.** It has no test and it has not been read. The
+   Jackson 3 repair reached the JSON path only. `CHAT-bgsqwjph`.
+
+### One production behaviour that stays unmeasured
+
+`AuthorizationCodeFlowTests` gives its principal a `FactorGrantedAuthority`,
+because `user(TEST_USER)` never runs the login filter and Security 7 reads
+`auth_time` from the authorities. That repair proves the fixture path. **The
+production `formLogin` path is not measured by it.**
+
+
+## Spring Boot 4 landed, and the seven pull requests after it (2026-09-19/21)
+
+The stack described in the section above merged. Everything below is on
+`master`.
+
+| PR | Merge | What |
+|----|-------|------|
+| #103 | `c4b63bfc` | Spring Boot 4.0.8, the whole stack |
+| #104 | `ecfea4a1` | Pub/sub reader failure cleanup made race safe and visible |
+| #105 | `8d7d9707` | Jackson 3 module injection proved in the RSocket deployment |
+| #106 | `6aae087d` | `chat-index-elastic` removed |
+| #107 | `d09a2daf` | Tomcat 11.0.26, Kotlin 2.4.20, the stale `kotlin-stdlib-common` dropped |
+| #108 | `d1dda1bc` | The two audit false positives suppressed. First green dependency audit |
+| #109 | `0bdb0c4f` | The Spring Shell 4 command surface verified |
+| #110 | `7abe0af8` | `build-health.sh --ci`, a verifier mode that builds the image |
+
+### The build surface now
+
+- Default: 36 modules, 903 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1136 tests, 0 failures, 0 errors, 54 skipped.
+  Measured on 2026-09-23 against Docker Engine 29.7.2.
+- The counts moved as tests landed. `CHAT-hazcatpc` added three,
+  PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
+  `CHAT-ltvfmcvh` added seven policy tests in place of eight diagnosis tests.
+- The reactor holds 36 modules. `chat-index-elastic` left it under #106.
+
+### The verifier reaches the image now
+
+`build-health.sh --ci` runs `mvn clean verify -fae -Ptest-build,integration`.
+The package phase builds the `chat-deploy-memory-integration-test` image, so
+`chat-shell` tests the current source rather than whatever image the machine
+holds.
+
+**It is not the CI command, and the document says so.** It takes the phase,
+the profiles and the image path of the workflow integration job. It adds
+`-fae`, because the verifier must see the result of every module to diff it
+against `docs/BUILD-HEALTH.md`. It resolves online, as that job does and as no
+other mode does.
+
+### Two B4 children were already closed by other work, and one was not
+
+Measured on 2026-09-21 at `7abe0af8`. The first two looked open but were done.
+`CHAT-cophllrg` remains open.
+
+Closed:
+
+- `CHAT-aazmjsws`, the Kafka topic existence test: `KafkaPubSubTests` runs 9
+  tests with 0 failures. Kafka 4 is KRaft only, and
+  `createTopics().all().get()` no longer proves broker metadata visibility.
+  `KafkaTopicAdmin.create` ends with `awaitVisible`, which polls 10 seconds at
+  50 ms.
+- `CHAT-cjqzmiiq`, the Redis pub/sub selector tests:
+  `RedisPubSubBeansSelectorTests` runs 4 tests with 0 failures.
+
+**Still open, and it stays open:**
+
+- `CHAT-cophllrg` is half done, and the open half is the half it was written
+  for. `CoreUserDetailsService.updatePassword` refuses a null password and the
+  KDoc records the owner decision, but **no test pins the refusal**.
+  `UserDetailsServiceTests` has no null case. The implementation reached
+  master from `boot4-bump`, whose tip commit names this issue.
+
+One more closed on the same day, outside the B4 tree: `CHAT-ygllyglb`, the
+Spring AI 2.0 scope. The parent pom imports `spring-ai-bom` 2.0.1, so the
+upgrade shipped inside #103 and the scope question is moot.
+
+**A closed parent does not close its children.** `CHAT-tvsgtjtm` is done while
+five of its children stayed open, and two of those were already satisfied by
+code that merged under a different issue.
+
+## Three build traps, each of which cost a cycle (2026-09-17)
+
+These are tooling traps, not code defects. Each one reports success, or reports a
+failure that names the wrong thing.
+
+1. **`-Dmaven.test.skip=true` also skips test jar creation.** An image rebuild
+   then fails with `Could not find artifact com.demo:chat-core:jar:tests`, and a
+   following `-Pintegration` run passes **against the previous image**. The green
+   test count says nothing about which image it used. Use `-DskipTests`, which
+   compiles the tests and produces the test jars, and **read the exit code of the
+   image build before you report an integration result.**
+   **Met a second time on 2026-09-21.** `check-production-classpath.sh` installed
+   the reactor with the same flag, so the install could not resolve
+   `chat-persistence-cassandra:jar:tests` for `chat-index-cassandra`. The gate
+   passed for as long as a stale test jar sat in `~/.m2`, and it failed the first
+   time that jar was absent. The script uses `-DskipTests` now. A gate that
+   depends on the local repository holding an artifact its own run does not
+   produce is not a gate.
+2. **Surefire hides the cause of a discovery failure.** It prints `TestEngine
+   with ID 'junit-jupiter' failed to discover tests` and nothing else, in the
+   maven log and in `target/surefire-reports/*.dumpstream`. The real cause, a
+   `NoClassDefFoundError` in this case, sits in
+   `target/surefire-reports/*.dump`. Read that file.
+3. **A local repository is not evidence about a remote one.** An offline build
+   failed to resolve a jar, and the incomplete `~/.m2` directory beside a
+   `.lastUpdated` marker was read as proof that the artifact ships no jar. Maven
+   Central served it. A `.lastUpdated` file records a failed fetch, not an absent
+   artifact. Check the remote repository before you conclude anything about an
+   artifact.
+
+## The Boot 4 dependency entries (2026-09-17)
+
+`CHAT-mndvipyh`, B4-S6. Measured on a throwaway branch at master `c1d98900`.
+**Nothing merged**, because every entry binds only under Boot 4.
+
+**The reactor validates on Boot 4.0.8 with zero enforcer violations.** Five
+validate rounds reached it. The task was written expecting two entries. The
+answer is thirteen, plus one correction.
+
+| Entry | Version | Why |
+|---|---|---|
+| `reactor-kafka` | 1.3.25 | neither new BOM manages it |
+| `micrometer-bom` import | 1.17.1 | spring-ai-model 2.0.1, over a managed 1.16.7 |
+| `spring-data-redis` | 4.1.1 | spring-ai-redis-store 2.0.1, over a managed 4.0.7 |
+| `spring-data-keyvalue` | 4.1.1 | cascade |
+| `spring-data-commons` | 4.1.1 | cascade |
+| `jedis` | 7.4.1 | spring-ai-redis-store, over a managed 7.0.0 |
+| `httpclient5` | 5.6.3 | elasticsearch-rest5-client 9.2.9, over a managed 5.5.2 |
+| `httpcore5`, `httpcore5-h2` | 5.4.3 | cascade |
+| three `victools` artifacts | 5.0.0 | convergence inside Spring AI |
+| `error_prone_annotations` | 2.41.0 | convergence under openai-java-core |
+
+### The correction, and it is the fourth of its kind
+
+**`nimbus-jose-jwt` moves from 10.0.2 to 10.4.** That property is an existing
+parent pin, added under `CHAT-mgtbicsq` to settle three conflicting versions.
+Under Boot 4 it becomes a **downgrade**, because spring-security-oauth2-jose
+7.0.7 requires 10.4.
+
+This repository has now met the stale local override four times: the
+`languageVersion` pins, the `jvmTarget` 1.8 pin, nineteen inline versions, and
+now a parent pin that a framework move overtook. **A parent entry is the right
+mechanism and it is not permanent.** Every pin needs re-reading when the BOM
+under it moves.
+
+### Three findings
+
+1. **A pin inside a family cascades.** `spring-data-redis` alone broke the
+   Spring Data set, and two more entries followed. The cleaner route is a
+   `spring-data-bom` import, but the train carrying redis 4.1.1 is later than
+   the one Boot 4.0.8 manages, and a newer Spring Data train under Boot 4.0.8
+   carries the same risk as the Cloud train. The three pins are measured. The
+   BOM import is an alternative that needs its own measurement.
+2. **Spring AI 2.0.1 ships an internally divergent tree.** `spring-ai-model`
+   pulls victools jsonschema 5.0.0 while `openai-java-core` 4.49.0 pulls 4.38.0.
+   Four of the thirteen entries exist only to converge Spring AI with itself.
+   Most builds never see this. `dependencyConvergence` does.
+3. **Neither enforcer rule fires for reactor-kafka against kafka-clients.** Boot
+   4 manages kafka-clients 4.1.2 and reactor-kafka 1.3.25 declares 3.9.1. An
+   upgrade keeps `requireUpperBoundDeps` quiet, and one resolved version keeps
+   `dependencyConvergence` quiet. **A clean validate says nothing about that
+   pair.** The kafka container tests are the only evidence, and reactor-kafka is
+   discontinued at its 1.3 line. See `CHAT-hazcatpc`.
+
+### What a clean validate does not prove
+
+It runs the enforcer and compiles nothing. The five module repairs under B4-S1
+to B4-S5 are untouched by this result, and the twelve modules that no probe has
+reached stay unmeasured. See `CHAT-ombbesyh`.
+
+## The null password refusal, and the defect beside it (2026-09-22)
+
+`CHAT-cophllrg`. The test is
+`chat-authorization-server/src/test/kotlin/com/demo/chat/BlockingUserDetailsPasswordServiceTests.kt`.
+It reads the contract through the blocking adapter, which is where a
+deployment reads it.
+
+### The success path was broken in shipped code
+
+`AuthenticationService.setAuthentication` answers `Mono<Void>`, which completes
+empty. `CoreUserDetailsService.replaceCredential` used `map` on that signal, so
+**the whole success path answered an empty Mono**. The blocking adapter reports
+`IllegalStateException` for an empty signal, so every accepted password upgrade
+failed there. `replaceCredential` uses `thenReturn` now.
+
+The reactive path degraded more quietly. Spring reads an empty answer as no
+upgrade, so a password upgrade was dropped with no error.
+
+### The control test found it, and the control is the point
+
+An assertion that no credential was written proves nothing on its own. A
+fixture that can never record a write would satisfy it. The second test makes
+the same fixture record a write, and that test is what failed.
+
+### Two readings that were wrong
+
+1. **`UserDetailsServiceTests` has never run.** It carries `@Disabled` and no
+   class extends it. Item 3 of `CHAT-cophllrg` says the existing chat-security
+   tests cover the non-null path. They cover nothing. The file is still in the
+   tree, and it still reads as coverage. The owner decides whether it stays.
+2. **A refusal can degrade into a different refusal.** Removing the
+   `switchIfEmpty` branch still fails the null case, because the adapter
+   reports `IllegalStateException` for an empty signal. The message then names
+   no cause. The test asserts the exception type for that reason.
+
+### Measured
+
+- Default: 27 modules ran tests, 849 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules ran tests, 1082 tests, 0 failures, 0 errors, 54 skipped.
+- Both report no drift. Mutation proof: removing the refusal fails the null
+  test, and restoring `map` fails the control test.
+
+## The image repository prefix (2026-09-22)
+
+`CHAT-gkwqnnxn`. The last open child of `CHAT-efzzemjx`.
+
+`chat-build core --cassandra --build` could not build an image. The parent pom
+read `${env.IMAGE_REPO_PREFIX}` with no default, so the image name held an
+unresolved property and the goal refused it.
+
+**One launch path defaulted the value and the other did not.**
+`shell-scripts/build.sh` exports `docker.io/library`. `chat-build` exports
+nothing, and `chat-build` is the documented launch path.
+
+### The repair sits in the pom, not in the launch script
+
+The parent defaults `image.repo` to `docker.io/library`. The
+`image-repo-from-env` profile activates on the environment variable and takes
+that value instead.
+
+A second export in `chat-build` would have repaired one path. The pom default
+repairs every entry point, including a bare maven command. Four modules
+already name `docker.io/library` directly, so the default agrees with them.
+
+The profile is not `activeByDefault`, so it does not meet the rule that
+removed `noartifact`. It sets one property and changes no packaging.
+`chat-gateway` carries an `activeByDefault` profile in its own pom, and a
+parent profile does not reach it, because that rule is per pom.
+
+### Measured on 2026-09-22
+
+- With the variable unset: `docker.io/library/cassandra-core-service-rsocket:0.0.1`.
+- With `IMAGE_REPO_PREFIX=harbor.lan/chat`: `harbor.lan/chat/cassandra-core-service-rsocket:0.0.1`.
+- `chat-build core --cassandra --build --node-id 1 --notls` exits 0 with the
+  variable unset, and the image manifest reads
+  `Start-Class: com.demo.chat.ChatApp`.
+- `shell-scripts/test-flags.sh` matches all 15 golden cases. The emitted maven
+  command did not change, because the repair is in the pom.
+
+### One trap found while reproducing it
+
+**`mvn spring-boot:build-image` reports BUILD SUCCESS and builds nothing.**
+The parent sets `<skip>true</skip>` in the plugin level configuration, which
+reaches every goal of that plugin rather than repackage alone. A run on
+`chat-deploy-redis` finished in 3.6 seconds and produced no image, with no
+skip message. Every documented launch path passes `-Pdeploy`, which sets
+`skip=false`. `CHAT-xtnrgvpi` holds it.
+
+## The anonymous identity, measured (2026-09-23)
+
+`CHAT-ltvfmcvh`. Diagnosis only. **No behaviour changed.** The owner asked for
+the distinction to be measured first. Full document:
+`docs/superpowers/specs/2026-09-23-anonymous-identity-diagnosis.md`.
+
+The resolver reads `it.authentication?.principal as ChatUserDetails<T>?`. So
+the answer depends on the runtime class of the principal, and not on whether
+the caller authenticated.
+
+| Security context | Identity at the access broker |
+|---|---|
+| No context | `Anon` root key |
+| Null authentication | `Anon` root key |
+| `AnonymousAuthenticationToken` | None. The cast fails and the call is denied |
+| A `User` principal | None. The cast fails and the call is denied |
+| A `ChatUserDetails` principal | That user key |
+| The same, `isAuthenticated=false` | **That same user key** |
+
+Four findings.
+
+1. **The two anonymous paths disagree.**
+   `DefaultingAnonymousPayloadInterceptor` installs a `User` principal, and
+   the resolver cannot read one. A caller who sends no credential is granted
+   the anonymous identity. A caller the interceptor prepared is refused.
+2. **The read never consults `isAuthenticated`.** A rejected credential
+   reaches the user identity, not the anonymous one. This is wider than the
+   risk the issue names.
+3. **No deployed seam validates a token.** `WebFluxSecurity` permits every
+   exchange and states that it adds no authentication.
+   `RSocketServerConfiguration` permits everything and carries
+   `TODO: lock down!`. So an expired token cannot reach these sites today.
+   The confusion becomes live on the day authentication is added.
+4. **The interceptor token does not reach the resolver.**
+   `ShellPubSubCommandsTests` never logs in, `send` and `addRoom` both carry
+   `@PreAuthorize`, and those tests pass. So the live path answers with the
+   `Anon` root key. Finding 1 is a real disagreement and not a live outage.
+
+The access path is not dormant. `chat-build` passes
+`-Dapp.service.composite.auth=true` on every core launch.
+
+### The policy the owner chose on the same day
+
+**`ContextIdentity` in `chat-security` holds the whole rule now.**
+`docs/IDENTITY-POLICY.md` states it. The read is a total function, and no
+identity is never an error.
+
+| State | Identity |
+|---|---|
+| No context | none, so denied |
+| No authentication | none, so denied |
+| `isAuthenticated=false` | none, so denied |
+| `AnonymousAuthenticationToken` | the `Anon` root key |
+| A `ChatUserDetails` principal | the key of its user |
+| A `User` principal | its own key |
+| Any other principal | none, so denied |
+
+**The list is closed.** An unknown principal denies, and a fallback would
+reopen it.
+
+Four changes carry the policy.
+
+1. `SpringSecurityAccessBrokerService` and the cassandra composite seam read
+   through `ContextIdentity`. Neither holds a copy of the rule.
+2. `DefaultingAnonymousPayloadInterceptor` and
+   `ChatAnonymousAuthenticationToken` are removed. Finding 4 measured that the
+   token never reached the read.
+3. `RSocketSecurity.anonymous` establishes the anonymous identity at the
+   RSocket seam. Spring Security supplies that seam, so the application no
+   longer states it.
+4. `ContextIdentityTests` holds one test per state, and it replaces both
+   diagnosis classes.
+
+**Absence denies, and anonymous is a decision.** That is the difference the
+issue asked for. A caller that reaches a service with nothing is refused. A
+caller that a seam authenticated as anonymous receives the `Anon` root key.
+
+**The shell did not break.** `--ci` rebuilds the image and runs the chat-shell
+container tests over the anonymous RSocket path. It reports 1089 tests with
+zero failures. `RSocketSecurity.anonymous` establishes the identity that the
+absent context used to supply.
+
+**One test encoded the old policy.**
+`MethodSecurityIntegrationTests.anonymous call find user allowed` ran with no
+security context and with its identity annotation commented out. It passed
+because an absent context answered the `Anon` root key, so it stated nothing
+about an anonymous caller. It carries `@WithAnonymousUser` now.
+
+### The webflux regression that followed, repaired the same day
+
+**Reactive Spring Security does not enable anonymous authentication by
+default.** `ServerHttpSecurity.build` reads `if (this.anonymous != null)`, and
+that field stays null until `anonymous` is called. The servlet side defaults it
+on. This side does not.
+
+`docs/IDENTITY-POLICY.md` claimed the opposite, and
+`WebFluxSecurity.filterChain` never called `anonymous`. So the identity policy
+denied every HTTP request that carried no credential, where the absent context
+used to answer the `Anon` root key. RSocket was never affected, because that
+configuration does call `anonymous`.
+
+**No test saw it.** `PubSubRestTestBase`, `TopicRestTestBase` and
+`MessageRestTestBase` all install a security context, so none of them sends an
+unauthenticated request. This is the same shape as the shell test that never
+logs in, and as the chat-core test jar that no test could detect.
+
+`WebFluxAnonymousIdentityTests` builds the production bean, sends one request
+with no credential, and reads the identity with `ContextIdentity`. Removing
+`anonymous` makes it report `expected: 1 but was: null`.
+
+This closes the webflux half of `CHAT-gtebuipo`. The cassandra half stays open.
+
+### The cassandra composite, and one audit (2026-09-23)
+
+`CHAT-qucgqaye`. The resolver replacement landed in PR #130. This adds the
+evidence.
+
+`CassandraCompositeIdentityTests` builds
+`CompositeServiceConfiguration.serviceAccessCompositeServiceAccessBeans`,
+drives `topicService().addRoom`, and reads the identity the wrapper hands to
+the access broker. **No test built that bean before.** It answers the `Anon`
+root key, the user key, and no identity, exactly as the policy states. One
+test compares all five contexts against `ContextIdentity` in a single
+assertion, so a copied rule cannot pass.
+
+**The audit is clean.** `ContextIdentity.kt:44` is the only live read of
+`ReactiveSecurityContextHolder` in main source. The two other mentions are
+commented out. One production resolver owns the policy.
+
+### One finding, and it is latent
+
+**The programmatic access wrappers compute a permission and discard it.**
+Every method of `TopicServiceAccess`, `UserServiceAccess` and
+`MessagingServiceAccess` in `chat-service-composite` reads
+
+    .hasAccessByPrincipal(...)
+    .then(that.addRoom(req))
+
+`Mono.then` discards the element and proceeds on completion. A false answer
+proceeds. An empty answer proceeds, and `hasAccessByPrincipal` is
+`principal.flatMap { ... }`, so no identity gives an empty answer.
+
+Measured with a probe: an unauthenticated token reached no identity, and
+Mockito reported that the underlying `addRoom` still ran.
+
+**It is latent and not live.** The only bean that supplies
+`principalKeyPublisher` carries
+`@ConditionalOnProperty("app.service.composite.security")`, and **no launch
+script, no yml and no test sets that property**. The live authorization path
+is the `@PreAuthorize` wrappers in `chat-security`, where Spring method
+security reads the boolean and denies correctly.
+
+`CHAT-ruapxetl` holds it. The repair needs a decision about what a refusal
+looks like on these signatures, because an empty Mono reads as success to
+every caller above.
+
+
+
+
+## The anonymous authorization matrix (2026-09-23)
+
+`CHAT-vehpbvzn`. Document: `docs/ANONYMOUS-AUTHORIZATION.md`. The test wires
+the production `CoreAuthorizationService`, `AuthSummarizer`,
+`AuthMetadataAccessBroker` and `SpringSecurityAccessBrokerService`, and
+replaces only the store and the index.
+
+**Identity and authorization are separate questions.** A green identity test
+proves nothing here.
+
+| Operation | anonymous | authenticated | denied identity |
+|---|---|---|---|
+| `addRoom`, MessageTopic NEW | deny | deny | deny |
+| `send`, room SEND | deny | deny | deny |
+| `whoami`, User FIND | **allow** | **allow** | deny |
+| `messageById`, GET | deny | deny | deny |
+| `listRooms`, MessageTopic ALL | deny | deny | deny |
+| `addUser`, User NEW | deny | deny | deny |
+
+Three results that are easy to miss.
+
+1. **An anonymous grant is a floor for every caller.**
+   `CoreAuthorizationService` puts the `Anon` key in the actor set of every
+   query, so an authenticated caller reaches the same answers.
+2. **The four `user: User` rows of `userinit.yml` reach nobody.** They name
+   the `User` root key as principal, and a caller holds its own key.
+   **This no longer holds. `CHAT-mahevldm` closed it on 2026-09-24.** The
+   actor set carries the `User` root, so those rows reach every caller.
+3. **A grant on a domain root does not cover one object.** `Anon` holds
+   `Message:GET`, and `messageById` checks one message key. This still holds.
+   `CHAT-rfzsnbco` carries the target side.
+
+So the shipped configuration allows `User:FIND` and `User:PUT` to every
+caller that reaches an identity. **Every write operation denies.**
+**Read that sentence as of 2026-09-23.** Since `CHAT-mahevldm` the
+configuration also allows `MessageTopic:ALL`, so `listRooms` allows. Every
+write operation still denies. See the close policy section below.
+
+Expiry is on the grant, not on a credential. `AuthSummarizer` keeps a row when
+`expires` is `0L` or in the future.
+
+### And nothing enforces it
+
+**No production type implements the annotated interfaces.**
+`TopicServiceAccess`, `UserServiceAccess` and `MessageServiceAccess` in
+`com.demo.chat.security.access.composite` carry every `@PreAuthorize` in this
+repository. `CompositeControllersConfiguration` imports all three and
+implements none. The controllers delegate to the plain services.
+
+`app.service.composite.auth` supplies the `chatAccess` bean and enables method
+security. **It does not put the annotations on any bean.**
+
+That is why `chat-shell` creates a room and sends a message with no
+credential. The matrix denies both.
+
+`CHAT-znprrzhn` holds the wiring gap. `CHAT-ruapxetl` holds the second defect
+in the programmatic wrappers. **Read the matrix before turning the checks on.**
+Enabling them against the shipped grants would deny `addRoom`, `send` and
+`listRooms` to every caller. The grants need a decision before the wiring does.
+**`listRooms` left that list on 2026-09-24.** `CHAT-mahevldm` made the
+`user: User` rows reach a caller, so `listRooms` allows. `addRoom` and `send`
+still deny.
+
+
+### The operation policy draft, and a configuration guard (2026-09-23)
+
+`CHAT-zhjltbky`. The owner wrote a proposed operation policy into
+`shared-deploy-configuration/src/main/config/userinit.yml`. That file is
+configuration that every deployment loads.
+
+**The draft could not ship, for six measured reasons.** Each was checked at
+master `42cd6a69`.
+
+1. The file did not parse. `//` is not a YAML comment, and one line nested a
+   question under a list item.
+2. `operationPolicy` binds to nothing. `UserInitializationProperties` names
+   `passwordEncoder`, `initialRoles` and `initialUsers`. **Spring ignores an
+   unknown key**, so the expressions would have had no effect and no error.
+3. `RoleDefinition` binds `user`, `target` and `role`. The draft used
+   `expire` and `expires`, and neither exists.
+4. `rolesAllowed` and `wildcard` bind and are never read.
+   `InitialUsersService` reads `initialRoles.roles` alone.
+5. `*` is not a wildcard. `AuthMetadataAccessBroker` reads
+   `permissions.contains(perm)`.
+6. `role: '-'` has no denial meaning. Nothing subtracts a permission.
+
+The draft moved to
+`docs/superpowers/specs/2026-09-23-operation-policy-draft.md`, which no code
+loads. `CHAT-zcxgrtqc` holds the typed schema it needs.
+
+**`UserInitConfigBindingTests` is the guard.** It reads the shipped file from
+disk, because `shared-deploy-configuration` reaches `chat-deploy` only under
+`expose-webflux`. Three rules: the file parses and binds, `app.init` declares
+no key that nothing binds, and every role names only the three fields that
+`RoleDefinition` binds.
+
+Both failure modes are proven. The original draft makes all three tests error
+on the parser. A valid `operationPolicy` block fails the second test with a
+message naming the key.
+
+**No module read that file at test time before this.** That is why an invalid
+configuration could sit in a working tree and no build reported it.
+
+## The clock that orders grants (2026-09-23)
+
+The owner asked for a stable clock with an atomic `tick`, and then for a
+vector clock. Design:
+`docs/superpowers/specs/2026-09-23-grant-order-clock-design.md`.
+
+**Why `key.id` is the wrong order.** `AuthSummarizer` sorts by a comparator
+that reads `key.id`. `SnowflakeGenerator` builds a Long id from a wall clock,
+so that order moves when a host clock moves. **A uuid key carries no order at
+all**, and this repository runs both key types. Identity also stops meaning
+identity alone.
+
+**What exists.** Three types in `chat-core`, under
+`com.demo.chat.domain.clock`. `VectorClock` counts per node id.
+`ClockStamp` is one reading with the node that took it. `NodeClock` is the
+clock of one process, and its `tick` is atomic. Eleven tests, two of which
+drive 200 ticks over 16 threads.
+
+The index is `app.nodeid`. It is validated in 0..1023 and the store side lease
+keeps it unique, **so the index of the clock is already unique** and no new
+identity is needed. `NodeClock` never reads a wall clock.
+
+**A vector clock answers causality, and not order.** Two grants written at
+once on two nodes are concurrent, and the clock reports that rather than
+choosing. The subtractive rule needs the word "before" defined for every
+pair, so `ClockStamp.ORDER` makes the order total.
+
+**The first rule was wrong, and the reviewer found it.** Comparing causality
+pairwise and then breaking a tie by the origin **is not transitive**. With
+`a={1:1}` from node 2, `b={2:1}` from node 1 and `c={1:2}` from node 0, the
+rule gives `b < a`, `a < c` and `c < b`, a cycle. TimSort refuses such a
+comparator with `Comparison method violates its general contract!`.
+
+**The rule that holds reads the sum of the counts first.** That sum rises
+with causality, because a clock that comes before another has every count
+lower or equal and one count lower. So a cause always sorts before its
+effect, and the comparison is transitive because it compares numbers. A tie
+reads the origin, then the counts themselves.
+
+
+
+**The value cannot change after it is built.** `VectorClock` copies the map it
+is given and the copy refuses a write, and it is not a data class, so no
+`copy` carries an unchecked map past the constructor. **The constructor copies
+before it checks**, because a check that read the source and a copy that read
+it again could disagree.
+
+**A shared map changes a stamp that was already given out**, so the harm did
+not wait for the sum to be cached. The cached sum added a second
+disagreement, because it stayed as it was while the counts moved. Measured on
+2026-09-23: `relate` answered `AFTER` and the order answered `-1`. An earlier
+note here blamed the cached sum alone, and the reviewer corrected it.
+
+**A count of zero is not stored.** It reads the same as an absent count, so
+`{}` and `{1:0}` compared equal through the order and were unequal objects. A
+sorted set would have held one and a hash set two.
+
+**A restart repeats stamps, and that is a requirement on the integration.** A
+fresh `NodeClock` starts at zero, so the first stamp after a restart equals
+the first before it. The node id lease does not close this, because it keeps
+no counter. `CHAT-ojbgbznh` must recover the counter from the store before the
+first write, or give each process lifetime its own identity.
+
+**The clock refuses a value it cannot order.** A stamp reaches this code from
+a store, so the constructor is a boundary. `VectorClock` refuses a count that
+would carry the sum past `Long.MAX_VALUE`, a negative count, and an index
+outside 0..1023. `tick` refuses to wrap. A wrapped sum reads as lower, so a
+cause would sort after its effect, quietly, inside a sort. `total` is computed
+once at construction, so the check runs at the boundary and a sort does not
+add the counts again for every comparison.
+
+**One test passed against the rule it was written to catch.** It called the
+cycle check with one order of the three stamps, and the premise of that check
+was false for that order. It reads all six orders now. A random triple test
+and a 500 stamp sort caught the defect where the named test did not.
+
+**Nothing stores a stamp.** `AuthMetadata` is unchanged, `AuthSummarizer`
+still sorts by `key.id`, and nothing subtracts. `CHAT-ojbgbznh` carries the
+integration, and it waits for the grant policy decision in `CHAT-zhjltbky`.
+
+Two costs are recorded. A stamp is a map, so its size grows with the number
+of nodes that ever wrote, and every row carries one. A stamp must serialize,
+on the wire that `DomainWireShapeTests` pins for the other domain types.
+
+One alternative is recorded and not chosen. A hybrid logical clock answers a
+total order from one value and is cheaper to store. It cannot report that two
+writes were concurrent, because it orders them.
+
+## The work queue, ordered on 2026-09-21
+
+26 issues are `todo` and 2 are `in-progress`. The order below is a
+recommendation, not a decision. The owner sets the order.
+
+Three issues closed while this list was written, each because merged work had
+already satisfied it: `CHAT-aazmjsws`, `CHAT-cjqzmiiq` and `CHAT-ygllyglb`.
+`CHAT-cophllrg` was read the same way and it stays open, because its test is
+missing. **Read the tree before you start an issue.** A closed parent does not
+close its children. **That reading is also superseded.** `CHAT-cophllrg` closed
+on 2026-09-22, and the null password refusal carries its test now.
+
+**Every tier 1 row below is closed, measured on 2026-10-02 with `fp`.** The
+rows stay for the ordering record, and the state column is corrected.
+
+### Tier 1: risk that sat in merged code
+
+| # | Issue | State on 2026-10-02 |
+|---|-------|---------------------|
+| 1 | `CHAT-hazcatpc` | **Done.** Merged as PR #115, merge commit `e24ba097`. reactor-kafka 1.3.25 still declares kafka-clients 3.9.1 beside the managed 4.1.2, and neither enforcer rule fires on the pair. The container tests are the evidence. |
+| 2 | `CHAT-ombbesyh` | **Done.** Merged as PR #119, merge commit `13a5c6f9`. |
+| 3 | `CHAT-cophllrg` | **Done.** Merged on 2026-09-22. The null password refusal carries a test, under `BlockingUserDetailsPasswordServiceTests`. |
+
+**`CHAT-vgujmnol` duplicated `CHAT-ombbesyh`.** Check its state before acting on
+this note. Both asked for the composition roots to start and the images to
+rebuild on Boot 4.
+
+### Tier 2: trust in the signal
+
+| # | Issue | Why |
+|---|-------|-----|
+| 4 | `CHAT-sgyaaivp` | **Done on 2026-09-28 in PR #144.** The Cassandra container flake was a driver timeout, and the driver kept its `PT2S` default. Row kept for the ordering record. |
+| 5 | `CHAT-cikgeefc` | The standing build-health tracker. It does not close. A cycle that finds no drift is a clean reading. |
+
+### Tier 3: correctness and design debt with a known defect behind it
+
+| # | Issue | Why |
+|---|-------|-----|
+| 6 | `CHAT-ltvfmcvh` | The anonymous identity is decided in at least three places, and one of them cannot tell an expired token from a caller who never authenticated. Security relevant. **In progress on 2026-10-02.** |
+| 7 | `CHAT-cvdcfczj` | Define and verify the complete authorization surface. |
+| 8 | `CHAT-avduuqwp` | **Done.** Merged as PR #142, merge commit `dbd6b019`. A key now carries `id`, `root` and `empty`, and `IKeyService.kind` string matching is gone. |
+| 9 | `CHAT-ruduojeu` | Backend fanout semantics for messaging. |
+
+**Correction, 2026-09-27.** Row 8 describes `CHAT-avduuqwp` before its work.
+The work is implemented on the branch `chat-avduuqwp-root-identity` and is not
+merged. `IKeyService.kind` string matching is gone. See the root identity
+section at the end of this file.
+
+**Correction, 2026-10-02.** That correction is itself superseded. PR #142
+merged the work as `dbd6b019` on 2026-09-27, and the root identity section
+below records the merge.
+
+### Tier 4: native image
+
+`CHAT-arcqfjuc` blocks a native start and needs an owner decision about moving
+`main` out of the Kotlin companion object. `CHAT-ulrkvfit` adds the missing
+`chat-shell` native profile. Neither blocks anything else.
+
+### Tier 5: deferred on purpose
+
+The capability mechanism `CHAT-zqyrsrrg` and its seven tasks have not moved
+since the design sprint. `CHAT-aedloxwd`, `CHAT-tekzakdd` and `CHAT-edzvpxil`
+are deliberately deferred and each records why. `CHAT-qwjuwcdo`,
+`CHAT-itvhzmvp`, `CHAT-btjtfwwr`, `CHAT-uwsmwcpj` and `CHAT-xojupyhn` are
+housekeeping.
+
+### One caution about this ordering
+
+It ranks by risk to shipped code, then by trust in the signal, then by design
+debt. It does **not** rank by feature value. The owner's direction on
+2026-09-10 was to move on to features after the security pass. That pass is now
+done, so the next feature decision, which is the real embedding model, still
+has no issue and is still the owner's.
+
+## Close policy update (2026-09-24)
+
+PR #136 merged as `ad768b21`. `CHAT-rgdcyxlv` (wildcard expansion) and
+`CHAT-lbhmzccn` (rank) are done. `*` is the singular ownership sentinel and
+ranks above named grants. `CHAT-ylfxsthp` remains in progress: closure does not work yet.
+
+**`CHAT-mahevldm` did not need `CHAT-avduuqwp`, and it is done.** An earlier
+version of this section said it waited on that issue. Measured on 2026-09-24:
+every caller is a user, because `ContextIdentity` answers the key of a user or
+the `Anon` root key, and `Anon` is an object of the `User` domain. So the
+domain root of a principal is always the `User` root, and no domain on the key
+is needed to name it.
+
+**`CHAT-rfzsnbco` (two-target scan) does still need `CHAT-avduuqwp`**, because
+a target can belong to any domain. That dependency supersedes the older queue's
+tier-3 placement of `CHAT-avduuqwp`.
+
+**One row of the shipped matrix moved, and it is the first authorization
+behaviour this work changed.** `listRooms` went from deny to allow, for an
+anonymous caller and for an authenticated one, because
+`{user: User, target: MessageTopic, role: ALL}` now reaches a caller. Nothing
+enforces the checks in a deployment, which `CHAT-znprrzhn` holds, so no
+running composition behaves differently today.
+`docs/ANONYMOUS-AUTHORIZATION.md` carries the new matrix.
+
+Evidence limits: `CHAT-axuvmlgu` records that `--ci` tested a stale shell image.
+
+**`CHAT-rmxxtwtu` is complete.** PR #144 merged on 2026-09-28 as merge
+commit `5517c774`.
+
+- **Cassandra auth index retention and selective removal are verified.** The
+  principal table and the target table each carry a clustering column, so two
+  grants can share one principal or one target. A third table keyed by the
+  grant id names the rows to remove.
+- **The Cassandra authorization matrix is measured.**
+  `CassandraAuthorizationMatrixTests` answers all six rows of
+  `docs/ANONYMOUS-AUTHORIZATION.md` against a real Cassandra store and a real
+  Cassandra index.
+
+One defect stays open beside it. **`CHAT-xcmpudyb` remains open**, because
+Cassandra message sending still fails on timestamp mapping.
+`chat_message_id.msg_id` and `chat_message_topic.msg_id` are `TIMESTAMP`, and
+the entities map a `T` id there. So the matrix test mints a message key and
+sends no message.
+**Read that paragraph as of 2026-09-28.** `CHAT-xcmpudyb` repairs the send,
+and the matrix test sends a real message now. See the last section of this
+file.
+
+## Self authority, and the target key (2026-09-24)
+
+`CHAT-ixzpkqxg`. The owner decided two things on 2026-09-24.
+
+1. **A key holds every right over itself.** `AuthMetadataAccessBroker` allows
+   when the principal equals the target, before it reads a row. No row grants
+   it and no row removes it. A close does not reach it.
+2. **A target key in the actor set was a bug.** `CoreAuthorizationService`
+   added the target keys in four methods. So a row whose principal equals its
+   target reached every caller that asked about that target. The shipped
+   `{Admin, Admin, *}` row gave any caller `*` on `Admin`. The actor set is
+   now the `Anon` key, the `User` root and the caller.
+
+Nothing depended on the target key. `AuthMetadataAccessBroker` is the only
+production caller of `getAuthorizationsAgainst` and
+`getAuthorizationsAgainstMany`. `getAuthorizationsForTarget` has no caller.
+The private `getAuthorizationsForMultipleTarget` has no caller.
+
+**A many target check still allows when any one target has a grant.** The self
+rule does not widen it: the principal is taken out of the list, and the other
+targets are read as before. The any semantics itself is older and is not
+decided here.
+
+**The mock key generator answers one key for every call.** Two
+`AccessBrokerTests` cases took principal and target from one generator, so
+both asked about a key and itself. They pass now through a second generator.
+Any test that draws two keys from one mock generator gets equal keys.
+
+## Many target reads filter (2026-09-24)
+
+`CHAT-wkwiipgy`. The owner chose the filter contract for a many target read.
+
+- Each target is evaluated on its own. A denied target is left out, and the
+  request does not fail.
+- An empty list, or a list with no permitted target, answers nothing.
+- Self authority permits the caller's own target and no other.
+
+`AccessBroker.permittedTargets` answers the permitted subset. It evaluates
+each target through `hasAccessByKey`. `hasAccessByManyKeys`,
+`hasAccessManyByPrincipal` and `hasAccessToMany` are removed. Each answered one
+Boolean for a list, and one grant allowed the whole list.
+
+`PersistenceAccess.byIds` carries `@PostFilter` now. It evaluates each returned
+entity with `@chatAccess.hasAccessToEntity(filterObject, 'GET')`.
+
+**`TopicMembership.key` is a raw id, not a `Key`.** The first version passed
+`filterObject.key` to `hasAccessTo`, and a membership failed with `EL1004E`
+for a `Long` id. The review found it. `EntityTargets` now names the target of
+each entity, and an entity with no target denies. The `User` tests could not
+see this, because a `User` carries a `Key`.
+
+Two facts that cost a measurement:
+
+1. **The reactive `@PreFilter` filters a `Publisher` parameter alone.**
+   `byIds` takes a `List`, so it cannot filter the keys. `@PostFilter` filters
+   the returned `Flux` per element, and it accepts a `Mono<Boolean>`
+   expression. So a denied entity is read from the store, and the proxy removes
+   it before the caller receives it.
+2. **A mock that is a context bean keeps its answer between tests.**
+   `given(mock.byIds(...))` calls the method while it stubs, so the answer of
+   the earlier test runs with a null argument. `willAnswer(...).given(mock)`
+   does not call it.
+
+`AuthorizationService.getAuthorizationsAgainstMany` stays. No production code
+calls it now.
+
+
+## Root identity on keys (2026-09-25/27)
+
+`CHAT-avduuqwp`. Spec:
+`docs/superpowers/specs/2026-09-24-key-root-identity-design.md`. Plan:
+`docs/superpowers/plans/2026-09-25-key-root-identity.md`. Diagrams:
+`docs/KEY-ROOT-IDENTITY.md`.
+
+**This work is not merged.** The branch is `chat-avduuqwp-root-identity`. The
+owner approved T0 to T7 in batches. T8 holds the documents and the final gates.
+Merge approval is open.
+
+**Correction, 2026-09-27.** PR #142 merged the work as `dbd6b019`, a merge
+commit with two parents. The owner approved T0 to T8.
+
+### What exists
+
+- A key holds `id`, `root` and `empty`. The root is the id of the domain root
+  key. `Key.funKey` is removed, and every factory needs both values.
+- `ChatDomain` names eight domains. `Admin` and `Anon` are users, and their
+  keys carry the `USER` root.
+- Roots load from a `RootKeyStore`, and a missing root is created with a
+  conditional write. `app.rootkeys.create` is removed. `RootKeySource` selects
+  `STORE`, `KV`, `HTTP` or `NONE`, and it refuses any other setting.
+- `KeyVerifier` reads the registry. A web path id resolves through `@Resolved`.
+  An RSocket payload key verifies through `@Verified`. A route catalog test
+  fails when a route takes a key with no stated verification path.
+- Every store refuses a key of another domain on add. A grant verifies its
+  principal and its target before the write.
+- Each store backend registers a `StoreShapeCheck`. Every root source runs the
+  checks before it loads.
+
+### Decisions of the owner
+
+1. **An id converts exactly or fails.** A fraction, an overflow or an
+   unsupported shape is `KeyInputException`, and HTTP answers 400. Empty means
+   a valid id that the registry does not hold.
+2. **No migration.** A store with the schema of an earlier release fails the
+   start. The error names the missing table or column. The operator recreates
+   the store from `keyspace-*.cql`.
+3. **Authorization runs on an intercepted route or a separately proxied
+   service.** A call inside one object is not enough. This applies to
+   `CHAT-znprrzhn`.
+
+### Traps found, each of which cost a cycle
+
+- **A blocking call on a Netty thread fails.** The shell resolved ids inside a
+  reactive callback. It now takes its clients and resolves ids on the command
+  thread.
+- **`PayloadMethodArgumentResolver.resolveArgument` is final.** The RSocket
+  resolver wraps it by composition.
+- **A Cassandra `TIMEUUID` column accepts only a time based UUID.** A test that
+  mints message keys with random UUIDs fails on insert.
+- **The Lucene handle and topic name fields split on a hyphen.** Two names that
+  share one token match one query. Tests use single token names.
+  `CHAT-hajmhslp` holds the defect.
+- **A test that creates users needs a registry that holds them.**
+  `CassandraClaimBootTests` sets `app.users.create=false` for this reason.
+- **The launch gate seeded unregistered ids.** It sent sender 10 and topic 20.
+  The message route now resolves both ids, so it answered 404. The gate and
+  `docs/VECTOR-RECALL-API.md` create a user and a topic first now. No test
+  found this, because only the packaged gate uses that seed.
+- **A shape check condition test needs a session stub.** The keyspace name is
+  read lazily, so a mocked `CqlSession` is enough.
+
+### Open
+
+- Merge approval. **Done: PR #142, `dbd6b019`.**
+- The runtime grant restart proof. **See the section below.**
+- The parent scope decisions on `CHAT-avduuqwp`.
+- `CHAT-hajmhslp`, `CHAT-jwayirni` and `CHAT-qcmnxaoz`. The owner filed them
+  and required no work on them in this batch.
+
+## Stable roots across a restart (2026-09-27)
+
+`CHAT-bafkgkko`. Plan: `docs/superpowers/plans/2026-09-27-root-restart-proof.md`.
+The branch is `chat-bafkgkko-root-restart`.
+
+### What exists
+
+- `RootKeyStartup` is a `SmartLifecycle` at phase `Integer.MAX_VALUE - 4096`,
+  below both servers. It runs the store shape checks, the root key source
+  step, every `StartupIndexLoad`, and then the readiness events. A failed step
+  fails the context refresh. The `ApplicationStartedEvent` listeners are gone.
+- `LuceneIndexBeans.luceneAuthIndexLoad` fills the Lucene auth index from the
+  auth store. A partial load fails the start. Only the auth index loads.
+  `CHAT-uxgdzpag` holds the other Lucene indexes.
+  **Since 2026-10-04 all six Lucene indexes load.** See the last section of
+  this file.
+- `CassandraGrantRestartTests` and `RedisGrantRestartTests` write a runtime
+  grant, close the context, open a second one against the same store, and
+  check the grant through the production `AccessBroker`.
+- `StartupOrderTests` proves with the real servers that readiness comes before
+  both server events.
+
+### Facts that cost a measurement
+
+- **Both servers started before the roots loaded.** The web server and the
+  RSocket server are `SmartLifecycle` beans that start inside the refresh.
+  `ApplicationStartedEvent` comes after the refresh. So the old listeners left
+  a window in which a request met no roots.
+- **A grant read needs the `Anon` identity.** The actor set holds it, and it
+  loads with the initial users. With `app.users.create=false`, every grant read
+  fails, and `hasAccessByKeyId` answers false with no error.
+- **The Redis restart test uses the `KEY_VALUE_PAIR` root.** The Cassandra
+  restart test moved to `MESSAGE_TOPIC`, a root that shipped grants name, and
+  it passes. `CHAT-rmxxtwtu` measured that on 2026-09-28. So the old caution
+  here is closed, and the Redis test reads a different root.
+- **A Redis close does not release the node id claim.**
+  `LettuceConnectionFactory` stops before the claim guard releases.
+  `CHAT-ocpojbyy` holds it. The Redis restart test uses two node ids.
+- **The load bean belongs to the Lucene module.** Its first version sat in
+  `chat-deploy` behind `app.service.core.index=lucene` with `matchIfMissing`.
+  The shell sets no index selector, so the load started there and read a
+  remote store through RSocket. `--ci` found it in `ContextTest`. Only the
+  memory, Redis and Kafka deployments hold `chat-index-lucene`, so the bean
+  now exists exactly where an in-process Lucene index exists.
+- **A mutation that does not compile proves nothing.** The first M2 run failed
+  to compile, and the stale surefire report showed an old failure. Read the
+  compile errors before a mutation result.
+
+## The MCP adapter, and a gate that did not exist (2026-09-29)
+
+`CHAT-vkqdeoct`. PR #146, branch `chat-mcp-impl`, commit `bead5a8f`.
+
+**This section is closed. PR #146 merged on 2026-09-29 as
+`8fa9c9628bb7dde920975ef65c5b14636498985d`.** The merge has two parents, so it is
+a real merge commit. Master held the branch tip tree exactly, because
+`git diff 773ba27a origin/master` was empty. The local branch and its worktree
+are removed, and the remote branch is deleted.
+
+`CHAT-vkqdeoct` is done. `CHAT-ylvoiixm` is done, and three of its children stay
+open: `CHAT-pgpmsgvr`, `CHAT-rvcrzxvw` and `CHAT-qtfmwfsu`. **A closed parent
+does not close its children.** The parent comment carries the ledger.
+
+**Read that paragraph as of 2026-09-29.** Two of the three are done now.
+`CHAT-pgpmsgvr` merged on 2026-09-30 as `24ab74b0`. `CHAT-rvcrzxvw` merged on
+2026-10-01 as `8c181303`. `CHAT-qtfmwfsu` is still open.
+
+**The failure.** CI run `36635977431` failed both jobs. `chat-mcp` reported 184
+tests with 2 failures, against a local claim of 184 with 0. The number matched
+and the result did not. Both failures were `McpAdapterHarnessTests`, and both
+named one missing package:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@modelcontextprotocol/sdk'
+  imported from .../chat-mcp/src/test/client/harness.mjs
+```
+
+**Why every local result was wrong.** `node_modules/` is ignored at
+`.gitignore:47`. No workflow ran `npm`, and `grep -rn "npm\|setup-node"
+.github/workflows/` returned zero hits. The `chat-mcp` pom declared one plugin,
+`kotlin-maven-plugin`, so the module installed nothing itself. Node was present
+on the runner, and the log shows `Node.js v22.23.2`. Only the package was
+absent.
+
+So the harness test depended on a directory that its own run did not produce.
+**Every local green was measured against a `node_modules` the development
+machine already held.** CI was red on every run of the branch: `3295f7c3`,
+`d7dc162e` and `9c7adfd9` all failed. The branch never had a green run.
+
+**This is the third occurrence of one rule.** The register already records it
+twice for `check-production-classpath.sh`: a gate that depends on state its own
+run does not produce is not a gate. Here the missing state was a Node package
+rather than a Maven artifact, and Task 5 of the plan recorded the install as an
+operator note instead of a build step. A limit written into a plan is not a
+build.
+
+**The fix.** `chat-mcp` declares an `install-pinned-mcp-client` profile,
+activated when `src/test/client/node_modules` is absent. It runs `npm ci` at
+`generate-test-resources` through `exec-maven-plugin`. The parent
+`pluginManagement` pins 3.6.4, so no module declares a version.
+**A missing npm fails the build.** A silent skip would hide the loss of the
+stdout purity gate, which is the `RedisDeployBootTests` lesson.
+
+**Measured, on two paths.**
+
+- Cold, with `node_modules` removed: the build installed the client, `added 94
+  packages`, and ran 184 tests with 0 failures. The harness ran 3 of 3.
+- Warm offline, `mvn -o`: 0 npm executions and 0 downloads, 184 tests with 0
+  failures. The profile stays inactive, so the build stays offline-safe.
+- CI run `36637932684` on `bead5a8f`: both jobs succeed. The `npm-ci` execution
+  appears in each job, the harness reports **3 tests with 0 skipped**, and
+  `chat-mcp` reports 184 tests with 0 failures.
+
+**Two things worth not relearning.**
+
+- **A test that shells out to another package manager is not covered by any
+  rule this repository holds.** `check-dependency-versions.sh` reads Maven poms.
+  Both enforcer rules read the Maven tree. The CVSS 9 audit reads Maven
+  artifacts. None of them sees a Node package, so nothing but a CI run would
+  have found this.
+- **`Skipped: 0` is the line to read on a green run.** A test that guards a
+  missing dependency by skipping looks green and proves nothing. Read the
+  skipped count, not the exit code.
+
+## REST agent authentication (2026-09-29)
+
+`CHAT-pgpmsgvr`. Spec:
+`docs/superpowers/specs/2026-09-29-rest-agent-authentication-design.md`. Plan:
+`docs/superpowers/plans/2026-09-29-rest-agent-authentication.md`.
+
+**This section is closed.** PR #149 merged on 2026-09-30 as
+`24ab74b0f6be4dfccfe07a875e5ac3030f6e21c`. The merge has two parents, so it is
+a real merge commit. The local and remote feature branch are removed.
+
+`CHAT-pgpmsgvr` is done. The issue remains separate from credential issuance.
+
+Every route of the application chain requires a valid agent token.
+
+### What exists
+
+- Four required properties under `app.security`. None has a default.
+- The agent identity resolves once at startup through `ChatUserService`.
+- `AgentAuthenticationToken` carries the startup-resolved `ChatUserDetails`.
+  `ContextIdentity` did not change.
+- The decoder trusts the public half of a JWK file.
+- The authorization server adds a `client_id` claim to an access token.
+
+### Facts that are expensive to relearn
+
+- **`AuthenticationWebFilter` translates converter failures.** It catches
+  `AuthenticationException` and answers through the bearer entry point.
+  `SecurityWebFiltersOrder` puts `EXCEPTION_TRANSLATION` after
+  `AUTHENTICATION`, so `ExceptionTranslationWebFilter` never sees it.
+- **`JwtEncodingContext` has no `getRegisteredClient` of its own.** Both that
+  accessor and `getTokenType` are default methods on `OAuth2TokenContext`, which
+  it implements.
+- **Only the `rest` feature declares `expose-webflux`.** A core launch emits
+  `deploy,expose-rsocket`, so it never mounts the application chain.
+- **The measured access-token audience equals the client ID.** Audience
+  validation is deferred to `CHAT-okpgpxkj`.
+
+## MCP adapter credential issuance (2026-09-30)
+
+`CHAT-rvcrzxvw`, under the closed parent `CHAT-ylvoiixm`. **This section is
+closed.** PR #150 merged on 2026-10-01 as
+`8c181303393b5127314441e52ea0bd6f89c07618`. The merge has two parents, so it is
+a real merge commit. The merge tree is byte-identical to the branch tip tree,
+because `git diff a0065fcb 8c181303` was empty. The local and remote branch are
+removed, and the worktree with them.
+
+`CHAT-rvcrzxvw` is done. `CHAT-werokcbb` stays open, and it holds the dedicated
+agent identity gap.
+
+The issue asked for one thing: a documented procedure that produces the adapter
+credential. **No adapter code changed.** The adapter already reads
+`credentialFile` at each request and sends the bearer header.
+
+### What exists
+
+- `docs/MCP-CREDENTIAL-ISSUANCE.md` is the procedure. It starts the
+  authorization server, requests a token with the `client_credentials` grant,
+  writes the token to the file, and launches the deployment with the four
+  `app.security` values.
+- `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records a second acceptance run, on
+  2026-09-30, with an issued credential against a deployment that enforces.
+- `docs/MCP-ADAPTER.md` names the procedure and drops its stale boundary text.
+- `docs/BUILD.md` gains the token request beside the REST launch section.
+
+### The evidence
+
+The 2026-09-30 run answered every criterion of the 2026-09-29 run, and it adds
+two readings.
+
+1. **The credential was judged, and not ignored.** A control run replaced the
+   token with junk text. All three calls then answered
+   `AUTHENTICATION_REQUIRED` with `status=401`.
+2. **The refusal matrix is measured.** Each row is one request to
+   `GET /topic/id/<id>`.
+
+| Credential | Status |
+|---|---|
+| None | 401 |
+| Junk text | 401 |
+| Right scope, other `client_id` | 401 |
+| Right `client_id`, no scope | 403 |
+| Right `client_id`, `openid` only | 403 |
+| Right `client_id`, `chat.mcp` | 200 |
+
+401 refuses the credential. 403 refuses the scope. The adapter maps both to
+`AUTHENTICATION_REQUIRED`.
+
+The token itself: `ES256`, `scope` = `["chat.mcp"]`, `client_id` and `aud` equal
+the client id, and the lifetime is 300 seconds.
+
+### Facts that cost a measurement
+
+- **The `jdbc` Maven profile does not select the JDBC client repository.**
+  `authserv` always emits `-P...,jdbc`, and that is a build profile. The Spring
+  profile alone selects the repository. So `--profile memory` gives the
+  in-memory repository even though the build names jdbc.
+- **One client id appears three times.** It names the OAuth client in the token
+  request, the token's `client_id` claim, and `app.security.agent.client-id`. A
+  token from another client is refused with 401 even when its scope is right.
+- **The `client-init` path registers no `chat.mcp` client.** Its `chatClient`
+  carries `auth, message, topic, user, openId`. A token request with
+  `scope=chat.mcp` fails there. Not filed. The fix is a scope list in one file.
+- **The adapter reads the credential file at each request.** `TopicClient`
+  reads it per call and holds no copy. So an expired token needs a new file and
+  no restart. The startup check proves only that the file exists and holds text.
+- **The 300 second lifetime is the library default.** No `TokenSettings` exists
+  in this repository, so nothing configures it.
+- **`subject` and `aud` are the client id, not the agent user.** The agent
+  identity comes from `app.security.agent.username`, resolved once at startup.
+
+### Two limits, both accepted by the owner on 2026-09-30
+
+1. **The agent account is a bootstrap account.** The procedure names `Admin`,
+   because startup creates it. `ChatIdentity` in `chat-core` is a closed set of
+   `ADMIN` and `ANON`, and `RootKeys.byName` resolves only a root or an
+   identity. So `userinit.yml` cannot name a third identity, and no path creates
+   a dedicated agent user. The agent token carries administrator rights.
+   `CHAT-werokcbb` holds the gap.
+2. **No deployed grant was exercised.** No route enforces a grant, so every
+   accepted call was permitted by the credential alone. Limits of the
+   authorization surface are in `docs/ANONYMOUS-AUTHORIZATION.md`.
+
+### One review blocker, and a larger defect beside it
+
+The review of PR #150 measured that the step 4 launch command omitted
+`--notls` and `--node-id`, so it exited 2 before startup. Both arguments are
+required. `docs/BUILD.md` carried the same command, and the same omission.
+
+**The deeper defect is the shape, not the arguments.** `chat-build` accepts the
+agent flags on the `rest` service alone, and that service takes the `client`
+backend. Its dry run on 2026-09-30 reads module `chat-deploy`, ports 6792 and
+6793, and a root key source of `http://127.0.0.1:6791`. So it is a REST facade
+over a core service, and it holds no store.
+
+The measured run used one process: the `chat-deploy-memory` executable jar with
+the memory selectors and `app.server.proto=rest`. **No `chat-build` command
+produces that shape.** A repair that added the two arguments alone would have
+documented a facade as though it were the measured deployment.
+
+Both documents now separate the two routes and state each topology. The
+appendix keeps the measured flag list.
+
+**The origin is the plan.** `docs/superpowers/plans/2026-09-29-rest-agent-authentication.md`
+proposes the `docs/BUILD.md` prose at line 2961, and that draft holds the
+defect. The plan's own executable step at line 2974 carries `--notls --long
+--node-id 0` and is correct. The plan is left alone, because it records what
+that session planned.
+
+### Landed
+
+| PR | Merge | What |
+|----|-------|------|
+| #150 | `8c181303` | The credential procedure, the acceptance correction, and the launch command repair |
+
+### Open after the merge
+
+- `CHAT-werokcbb`, the dedicated agent identity, filed on 2026-09-30.
+- `CHAT-qtfmwfsu`, a child of `CHAT-ylvoiixm`, is untouched by this work.
+- **The `client-init` Spring profile registers no `chat.mcp` client.** Not
+  filed. The fix is a scope list in one file.
+- **Audience validation is not enforced.** `CHAT-okpgpxkj` holds it.
+
+### One cleanup item, not done
+
+**An orphan deployment holds ports 6790 and 6791.** PID 16436 came from the
+removed `.worktrees/mcp-impl` worktree, and nothing owns it now. This work used
+ports 6892 and 6893 to avoid it. A reader who needs those ports should confirm
+the process is dead before killing it.
+
+**Done on 2026-10-04.** The owner approved the stop. PID 16436 ran from
+`.worktrees/mcp-impl/chat-deploy-memory` and started on 2026-09-28. It stopped
+on `kill`, its Maven parent 16403 exited with it, and 6790 and 6791 are free.
+
+## The target domain scan (2026-09-30)
+
+`CHAT-rfzsnbco`. Spec:
+`docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`. Plan:
+`docs/superpowers/plans/2026-09-30-target-domain-scan.md`.
+
+A permission check reads the given target and the domain root of that target.
+The owner selection reads the exact target alone.
+
+Two facts that are expensive to relearn:
+
+1. **The matrix fixture carried no domain root.** `TestKeys.key(id)` gives
+   every key the fixed root `-9L`. So no test key carried the root of its own
+   domain, and the scan could not be measured. A room key must carry the
+   `MessageTopic` root. The fixture builds a root as `Key.root(id)`, an object
+   as `Key.of(id, domainRootId)`, and an identity as `Key.of(id, userRootId)`.
+2. **One matrix row moves.** `messageById` reads allow, because
+   `{Anon, Message, GET}` names the `Message` root and a message read asks
+   about one message. `send` stays denied, because the `Message` root is not
+   the root of a room.
+
+Every moved check was latent when that work merged. **Read that sentence as of
+2026-09-30.** The composite checks are enforced since 2026-10-01, under
+`CHAT-znprrzhn`, so the checks over one room now carry a running answer. The
+`core` interfaces stay latent. See the section below.
+
