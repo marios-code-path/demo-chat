@@ -16,13 +16,13 @@ artifact that is.
 | | |
 |---|---|
 | Checkout | `master` at `04dbe77a`, the merge commit of PR #228, in sync with `origin`. The working tree holds three untracked owner files, `conversations.json`, `conversations.jsonl`, and `forward-register-archive.md`. |
-| Register state | Restructured on 2026-10-15 into this file and three period logs. Refreshed on 2026-10-15, after PR #228. |
-| Last merged PR | #228, merge commit `04dbe77a`, merged on 2026-10-15. |
+| Register state | Restructured on 2026-10-15 into this file and three period logs. Refreshed on 2026-10-15, after PR #229. |
+| Last merged PR | #229, merge commit `f63cd3a4`, merged on 2026-10-15. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Local branches | Twenty-two, measured on 2026-10-15, `master` among them. **Eighteen others hold no commit that master lacks**, so master already holds their work: `boot4-bump` at `179c2fd8`, `chat-bmmtojqm-chat-log-view` at `925a1db8`, `chat-cdutiiyg-register-refresh`, which is this work, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-ivtnvgyg-reach-check` at `c2b5fe5d`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-mcp-spec` at `d29bac4a`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-xcmpudyb-message-id` at `20f3d014`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **Every branch ref is kept.** Three hold a commit that master lacks, and the next row names them. |
-| Unmerged branches | Three, measured on 2026-10-15: `backup/chat-bmmtojqm-before-review` at `93cada30` (ahead 1), `chat-lswjobhz-shared-store-index` at `863b6d00` (ahead 2), and `chat-urhjrwbt-indexelastic` at `d8d797b3` (ahead 1). **The branch refs are kept.** `chat-lswjobhz-shared-store-index` is live work. |
-| Worktrees | Five, measured on 2026-10-15. The main checkout, on `master`. `.worktrees/chat-cdutiiyg-register-refresh`, which is this work. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/7768/demo-chat` at `3e1c5682`, detached, which holds the pre-merge tip of PR #225. |
-| Open PRs | None, measured on 2026-10-15, after PR #228 merged. |
+| Local branches | Twenty-two, measured on 2026-10-15 at `master` at `f63cd3a4`. **This row records commit ancestry, and it states its snapshot point.** **Thirteen others hold no commit that master lacks**, so master holds their work by ancestry: `boot4-bump` at `179c2fd8`, `chat-bmmtojqm-chat-log-view` at `925a1db8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-ivtnvgyg-reach-check` at `c2b5fe5d`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **Four hold one commit that master lacks, and master holds an equivalent change**: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-xcmpudyb-message-id` at `20f3d014`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **Three hold commits that master lacks, and master holds no equivalent change.** The next row names them. **One is this work**, `chat-cdutiiyg-ancestry-fix`, cut from the snapshot tip. It holds the refresh commit alone and no other work. It joins the ancestry group once its pull request merges. **Every branch ref is kept.** |
+| Unmerged branches | Three, measured on 2026-10-15 at `master` at `f63cd3a4`. Each holds commits that master lacks, and master holds no equivalent patch: `backup/chat-bmmtojqm-before-review` at `93cada30`, with 1 commit absent, `chat-lswjobhz-shared-store-index` at `863b6d00`, with 2, and `chat-urhjrwbt-indexelastic` at `d8d797b3`, with 1. **The branch refs are kept.** `chat-lswjobhz-shared-store-index` is live work. |
+| Worktrees | Five, measured on 2026-10-15. The main checkout, on `master`. `.worktrees/chat-cdutiiyg-ancestry-fix`, which is this work. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/7768/demo-chat` at `3e1c5682`, detached, which holds the pre-merge tip of PR #225. |
+| Open PRs | None, measured on 2026-10-15, after PR #229 merged. |
 | In-progress issues | Eight, measured on 2026-10-15: `CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-aqpcacwv`, `CHAT-emwhnlay`, `CHAT-lswjobhz`, `CHAT-uxlstrdy`, `CHAT-pphwooqm`, and `CHAT-cdutiiyg`, which is this work. |
 
 **The `Checkout` row records the last substantive merge before the refresh.**
@@ -31,15 +31,28 @@ row. **That lag is not drift, and a reader must not correct it.** A row that
 chased the true tip would go stale the moment it merged, and it would spawn a
 refresh on every refresh. The owner set this rule on 2026-09-29.
 
-**Four branches that master lacked now hold no lost work.**
-`chat-hazcatpc-review-fix`, `chat-mcp-spec`, `chat-xcmpudyb-message-id` and
-`chat-znprrzhn-composite-enforcement` reached that state by 2026-10-15.
-`git cherry master` marks each of their commits with a minus sign, so master
-holds an equivalent patch.
+**Ancestry and equivalent work are two questions.** A branch that holds no
+commit absent from the snapshot is landed by ancestry. A branch that holds one
+absent needs the second question. `git cherry <snapshot> <branch>` answers it,
+and a minus sign means master holds an equivalent patch.
 
-**One of the three unmerged branches carries no lost work.**
-`backup/chat-bmmtojqm-before-review` at `93cada30` holds a chat log commit
-before its review repairs, and PR #186 merged the repaired version.
+**Four branches hold one commit that the snapshot lacks, and master holds
+their change.** Three print a minus sign at `f63cd3a4`:
+`chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, and
+`chat-xcmpudyb-message-id` at `20f3d014`.
+
+**The fourth needs separate evidence, because it is a merge commit.**
+`git cherry` prints no line for a merge commit, so it cannot prove
+`chat-znprrzhn-composite-enforcement` at `91af1c96`. Its parents are
+`b60a9df4` and `d560c986`, and both are ancestors of the snapshot.
+`git diff d560c986 91af1c96` is empty. Its tree `3c9d0fd2` equals the tree of
+`d560c986`. So the snapshot holds that content.
+
+**One of the three unmerged branches carries no lost work, and its evidence
+is the pull-request record.** `backup/chat-bmmtojqm-before-review` at
+`93cada30` holds one commit that master lacks, and `git cherry` prints a plus
+sign for it. The commit is the chat log before its review repairs, and PR #186
+merged the repaired version.
 
 **One belongs to other work.** `chat-urhjrwbt-indexelastic` at `d8d797b3`
 holds the module repair that PR #106 superseded. **The `topic-by-name` branch
