@@ -5547,9 +5547,24 @@ that `CHAT-zxrgxdlx` names, so one spelling serves both.
 
 **The work order said the source ID stays conversation-scoped.** That sentence
 contradicted its own rule 4. It is corrected in place, and the design
-document's corrections section records it. **The other defensible fix is a
-room-scoped request ID inside the route.** That file belongs to
-`CHAT-zxrgxdlx`, so this work did not take it.
+document's corrections section records it.
+
+### The owner settled the boundary on 2026-10-14
+
+**The room-scoped source ID stays in the importer.** PR #226 keeps it. The
+route does not change in that pull request.
+
+**A route-scoped request ID remains defensible, and it waits.** The route owns
+the request identity for every caller. A change there would move the identity
+of imports that already exist. `CHAT-zxrgxdlx` settles that general contract
+before it derives the message keys. It is a child of `CHAT-emwhnlay`.
+
+**The owner measured the callers.** The shell is the only production caller.
+The route tests use unscoped IDs, so they do not pin the contract either way.
+The issue comment of `CHAT-zxrgxdlx` records both options now.
+
+**`CHAT-emwhnlay` stays open for that child work.** The long-key startup
+refusal and the derived-ID read are open with it.
 
 ### Open
 
