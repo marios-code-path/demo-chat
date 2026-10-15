@@ -169,17 +169,20 @@ built on top of them inherits the risk.
   tests in one reactor. `--integration` alone does not build the image, and it
   prints a note that says so. A stale image caused 8 decode errors that looked
   like a code regression.
-- **A random test port can land on a port that IntelliJ holds.**
-  `chat-client-rsocket/src/test/resources/application.properties` sets
-  `spring.rsocket.server.port=0`, so the kernel picks the port. Java sets
-  `SO_REUSEADDR` on a server socket, and macOS then allows a wildcard bind
-  beside a listener on `127.0.0.1`. The server logs `started on port <p>`, and
-  the client connects to `localhost`, which reaches the specific listener. The
-  test then fails with `ClosedChannelException` after a 45 s wait, and the
-  server log names a port that no test traffic reached. Two occurrences:
-  63342 on 2026-10-07, and 64342 on 2026-10-15. IntelliJ held each one. **Run
-  `lsof -nP -iTCP:<p> -sTCP:LISTEN` before you read such a failure as a
-  regression.** `CHAT-ivtnvgyg` holds it.
+- **A test server that binds the wildcard address can share a port with an
+  IntelliJ listener, and IntelliJ then receives the connections.**
+  `chat-client-rsocket/src/test/resources/application.properties` set
+  `spring.rsocket.server.port=0`, so the kernel picked the port. Java sets
+  `SO_REUSEADDR` on a server socket, and macOS allows a wildcard bind on a port
+  that a `127.0.0.1` listener holds. The loopback listener wins that address.
+  The server logs `started on port <p>`, and the client connects to
+  `localhost`. The test then fails with `ClosedChannelException` after a 45 s
+  wait, and `lsof` shows the test server's listener accepting nothing. Two
+  occurrences: 63342 on 2026-10-07, and 64342 on 2026-10-15. **The test server
+  binds loopback alone now, and that closes the trap.** A loopback bind on a
+  held loopback port fails with `EADDRINUSE`, and a kernel pick avoids such a
+  port. Run `lsof -nP -iTCP:<p> -sTCP:LISTEN` before you read such a failure as
+  a regression. `CHAT-ivtnvgyg` holds it.
 - **A stale compiled test class outlives its source across a branch switch.**
   `DomainWireShapeTests.class` stayed in `chat-core/target/test-classes` after a
   checkout that removed its source. Surefire runs compiled classes, not sources.
