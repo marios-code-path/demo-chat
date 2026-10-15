@@ -5553,6 +5553,8 @@ room-scoped request ID inside the route.** That file belongs to
 
 ### Open
 
+- **PR #226 is open against `master`**, pushed on 2026-10-14. Its three jobs
+  are `build`, `integration`, and `agent-http`.
 - `CHAT-zxrgxdlx` owns the derived message key, the UUID-only import gate, and
   the source-to-chat map. It is `todo` and holds no code.
 - The `Checkout` row of this file is not moved by this section.
