@@ -4,6 +4,7 @@ import com.demo.chat.shell.commands.LoginCommandsRegistrar
 import com.demo.chat.shell.commands.PubSubCommandsRegistrar
 import com.demo.chat.shell.commands.TopicCommandsRegistrar
 import com.demo.chat.shell.commands.UserCommandsRegistrar
+import com.demo.chat.shell.commands.ClaudeImportCommandsRegistrar
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -43,6 +44,9 @@ class ShellCommandContractTests {
         Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false)), positional = "username"),
         Expected("send", "Send a Message", listOf(Opt("topic", "_"), Opt("userName", "_"), Opt("messageText", null), Opt("requestId", "_")), positional = "messageText"),
         Expected("command-status", "Show the status of a message command", listOf(Opt("commandId", null))),
+        Expected("import-claude", "Import one Claude conversation", listOf(
+            Opt("file", null), Opt("conversation", null), Opt("topic", null),
+            Opt("generation", null), Opt("human", null), Opt("assistant", null))),
         Expected("listen", "Listen to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("hangup", "Stop listening to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false)), positional = "topic"),
@@ -72,8 +76,9 @@ class ShellCommandContractTests {
         val pubsub = PubSubCommandsRegistrar(mock(com.demo.chat.shell.commands.PubSubCommands::class.java) as com.demo.chat.shell.commands.PubSubCommands<Any>)
         val topic = TopicCommandsRegistrar(mock(com.demo.chat.shell.commands.TopicCommands::class.java) as com.demo.chat.shell.commands.TopicCommands<Any>)
         val user = UserCommandsRegistrar(mock(com.demo.chat.shell.commands.UserCommands::class.java) as com.demo.chat.shell.commands.UserCommands<Any>)
+        val importer = ClaudeImportCommandsRegistrar(mock(com.demo.chat.shell.commands.ClaudeImportCommands::class.java) as com.demo.chat.shell.commands.ClaudeImportCommands<Any>)
 
-        return listOf<Any>(login, pubsub, topic, user).flatMap { registrar ->
+        return listOf<Any>(login, pubsub, topic, user, importer).flatMap { registrar ->
             registrar.javaClass.declaredMethods
                 .filter { Command::class.java.isAssignableFrom(it.returnType) }
                 .map { it.invoke(registrar) as Command }
@@ -156,13 +161,11 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty seven commands and thirty five options`() {
+    fun `the contract holds twenty eight commands and forty one options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         // command-status and send --requestId raised them from 27 and 33.
-        // `bye` left on 2026-10-12, because the runner owns the exit literals.
-        // See `CHAT-ybmlcdiw`.
-        assertThat(registered()).hasSize(27)
-        assertThat(registered().sumOf { it.options.size }).isEqualTo(35)
+        assertThat(registered()).hasSize(28)
+        assertThat(registered().sumOf { it.options.size }).isEqualTo(41)
     }
 }

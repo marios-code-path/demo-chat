@@ -14,7 +14,8 @@ Measured on 2026-09-18.
 
 The migration goes to **programmatic** command registration rather than the new
 annotations. Spring Shell 4 does not support declarative commands under GraalVM
-native compilation, and this repository compiles its tools natively. See
+native compilation. `chat-shell` has no native profile. `CHAT-ulrkvfit` tracks
+that gap. `CHAT-emwhnlay` permits the JVM importer command. See
 https://github.com/spring-projects/spring-shell/issues/1229
 
 ## How a command name is produced today
@@ -71,6 +72,23 @@ same receipt and admits nothing new. The server binds the sender to the login,
 so `send` sends no sender. `command-status` prints the state of each backend of
 a command that the login owns. A command of another owner answers not found.
 
+### ClaudeImportCommands
+
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `import-claude` | `importConversation` | Import one Claude conversation | `--file` `String` required<br>`--conversation` `String` required<br>`--topic` `String` required<br>`--generation` `String` required<br>`--human` `String` required<br>`--assistant` `String` required | none |
+
+Set `CHAT_IMPORT_ADMIN_PASSWORD` before this command. The command reads one
+conversation from the file. It uses the Admin login for the import route. It
+checks both user handles before it creates a topic. It imports every leaf path,
+and each path receives its own topic. A topic name is
+`<topic>:<conversation-uuid>:<generation>:<leaf-uuid>`. The operator supplies
+the generation as a decimal value. The importer never computes one. A hyphen
+and a colon are accepted in the name. The source ID of each record is
+`<topic-id>:<message-uuid>`, and the route prefixes `import:`. The command
+reports the topics created, the messages imported, the missing parents, and
+the skipped content.
+
 ### TopicCommands
 
 | Command | Method | Help | Options | By position |
@@ -100,11 +118,10 @@ a command that the login owns. A command of another owner answers not found.
 | `all-permissions` | `allPermissions` | Get all Perms | none | none |
 | `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required | none |
 
-**27 commands and 35 options.** `ShellCommandContractTests` pins both counts,
-every option and every positional argument. The migration table held 26
-commands. `CHAT-rghaeqsa` added `messages`, and `command-status` raised the
-count to 28. **`bye` is removed**, so the count returns to 27. See
-`No command exits the shell` below.
+**28 commands and 41 options.** `ShellCommandContractTests` pins every
+command, option, and positional argument. The migration table held 26
+commands. `messages` and `command-status` raised the count to 28. `CHAT-ybmlcdiw`
+removed `bye`. `CHAT-emwhnlay` adds `import-claude`.
 
 ## Availability is not used, and the dead check is gone
 

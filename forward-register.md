@@ -5500,3 +5500,76 @@ had this defect from that change until PR #225.
 
 One limit stays open. No deployment ran against a remote cluster. Every reading
 came from a test JVM.
+
+## The Claude import topic scope (CHAT-emwhnlay, 2026-10-14)
+
+`CHAT-emwhnlay`. Branch `chat-emwhnlay-import`, in the worktree
+`/Users/darkbit1001/.codex/worktrees/f019/demo-chat`. **This work is not
+merged.** The reviewed work order is
+`docs/superpowers/specs/2026-10-13-claude-thread-topic-import-work-order.md`.
+
+### The collision, and the fix
+
+**One export record reaches two topics.** Rule 4 of the work order puts a
+shared parent into every thread that uses it. A fork therefore imports one
+record into two rooms.
+
+**The route refused the second room.** `MemoryDomainCommandBus.admit` keys a
+request on the owner and the request ID. Its fingerprint includes the room. A
+repeat with a different room is a `RequestConflictException`, not a duplicate.
+So one request ID names one message.
+
+**`MessageImportRequest.messageId` has one consumer**, which is
+`requestId = "import:${req.messageId}"` at `MessagingServiceImpl.kt:184`. The
+route treats the value as opaque, so the caller owns its scope.
+
+**The source ID is `<topicId>:<messageUuid>` since 2026-10-14.** It was
+`<conversationUuid>:<messageUuid>`. The value is also the derivation input
+that `CHAT-zxrgxdlx` names, so one spelling serves both.
+
+### The evidence
+
+- `ClaudeImportCommandsTests` 15 of 15. The new case `a shared root names one
+  source ID per topic` failed at `:286` before the fix.
+- `ClaudeImportDeploymentTests` 4 of 4 on the rebuilt image. The new case
+  `a forked conversation imports each leaf into its own topic` covers rule 4
+  on the real route. The second generation case failed with
+  `RequestConflictException` before the fix.
+- `build-health.sh --ci`: exit 0, 30 modules, 2548 tests, 0 failures,
+  0 errors, 82 skipped, `agent http gate: ok`, and no drift. The shell image
+  id moved from `f6d43011d980` to `9b02c7070e02`. `docker events` reported no
+  OOM kill in the run window.
+- Two unit tests cover acceptance rows that no test held before:
+  `an added leaf renames no existing topic`, and `the largest room id fits
+  the request limit`.
+
+### The sentence the measurement refuted
+
+**The work order said the source ID stays conversation-scoped.** That sentence
+contradicted its own rule 4. It is corrected in place, and the design
+document's corrections section records it.
+
+### The owner settled the boundary on 2026-10-14
+
+**The room-scoped source ID stays in the importer.** PR #226 keeps it. The
+route does not change in that pull request.
+
+**A route-scoped request ID remains defensible, and it waits.** The route owns
+the request identity for every caller. A change there would move the identity
+of imports that already exist. `CHAT-zxrgxdlx` settles that general contract
+before it derives the message keys. It is a child of `CHAT-emwhnlay`.
+
+**The owner measured the callers.** The shell is the only production caller.
+The route tests use unscoped IDs, so they do not pin the contract either way.
+The issue comment of `CHAT-zxrgxdlx` records both options now.
+
+**`CHAT-emwhnlay` stays open for that child work.** The long-key startup
+refusal and the derived-ID read are open with it.
+
+### Open
+
+- **PR #226 is open against `master`**, pushed on 2026-10-14. Its three jobs
+  are `build`, `integration`, and `agent-http`.
+- `CHAT-zxrgxdlx` owns the derived message key, the UUID-only import gate, and
+  the source-to-chat map. It is `todo` and holds no code.
+- The `Checkout` row of this file is not moved by this section.
