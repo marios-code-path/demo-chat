@@ -161,7 +161,7 @@ mvn -o -pl chat-core test -Dtest=ImportedMessageIdTests > $LOG 2>&1; echo exit=$
 
 - [ ] **Step 3: Write the derivation**
 
-`derive` asserts that `sourceId` starts with `"$topicId:"`, then hashes `sourceId`. `deriveFor` calls `derive`, then refuses a key type whose probe value is not a `UUID`. Use `UUIDKeyGenerator` as the pattern reference for the name-based form.
+`derive` asserts that `sourceId` starts with `"$topicId:"`, then hashes `sourceId`. `deriveFor` checks the key type probe and destination before it calls `derive`. It refuses a non-UUID key type with a `ChatException` that names the type and derivation. Use `UUIDKeyGenerator` as the pattern reference for the name-based form.
 
 - [ ] **Step 4: Run it and see it pass**
 
