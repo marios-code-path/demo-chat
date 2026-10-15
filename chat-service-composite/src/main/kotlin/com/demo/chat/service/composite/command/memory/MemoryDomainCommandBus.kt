@@ -76,6 +76,10 @@ class MemoryDomainCommandBus<T : Any, V>(
         if ((submission.operation == CommandOperation.RECORD_POINTER) != (submission.target != null)) {
             throw DefinitiveRefusalException("A RECORD_POINTER command needs a target, and no other operation takes one.")
         }
+        // Only an import can supply its message id. An import with no id gets a minted id. CHAT-zxrgxdlx.
+        if (submission.messageId != null && submission.operation != CommandOperation.IMPORT_MESSAGE) {
+            throw DefinitiveRefusalException("Only an IMPORT_MESSAGE command takes a message id.")
+        }
         RequestIds.requireValid(submission.requestId)
         val identity = RequestIdentity(submission.owner, submission.requestId)
         val fingerprint = CommandFingerprint.of(
@@ -86,6 +90,7 @@ class MemoryDomainCommandBus<T : Any, V>(
             submission.timestamp,
             submission.publish,
             submission.target?.let { "${typeUtil.toString(it.root)}:${typeUtil.toString(it.id)}" },
+            submission.messageId?.let(typeUtil::toString),
         )
         val lock = locks.computeIfAbsent(identity) { Any() }
         val receipt = synchronized(lock) {
@@ -110,7 +115,8 @@ class MemoryDomainCommandBus<T : Any, V>(
         submission: CommandSubmission<T, V>,
         fingerprint: String,
     ): Receipt<T> {
-        val key = allocator.allocate(ChatDomain.MESSAGE)
+        val key = submission.messageId?.let { allocator.adopt(ChatDomain.MESSAGE, it) }
+            ?: allocator.allocate(ChatDomain.MESSAGE)
         val timestamp = (submission.timestamp ?: clock.instant()).truncatedTo(ChronoUnit.MILLIS)
         val messageKey: MessageKey<T> = SimpleMessageKey(key.id, key.root, submission.sender, submission.dest, timestamp)
         val command = AcceptedCommand(
