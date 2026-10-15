@@ -438,6 +438,24 @@ PR #225 merged the fix on 2026-10-14.
 you treat one as a regression, look for a foreign listener on the port. Run
 `lsof -nP -iTCP:9042 -sTCP:LISTEN`.
 
+## The forward register size check
+
+`AGENTS.md` imports `forward-register.md`, so that file loads in every session.
+Its size is a cost on every turn. It must stay under 64 KB.
+
+`build-health.sh` measures the file in every mode. A file above 65,536 bytes
+fails the run and prints `REGISTER TOO LARGE`. The oldest dated sections then
+move to their period archive.
+
+The split of 2026-10-15 moved every section before 2026-10-08 into three period
+logs: `forward-register-archive-2026-08.md`,
+`forward-register-archive-2026-09.md` and `forward-register-archive-2026-10.md`.
+Nothing imports those files, so they cost no context until a reader opens one.
+The live register holds the durable core and the current period.
+
+**The check compares the byte count alone.** It cannot see a loss of content,
+and it cannot see a section that belongs in an archive. See `CHAT-nxbtadan`.
+
 ## Resolved
 
 Kept so the list can be trusted — an entry disappearing without explanation is indistinguishable from an entry being forgotten.
