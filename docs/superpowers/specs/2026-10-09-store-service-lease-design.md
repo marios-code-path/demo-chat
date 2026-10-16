@@ -7,6 +7,19 @@ corrections: a narrower guarantee, a start and stop order, and a statement
 that split deployments stay unsupported. The sections `The guarantee`,
 `The lifecycle order` and `Split deployments` hold them.
 
+Revised again on 2026-10-16 after the plan review. The owner accepted the
+narrow guarantee and required five more corrections:
+
+- The rule and the goal must not promise exactly one live instance.
+- Early leases must stay alive during a slow claim batch.
+- The close deadline must not share a thread with blocking renewals.
+- A clean close must stop new writes and drain accepted writes before the
+  release.
+- Lease names must come from the present service beans.
+
+The sections `The rule`, `The guarantee`, `The renew loop`, `The write drain`
+and `What a process claims` hold them.
+
 ## The problem
 
 Each Lucene index lives in one process. Before this change, two core
@@ -34,9 +47,13 @@ at all, a write during a scan is lost like any other remote write.
 
 ## The rule
 
-The owner set the rule on 2026-10-09.
+The owner set the goal on 2026-10-09: on a shared backend, each store
+service has one live instance. **A TTL lease cannot prove that goal.** It
+cannot prove that an old process stopped. So the rule that this work enforces
+is narrower:
 
-**On a shared backend, each store service has exactly one live instance.**
+**On a shared backend, each store service has at most one current lease
+holder.** `The guarantee` states what that gives, and what it does not give.
 
 - A store service is one domain variant of persistence or index. The
   persistence services are `UserPersistence`, `TopicPersistence`,
@@ -45,9 +62,11 @@ The owner set the rule on 2026-10-09.
   follow the same rule.
 - Services may live in different deployments and share one Cassandra cluster or
   one Redis.
-- A second instance of the same service on the same backend fails at start.
-- A silent instance can be replaced. A new deployment can claim the service
-  after the lease of the silent instance expires.
+- A second instance of the same service on the same backend fails at start
+  while the first instance holds the lease.
+- A new deployment can claim the service after the lease of a silent instance
+  expires. **The expiry does not prove that the silent instance stopped.** See
+  `The guarantee`, case 3, and `The swap`.
 
 The key service and the secrets store are not store services under this rule.
 The node id lease already keeps generated keys unique per node.
@@ -76,15 +95,20 @@ lease therefore gives this guarantee, and no stronger one:
 
 1. **At most one process holds a service lease at one time**, as the backend
    measures time.
-2. **A holder closes its own context before its lease can expire.** The guard
-   closes the context when no renewal succeeds within
-   `ttl - safety-margin`, measured on the holder's clock. The defaults are
-   30 s and 5 s, so the close comes 25 s after the last renewal.
+2. **If the holder process does not pause for longer than the safety margin,
+   it starts to close its own context before its lease can expire.** The
+   guard starts the close when a lease has no granted claim or renewal within
+   `ttl - safety-margin`, measured on the holder's clock from the send time of
+   that request. The defaults are 30 s and 5 s, so the close starts 25 s after
+   the send of the last granted request. A thread that never blocks runs this
+   check. `The renew loop` gives the mechanism.
 3. **A holder that pauses longer than the safety margin can still write.** A
-   garbage collection pause or a suspended host can stop the holder's clock
-   check. Its lease can expire, and a new holder can claim the service. The old
-   holder can then complete requests that were in flight before its close.
-   Those writes reach the store, and they can miss the index of the new holder.
+   garbage collection pause, a suspended host or a starved thread can delay the
+   holder's deadline check. Java does not guarantee prompt scheduled
+   execution. The lease can expire, and a new holder can claim the service.
+   The old holder can then complete writes that were in flight before its
+   close. Those writes reach the store, and they can miss the index of the new
+   holder.
 
 The lease does not fence writes. A fencing token on every store write would
 remove case 3. Redis documents this limit of a TTL lock, and it recommends
@@ -92,11 +116,20 @@ fencing for correctness. Fencing needs a token check on every persistence
 write path, Cassandra and Redis, so it is out of scope here. The node id lease
 has the same limit.
 
-**An operator must not start a replacement until the old holder has stopped,
-or until a full `ttl` has passed since the old holder was last seen.** The
-swap procedure in `docs/SERVICE-LEASE.md` states this.
-
 Tests pin cases 1 and 2. Case 3 is a recorded limit and has no test.
+
+### The swap
+
+**A safe swap needs confirmed termination of the old process.** The operator
+confirms that the old process exited before the replacement starts. Examples:
+the container stopped, or the process id is gone from the host. A clean stop
+of the old process releases its leases, so the replacement then starts at
+once.
+
+**A wait of one `ttl` after the old holder was last seen is not proof.** A
+paused process can resume after its lease expired. An operator who starts a
+replacement without confirmed termination accepts the case 3 risk. The swap
+procedure in `docs/SERVICE-LEASE.md` states this.
 
 ## Approaches considered
 
@@ -109,8 +142,9 @@ decides what an expired holder can do. `The guarantee` rejects it for now.
    the owner's direction needs.
 3. **Detect at start with the node id table, no new lease.** It was one-sided.
    A process that starts after the owner was not stopped.
-4. **A lease per store service.** Chosen. It states the rule as the owner gave
-   it, and it allows the later split.
+4. **A lease per store service.** Chosen. It follows the owner's goal for each
+   service, and it allows the later split. It gives at most one current
+   holder, not proof of one live instance.
 
 ## Lease names and scope
 
@@ -161,8 +195,18 @@ and `release`. Each returns a `Mono`, and the result is `Granted`,
 ### What a process claims
 
 The process claims one lease for each store service that it creates. The list
-comes from the service beans that are present, not from a fixed list. A later
-deployment that runs some of the services claims only those.
+comes from the service beans that are present, not from a fixed list of
+domains. A later deployment that runs some of the services claims only those.
+
+- A store service bean is a bean that implements `PersistenceStore` or
+  `IndexService`.
+- `ServiceLeaseNames` maps each bean to its lease name through the domain
+  interface that the bean implements. For example, `UserPersistence` maps to
+  `persistence:user`, and `AuthMetaIndex` maps to `index:authmeta`.
+- **A store service bean that implements no mapped domain interface fails the
+  start.** The message names the bean and its class. So a new store service
+  cannot run without a lease name.
+- Two beans with one lease name claim that name once.
 
 ### The guard
 
@@ -174,19 +218,77 @@ deployment that runs some of the services claims only those.
 - It claims in a fixed sorted order of lease names.
 - A refused claim releases the leases that the guard already holds, and it fails
   the start. The message names the service, the scope and the holder.
-- It renews on the node id schedule, with the node id properties:
-  `app.nodeid.claim.ttl`, `renew-interval`, `safety-margin` and
-  `operation-timeout`.
+- It renews with the node id properties: `app.nodeid.claim.ttl`,
+  `renew-interval`, `safety-margin` and `operation-timeout`.
 - A lost lease, or a missed deadline, closes the context, as the node id guard
   does.
-- It reuses `ClaimScheduler`. Where the renew loop would copy
-  `NodeIdClaimGuard`, the plan moves the loop to one place.
+- It shares one renew loop with `NodeIdClaimGuard`. `The renew loop` gives
+  the rules.
+- Its `stop` drains the store writes before the release. `The write drain`
+  gives the rules.
 - The holder text names the node id and the runtime owner id, so an operator can
   find the deployment that holds a service.
 
 The node id lease keeps its Redis key format and its `node_claim` table.
 
-### The lifecycle order
+### The renew loop
+
+One `LeaseKeeper` holds the renew and deadline rules for both guards.
+
+- **Renewal starts before the first claim.** A guard claims its names in
+  sequence. Each granted lease joins the renew loop at once. So a slow claim
+  batch cannot let an early lease expire. Twelve claims at the 5 s operation
+  timeout can take 60 s, and the TTL is 30 s.
+- **The keeper records the send time of each granted request**, per lease. A
+  claim or renewal that the store grants moves that time. A failed or late
+  renewal does not.
+- **A claim batch fails the start when a lease passes its deadline before the
+  batch ends.** The guard then releases every lease that it took.
+- **One renewal round sends every renewal at once**, and each one has the
+  operation timeout. So one round takes about one operation timeout, not one
+  timeout per lease.
+- **The deadline check has its own thread, and that thread never blocks.**
+  Renewals run on another thread. A renewal that blocks its thread cannot delay
+  the deadline. The check closes the context when the oldest lease passes
+  `ttl - safety-margin`.
+- During the claim batch, the guard runs the deadline check itself. The
+  context is still in its refresh, so the check fails the start and does not
+  close the context.
+- A result that comes back after the release is ignored.
+
+### The write drain
+
+Spring stops the servers before the guards. A request that a server accepted
+can still be running when its server stops. A canceled reactive chain does not
+prove that its store write stopped. So a clean close must hold the leases until
+the accepted writes end.
+
+- **A `StoreWriteGate` wraps each store service bean of a leased process.** A
+  bean post processor puts a proxy around each bean that implements
+  `PersistenceStore` or `IndexService`. The proxy sends each `add`, `rem` and
+  `addEnriched` call through the gate. Reads pass through.
+- **An index that writes only to local files is not wrapped.** It implements
+  the `ProcessLocalIndex` marker. The Lucene indexes do. Their writes never
+  reach the shared store. The Lucene configuration also casts its index beans
+  to the Lucene class, and a proxy would break that cast.
+- **The gate counts a write from its start to its end in the store.** A caller
+  that cancels does not end the count. The write runs to its end, and the
+  count drops then.
+- **`ServiceLeaseGuard.stop` closes the gate, and then waits for the count to
+  reach zero.** A closed gate refuses each new write with
+  `StoreWriteRefusedException`. The renewals continue during the wait.
+- **A drain that ends in time releases the leases.** A drain that passes
+  `app.service.lease.drain-timeout` keeps the leases. It stops the renewals
+  and logs the number of writes still active. The leases then expire after
+  `ttl`. The default drain timeout is 10 s.
+- `ServiceLeaseGuard.destroy` runs the same drain before its release, for a
+  failed start.
+- The key service and `InitializingKVStore` are not gated. The key service is
+  not a store service. `RootKeyStartup` writes the root key snapshot at start
+  alone, and it stops before the drain.
+
+The node id guard has no gate. A key mint after the node id release keeps the
+risk that the node id lease had before this work.
 
 Spring starts `SmartLifecycle` beans in ascending phase order and stops them in
 descending phase order. The phases that matter, measured on 2026-10-16:
@@ -205,9 +307,10 @@ its lease, and the service guard claims the service leases. `RootKeyStartup`
 then runs the start scan. The servers start last. So no start scan and no
 request runs without the leases.
 
-**Stop.** The servers stop first, and then `RootKeyStartup`. The service guard
-releases its leases, and then the node id guard releases its lease. The
-connection factory stops last. So each release runs on a live connection.
+**Stop.** The servers stop first, and then `RootKeyStartup`. The command
+runtime stops at `Int.MAX_VALUE - 4608`. The service guard drains the store
+writes and releases its leases, and then the node id guard releases its lease.
+The connection factory stops last. So each release runs on a live connection.
 
 **Other writers.** A background writer that is not a `SmartLifecycle` stops at
 bean destruction, after the guards release. Such a writer can write without a
@@ -251,6 +354,11 @@ adds no such path, and it adds no check that refuses a split.
   timeout.
 - A renew error is logged and retried at the next interval. The deadline closes
   the context when the renewals do not succeed in time.
+- A claim batch that passes the deadline of an early lease fails the start, and
+  it releases every lease that it took.
+- A drain that passes its timeout keeps the leases until they expire. The log
+  names the number of active writes.
+- A store service bean with no lease name fails the start.
 - A refused claim never leaves a partial set of leases.
 - A process that comes back after a long pause and finds its lease lost closes
   its context. Writes that it completes before that close are not fenced. See
@@ -267,6 +375,17 @@ adds no such path, and it adds no check that refuses a split.
   alone, and a new claim after expiry.
 - **Guard unit tests.** The claim order, the release after a refused claim, the
   close on loss, and the message text.
+- **Lease names.** Each of the twelve domain interfaces maps to its name. A
+  store service bean with no mapped interface fails the start. A boot test
+  shows that every store service bean of a Redis core has a lease.
+- **Slow claims.** Twelve slow claims take longer than the TTL, and every lease
+  is live at the end of the batch. A claim batch that passes a deadline fails
+  the start and releases.
+- **Slow renewals.** Twelve slow renewals start together. A renewal that blocks
+  its thread does not delay the close at the deadline.
+- **The drain.** A write that is active during the close ends before the
+  release. A write after the close starts is refused. A drain timeout keeps
+  the leases. A unit test and a Redis boot test pin these.
 - **Two cores on one Redis.** `RedisSharedStoreIndexTests` changes from a
   measurement of the gap to a refusal test. The second core fails at start and
   names the service and the holder. A control shows that the first core still
@@ -286,7 +405,9 @@ adds no such path, and it adds no check that refuses a split.
   a store without `service_lease`.
 - **Mutation proofs.** With the guard disabled, the refusal test fails. With the
   release order repair removed, the restart test fails. With the `destroy`
-  release removed, the failed start test fails.
+  release removed, the failed start test fails. With the deadline on the renew
+  thread, the blocked renewal test fails. With renewal after the batch, the
+  slow claim test fails. With no drain in `stop`, the drain tests fail.
 
 ### The suite and the rule
 
@@ -304,7 +425,9 @@ That breaks the rule. The owner chose one context at a time.
 ## Documents
 
 - New `docs/SERVICE-LEASE.md`: the rule, the lease names and scope, the swap
-  procedure, the properties, and the store recreation step.
+  procedure with confirmed termination, the properties with
+  `app.service.lease.drain-timeout`, the write drain, and the store recreation
+  step.
 - `docs/NODEID-CLAIM.md`: correct the Redis release statement, and record the
   node ids of the new tests.
 - `docs/BUILD-HEALTH.md`: the new counts.
