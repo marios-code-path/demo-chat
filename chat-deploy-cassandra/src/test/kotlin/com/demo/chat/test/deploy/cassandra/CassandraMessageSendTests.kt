@@ -11,6 +11,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.ChatUserDetails
+import com.demo.chat.service.command.ImportedMessageId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -20,7 +21,9 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
+import reactor.core.Exceptions
 import java.time.Duration
+import java.util.UUID
 
 /**
  * A message send on a Cassandra deployment, for each key type.
@@ -123,58 +126,93 @@ class CassandraMessageSendTests : CassandraContainerBase() {
     fun `a message sent on a uuid cassandra deployment reads back by id and by room`() =
         sendAndRead("uuid", 26)
 
-    private fun importAndReadOutOfOrder(keyType: String, nodeId: Int) {
-        start(keyType, nodeId).use { context ->
-            @Suppress("UNCHECKED_CAST")
-            val composite = context.getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Any, String>
-            @Suppress("UNCHECKED_CAST")
-            val rootKeys = context.getBean(RootKeys::class.java) as RootKeys<Any>
-            val firstSender = composite.userService()
-                .addUser(UserCreateRequest("first $keyType", "first$keyType", "http://u"))
-                .block(timeout)!!
-            val secondSender = composite.userService()
-                .addUser(UserCreateRequest("second $keyType", "second$keyType", "http://u"))
-                .block(timeout)!!
-            val room = composite.topicService()
-                .addRoom(ByStringRequest("importroom$keyType"))
-                .block(timeout)!!
-            val admin = UsernamePasswordAuthenticationToken(
-                ChatUserDetails(
-                    User.create(rootKeys.admin(), "Admin", "Admin", "http://u"),
-                    listOf("ROLE_ADMIN"),
-                ),
-                "n/a",
-                listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
-            )
-            val adminContext = ReactiveSecurityContextHolder.withAuthentication(admin)
-            val early = java.time.Instant.parse("2026-10-08T10:00:00.001Z")
-            val middle = java.time.Instant.parse("2026-10-08T10:00:01.001Z")
-            val late = java.time.Instant.parse("2026-10-08T10:00:02.001Z")
+    /** The composite, two senders, a room, and an Admin context on one deployment. */
+    private inner class ImportScene(keyType: String, context: ConfigurableApplicationContext) {
+        @Suppress("UNCHECKED_CAST")
+        val composite = context.getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Any, String>
+        @Suppress("UNCHECKED_CAST")
+        private val rootKeys = context.getBean(RootKeys::class.java) as RootKeys<Any>
+        val firstSender = composite.userService()
+            .addUser(UserCreateRequest("first $keyType", "first$keyType", "http://u"))
+            .block(timeout)!!
+        val secondSender = composite.userService()
+            .addUser(UserCreateRequest("second $keyType", "second$keyType", "http://u"))
+            .block(timeout)!!
+        val room = composite.topicService()
+            .addRoom(ByStringRequest("importroom$keyType"))
+            .block(timeout)!!
+        private val admin = UsernamePasswordAuthenticationToken(
+            ChatUserDetails(
+                User.create(rootKeys.admin(), "Admin", "Admin", "http://u"),
+                listOf("ROLE_ADMIN"),
+            ),
+            "n/a",
+            listOf(SimpleGrantedAuthority("ROLE_ADMIN")),
+        )
+        val adminContext = ReactiveSecurityContextHolder.withAuthentication(admin)
 
-            fun import(sender: Key<Any>, text: String, time: java.time.Instant) =
-                composite.messageService()
-                    .importMessage(MessageImportRequest(text, sender.id, room.id, time, "cassandra-$keyType-$text"))
-                    .contextWrite(adminContext)
-                    .block(timeout)!!
+        /** A room-scoped source id, the form that the importer sends. See `CHAT-bwzjstoh`. */
+        fun sourceId(turn: String) = "${room.id}:$turn"
 
-            import(secondSender, "late", late)
-            import(firstSender, "early", early)
-            import(firstSender, "middle", middle)
-
-            val messages = composite.messageService().listMessages(ByIdRequest(room.id))
+        fun import(sender: Key<Any>, text: String, time: java.time.Instant, turn: String) =
+            composite.messageService()
+                .importMessage(MessageImportRequest(text, sender.id, room.id, time, sourceId(turn)))
                 .contextWrite(adminContext)
-                .collectList()
-                .block(timeout)!!
+
+        fun history() = composite.messageService().listMessages(ByIdRequest(room.id))
+            .contextWrite(adminContext)
+            .collectList()
+            .block(timeout)!!
+    }
+
+    private val early = java.time.Instant.parse("2026-10-08T10:00:00.001Z")
+    private val middle = java.time.Instant.parse("2026-10-08T10:00:01.001Z")
+    private val late = java.time.Instant.parse("2026-10-08T10:00:02.001Z")
+
+    // Each import derives its id from the source id, so each message reads back by that id. CHAT-bwzjstoh.
+    @Test
+    fun `three imported messages are ordered on a uuid cassandra deployment and read back by their derived ids`() {
+        start("uuid", 28).use { context ->
+            val scene = ImportScene("uuid", context)
+            val turns = mapOf("late" to LATE, "early" to EARLY, "middle" to MIDDLE)
+
+            scene.import(scene.secondSender, "late", late, LATE).block(timeout)!!
+            scene.import(scene.firstSender, "early", early, EARLY).block(timeout)!!
+            scene.import(scene.firstSender, "middle", middle, MIDDLE).block(timeout)!!
+
+            val messages = scene.history()
             assertThat(messages.map { it.data }).containsExactly("early", "middle", "late")
-            assertThat(messages.map { it.key.from }).containsExactly(firstSender.id, firstSender.id, secondSender.id)
+            assertThat(messages.map { it.key.from })
+                .containsExactly(scene.firstSender.id, scene.firstSender.id, scene.secondSender.id)
+            turns.forEach { (text, turn) ->
+                val derived = ImportedMessageId.derive(scene.sourceId(turn), scene.room.id as UUID)
+                val read = scene.composite.messageService().messageById(ByIdRequest(derived))
+                    .contextWrite(scene.adminContext)
+                    .block(timeout)!!
+                assertThat(read.data).describedAs("the message read by the derived id of $text").isEqualTo(text)
+            }
         }
     }
 
+    // A Long key cannot hold a name-based UUID, so a long deployment refuses each import. CHAT-bwzjstoh.
     @Test
-    fun `three imported messages are ordered on a long cassandra deployment`() =
-        importAndReadOutOfOrder("long", 27)
+    fun `an import on a long cassandra deployment is refused and stores nothing`() {
+        start("long", 27).use { context ->
+            val scene = ImportScene("long", context)
 
-    @Test
-    fun `three imported messages are ordered on a uuid cassandra deployment`() =
-        importAndReadOutOfOrder("uuid", 28)
+            val error = Exceptions.unwrap(
+                runCatching { scene.import(scene.firstSender, "early", early, EARLY).block(timeout) }.exceptionOrNull()
+                    ?: error("The import did not fail.")
+            )
+
+            assertThat(error.message).contains("The key type Long cannot hold an imported id")
+            assertThat(scene.history()).isEmpty()
+        }
+    }
+
+    private companion object {
+        const val EARLY = "1d0f0a52-6a3e-4b8e-9a51-0e2f3c4b5a61"
+        const val MIDDLE = "2e1a1b63-7b4f-4c9f-8b62-1f3a4d5c6b72"
+        const val LATE = "3f2b2c74-8c5a-4dae-9c73-2a4b5e6d7c83"
+    }
 }
