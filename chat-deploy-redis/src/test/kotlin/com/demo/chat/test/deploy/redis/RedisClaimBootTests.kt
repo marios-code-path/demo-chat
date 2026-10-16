@@ -1,6 +1,8 @@
 package com.demo.chat.test.deploy.redis
 
 import com.demo.chat.domain.NodeIdClaimStore
+import com.demo.chat.domain.ServiceLeaseStore
+import com.demo.chat.domain.StoreWriteGate
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -123,6 +125,22 @@ class RedisClaimBootTests {
         }
 
         Assertions.assertTrue(ready.get())
+    }
+
+    @Test
+    fun `a redis key selector with memory persistence claims a node id and no service lease`() {
+        val ready = AtomicBoolean(false)
+
+        boot(
+            "app.nodeid=12",
+            "app.service.core.key=redis",
+            "app.service.core.persistence=memory",
+            ready = ready
+        ).run().use { context ->
+            Assertions.assertEquals(1, context.getBeansOfType(NodeIdClaimStore::class.java).size)
+            Assertions.assertTrue(context.getBeansOfType(ServiceLeaseStore::class.java).isEmpty())
+            Assertions.assertTrue(context.getBeansOfType(StoreWriteGate::class.java).isEmpty())
+        }
     }
 
     /**
