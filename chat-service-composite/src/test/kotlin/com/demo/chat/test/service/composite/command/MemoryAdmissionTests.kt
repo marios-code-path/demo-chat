@@ -88,14 +88,15 @@ class MemoryAdmissionTests {
         assertThat(log.iterator().next().command.rootId).isEqualTo(roots.of(ChatDomain.MESSAGE).id)
     }
 
-    /** The owner moved the refusal of a missing id to T4 on 2026-10-15. T4 changes this case. */
+    /** The owner moved this refusal from T3 to T4 on 2026-10-15. */
     @Test
-    fun `an import with no supplied id still gets a minted id`() {
-        val receipt = bus().submit(import(null)).block()!!
-
-        assertThat(receipt.messageKey.id).isNotNull()
-        assertThat(receipt.messageKey.root).isEqualTo(roots.of(ChatDomain.MESSAGE).id)
-        assertThat(log.size()).isEqualTo(1)
+    fun `an import with no supplied id is refused before the mapping is written`() {
+        val bus = bus()
+        StepVerifier.create(bus.submit(import(null)))
+            .expectError(DefinitiveRefusalException::class.java)
+            .verify()
+        assertRefusedBeforeStaging(bus)
+        assertThat(bus.submit(import(7777L)).block()!!.messageKey.id).isEqualTo(7777L)
     }
 
     @Test

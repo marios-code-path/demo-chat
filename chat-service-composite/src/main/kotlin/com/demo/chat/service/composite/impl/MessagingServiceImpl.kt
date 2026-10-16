@@ -32,6 +32,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.command.CommandCompletionService
 import com.demo.chat.service.command.DomainCommandBus
+import com.demo.chat.service.command.ImportedMessageId
 import com.demo.chat.service.command.PointerTargetAccess
 import com.demo.chat.service.command.SubmitterIdentity
 import com.demo.chat.service.composite.ChatMessageService
@@ -44,6 +45,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -165,6 +167,16 @@ open class MessagingServiceImpl<T : Any, V, Q>(
             else importAsAdmin(req)
         }
 
+    /**
+     * The id is derived from the room id and the room-scoped source id. A live
+     * row under that id answers a rerun, and nothing is submitted. Only a `UUID`
+     * key type holds the derived id, so another key type is refused before
+     * admission. See `CHAT-bwzjstoh`.
+     *
+     * The read and the submission are not atomic. Two concurrent imports of one
+     * source can both miss the read. They share one request id, so the bus of
+     * one server process admits one command for both.
+     */
     private fun importAsAdmin(req: MessageImportRequest<T, V>): Mono<out Message<T, V>> = Mono.defer {
         when {
             req.messageId.isBlank() -> Mono.error(IllegalArgumentException("An imported message needs a source message ID."))
@@ -174,45 +186,53 @@ open class MessagingServiceImpl<T : Any, V, Q>(
                 val timestamp = req.timestamp.truncatedTo(ChronoUnit.MILLIS)
                 verifier.resolve(req.from, ChatDomain.USER)
                     .then(verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC))
-                    .thenMany(history(ByIdRequest(req.dest)))
-                    .filter { it.key.from == req.from && it.key.timestamp == timestamp && it.data == req.msg }
-                    .next()
-                    .map { it as Message<T, V> }
-                    .switchIfEmpty(Mono.defer {
-                        val submission = CommandSubmission(
-                            owner = rootKeys.admin().id,
-                            requestId = "import:${req.messageId}",
-                            sender = req.from,
-                            dest = req.dest,
-                            content = req.msg,
-                            operation = CommandOperation.IMPORT_MESSAGE,
-                            timestamp = timestamp,
-                            publish = req.publish,
-                        )
-                            commandBus.submit(submission)
-                            .flatMap { receipt ->
-                                val waitFor = requirement.copy(
-                                    backends = if (req.publish) requirement.backends else requirement.backends - BackendId.PUBSUB
-                                )
-                                val stored = Message.create(receipt.messageKey, req.msg, true)
-                                if (waitFor.backends.isEmpty()) Mono.just(stored)
-                                else completions.await(receipt.commandId, waitFor, timeout).flatMap { result ->
-                                    when (result.outcome) {
-                                        CallerOutcome.COMPLETED, CallerOutcome.ACCEPTED -> Mono.just(stored)
-                                        CallerOutcome.PENDING -> Mono.error(CommandPendingException(result.receipt.commandId))
-                                        CallerOutcome.INCOMPLETE -> Mono.error(
-                                            CommandIncompleteException(
-                                                result.receipt.commandId,
-                                                result.backends.filter { it.key in waitFor.backends && it.value.state == BackendState.FAILED }.keys,
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                    })
+                    .then(Mono.fromCallable { ImportedMessageId.deriveFor(typeUtil, req.dest, req.messageId) })
+                    .flatMap { derived -> importDerived(req, timestamp, derived) }
             }
         }
     }
+
+    private fun importDerived(req: MessageImportRequest<T, V>, timestamp: Instant, derived: T): Mono<out Message<T, V>> =
+        // The registry refuses an id that P never registered, so that id has no row.
+        verifier.resolve(derived, ChatDomain.MESSAGE)
+            .onErrorResume(KeyVerificationException::class.java) { Mono.empty() }
+            .flatMap { verified -> messagePersistence.get(verified.key) }
+            // A Cassandra removal keeps the row and sets record to false.
+            .filter { it.record }
+            .map { it as Message<T, V> }
+            .switchIfEmpty(Mono.defer {
+                val submission = CommandSubmission(
+                    owner = rootKeys.admin().id,
+                    requestId = "import:${req.messageId}",
+                    sender = req.from,
+                    dest = req.dest,
+                    content = req.msg,
+                    operation = CommandOperation.IMPORT_MESSAGE,
+                    timestamp = timestamp,
+                    publish = req.publish,
+                    messageId = derived,
+                )
+                commandBus.submit(submission)
+                    .flatMap { receipt ->
+                        val waitFor = requirement.copy(
+                            backends = if (req.publish) requirement.backends else requirement.backends - BackendId.PUBSUB
+                        )
+                        val stored = Message.create(receipt.messageKey, req.msg, true)
+                        if (waitFor.backends.isEmpty()) Mono.just(stored)
+                        else completions.await(receipt.commandId, waitFor, timeout).flatMap { result ->
+                            when (result.outcome) {
+                                CallerOutcome.COMPLETED, CallerOutcome.ACCEPTED -> Mono.just(stored)
+                                CallerOutcome.PENDING -> Mono.error(CommandPendingException(result.receipt.commandId))
+                                CallerOutcome.INCOMPLETE -> Mono.error(
+                                    CommandIncompleteException(
+                                        result.receipt.commandId,
+                                        result.backends.filter { it.key in waitFor.backends && it.value.state == BackendState.FAILED }.keys,
+                                    )
+                                )
+                            }
+                        }
+                    }
+            })
 
     /**
      * The legacy adapter. It gives no retry safety, because each call creates a

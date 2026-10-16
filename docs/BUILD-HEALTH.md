@@ -160,6 +160,23 @@ exits 1 on drift that no source change caused. **The image is then not rebuilt,
 and `chat-shell` tests whatever image the machine already holds.** Read the
 image id before you trust a shell result.
 
+**`chat-shell` runs two images since `CHAT-bwzjstoh`.** The `test-build`
+profile builds `chat-deploy-long-memory-integration-test:0.0.1` and
+`chat-deploy-uuid-memory-integration-test:0.0.1`. They share one launch
+option property and differ in `-Dapp.key.type` alone. An import derives a
+name-based UUID message id, so `ClaudeImportDeploymentTests` runs the UUID
+image through `UuidShellIntegrationTestBase`. Every other container test runs
+the long image. **Read both ids.** A stale UUID image passes the long tests
+and fails only the import tests.
+
+Measured on 2026-10-16 on branch `chat-bwzjstoh-derived-read`, with an empty
+`DOCKER_CONFIG`. `--ci` exits 0 with no drift: 30 modules, 2617 tests, 0
+failures, 0 errors, 82 skipped, and `agent http gate: ok`. `chat-shell` ran
+154 tests with 33 skipped. The long image moved from `sha256:d01b3b20` to
+`sha256:e87172fd`. The UUID image moved from `sha256:3064995d` to
+`sha256:8ecffee1`. Each built image holds its own key type in its launch
+options file.
+
 An earlier run on 2026-10-01 reported 29 modules, 1820 tests, 2 failures, 5
 errors and 59 skipped, under B12. An earlier run on 2026-09-30 reported 1747 tests with 0
 failures, before B12 landed. An earlier run on 2026-09-22 at master `67762d51`

@@ -14,6 +14,36 @@
     <description>Container Image Specific to (Deploy Memory) Integration Tests</description>
     <properties>
         <appImageName>docker.io/library/chat-deploy-long-memory-integration-test:${project.version}</appImageName>
+        <!-- The UUID shell image. It differs from the long image in its name
+             and its key type alone. See CHAT-bwzjstoh. -->
+        <uuidAppImageName>docker.io/library/chat-deploy-uuid-memory-integration-test:${project.version}</uuidAppImageName>
+        <!-- The launch options that both shell images share. Each image adds
+             its own -Dapp.key.type. -->
+        <shellImageJavaOptions>--enable-native-access=ALL-UNNAMED
+${vector.api.module.flag}
+-Dspring.application.name=chat-integration-test
+-Dspring.profiles.active=prod -Dserver.port=6791
+-Dspring.rsocket.server.ssl.enabled=false
+-Dapp.actuator.username=actuator -Dapp.actuator.password=actuator
+-Dmanagement.endpoints.web.exposure.include=shutdown,health,rootkeys
+-Dapp.server.proto=rsocket -Dapp.users.create=true
+-Dspring.config.additional-location=classpath:/config/userinit.yml
+-Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
+-Dapp.primary=core -Dspring.shell.interactive.enabled=false
+-Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene
+<!-- PR #51 (2026-08-28) made app.nodeid required. The memory key generators
+read it at startup. KeyGenConfiguration imports NodeIdConfiguration.
+NodeId.parse fails without a value. 900 is this test deployment value. The
+image receives it at build time. It is not a shared YAML default. The memory
+backend has no claim store, so no lease check applies. -->
+-Dapp.nodeid=900
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth=true -Dapp.command.bus=memory
+-Dapp.controller.persistence -Dapp.controller.index
+-Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
+-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message
+-Dspring.cloud.consul.config.enabled=false
+-Dspring.cloud.consul.discovery.enabled=false
+-Dspring.cloud.consul.enabled=false</shellImageJavaOptions>
         <mainClass>com.demo.chat.ChatApp</mainClass>
     </properties>
     <profiles>
@@ -58,31 +88,7 @@
                                 <name>${appImageName}</name>
                                 <cleanCache>true</cleanCache>
                                 <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>--enable-native-access=ALL-UNNAMED
-${vector.api.module.flag}
--Dspring.application.name=chat-integration-test
--Dspring.profiles.active=prod -Dserver.port=6791
--Dspring.rsocket.server.ssl.enabled=false
--Dapp.actuator.username=actuator -Dapp.actuator.password=actuator
--Dmanagement.endpoints.web.exposure.include=shutdown,health,rootkeys
--Dapp.server.proto=rsocket -Dapp.users.create=true
--Dspring.config.additional-location=classpath:/config/userinit.yml
--Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
--Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=long
--Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene
-<!-- PR #51 (2026-08-28) made app.nodeid required. The memory key generators
-read it at startup. KeyGenConfiguration imports NodeIdConfiguration.
-NodeId.parse fails without a value. 900 is this test deployment value. The
-image receives it at build time. It is not a shared YAML default. The memory
-backend has no claim store, so no lease check applies. -->
--Dapp.nodeid=900
--Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth=true -Dapp.command.bus=memory
--Dapp.controller.persistence -Dapp.controller.index
--Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
--Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message
--Dspring.cloud.consul.config.enabled=false
--Dspring.cloud.consul.discovery.enabled=false
--Dspring.cloud.consul.enabled=false</BPE_APPEND_JAVA_TOOL_OPTIONS>
+                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${shellImageJavaOptions} -Dapp.key.type=long</BPE_APPEND_JAVA_TOOL_OPTIONS>
                                     <BPE_DELIM_JAVA_TOOL_OPTIONS xml:space="preserve"> </BPE_DELIM_JAVA_TOOL_OPTIONS>
 				    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>
@@ -94,6 +100,25 @@ backend has no claim store, so no lease check applies. -->
                                     <goal>build-info</goal>
                                     <goal>build-image</goal>
                                 </goals>
+                            </execution>
+                            <!-- The UUID image. This execution merges its image
+                                 name and launch options over the shared plugin
+                                 configuration. One profile holds both images,
+                                 because two profiles over one plugin merge their
+                                 image blocks. See CHAT-bwzjstoh. -->
+                            <execution>
+                                <id>uuid-image</id>
+                                <goals>
+                                    <goal>build-image</goal>
+                                </goals>
+                                <configuration>
+                                    <image>
+                                        <name>${uuidAppImageName}</name>
+                                        <env>
+                                            <BPE_APPEND_JAVA_TOOL_OPTIONS>${shellImageJavaOptions} -Dapp.key.type=uuid</BPE_APPEND_JAVA_TOOL_OPTIONS>
+                                        </env>
+                                    </image>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

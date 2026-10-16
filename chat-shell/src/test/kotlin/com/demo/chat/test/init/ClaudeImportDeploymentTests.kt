@@ -19,13 +19,15 @@ import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.core.env.MapPropertySource
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.UUID
 
+// An import derives a name-based UUID message id, so this class runs the UUID image. CHAT-bwzjstoh.
 @Tag("integration")
-class ClaudeImportDeploymentTests : ShellIntegrationTestBase() {
-    @Autowired private lateinit var importer: ClaudeImportCommands<Long>
-    @Autowired private lateinit var login: LoginCommands<Long>
-    @Autowired private lateinit var services: CompositeServiceBeans<Long, String>
-    @Autowired private lateinit var pubsub: PubSubCommands<Long>
+class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
+    @Autowired private lateinit var importer: ClaudeImportCommands<UUID>
+    @Autowired private lateinit var login: LoginCommands<UUID>
+    @Autowired private lateinit var services: CompositeServiceBeans<UUID, String>
+    @Autowired private lateinit var pubsub: PubSubCommands<UUID>
     @Autowired private lateinit var environment: ConfigurableEnvironment
 
     @TempDir
@@ -152,7 +154,7 @@ class ClaudeImportDeploymentTests : ShellIntegrationTestBase() {
         const val FIRST_BRANCH_UUID = "22222222-2222-4222-8222-222222222222"
     }
 
-    private fun storedTexts(roomId: Long): List<String> =
+    private fun storedTexts(roomId: UUID): List<String> =
         services.messageService().listMessages(ByIdRequest(roomId)).collectList().block()!!.map { it.data }
 
     private fun forkFixture(): String {
