@@ -12,13 +12,16 @@
 
 **Issue:** `CHAT-zxrgxdlx`. Parent: `CHAT-emwhnlay`. Branch: `chat-zxrgxdlx-import-key-plan`.
 
-**Task issues:** each task is an fp child of `CHAT-zxrgxdlx`. T1 is `CHAT-dmprweqf`. T2 is `CHAT-mdizzlif`. T3 is `CHAT-ojhsiueh`, and it depends on T2. T4 is `CHAT-bwzjstoh`, and it depends on T2 and T3. T5 is `CHAT-agqnxkbs`, and it depends on T4. T6 is `CHAT-irgksusu`. T7 is `CHAT-ijcgqfig`, and it depends on T1, T4 and T5. T8 is `CHAT-jorwpgjb`, and it depends on T4, T6 and T7.
+**Task issues:** each task is an fp child of `CHAT-zxrgxdlx`. T1 is `CHAT-dmprweqf`. T2 is `CHAT-mdizzlif`. T3 is `CHAT-ojhsiueh`, and it depends on T2. T4 is `CHAT-bwzjstoh`, and it depends on T2, T3 and T5. T5 is `CHAT-agqnxkbs`, and it has no dependency. T6 is `CHAT-irgksusu`. T7 is `CHAT-ijcgqfig`, and it depends on T1. T8 is `CHAT-jorwpgjb`, and it depends on T4, T6 and T7.
 
-**Three dependency edges are not obvious, and a reader must not drop them.**
+**The order changed on 2026-10-16, before T4 started.** T4 makes every import derive its id, and `ImportedMessageId.deriveFor` refuses a `Long` key type. Every import test on `master` ran a `Long` deployment, used a source id with no room prefix, or met a `TIMEUUID` column. So T4 alone would break each one. Sigma revised the order, and the owner holds the merge.
 
-- **T5 depends on T4.** Task 5 extends the UUID half of `CassandraMessageSendTests` to import through the composite and to read the message back by the derived id. That read is the Task 4 change.
+**Four dependency edges are not obvious, and a reader must not drop them.**
+
+- **T4 depends on T5.** Task 4 imports through the composite on a UUID Cassandra deployment, and reads the message back by the derived id. A version 3 UUID needs the Task 5 `uuid` columns.
+- **T5 has no dependency.** A version 1 UUID fits a `uuid` column, so the widened columns are safe before Task 4.
 - **T7 depends on T1.** Task 7 adds the startup refusal test, and the seam that refuses is the Task 1 declaration table.
-- **T8 depends on T6 and T7.** Task 8 records the map artefact of Task 6 and the two image ids of Task 7 in the documents and the register.
+- **T8 depends on T4, T6 and T7.** Task 8 records the map artefact of Task 6 and the two image ids of Task 4 in the documents and the register.
 
 ## Global Constraints
 
@@ -51,6 +54,7 @@ These inputs are not exercised by every task's test. Each one is likely to hurt 
 3. **A long deployment that sets `app.message.import`.** Expect a refusal before any singleton is built, and a message that names the feature. Task 1 and Task 7 cover it.
 4. **A version 1 UUID in a `uuid` column.** The live `CassandraUUIDKeyGenerator` produces version 1 UUIDs. Expect the widened column to accept them. Task 5 covers it.
 5. **Two concurrent imports of one source.** Expect two stored messages. The read and the write are not atomic, and this limit is recorded, not fixed. Task 4 records it in KDoc.
+6. **An import on a `Long` deployment that does not set `app.message.import`.** Expect the `deriveFor` `ChatException` that names the key type, and no command mapping. There is no `Long` fallback id. Task 4 covers it.
 
 ---
 
@@ -69,20 +73,25 @@ These inputs are not exercised by every task's test. Each one is likely to hurt 
 | `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt` | 3, 4 | Refusal cases |
 | `chat-core/src/test/kotlin/com/demo/chat/test/command/CommandFingerprintTests.kt` | 3 | Version 4 case |
 | `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt` | 4 | Derive, read, drop the scan |
-| `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt` | 4 | Rerun case |
+| `chat-core/src/test/kotlin/com/demo/chat/test/key/FakeKeyServices.kt` | 4 | A `UUID` key service |
+| `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/UuidImportStack.kt` | 4 | New `UUID` composite fixture |
+| `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/UuidImportServiceTests.kt` | 4 | Rerun and pending cases on `UUID` |
+| `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MessageCommandServiceTests.kt` | 4 | `Long` refusal replaces the pending case |
+| `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt` | 4 | `Long` refusal replaces the import case |
+| `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageImportRoutesTests.kt` | 4 | New `UUID` route class |
+| `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt` | 4 | `Long` refusal, `UUID` derived id round trip |
+| `chat-deploy-memory-integration-test/pom.xml` | 4 | Second image execution |
+| `chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt` | 4 | New UUID base |
+| `chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt` | 4 | Extend the UUID base |
+| `docs/BUILD-HEALTH.md` | 4 | Two image ids |
 | `shared-resources-cassandra/src/main/resources/keyspace-uuid.cql` | 5 | Four columns to `UUID` |
 | `chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt` | 5 | `idType` |
 | `chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt` | 5 | `idType` |
 | `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt` | 5 | `uuid` expectation, `timeuuid` refusal |
 | `chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt` | 5 | `uuid` expectation |
-| `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt` | 5 | Derived id round trip |
 | `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/ClaudeImportCommands.kt` | 6 | Write the map |
 | `chat-shell/src/test/kotlin/com/demo/chat/test/commands/ClaudeImportMapTests.kt` | 6 | New map test |
-| `chat-deploy-memory-integration-test/pom.xml` | 7 | Second image execution |
-| `chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt` | 7 | New UUID base |
-| `chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt` | 7 | Extend the UUID base |
 | `chat-shell/src/test/kotlin/com/demo/chat/test/init/ImportKeyTypeRefusalTests.kt` | 7 | New startup refusal |
-| `docs/BUILD-HEALTH.md` | 7 | Two image ids |
 | `docs/superpowers/specs/2026-10-15-imported-message-id-design.md`, `docs/superpowers/plans/2026-10-15-imported-message-id.md` | 8 | This pair |
 | `docs/MESSAGE-COMMANDS.md` | 8 | Derived id, direct read, switch, map |
 | `docs/ARCHITECTURE.md` | 8 | The shape-check type paragraph |
@@ -232,56 +241,110 @@ fp comment CHAT-zxrgxdlx "Task 3 done: the bus carries a supplied message id."
 
 ### Task 4: The composite reads the derived key directly
 
+**Depends on:** Task 2, Task 3 and Task 5. The Cassandra round trip writes a version 3 UUID, and the Task 5 `uuid` columns accept it.
+
+**This task changes every import test with the route.** Each import test on `master` either runs a `Long` deployment, uses a source id with no room prefix, or meets a `TIMEUUID` column. So the route change and the test moves land together, or `master` breaks. Sigma revised this task on 2026-10-16.
+
+**Rules for the tests:**
+- An import on a `Long` deployment is refused by `deriveFor`. The refusal leaves no command mapping. There is no `Long` fallback id.
+- A `UUID` import uses a room-scoped source id: `"<roomId>:<uuid>"`.
+- The pending-command case keeps its coverage under a `UUID` fixture. Do not remove it.
+
 **Files:**
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt`
-- Modify: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt`
 - Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt`
+- Modify: `chat-core/src/test/kotlin/com/demo/chat/test/key/FakeKeyServices.kt`
+- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/UuidImportStack.kt`
+- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/UuidImportServiceTests.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MessageCommandServiceTests.kt`
+- Modify: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt`
+- Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageImportRoutesTests.kt`
+- Modify: `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt`
+- Modify: `chat-deploy-memory-integration-test/pom.xml`
+- Create: `chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt`
+- Modify: `chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt`
+- Modify: `docs/BUILD-HEALTH.md`
 
 **Interfaces:**
-- Consumes: `ImportedMessageId.deriveFor`, `CommandSubmission.messageId`.
+- Consumes: `ImportedMessageId.deriveFor`, `CommandSubmission.messageId`, the Task 5 `uuid` columns.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing composite tests**
 
-A rerun of one source id returns the stored message and submits nothing. Assert on the bus mapping count, not on the returned text alone.
+`FakeKeyServices` gains a `uuid` key service beside `long`. `UuidImportStack` builds the composite over `UUID` keys, with the gates of `MessagingStack`. `MessagingStack` and its fakes stay `Long`.
 
-- [ ] **Step 2: Run it and see it fail**
+`UuidImportServiceTests` holds three cases:
+- A rerun of one source id returns the stored message and submits nothing. Assert on the bus mapping count, not on the returned text alone.
+- The imported message id equals `ImportedMessageId.derive(sourceId, roomId)`.
+- `an import fails with the command ID when its wait ends`. This case moves from `MessageCommandServiceTests`, with a room-scoped source id. Its assertion does not change.
+
+`MessageCommandServiceTests` replaces the moved case with a `Long` refusal case. Assert the `ChatException` text names the key type. Assert zero committed and zero staged mappings on the bus.
+
+`MemoryAdmissionTests`: change `an import with no supplied id still gets a minted id` into the refusal case. Expect `DefinitiveRefusalException`, and assert that no mapping is staged. The owner moved this refusal from Task 3 on 2026-10-15.
+
+- [ ] **Step 2: Run them and see them fail**
 
 ```bash
-mvn -o -pl chat-core,chat-deploy-memory test -Dtest=MessageCommandRoutesTests > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-core,chat-service-composite test -Dtest='UuidImportServiceTests,MessageCommandServiceTests,MemoryAdmissionTests' > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 ```
 
 - [ ] **Step 3: Write the change**
 
-In `importAsAdmin`, keep the three guards. Then derive the id with `ImportedMessageId.deriveFor`. Then read `messagePersistence.get(derivedKey)`. A live row is the answer. Otherwise submit with `messageId = derived`. **Remove the `history` scan and the text match.** Record the non-atomic limit in the KDoc.
+In `importAsAdmin`, keep the three guards and the two `verifier.resolve` calls. Then derive the id with `ImportedMessageId.deriveFor`. Then read `messagePersistence.get(derivedKey)`. A live row is the answer. Otherwise submit with `messageId = derived`. **Remove the `history` scan and the text match.** Record the non-atomic limit in the KDoc.
 
-Then make `MemoryDomainCommandBus.admit` refuse an `IMPORT_MESSAGE` with no supplied id. Use a `DefinitiveRefusalException`, beside the Task 3 check. Change the `MemoryAdmissionTests` case `an import with no supplied id still gets a minted id` into the refusal case. Assert that the refusal leaves no staged mapping. The owner moved this refusal from Task 3 on 2026-10-15.
+Then make `MemoryDomainCommandBus.admit` refuse an `IMPORT_MESSAGE` with no supplied id. Use a `DefinitiveRefusalException`, beside the Task 3 check.
 
-- [ ] **Step 4: Measure the mutation**
+- [ ] **Step 4: Move the route tests**
 
-Drop the direct read, so every call submits. Run the rerun case alone. Restore from git by absolute path.
+`MessageImportRoutesTests` is a new class with `app.key.type=uuid`. It takes `Admin imports turns with their sender and time and a repeat writes nothing` from `MessageCommandRoutesTests`, with room-scoped source ids.
 
-- [ ] **Step 5: Run the module tests**
+`MessageCommandRoutesTests` keeps `app.key.type=long` and its guard cases. Its moved case becomes `an Admin import on a long deployment is refused and stores nothing`. Assert the refusal, and assert that the room history is empty.
+
+- [ ] **Step 5: Move the Cassandra test**
+
+In `CassandraMessageSendTests`, the long case becomes a refusal case with an empty room history. The uuid case uses room-scoped source ids, and reads each message back by its derived id.
+
+- [ ] **Step 6: Add the UUID image and move the shell deployment tests**
+
+The image name and `-Dapp.key.type` become properties. The `test-build` profile gains a second `build-image` execution for `docker.io/library/chat-deploy-uuid-memory-integration-test:0.0.1` with `-Dapp.key.type=uuid`. **Do not add a second profile over the same plugin.** Two profiles would merge their `<image>` blocks, which is the silent coupling this repository has already met.
+
+`UuidShellIntegrationTestBase` names its own image and its own container, and it sets `app.key.type=uuid` in its property source. The container publishes ephemeral host ports, so both images can run in one JVM. `ClaudeImportDeploymentTests` extends the UUID base. `ClaudeImportCommandsTests` keeps its `Long` fixtures, so the command stays pinned as key-type agnostic.
+
+- [ ] **Step 7: Measure the mutations**
+
+Run each mutation alone. Restore each one from git by absolute path, and prove the restore with `git status --short`.
+
+1. Drop the direct read, so every call submits. Expect the rerun cases to fail.
+2. Remove the missing-id refusal in the bus. Expect the `MemoryAdmissionTests` refusal case to fail.
+3. Submit with no id when the key type is not `UUID`. Expect the `Long` refusal cases to fail on the `ChatException` text.
+
+- [ ] **Step 8: Run the module tests**
 
 ```bash
 mvn -o -pl chat-core,chat-service-composite,chat-deploy-memory test > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-core,chat-deploy-cassandra test -Dtest='CassandraMessageSendTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+DOCKER_CONFIG=$(mktemp -d) mvn -o -pl chat-core,chat-shell test -Pintegration,test-build > $LOG 2>&1; echo exit=$?; tail -30 $LOG
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 9: Record the two image ids**
+
+Read both image ids, and record them in `docs/BUILD-HEALTH.md` under the shell image passage.
+
+- [ ] **Step 10: Commit**
 
 ```bash
-git add chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt
+git add chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt chat-core/src/test/kotlin/com/demo/chat/test/key/FakeKeyServices.kt chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/UuidImportStack.kt chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/UuidImportServiceTests.kt chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MessageCommandServiceTests.kt chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageImportRoutesTests.kt chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt chat-deploy-memory-integration-test/pom.xml chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt docs/BUILD-HEALTH.md
 git commit -m "Read the derived import key instead of scanning history (CHAT-zxrgxdlx)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
-fp comment CHAT-zxrgxdlx "Task 4 done: the direct read, the removed scan, and the measured mutation."
+fp comment CHAT-zxrgxdlx "Task 4 done: the direct read, the removed scan, the moved import tests, the UUID image, and the measured mutations."
 ```
 
 ---
 
 ### Task 5: The UUID message id column accepts a name-based UUID
 
-**Depends on:** Task 4. The composite round trip reads the derived key, and Task 4 is that read.
+**Depends on:** nothing. A version 1 UUID fits a `uuid` column, so this task is safe before Task 4. The derived id round trip moved to Task 4 on 2026-10-16.
 
 **Files:**
 - Modify: `shared-resources-cassandra/src/main/resources/keyspace-uuid.cql`
@@ -289,18 +352,16 @@ fp comment CHAT-zxrgxdlx "Task 4 done: the direct read, the removed scan, and th
 - Modify: `chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt`
 - Modify: `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt`
 - Modify: `chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt`
-- Modify: `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt`
 
 - [ ] **Step 1: Write the failing tests**
 
-Both type expectations read `uuid`. Add one `timeuuid` refusal case, built from the small keyspace idiom of `CHAT-pggtduxz`. Extend the UUID half of `CassandraMessageSendTests` to import a message through the composite and read it back by the derived id.
+Both type expectations read `uuid`. Add one `timeuuid` refusal case, built from the small keyspace idiom of `CHAT-pggtduxz`.
 
 - [ ] **Step 2: Run them and see them fail**
 
 ```bash
 mvn -o -pl chat-core,chat-persistence-cassandra test -Dtest='CassandraStoreShapeCheckTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 mvn -o -pl chat-core,chat-index-cassandra test -Dtest='IndexShapeTypesTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
-mvn -o -pl chat-core,chat-deploy-cassandra test -Dtest='CassandraMessageSendTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 ```
 
 - [ ] **Step 3: Write the change**
@@ -315,16 +376,22 @@ Leave one column as `TIMEUUID`. The shape check refuses it.
 
 ```bash
 mvn -o -pl chat-core,chat-persistence-cassandra,chat-index-cassandra test -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-core,chat-deploy-cassandra test -Dtest='CassandraMessageSendTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+```
+
+The second run proves that the minted version 1 ids still import on a UUID Cassandra deployment before Task 4.
+
+```bash
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add shared-resources-cassandra/src/main/resources/keyspace-uuid.cql chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt
+git add shared-resources-cassandra/src/main/resources/keyspace-uuid.cql chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt
 git commit -m "Widen the UUID message id column to UUID (CHAT-zxrgxdlx)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
-fp comment CHAT-zxrgxdlx "Task 5 done: four columns, both idType sites, and the round trip."
+fp comment CHAT-zxrgxdlx "Task 5 done: four columns and both idType sites."
 ```
 
 ---
@@ -367,54 +434,42 @@ fp comment CHAT-zxrgxdlx "Task 6 done: the map artefact and its merge rule."
 
 ---
 
-### Task 7: The UUID deployment image and the shell acceptance base
+### Task 7: The startup refusal of a long import deployment
 
-**Depends on:** Task 1, Task 4 and Task 5. The refusal test needs the Task 1 seam. The deployment tests need the Task 4 read and the Task 5 column.
+**Depends on:** Task 1. The refusal test needs the Task 1 seam. The UUID image and the shell deployment test move went to Task 4 on 2026-10-16.
 
 **Files:**
-- Modify: `chat-deploy-memory-integration-test/pom.xml`
-- Create: `chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt`
-- Modify: `chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt`
 - Create: `chat-shell/src/test/kotlin/com/demo/chat/test/init/ImportKeyTypeRefusalTests.kt`
-- Modify: `docs/BUILD-HEALTH.md`
 
-- [ ] **Step 1: Add the second image execution**
+- [ ] **Step 1: Write the refusal test**
 
-The image name and `-Dapp.key.type` become properties. The `test-build` profile gains a second `build-image` execution for `docker.io/library/chat-deploy-uuid-memory-integration-test:0.0.1` with `-Dapp.key.type=uuid`. **Do not add a second profile over the same plugin.** Two profiles would merge their `<image>` blocks, which is the silent coupling this repository has already met.
+The refusal test sets `app.message.import` with `app.key.type=long`. It asserts that the start fails and that the message names the feature.
 
-- [ ] **Step 2: Add the UUID base**
-
-`UuidShellIntegrationTestBase` names its own image and its own container, and it sets `app.key.type=uuid` in its property source. The container publishes ephemeral host ports, so both images can run in one JVM.
-
-- [ ] **Step 3: Move the deployment tests and add the refusal test**
-
-`ClaudeImportDeploymentTests` extends the UUID base. `ClaudeImportCommandsTests` keeps its `Long` fixtures, so the command stays pinned as key-type agnostic. The refusal test sets `app.message.import` with `app.key.type=long` and asserts the start fails and names the feature.
-
-- [ ] **Step 4: Run the shell tests against the images**
+- [ ] **Step 2: Run it**
 
 ```bash
-DOCKER_CONFIG=$(mktemp -d) mvn -o -pl chat-core,chat-shell test -Pintegration,test-build > $LOG 2>&1; echo exit=$?; tail -30 $LOG
+mvn -o -pl chat-core,chat-shell test -Dtest=ImportKeyTypeRefusalTests > $LOG 2>&1; echo exit=$?; tail -30 $LOG
 ```
 
-- [ ] **Step 5: Record the two image ids**
+- [ ] **Step 3: Measure the mutation**
 
-Read both image ids, and record them in `docs/BUILD-HEALTH.md` under the shell image passage.
+Remove the `app.message.import` row from `KeyTypeValidation.REQUIREMENTS`. Expect the refusal test to fail. Restore from git by absolute path.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add chat-deploy-memory-integration-test/pom.xml chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt chat-shell/src/test/kotlin/com/demo/chat/test/init/ImportKeyTypeRefusalTests.kt docs/BUILD-HEALTH.md
-git commit -m "Import on a UUID deployment image (CHAT-zxrgxdlx)
+git add chat-shell/src/test/kotlin/com/demo/chat/test/init/ImportKeyTypeRefusalTests.kt
+git commit -m "Pin the startup refusal of a long import deployment (CHAT-zxrgxdlx)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
-fp comment CHAT-zxrgxdlx "Task 7 done: the UUID image, the UUID base, and the fast-refusal test."
+fp comment CHAT-zxrgxdlx "Task 7 done: the startup refusal test and its mutation."
 ```
 
 ---
 
 ### Task 8: Documents
 
-**Depends on:** Task 4, Task 6 and Task 7. The register section records the map artefact and the two image ids.
+**Depends on:** Task 4, Task 6 and Task 7. The register section records the map artefact of Task 6 and the two image ids of Task 4.
 
 **Files:**
 - Modify: `docs/MESSAGE-COMMANDS.md`
