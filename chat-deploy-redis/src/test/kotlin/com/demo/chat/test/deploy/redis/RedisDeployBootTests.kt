@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.TestPropertySource
@@ -87,6 +88,10 @@ import java.time.Duration
     ]
 )
 @SpringBootTest(classes = [RedisDeployBootTests.BootApp::class], webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// The context holds the store service leases of node 1 while Spring caches
+// it. Later classes of this module start their own cores on the same store,
+// so the context closes after this class. See CHAT-lswjobhz.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Tag("integration")
 class RedisDeployBootTests {
 

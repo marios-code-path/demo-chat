@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
@@ -29,6 +30,10 @@ import org.springframework.test.context.TestPropertySource
     ]
 )
 @ActiveProfiles("cassandra-contact-point")
+// The context holds the store service leases of node 1 while Spring caches
+// it. Later classes of this module start their own cores on the same store,
+// so the context closes after this class. See CHAT-lswjobhz.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Tag("integration")
 class CassandraDeployTest : CassandraContainerBase() {
     @Autowired
