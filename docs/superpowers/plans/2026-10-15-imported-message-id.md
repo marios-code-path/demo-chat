@@ -12,13 +12,14 @@
 
 **Issue:** `CHAT-zxrgxdlx`. Parent: `CHAT-emwhnlay`. Branch: `chat-zxrgxdlx-import-key-plan`.
 
-**Task issues:** each task is an fp child of `CHAT-zxrgxdlx`. T1 is `CHAT-dmprweqf`. T2 is `CHAT-mdizzlif`. T3 is `CHAT-ojhsiueh`, and it depends on T2. T4 is `CHAT-bwzjstoh`, and it depends on T2, T3 and T5. T5 is `CHAT-agqnxkbs`, and it has no dependency. T6 is `CHAT-irgksusu`. T7 is `CHAT-ijcgqfig`, and it depends on T1. T8 is `CHAT-jorwpgjb`, and it depends on T4, T6 and T7.
+**Task issues:** each task is an fp child of `CHAT-zxrgxdlx`. T1 is `CHAT-dmprweqf`. T2 is `CHAT-mdizzlif`. T3 is `CHAT-ojhsiueh`, and it depends on T2. T4 is `CHAT-bwzjstoh`, and it depends on T2, T3, T5 and `CHAT-oeyxthsy`. T5 is `CHAT-agqnxkbs`, and it has no dependency. T6 is `CHAT-irgksusu`. T7 is `CHAT-ijcgqfig`, and it depends on T1. T8 is `CHAT-jorwpgjb`, and it depends on T4, T6 and T7. `CHAT-oeyxthsy` is a prerequisite child of `CHAT-zxrgxdlx`, and it is not a numbered task.
 
 **The order changed on 2026-10-16, before T4 started.** T4 makes every import derive its id, and `ImportedMessageId.deriveFor` refuses a `Long` key type. Every import test on `master` ran a `Long` deployment, used a source id with no room prefix, or met a `TIMEUUID` column. So T4 alone would break each one. Sigma revised the order, and the owner holds the merge.
 
-**Four dependency edges are not obvious, and a reader must not drop them.**
+**Five dependency edges are not obvious, and a reader must not drop them.**
 
 - **T4 depends on T5.** Task 4 imports through the composite on a UUID Cassandra deployment, and reads the message back by the derived id. A version 3 UUID needs the Task 5 `uuid` columns.
+- **T4 depends on `CHAT-oeyxthsy`.** A UUID memory deployment decodes raw key ids as strings in thirteen composite RSocket routes. This breaks import, join, send and read. The prerequisite repairs every measured failing route before Task 4 resumes. `CHAT-qtnefzhe` tracks unmeasured routes.
 - **T5 has no dependency.** A version 1 UUID fits a `uuid` column, so the widened columns are safe before Task 4.
 - **T7 depends on T1.** Task 7 adds the startup refusal test, and the seam that refuses is the Task 1 declaration table.
 - **T8 depends on T4, T6 and T7.** Task 8 records the map artefact of Task 6 and the two image ids of Task 4 in the documents and the register.
@@ -243,7 +244,7 @@ fp comment CHAT-zxrgxdlx "Task 3 done: the bus carries a supplied message id."
 
 ### Task 4: The composite reads the derived key directly
 
-**Depends on:** Task 2, Task 3 and Task 5. The Cassandra round trip writes a version 3 UUID, and the Task 5 `uuid` columns accept it.
+**Depends on:** Task 2, Task 3, Task 5 and `CHAT-oeyxthsy`. The Cassandra round trip writes a version 3 UUID, and the Task 5 `uuid` columns accept it. The prerequisite restores UUID import, join, send and read through the measured RSocket routes.
 
 **This task changes every import test with the route.** Each import test on `master` either runs a `Long` deployment, uses a source id with no room prefix, or meets a `TIMEUUID` column. So the route change and the test moves land together, or `master` breaks. Sigma revised this task on 2026-10-16.
 
