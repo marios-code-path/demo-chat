@@ -5,6 +5,7 @@ import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.NodeIdClaimException
+import com.demo.chat.domain.ServiceLeaseException
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.service.core.IndexFileAdmin
@@ -25,9 +26,11 @@ import java.time.Duration
  * build. See CHAT-ybtirmgj.
  *
  * Node ids 18 and 19 belong to this class. See docs/NODEID-CLAIM.md. Each test
- * restarts on one node id, because the index path holds the node id. A Redis
- * close does not release the claim (CHAT-ocpojbyy), so the claim TTL is 3
- * seconds and the second start retries until the claim is free.
+ * restarts on one node id, because the index path holds the node id. A clean
+ * Redis close releases the node id claim and the store service leases since
+ * CHAT-lswjobhz. The claim TTL is 3 seconds, and a start retries until the
+ * leases are free. That retry covers a lease that a crashed or a concurrent
+ * context still holds.
  */
 @Tag("integration")
 class RedisLuceneFilesRestartTests {
@@ -57,20 +60,24 @@ class RedisLuceneFilesRestartTests {
             "app.nodeid.claim.safety-margin=1s", "app.nodeid.claim.operation-timeout=500ms",
         ).toList() + listOfNotNull(root?.let { "app.index.lucene.root=$it" })
 
-        fun start(root: Path?, nodeId: Int): ConfigurableApplicationContext =
+        fun start(root: Path?, nodeId: Int, vararg extra: String): ConfigurableApplicationContext =
             SpringApplicationBuilder(RedisDeployBootTests.BootApp::class.java)
                 .web(WebApplicationType.NONE)
-                .properties(*properties(root, nodeId).toTypedArray())
+                .properties(*properties(root, nodeId).toTypedArray(), *extra)
                 .run()
 
-        /** Retries only on a held claim, and for at most 15 seconds. Any other failure ends the test. */
-        fun startWhenClaimFree(root: Path?, nodeId: Int): ConfigurableApplicationContext {
+        /**
+         * Retries only on a held node id claim or a held store service lease,
+         * and for at most 15 seconds. Any other failure ends the test.
+         */
+        fun startWhenClaimFree(root: Path?, nodeId: Int, vararg extra: String): ConfigurableApplicationContext {
             val deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos()
             while (true) {
                 try {
-                    return start(root, nodeId)
+                    return start(root, nodeId, *extra)
                 } catch (e: Exception) {
-                    val claimed = generateSequence<Throwable>(e) { it.cause }.any { it is NodeIdClaimException }
+                    val claimed = generateSequence<Throwable>(e) { it.cause }
+                        .any { it is NodeIdClaimException || it is ServiceLeaseException }
                     if (!claimed || System.nanoTime() > deadline) throw e
                     Thread.sleep(500)
                 }
