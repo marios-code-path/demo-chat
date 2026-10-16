@@ -19,7 +19,7 @@
 **Five dependency edges are not obvious, and a reader must not drop them.**
 
 - **T4 depends on T5.** Task 4 imports through the composite on a UUID Cassandra deployment, and reads the message back by the derived id. A version 3 UUID needs the Task 5 `uuid` columns.
-- **T4 depends on `CHAT-oeyxthsy`.** On a UUID memory deployment, Admin `message-import` and Admin `message-list-topic` failed during T4 work. Task 4 needs those routes for its route test and its shell step. `CHAT-oeyxthsy` reproduces the failures on `master` and repairs the routes that Task 4 needs. Sigma added this edge on 2026-10-16.
+- **T4 depends on `CHAT-oeyxthsy`.** A UUID memory deployment decodes raw key ids as strings in thirteen composite RSocket routes. This breaks import, join, send and read. The prerequisite repairs every measured failing route before Task 4 resumes. `CHAT-qtnefzhe` tracks unmeasured routes.
 - **T5 has no dependency.** A version 1 UUID fits a `uuid` column, so the widened columns are safe before Task 4.
 - **T7 depends on T1.** Task 7 adds the startup refusal test, and the seam that refuses is the Task 1 declaration table.
 - **T8 depends on T4, T6 and T7.** Task 8 records the map artefact of Task 6 and the two image ids of Task 4 in the documents and the register.
@@ -244,7 +244,7 @@ fp comment CHAT-zxrgxdlx "Task 3 done: the bus carries a supplied message id."
 
 ### Task 4: The composite reads the derived key directly
 
-**Depends on:** Task 2, Task 3, Task 5 and `CHAT-oeyxthsy`. The Cassandra round trip writes a version 3 UUID, and the Task 5 `uuid` columns accept it. The UUID route test and the UUID shell step need the routes that `CHAT-oeyxthsy` repairs.
+**Depends on:** Task 2, Task 3, Task 5 and `CHAT-oeyxthsy`. The Cassandra round trip writes a version 3 UUID, and the Task 5 `uuid` columns accept it. The prerequisite restores UUID import, join, send and read through the measured RSocket routes.
 
 **This task changes every import test with the route.** Each import test on `master` either runs a `Long` deployment, uses a source id with no room prefix, or meets a `TIMEUUID` column. So the route change and the test moves land together, or `master` breaks. Sigma revised this task on 2026-10-16.
 
