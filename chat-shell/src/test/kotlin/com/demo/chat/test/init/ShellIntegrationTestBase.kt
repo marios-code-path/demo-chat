@@ -52,53 +52,65 @@ open class ShellIntegrationTestBase {
     companion object {
         val imageName = "chat-deploy-long-memory-integration-test:0.0.1"
 
-        // The wait strategy must be configured BEFORE start(), not after. Set
-        // afterwards it never applies, and start() falls back to the default
-        // strategy - a port check, which returns as soon as the port is bound
-        // rather than when the application is ready to serve. The actuator
-        // fetch that follows then races startup and fails with "Connection
-        // reset", intermittently and depending on test order.
-        //
-        // The previous pattern, "*Netty RSocket started*", is also not a valid
-        // regular expression: a leading * has no operand. LogMessageWaitStrategy
-        // matches against the whole accumulated log, so the pattern needs
-        // leading and trailing .* rather than shell-style globbing.
-        val container = GenericContainer(imageName)
-            .withExposedPorts(6790, 6791)
-            .waitingFor(
-                LogMessageWaitStrategy()
-                    .withRegEx("(?s).*Started ChatApp.*")
-                    .withTimes(1)
-                    .withStartupTimeout(Duration.ofSeconds(120))
-            )
-            .apply { start() }
+        val container = startShellContainer(imageName)
 
         @JvmStatic
         @DynamicPropertySource
-        fun clientPropertySetup(registry: org.springframework.test.context.DynamicPropertyRegistry) {
-            val servicePort = container.getMappedPort(6790).toString()
-            val actuatorPort = container.getMappedPort(6791).toString()
-            val host = container.host
-            val serviceHostAndPort = "$host:$servicePort"
-
-            val configPrefix = "app.client.discovery.config"
-            for (service in listOf(
-                "key",
-                "persistence",
-                "index",
-                "pubsub",
-                "secrets",
-                "user",
-                "message",
-                "topic",
-                "auth"
-            )) {
-                registry.add("$configPrefix.$service.dest") { serviceHostAndPort }
-            }
-
-            registry.add("app.rootkeys.consume.source") { "http://$host:$actuatorPort" }
-            registry.add("app.client.discovery.local.host") { host }
-            registry.add("app.client.discovery.local.port") { servicePort }
-        }
+        fun clientPropertySetup(registry: org.springframework.test.context.DynamicPropertyRegistry) =
+            registerShellClient(registry, container)
     }
+}
+
+/**
+ * A shell test deployment in its own container. Each image publishes
+ * ephemeral host ports, so the long and UUID images can run in one JVM. See
+ * `CHAT-bwzjstoh`.
+ *
+ * The wait strategy must be configured BEFORE start(), not after. Set
+ * afterwards it never applies, and start() falls back to the default
+ * strategy - a port check, which returns as soon as the port is bound rather
+ * than when the application is ready to serve. The actuator fetch that
+ * follows then races startup and fails with "Connection reset",
+ * intermittently and depending on test order.
+ *
+ * The previous pattern, "*Netty RSocket started*", is also not a valid
+ * regular expression: a leading * has no operand. LogMessageWaitStrategy
+ * matches against the whole accumulated log, so the pattern needs leading and
+ * trailing .* rather than shell-style globbing.
+ */
+internal fun startShellContainer(imageName: String): GenericContainer<*> = GenericContainer(imageName)
+    .withExposedPorts(6790, 6791)
+    .waitingFor(
+        LogMessageWaitStrategy()
+            .withRegEx("(?s).*Started ChatApp.*")
+            .withTimes(1)
+            .withStartupTimeout(Duration.ofSeconds(120))
+    )
+    .apply { start() }
+
+/** Points every shell client at [container]. */
+internal fun registerShellClient(registry: org.springframework.test.context.DynamicPropertyRegistry, container: GenericContainer<*>) {
+    val servicePort = container.getMappedPort(6790).toString()
+    val actuatorPort = container.getMappedPort(6791).toString()
+    val host = container.host
+    val serviceHostAndPort = "$host:$servicePort"
+
+    val configPrefix = "app.client.discovery.config"
+    for (service in listOf(
+        "key",
+        "persistence",
+        "index",
+        "pubsub",
+        "secrets",
+        "user",
+        "message",
+        "topic",
+        "auth"
+    )) {
+        registry.add("$configPrefix.$service.dest") { serviceHostAndPort }
+    }
+
+    registry.add("app.rootkeys.consume.source") { "http://$host:$actuatorPort" }
+    registry.add("app.client.discovery.local.host") { host }
+    registry.add("app.client.discovery.local.port") { servicePort }
 }
