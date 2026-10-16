@@ -42,9 +42,9 @@ The server binds the sender to the authenticated user. A submission carries no s
 
 The import route accepts only an Admin caller. It preserves the supplied sender and time.
 
-The route refuses a future time. It truncates the time to milliseconds before it checks history and submits the command.
+The route refuses a future time. It truncates the time to milliseconds before it reads the derived message ID.
 
-The route returns an existing message when history has the same sender, time, and text. Otherwise it submits one import command.
+On a UUID deployment, the route returns a live message at the derived ID. If none exists, it submits an import command. A Long deployment refuses import before command admission.
 
 The import route does not publish by default. A publish flag enables `U`. The route uses the source message ID in the command request ID.
 

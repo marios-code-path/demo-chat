@@ -96,7 +96,7 @@ These inputs are not exercised by every task's test. Each one is likely to hurt 
 | `chat-shell/src/test/kotlin/com/demo/chat/test/commands/ClaudeImportMapTests.kt` | 6 | New map test |
 | `chat-shell/src/test/kotlin/com/demo/chat/test/init/ImportKeyTypeRefusalTests.kt` | 7 | New startup refusal |
 | `docs/superpowers/specs/2026-10-15-imported-message-id-design.md`, `docs/superpowers/plans/2026-10-15-imported-message-id.md` | 8 | This pair |
-| `docs/MESSAGE-COMMANDS.md` | 8 | Derived id, direct read, switch, map |
+| `docs/MESSAGE-COMMANDS.md` | 4, 8 | Task 4: the derived id and direct read lines, and a relink. Task 8: the switch and the map |
 | `docs/ARCHITECTURE.md` | 5 | The shape-check type paragraph |
 | `forward-register.md` | 8 | One section |
 
@@ -266,8 +266,11 @@ fp comment CHAT-zxrgxdlx "Task 3 done: the bus carries a supplied message id."
 - Modify: `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraMessageSendTests.kt`
 - Modify: `chat-deploy-memory-integration-test/pom.xml`
 - Create: `chat-shell/src/test/kotlin/com/demo/chat/test/init/UuidShellIntegrationTestBase.kt`
+- Modify: `chat-shell/src/test/kotlin/com/demo/chat/test/init/ShellIntegrationTestBase.kt`
 - Modify: `chat-shell/src/test/kotlin/com/demo/chat/test/init/ClaudeImportDeploymentTests.kt`
 - Modify: `docs/BUILD-HEALTH.md`
+- Modify: `docs/MESSAGE-COMMANDS.md`, the two import lines alone
+- Modify: `drift.lock`
 
 **Interfaces:**
 - Consumes: `ImportedMessageId.deriveFor`, `CommandSubmission.messageId`, the Task 5 `uuid` columns.
@@ -335,6 +338,16 @@ The `test-build` profile lives in `chat-deploy-memory-integration-test`, and its
 - [ ] **Step 9: Record the two image ids**
 
 Read both image ids, and record them in `docs/BUILD-HEALTH.md` under the shell image passage.
+
+- [ ] **Step 9a: Correct the two import lines and relink**
+
+**Task 4 owns this correction since 2026-10-16.** The change makes two lines of `docs/MESSAGE-COMMANDS.md` false: the history check and the sender, time and text match. `drift check` marks the document stale against `MessagingServiceImpl.kt`. Replace the two lines with this text:
+
+> The route refuses a future time. It truncates the time to milliseconds before it reads the derived message ID.
+>
+> On a UUID deployment, the route returns a live message at the derived ID. If none exists, it submits an import command. A Long deployment refuses import before command admission.
+
+Review the revised prose against the code. Then relink with `drift link`, and verify with `drift check` and `git diff --check`. Task 8 adds the switch and the map, and relinks after its own changes.
 
 - [ ] **Step 10: Commit**
 
@@ -486,7 +499,7 @@ fp comment CHAT-zxrgxdlx "Task 7 done: the startup refusal test and its mutation
 
 - [ ] **Step 1: Update the bound document**
 
-`docs/MESSAGE-COMMANDS.md` gains the derived id, the direct read, the `app.message.import` switch and the map. **This document is bound in `drift.lock`.** Review the prose, then relink with `drift link`, then verify with `drift check`. Never relink stale prose.
+`docs/MESSAGE-COMMANDS.md` gains the `app.message.import` switch and the map. **Task 4 corrected the derived id and direct read lines, and relinked the document, on 2026-10-16.** **This document is bound in `drift.lock`.** Review the prose after the Task 8 changes, then relink with `drift link`, then verify with `drift check`. Never relink stale prose.
 
 `docs/ARCHITECTURE.md` belongs to Task 5 since 2026-10-16.
 
