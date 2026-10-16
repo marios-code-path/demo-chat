@@ -6,6 +6,7 @@ import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.demo.chat.shell.commands.ClaudeImportCommands
+import com.demo.chat.shell.commands.ClaudeImportMap
 import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.PubSubCommands
 import com.demo.chat.shell.commands.claudeTopicName
@@ -42,7 +43,7 @@ class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
         val assistant = "assistant$suffix"
         services.userService().addUser(UserCreateRequest("Human", human, "")).block()
         services.userService().addUser(UserCreateRequest("Assistant", assistant, "")).block()
-        val fixture = "src/test/resources/import/claude-conversations.json"
+        val fixture = fixtureCopy()
         val room = claudeTopicName(base, CONVERSATION_UUID, "1", LEAF_UUID)
 
         val first = importer.importConversation(fixture, "Sanitized import fixture", base, "1", human, assistant)
@@ -69,6 +70,12 @@ class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
         val rerunMessages = services.messageService().listMessages(ByIdRequest(roomId)).collectList().block()!!
         assertThat(rerunMessages.map { it.key.id }).containsExactlyElementsOf(messages.map { it.key.id })
         assertThat(pubsub.messages(room)).isEqualTo(shown)
+
+        // The map resolves each source id to the message that the server stored. CHAT-irgksusu.
+        val map = ClaudeImportMap.read(ClaudeImportMap.pathFor(Path.of(fixture), CONVERSATION_UUID, "1"))
+        assertThat(map.messages).hasSize(2)
+        assertThat(map.messageId("$roomId:$ROOT_UUID")).isEqualTo(messages[0].key.id.toString())
+        assertThat(map.messageId("$roomId:$FIRST_BRANCH_UUID")).isEqualTo(messages[1].key.id.toString())
     }
 
     @Test
@@ -80,7 +87,7 @@ class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
         val assistant = "assistant$suffix"
         services.userService().addUser(UserCreateRequest("Human", human, "")).block()
         services.userService().addUser(UserCreateRequest("Assistant", assistant, "")).block()
-        val fixture = "src/test/resources/import/claude-conversations.json"
+        val fixture = fixtureCopy()
 
         importer.importConversation(fixture, "Sanitized import fixture", base, "1", human, assistant)
         val second = importer.importConversation(fixture, "Sanitized import fixture", base, "2", human, assistant)
@@ -131,7 +138,7 @@ class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
         val suffix = System.nanoTime().toString()
         val base = "missingImport$suffix"
         val missing = "missing$suffix"
-        val fixture = "src/test/resources/import/claude-conversations.json"
+        val fixture = fixtureCopy()
 
         assertThatThrownBy {
             importer.importConversation(fixture, "Sanitized import fixture", base, "1", missing, "Admin")
@@ -156,6 +163,16 @@ class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
 
     private fun storedTexts(roomId: UUID): List<String> =
         services.messageService().listMessages(ByIdRequest(roomId)).collectList().block()!!.map { it.data }
+
+    /**
+     * A copy of the export in [temp]. The import writes its map beside the
+     * export, so a run on the resource file would write into the source tree.
+     */
+    private fun fixtureCopy(): String {
+        val copy = temp.resolve("claude-conversations.json")
+        if (Files.notExists(copy)) Files.copy(Path.of("src/test/resources/import/claude-conversations.json"), copy)
+        return copy.toString()
+    }
 
     private fun forkFixture(): String {
         val file = temp.resolve("forked-conversations.json")
