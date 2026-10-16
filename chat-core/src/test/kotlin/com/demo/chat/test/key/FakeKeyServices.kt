@@ -5,6 +5,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.test.TestGeneratorKeyService
 import com.demo.chat.test.TestLongKeyGenerator
+import com.demo.chat.test.TestUUIDKeyGenerator
 import java.util.UUID
 
 /**
@@ -25,6 +26,10 @@ object FakeKeyServices {
 
     fun long(rootKeys: RootKeys<Long>): TestGeneratorKeyService<Long> =
         TestGeneratorKeyService(TestLongKeyGenerator(), rootKeys)
+
+    /** The `UUID` equivalent of [long]. */
+    fun uuid(rootKeys: RootKeys<UUID>): TestGeneratorKeyService<UUID> =
+        TestGeneratorKeyService(TestUUIDKeyGenerator(), rootKeys)
 }
 
 /**

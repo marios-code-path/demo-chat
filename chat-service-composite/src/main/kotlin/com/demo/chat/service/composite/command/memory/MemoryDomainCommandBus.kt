@@ -76,9 +76,9 @@ class MemoryDomainCommandBus<T : Any, V>(
         if ((submission.operation == CommandOperation.RECORD_POINTER) != (submission.target != null)) {
             throw DefinitiveRefusalException("A RECORD_POINTER command needs a target, and no other operation takes one.")
         }
-        // Only an import can supply its message id. An import with no id gets a minted id. CHAT-zxrgxdlx.
-        if (submission.messageId != null && submission.operation != CommandOperation.IMPORT_MESSAGE) {
-            throw DefinitiveRefusalException("Only an IMPORT_MESSAGE command takes a message id.")
+        // Only an import supplies its message id, and an import always supplies one. CHAT-bwzjstoh.
+        if ((submission.operation == CommandOperation.IMPORT_MESSAGE) != (submission.messageId != null)) {
+            throw DefinitiveRefusalException("An IMPORT_MESSAGE command needs a message id, and no other operation takes one.")
         }
         RequestIds.requireValid(submission.requestId)
         val identity = RequestIdentity(submission.owner, submission.requestId)

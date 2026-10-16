@@ -65,8 +65,8 @@ data class RequestIdentity<T>(val owner: T, val requestId: String)
 /**
  * The input of admission. Normal sends use `RECORD_MESSAGE`. Imports use
  * `IMPORT_MESSAGE`. Pointers use `RECORD_POINTER`, and only a pointer names a
- * [target]. See `CHAT-erkoxybm`. Only an import can supply a [messageId]. See
- * `CHAT-zxrgxdlx`.
+ * [target]. See `CHAT-erkoxybm`. Only an import supplies a [messageId], and an
+ * import always supplies one. See `CHAT-bwzjstoh`.
  */
 data class CommandSubmission<T, V>(
     val owner: T,

@@ -140,16 +140,22 @@ class MessageCommandServiceTests {
             .isInstanceOf(CommandPendingException::class.java)
     }
 
+    // The pending case moved to UuidImportServiceTests. A Long key cannot hold
+    // the derived id, and no Long fallback id exists. CHAT-bwzjstoh.
     @Test
-    fun `an import fails with the command ID when its wait ends`() {
-        val s = stack(timeout = Duration.ofMillis(200))
-        s.gatePersistence = true
+    fun `an import on a Long key type is refused before command admission`() {
+        val s = stack()
         val admin = serviceAs(s, object : SubmitterIdentity<Long> {
             override fun current(): Mono<Key<Long>> = Mono.just(CommandFixtures.ROOTS.admin())
         })
         assertThat(errorOf(admin.importMessage(MessageImportRequest(
-            "slow", SENDER, ROOM, Instant.parse("2026-10-08T10:00:00Z"), "import-slow"
-        )))).isInstanceOf(CommandPendingException::class.java)
+            "long", SENDER, ROOM, Instant.parse("2026-10-08T10:00:00Z"), "$ROOM:import-long"
+        ))))
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("The key type Long cannot hold an imported id")
+        assertThat(s.runtime.bus.committedMappings()).isZero()
+        assertThat(s.runtime.bus.stagedMappings()).isZero()
+        assertThat(s.persistence.added).isEmpty()
     }
 
     @Test
