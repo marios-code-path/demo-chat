@@ -45,7 +45,11 @@ class MemoryCommandRuntime<T : Any, V>(
         bus = MemoryDomainCommandBus(allocator, typeUtil, completions, log, active, policy, dispatcher::signal, faults, clock = clock)
     }
 
+    private val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Runs once. `CommandRuntimeLifecycle.stop` and bean destruction both call it. See `CHAT-lswjobhz`. */
     override fun close() {
+        if (!closed.compareAndSet(false, true)) return
         dispatcher.close()
         scheduler.dispose()
     }

@@ -11,6 +11,7 @@ import com.demo.chat.service.composite.command.handler.MessageIndexHandler
 import com.demo.chat.service.composite.command.handler.MessagePersistenceHandler
 import com.demo.chat.service.composite.command.handler.MessagePubSubHandler
 import com.demo.chat.service.composite.command.handler.MessageVectorHandler
+import com.demo.chat.service.composite.command.memory.CommandRuntimeLifecycle
 import com.demo.chat.service.composite.command.memory.MemoryCommandRuntime
 import com.demo.chat.service.composite.command.publication.RoomPublications
 import com.demo.chat.service.core.IKeyGenerator
@@ -50,6 +51,11 @@ class MessageCommandConfiguration<T : Any, V, Q>(
     @Bean(destroyMethod = "close")
     fun memoryCommandRuntime(publications: RoomPublications<T, V>, settings: CommandBusSettings): MemoryCommandRuntime<T, V> =
         MemoryCommandRuntime(KeyAllocator(keyGenerator, rootKeys), typeUtil, handlers(publications), settings)
+
+    /** Stops the command runtime before the lease guards release. See `CHAT-lswjobhz`. */
+    @Bean
+    fun commandRuntimeLifecycle(runtime: MemoryCommandRuntime<T, V>): CommandRuntimeLifecycle =
+        CommandRuntimeLifecycle(runtime)
 
     private fun handlers(publications: RoomPublications<T, V>): List<DomainCommandHandler<T, V>> = listOfNotNull(
         MessagePersistenceHandler(keyService, persistenceBeans.messagePersistence()),
