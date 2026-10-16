@@ -40,6 +40,8 @@
 - One Maven build at a time in this checkout. A concurrent `clean` deletes the other build's output.
 - Write Maven output to a log file. Read the exit code and the summary lines only.
 - Run `mvn -o -pl chat-core,<module> test`, never `-pl <module>` alone.
+- A Cassandra module reads `keyspace-uuid.cql` from `shared-resources-cassandra`. Put that module in `-pl`. The jar in `~/.m2` can hold an older script. T5 measured this on 2026-10-16.
+- A deployment or shell module depends on many modules, and their jars in `~/.m2` can be older than the branch. Use `-pl <module> -am`. Limit the run with `-Dtest` and `-Dsurefire.failIfNoSpecifiedTests=false`.
 - Container tests need `-Pintegration` and a running Docker.
 - Every commit message names `CHAT-zxrgxdlx` and ends with `Co-Authored-By: Claude Code <noreply@anthropic.com>`.
 - Log each finished task with `fp comment CHAT-zxrgxdlx "..."`.
@@ -94,7 +96,7 @@ These inputs are not exercised by every task's test. Each one is likely to hurt 
 | `chat-shell/src/test/kotlin/com/demo/chat/test/init/ImportKeyTypeRefusalTests.kt` | 7 | New startup refusal |
 | `docs/superpowers/specs/2026-10-15-imported-message-id-design.md`, `docs/superpowers/plans/2026-10-15-imported-message-id.md` | 8 | This pair |
 | `docs/MESSAGE-COMMANDS.md` | 8 | Derived id, direct read, switch, map |
-| `docs/ARCHITECTURE.md` | 8 | The shape-check type paragraph |
+| `docs/ARCHITECTURE.md` | 5 | The shape-check type paragraph |
 | `forward-register.md` | 8 | One section |
 
 ---
@@ -321,10 +323,13 @@ Run each mutation alone. Restore each one from git by absolute path, and prove t
 - [ ] **Step 8: Run the module tests**
 
 ```bash
-mvn -o -pl chat-core,chat-service-composite,chat-deploy-memory test > $LOG 2>&1; echo exit=$?; tail -20 $LOG
-mvn -o -pl chat-core,chat-deploy-cassandra test -Dtest='CassandraMessageSendTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
-DOCKER_CONFIG=$(mktemp -d) mvn -o -pl chat-core,chat-shell test -Pintegration,test-build > $LOG 2>&1; echo exit=$?; tail -30 $LOG
+mvn -o -pl chat-deploy-memory -am test > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-deploy-cassandra -am test -Dtest='CassandraMessageSendTests' -Dsurefire.failIfNoSpecifiedTests=false -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+DOCKER_CONFIG=$(mktemp -d) mvn -o -pl chat-deploy-memory-integration-test -am package -DskipTests -Ptest-build > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-shell -am test -Dtest='ClaudeImportDeploymentTests,ClaudeImportCommandsTests' -Dsurefire.failIfNoSpecifiedTests=false -Pintegration > $LOG 2>&1; echo exit=$?; tail -30 $LOG
 ```
+
+The `test-build` profile lives in `chat-deploy-memory-integration-test`, and its `package` phase builds both images. So the third command builds them, and the fourth runs the shell tests against them.
 
 - [ ] **Step 9: Record the two image ids**
 
@@ -352,6 +357,10 @@ fp comment CHAT-zxrgxdlx "Task 4 done: the direct read, the removed scan, the mo
 - Modify: `chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt`
 - Modify: `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt`
 - Modify: `chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt`
+- Modify: `docs/ARCHITECTURE.md`
+- Modify: `chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/MessageIndexCassandraTests.kt` (comment only)
+- Modify: `chat-index-cassandra/src/test/kotlin/com/demo/chat/test/repository/MessageTopicQueryTests.kt` (comment only)
+- Modify: `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreDomainTests.kt` (comment only)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -360,13 +369,15 @@ Both type expectations read `uuid`. Add one `timeuuid` refusal case, built from 
 - [ ] **Step 2: Run them and see them fail**
 
 ```bash
-mvn -o -pl chat-core,chat-persistence-cassandra test -Dtest='CassandraStoreShapeCheckTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
-mvn -o -pl chat-core,chat-index-cassandra test -Dtest='IndexShapeTypesTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-core,shared-resources-cassandra,chat-persistence-cassandra test -Dtest='CassandraStoreShapeCheckTests' -Dsurefire.failIfNoSpecifiedTests=false -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-core,shared-resources-cassandra,chat-index-cassandra test -Dtest='IndexShapeTypesTests' -Dsurefire.failIfNoSpecifiedTests=false -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 ```
 
 - [ ] **Step 3: Write the change**
 
 Four `msg_id TIMEUUID` columns in `keyspace-uuid.cql` move to `UUID`. Both `idType` functions return `"uuid"` for a `UUID` key type, and both KDocs follow. `keyspace-long.cql` does not change.
+
+`docs/ARCHITECTURE.md`: correct the shape-check paragraph that names `timeuuid` for a `uuid` key. This task changes that behavior, so this task corrects the description. Sigma moved this step from Task 8 on 2026-10-16.
 
 - [ ] **Step 4: Measure the mutation**
 
@@ -375,19 +386,16 @@ Leave one column as `TIMEUUID`. The shape check refuses it.
 - [ ] **Step 5: Run the module tests**
 
 ```bash
-mvn -o -pl chat-core,chat-persistence-cassandra,chat-index-cassandra test -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
-mvn -o -pl chat-core,chat-deploy-cassandra test -Dtest='CassandraMessageSendTests' -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-core,shared-resources-cassandra,chat-persistence-cassandra,chat-index-cassandra test -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-deploy-cassandra -am test -Dtest='CassandraMessageSendTests' -Dsurefire.failIfNoSpecifiedTests=false -Pintegration > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 ```
 
 The second run proves that the minted version 1 ids still import on a UUID Cassandra deployment before Task 4.
 
-```bash
-```
-
 - [ ] **Step 6: Commit**
 
 ```bash
-git add shared-resources-cassandra/src/main/resources/keyspace-uuid.cql chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt
+git add shared-resources-cassandra/src/main/resources/keyspace-uuid.cql chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt chat-index-cassandra/src/main/kotlin/com/demo/chat/config/index/cassandra/IndexServiceConfiguration.kt chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreShapeCheckTests.kt chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/cassandra/IndexShapeTypesTests.kt docs/ARCHITECTURE.md chat-index-cassandra/src/test/kotlin/com/demo/chat/test/index/MessageIndexCassandraTests.kt chat-index-cassandra/src/test/kotlin/com/demo/chat/test/repository/MessageTopicQueryTests.kt chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraStoreDomainTests.kt
 git commit -m "Widen the UUID message id column to UUID (CHAT-zxrgxdlx)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
@@ -409,7 +417,7 @@ The map is written beside the export. A rerun merges and does not replace. A rev
 - [ ] **Step 2: Run them and see them fail**
 
 ```bash
-mvn -o -pl chat-core,chat-shell test -Dtest=ClaudeImportMapTests > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-shell -am test -Dtest=ClaudeImportMapTests -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 ```
 
 - [ ] **Step 3: Write the change**
@@ -419,7 +427,7 @@ Write `claude-import-map-<conversationUuid>-<generation>.json` after each thread
 - [ ] **Step 4: Run the class**
 
 ```bash
-mvn -o -pl chat-core,chat-shell test -Dtest='ClaudeImportMapTests,ClaudeImportCommandsTests' > $LOG 2>&1; echo exit=$?; tail -20 $LOG
+mvn -o -pl chat-shell -am test -Dtest='ClaudeImportMapTests,ClaudeImportCommandsTests' -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; tail -20 $LOG
 ```
 
 - [ ] **Step 5: Commit**
@@ -448,7 +456,7 @@ The refusal test sets `app.message.import` with `app.key.type=long`. It asserts 
 - [ ] **Step 2: Run it**
 
 ```bash
-mvn -o -pl chat-core,chat-shell test -Dtest=ImportKeyTypeRefusalTests > $LOG 2>&1; echo exit=$?; tail -30 $LOG
+mvn -o -pl chat-shell -am test -Dtest=ImportKeyTypeRefusalTests -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; tail -30 $LOG
 ```
 
 - [ ] **Step 3: Measure the mutation**
@@ -473,22 +481,19 @@ fp comment CHAT-zxrgxdlx "Task 7 done: the startup refusal test and its mutation
 
 **Files:**
 - Modify: `docs/MESSAGE-COMMANDS.md`
-- Modify: `docs/ARCHITECTURE.md`
 - Modify: `forward-register.md`
 
 - [ ] **Step 1: Update the bound document**
 
 `docs/MESSAGE-COMMANDS.md` gains the derived id, the direct read, the `app.message.import` switch and the map. **This document is bound in `drift.lock`.** Review the prose, then relink with `drift link`, then verify with `drift check`. Never relink stale prose.
 
-- [ ] **Step 2: Update the architecture note**
+`docs/ARCHITECTURE.md` belongs to Task 5 since 2026-10-16.
 
-`docs/ARCHITECTURE.md`: the shape-check paragraph that names `timeuuid` for a `uuid` key type.
-
-- [ ] **Step 3: Add the register section**
+- [ ] **Step 2: Add the register section**
 
 Add one section to `forward-register.md` in the style of the sections before it. Record the branch and the issue, the owner decisions of 2026-10-15, the four `TIMEUUID` to `UUID` columns, both `idType` sites, the removed history scan, the two image ids, both gate totals, and every mutation with its measured result. Do not move the `Checkout` row. See the rule under `Where things stand`.
 
-- [ ] **Step 4: Run both gates**
+- [ ] **Step 3: Run both gates**
 
 ```bash
 shell-scripts/build-health.sh > $LOG 2>&1; echo exit=$?; tail -20 $LOG
@@ -497,7 +502,7 @@ DOCKER_CONFIG=$(mktemp -d) shell-scripts/build-health.sh --ci > $LOG 2>&1; echo 
 
 Expected: exit 0 for both, no drift, and `agent http gate: ok`. Read `docker events --filter event=oom --since 2h` before you trust a red Cassandra result. Read both image ids before and after, because the shell tests run against the image and not against the reactor.
 
-- [ ] **Step 5: Check the drift and the whitespace**
+- [ ] **Step 4: Check the drift and the whitespace**
 
 ```bash
 drift check; git diff --check; echo exit=$?
@@ -505,10 +510,10 @@ drift check; git diff --check; echo exit=$?
 
 Expected: `ok`, and exit 0.
 
-- [ ] **Step 6: Commit and hand off**
+- [ ] **Step 5: Commit and hand off**
 
 ```bash
-git add docs/MESSAGE-COMMANDS.md docs/ARCHITECTURE.md forward-register.md
+git add docs/MESSAGE-COMMANDS.md forward-register.md
 git commit -m "Record imported message identity in the documents (CHAT-zxrgxdlx)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"

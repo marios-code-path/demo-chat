@@ -54,10 +54,19 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
         /** The column types of a long store. */
         val LONG_TYPES = CassandraStoreShapeCheck.persistenceTypes(TypeUtil.LongUtil)
 
-        /** The statements of keyspace-long.cql, with no comment line. */
-        val SCRIPT: List<String> = ClassPathResource("keyspace-long.cql").inputStream.bufferedReader().readText()
+        /** The column types of a uuid store. */
+        val UUID_TYPES = CassandraStoreShapeCheck.persistenceTypes(UUIDUtil())
+
+        /** The statements of a keyspace script, with no comment line. */
+        fun statements(script: String): List<String> = ClassPathResource(script).inputStream.bufferedReader().readText()
             .lines().filterNot { it.trim().startsWith("--") }.joinToString("\n")
             .split(";").map { it.trim() }.filter { it.isNotEmpty() }
+
+        /** The statements of keyspace-long.cql. */
+        val SCRIPT: List<String> = statements("keyspace-long.cql")
+
+        /** The statements of keyspace-uuid.cql. */
+        val UUID_SCRIPT: List<String> = statements("keyspace-uuid.cql")
     }
 
     private val created = mutableListOf<String>()
@@ -121,10 +130,34 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
             .hasMessageContaining("Recreate the store")
     }
 
+    // The uuid schema before CHAT-agqnxkbs. A TIMEUUID column refuses the
+    // version 3 id of an import. Such a store starts, and fails at the first import.
+    @Test
+    fun `a uuid store with a TIMEUUID message id fails at start`() {
+        val keyspace = newKeyspaceName()
+        val statement = checkNotNull(
+            UUID_SCRIPT.singleOrNull { Regex("^CREATE TABLE\\s+chat_uuid\\.chat_message_id\\s*\\(").containsMatchIn(it) }
+        ) { "keyspace-uuid.cql creates no table named chat_message_id." }
+        session.execute(UUID_SCRIPT.single { it.startsWith("CREATE KEYSPACE") }.replace("chat_uuid", keyspace))
+        session.execute(statement.replace("chat_uuid", keyspace))
+        assertThatCode { CassandraStoreShapeCheck(session, keyspace, emptyMap(), UUID_TYPES).check() }
+            .doesNotThrowAnyException()
+
+        session.execute("DROP TABLE $keyspace.chat_message_id")
+        session.execute(
+            "CREATE TABLE $keyspace.chat_message_id (msg_id TIMEUUID, user_id UUID, topic_id UUID, " +
+                "text varchar, msg_time TIMESTAMP, visible Boolean, PRIMARY KEY (msg_id, msg_time))"
+        )
+
+        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace, emptyMap(), UUID_TYPES).check() }
+            .hasMessageContaining("chat_message_id.msg_id is timeuuid, required uuid")
+            .hasMessageContaining("Recreate the store")
+    }
+
     @Test
     fun `the message id type follows the key type`() {
         assertThat(CassandraStoreShapeCheck.idType(TypeUtil.LongUtil)).isEqualTo("bigint")
-        assertThat(CassandraStoreShapeCheck.idType(UUIDUtil())).isEqualTo("timeuuid")
+        assertThat(CassandraStoreShapeCheck.idType(UUIDUtil())).isEqualTo("uuid")
     }
 
     @ParameterizedTest
