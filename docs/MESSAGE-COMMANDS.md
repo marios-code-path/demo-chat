@@ -21,6 +21,7 @@ Spec: `docs/superpowers/specs/2026-10-07-domain-command-bus-design.md`. This doc
 | `app.command.completion.requirement` | `P,I` | The backends a caller waits for. `none` waits for none. |
 | `app.command.completion.timeout` | `5s` | The caller wait. A starting value, not a production measurement. |
 | `app.command.recovery.interval` | `30s` | The interval between recovery attempts. A starting value, not a production measurement. |
+| `app.message.import` | unset | Declares Claude import. When set except to `false`, startup requires `app.key.type=uuid`. It does not disable the import route. |
 
 A duration is an integer and one unit: `ms`, `s`, `m`, `h`, or `d`. Example: `30s`.
 
@@ -47,6 +48,26 @@ The route refuses a future time. It truncates the time to milliseconds before it
 On a UUID deployment, the route returns a live message at the derived ID. If none exists, it submits an import command. A Long deployment refuses import before command admission.
 
 The import route does not publish by default. A publish flag enables `U`. The route uses the source message ID in the command request ID.
+
+### Claude import identity and map
+
+The shell sends `<roomId>:<messageUuid>` as the source ID. The route derives the message key with `UUID.nameUUIDFromBytes(sourceId.encodeToByteArray())`.
+The room ID keeps a shared Claude turn distinct in each fork. The generation enters the topic name, not the derived key.
+The route reads the derived key on a rerun. A live message at that key returns without a new command.
+
+The shell writes `claude-import-map-<conversationUuid>-<generation>.json` beside the export file.
+The map records the conversation UUID, generation, export path, and two sections:
+
+- `topics` maps each leaf UUID to its topic name and room ID.
+- `messages` maps each room-scoped source ID to the returned message ID, room ID, and topic name.
+
+The shell reads an existing map before login. It refuses an unreadable map, a mismatched conversation or generation, and a conflicting topic name or room.
+A rerun merges its entries with earlier entries. The `export` field holds the latest export path alone.
+After each thread, the shell writes a temporary file and moves it over the map. A write failure stops the run and preserves the earlier file.
+Server writes can precede that failure. Retry with the same room and source IDs after the file problem is fixed.
+
+`app.message.import` declares importer use for the startup check. When enabled, the check refuses a `long` key type before singleton creation.
+The route also refuses a `long` import when the switch is unset. No deployment sets the switch in this work.
 
 | Outcome | REST status | Meaning |
 |---|---|---|

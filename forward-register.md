@@ -1081,3 +1081,85 @@ set a limit of 64 KB on 2026-10-15.
   IntelliJ listener on the same machine, so a CI runner cannot meet it.
   `CHAT-ivtnvgyg` stays in progress for the codec error on `KeyTests`, and
   PR #228 does not touch that path.
+
+## Imported message identity (CHAT-zxrgxdlx, 2026-10-16)
+
+`CHAT-zxrgxdlx` holds the accepted design and plan in
+`docs/superpowers/specs/2026-10-15-imported-message-id-design.md` and
+`docs/superpowers/plans/2026-10-15-imported-message-id.md`.
+T1 through T7 merged in PRs #232 to #241. `CHAT-jorwpgjb` holds this document
+pass on branch `chat-jorwpgjb-docs`, cut from master `fb20334b`.
+The `Checkout` row above keeps its snapshot rule and does not move here.
+
+### The owner decisions and the code
+
+- The shell sends `<roomId>:<messageUuid>` as the source ID. The route uses
+  that value for `import:` request identity and the name-based UUID hash.
+  The route does not add another room prefix.
+- The operator supplies the generation. It enters the topic name alone.
+  `MessageImportRequest.messageId` stays on the wire.
+- Claude import supports the `uuid` key type. The general
+  `KeyTypeValidation` table refuses `app.message.import` on a `long` launch
+  before singleton creation. The route also refuses a Long import when the
+  switch is unset. The switch declares use. It does not disable the route.
+- `ImportedMessageId` hashes the room-scoped source ID. The bus admits the
+  supplied message ID on import alone. A rerun reads that derived key and
+  returns a live row. The sender, time and text history scan is gone.
+- The four `msg_id` columns in `keyspace-uuid.cql` moved from `TIMEUUID` to
+  `UUID`: `chat_message_id`, `chat_message_user`, `chat_message_topic`, and
+  `chat_message_index_by_id`. Both `CassandraStoreShapeCheck.idType` and
+  `IndexServiceConfiguration.idType` now require `uuid`. `keyspace-long.cql`
+  stays `BIGINT`. An old UUID keyspace must be recreated.
+- The shell writes `claude-import-map-<conversationUuid>-<generation>.json`
+  beside the export after each thread. It maps leaf UUIDs to topics and
+  room-scoped source IDs to the returned message IDs. A rerun merges entries.
+  An unreadable or conflicting map stops the run. A temporary file and atomic
+  move preserve the earlier map on a failed write.
+
+### Earlier verification and mutations
+
+The task comments hold the measured runs. This section reports their results.
+T8 did not rerun those mutations.
+
+- T1: 14 of 14 validator tests passed. Three isolated mutations caught an
+  empty enabled switch (3 failures), a missing key type (1), and a bypassed
+  post-processor (1).
+- T2: six derivation tests passed after a red compile without the helper.
+- T3: 12 fingerprint and 15 admission tests passed. Four mutations caught a
+  removed operation refusal, an omitted ID in the version 4 hash, a version 2
+  write, and a minted key in place of the supplied ID.
+- T4: the direct-read mutation failed two rerun cases and one route repeat
+  case. Removing the bus ID check failed 2 of 15 admission cases. The Long
+  fallback mutation failed the Long refusal cases. An unrelated wait timed
+  out once during that mutation, then passed on repeated restored runs.
+- T5: 14 store-shape and 2 index-shape tests passed. Four mutations exposed
+  old `TIMEUUID` columns or either stale `idType` rule. The topic-column case
+  needed the UUID deployment test. The index module alone passed 69 of 69.
+- T6: the initial map tests passed 7 of 7, then the review repair passed 13
+  of 13. Its three initial mutations caught a late map write, an ignored old
+  map, and a swallowed write error. Three review mutations each failed only
+  its related refusal case. The UUID deployment tests passed 4 of 4.
+- T7: the shell refusal test passed 1 of 1. Removing the Claude requirement
+  let startup reach a missing service host, so the refusal test failed.
+
+The T4 `--ci` run built both shell images: long `sha256:e87172fd7637` and
+UUID `sha256:8ecffee1c200`. Both ids were still present before T8 gates.
+The first is for other shell container tests. `ClaudeImportDeploymentTests`
+uses the second. `docs/BUILD-HEALTH.md` records their origin.
+
+T8 ran both gates on 2026-10-16, before its commit. The default
+`build-health.sh` exited 0: 30 modules, 2,234 tests, 0 failures, 0 errors,
+47 skipped, and the BUILD-HEALTH baseline matched. `build-health.sh --ci`
+used an empty `DOCKER_CONFIG` and exited 0: 30 modules, 2,631 tests,
+0 failures, 0 errors, 82 skipped, `agent http gate: ok`, and the baseline
+matched. The long image moved from `sha256:e87172fd7637` to
+`sha256:b00d3f751ae3`. The UUID image moved from `sha256:8ecffee1c200`
+to `sha256:6d10ddb90cf9`. Docker reported no OOM event in the CI window
+from 03:20 to 03:46 PDT. `drift check` and `git diff --check` passed.
+
+### Limits
+
+No deployment enables `app.message.import` in this work. An import before the
+derived-key change can duplicate on rerun. Two simultaneous imports can both
+submit, because the read and write are not atomic. The map holds the latest
+export path alone.

@@ -15,8 +15,12 @@ docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/in
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt sig:ea45ab71565e09e1
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusSettings.kt sig:c8c3008bbf745a1c
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusValidation.kt sig:80fedc67d1b0bf61
+docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/KeyTypeValidation.kt sig:83e12877b8489299
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/service/command/BackendExecutionPolicy.kt sig:596cedd2fb4df983
+docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/service/command/ImportedMessageId.kt sig:37c4a366e98b7bd8
 docs/MESSAGE-COMMANDS.md -> chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt sig:20fbcf6518779583
+docs/MESSAGE-COMMANDS.md -> chat-shell/src/main/kotlin/com/demo/chat/shell/commands/ClaudeImportCommands.kt sig:0031d449e39b5373
+docs/MESSAGE-COMMANDS.md -> chat-shell/src/main/kotlin/com/demo/chat/shell/commands/ClaudeImportMap.kt sig:0cfcbf024a602b78
 docs/MESSAGE-COMMANDS.md -> chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/composite/mapping/SubmitStatus.kt sig:8c5a6e291e314fd5
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/CoreSecurityErrorDecoder.kt sig:59ee4b32bebf84ef
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/MetadataRSocketRequester.kt sig:5a8d41ce7cdeacb3
