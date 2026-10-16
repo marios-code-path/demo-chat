@@ -3,11 +3,17 @@ package com.demo.chat.domain.serializers
 import com.demo.chat.convert.KeyAssembly
 import com.demo.chat.convert.NodeValueRules
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.MessagePointerRequest
+import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.PointerMessage
 import com.demo.chat.domain.SimpleMessageKey
 import java.time.Instant
@@ -217,6 +223,101 @@ class Jackson3AuthMetadataDeserializer<T : Any> : ValueDeserializer<AuthMetadata
             Jackson3NodeToAny.key<T>(node.get("target").get("key"), ctxt),
             node.get("permission").asString(),
             node.get("expires").asLong(),
+        )
+    }
+}
+
+// The id requests that the RSocket server decodes. See `CHAT-oeyxthsy`.
+//
+// A request type is generic in its key type, and the handler cannot resolve
+// that type. The controllers are generic, so Jackson binds a raw id with no
+// type. A UUID id then decoded as a `String`, and the registry lookup missed.
+// These deserializers read each id by the rule that a `Key` id uses. The wire
+// shape does not change.
+
+/** A required field. A missing field fails the decode and names the field. */
+private fun required(node: JsonNode, field: String, context: DeserializationContext): JsonNode {
+    val value = node.get(field)
+    if (value == null || value.isNull) throw DatabindException.from(context.parser, "The request has no $field.")
+    return value
+}
+
+/** A required id field, read by the rule that a `Key` id uses. */
+private fun requiredId(node: JsonNode, field: String, context: DeserializationContext): Any =
+    Jackson3NodeToAny.value(required(node, field, context))
+
+/** A message text is a value, not an id, so it keeps the plain Jackson reading. */
+private fun requiredValue(node: JsonNode, field: String, context: DeserializationContext): Any =
+    context.readTreeAsValue(required(node, field, context), Any::class.java)
+
+/** A required text field, such as a request id. */
+private fun requiredText(node: JsonNode, field: String, context: DeserializationContext): String =
+    required(node, field, context).asString()
+
+// Each request below reads its tree with readTree. The type property is read
+// first, so the parser can start at a field name, and readTree reads from there.
+
+class Jackson3ByIdRequestDeserializer : ValueDeserializer<ByIdRequest<Any>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): ByIdRequest<Any> =
+        ByIdRequest(requiredId(ctxt.readTree(p), "id", ctxt))
+}
+
+class Jackson3MessageImportRequestDeserializer : ValueDeserializer<MessageImportRequest<Any, Any>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessageImportRequest<Any, Any> {
+        val node: JsonNode = ctxt.readTree(p)
+
+        return MessageImportRequest(
+            requiredValue(node, "msg", ctxt),
+            requiredId(node, "from", ctxt),
+            requiredId(node, "dest", ctxt),
+            ctxt.readTreeAsValue(required(node, "timestamp", ctxt), Instant::class.java),
+            requiredText(node, "messageId", ctxt),
+            node.get("publish")?.asBoolean() ?: false,
+        )
+    }
+}
+
+class Jackson3MembershipRequestDeserializer : ValueDeserializer<MembershipRequest<Any>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MembershipRequest<Any> {
+        val node: JsonNode = ctxt.readTree(p)
+
+        return MembershipRequest(requiredId(node, "uid", ctxt), requiredId(node, "roomId", ctxt))
+    }
+}
+
+class Jackson3MessageSendRequestDeserializer : ValueDeserializer<MessageSendRequest<Any, Any>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessageSendRequest<Any, Any> {
+        val node: JsonNode = ctxt.readTree(p)
+
+        return MessageSendRequest(
+            requiredValue(node, "msg", ctxt),
+            requiredId(node, "from", ctxt),
+            requiredId(node, "dest", ctxt),
+        )
+    }
+}
+
+class Jackson3MessageSubmitRequestDeserializer : ValueDeserializer<MessageSubmitRequest<Any, Any>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessageSubmitRequest<Any, Any> {
+        val node: JsonNode = ctxt.readTree(p)
+
+        return MessageSubmitRequest(
+            requiredValue(node, "msg", ctxt),
+            requiredId(node, "dest", ctxt),
+            requiredText(node, "requestId", ctxt),
+        )
+    }
+}
+
+class Jackson3MessagePointerRequestDeserializer : ValueDeserializer<MessagePointerRequest<Any>>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessagePointerRequest<Any> {
+        val node: JsonNode = ctxt.readTree(p)
+
+        return MessagePointerRequest(
+            requiredId(node, "dest", ctxt),
+            requiredId(node, "targetId", ctxt),
+            requiredText(node, "targetDomain", ctxt),
+            requiredText(node, "requestId", ctxt),
         )
     }
 }
