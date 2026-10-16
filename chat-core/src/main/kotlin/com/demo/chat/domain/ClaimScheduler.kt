@@ -35,9 +35,7 @@ interface ClaimScheduler {
     fun isSchedulerThread(): Boolean
 }
 
-class ExecutorClaimScheduler : ClaimScheduler {
-
-    private val threadName = "nodeid-claim-renew"
+class ExecutorClaimScheduler(private val threadName: String = "nodeid-claim-renew") : ClaimScheduler {
 
     private val executor: ScheduledExecutorService =
         Executors.newSingleThreadScheduledExecutor(ThreadFactory { runnable ->

@@ -13,6 +13,7 @@ import java.time.Duration
 class NodeIdClaimGuardRenewalTests {
 
     private val props = NodeIdClaimProperties(null, null, null, null)
+    private var now = 0L
 
     private fun setUp(store: FakeClaimStore): Pair<NodeIdClaimGuard, ManualClaimScheduler> {
         val scheduler = ManualClaimScheduler()
@@ -20,22 +21,25 @@ class NodeIdClaimGuardRenewalTests {
         context.refresh()
         val guard = NodeIdClaimGuard(
             listOf(store), NodeId(7), RuntimeOwnerId("core-service@host-a:4711#a3f19c2b"),
-            props, context, scheduler
+            props, context, scheduler, clock = { now }
         )
-        guard.afterPropertiesSet()
+        guard.start()
         return guard to scheduler
     }
 
     @Test
-    fun `a granted renew keeps the context open and rearms the deadline`() {
+    fun `a granted renew moves the deadline`() {
         val store = FakeClaimStore("redis")
         val (_, scheduler) = setUp(store)
 
+        now = Duration.ofSeconds(20).toNanos()
         scheduler.firePeriodic()
+        now = Duration.ofSeconds(30).toNanos()
+        scheduler.fireOnce()
 
         Assertions.assertTrue(store.calls.contains("renew:redis"))
         Assertions.assertTrue(scheduler.detached.isEmpty())
-        Assertions.assertEquals(Duration.ofSeconds(25), scheduler.onceDelay)
+        Assertions.assertEquals(Duration.ofSeconds(15), scheduler.onceDelay)
     }
 
     @Test
@@ -70,16 +74,17 @@ class NodeIdClaimGuardRenewalTests {
     }
 
     @Test
-    fun `a renew error does not rearm the deadline`() {
+    fun `a renew error does not move the deadline`() {
         val store = FakeClaimStore("redis")
         val (_, scheduler) = setUp(store)
 
-        scheduler.firePeriodic()
-        val armedAfterSuccess = scheduler.once
         store.renewAnswer = { throw IllegalStateException("redis is down") }
+        now = Duration.ofSeconds(20).toNanos()
         scheduler.firePeriodic()
+        now = Duration.ofSeconds(25).toNanos()
+        scheduler.fireOnce()
 
-        Assertions.assertSame(armedAfterSuccess, scheduler.once)
+        Assertions.assertEquals(listOf("nodeid-claim-close"), scheduler.detached)
     }
 
     @Test
@@ -88,6 +93,7 @@ class NodeIdClaimGuardRenewalTests {
         val (_, scheduler) = setUp(store)
 
         scheduler.firePeriodic()
+        now = Duration.ofSeconds(25).toNanos()
         scheduler.fireOnce()
 
         Assertions.assertEquals(listOf("nodeid-claim-close"), scheduler.detached)
@@ -124,9 +130,9 @@ class NodeIdClaimGuardRenewalTests {
         context.refresh()
         val guard = NodeIdClaimGuard(
             listOf(redis, cassandra), NodeId(7),
-            RuntimeOwnerId("core-service@host-a:4711#a3f19c2b"), props, context, scheduler
+            RuntimeOwnerId("core-service@host-a:4711#a3f19c2b"), props, context, scheduler, clock = { now }
         )
-        guard.afterPropertiesSet()
+        guard.start()
 
         guard.destroy()
 

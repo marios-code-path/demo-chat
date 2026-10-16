@@ -2,46 +2,60 @@ package com.demo.chat.domain
 
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.DisposableBean
-import org.springframework.beans.factory.InitializingBean
 import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.context.SmartLifecycle
 
 /**
  * Holds the store-side lease on `app.nodeid` for the life of the process.
  *
- * The guard claims during context refresh. A duplicate therefore fails
- * startup before the application is ready and before the process serves
- * normal traffic.
+ * The guard claims when its lifecycle phase starts, after the connection
+ * factories and before `RootKeyStartup`. A duplicate therefore fails startup
+ * before the application is ready and before the process serves normal
+ * traffic.
  *
- * The guard is the only place that blocks. The stores stay reactive.
+ * It releases in [stop], while the connection factories still run. It also
+ * releases in [destroy], because a failed refresh may not run [stop]. See
+ * `CHAT-ocpojbyy` and `CHAT-lswjobhz`.
+ *
+ * [scheduler] runs the renewals. [deadlines] runs the close deadline. A test
+ * can pass one manual scheduler for both.
  */
 class NodeIdClaimGuard(
     private val stores: List<NodeIdClaimStore>,
     private val nodeId: NodeId,
     private val owner: RuntimeOwnerId,
     private val props: NodeIdClaimProperties,
-    private val context: ConfigurableApplicationContext,
-    private val scheduler: ClaimScheduler
-) : InitializingBean, DisposableBean {
+    context: ConfigurableApplicationContext,
+    private val scheduler: ClaimScheduler,
+    private val deadlines: ClaimScheduler = scheduler,
+    clock: () -> Long = System::nanoTime,
+) : SmartLifecycle, DisposableBean {
 
     private val log = LoggerFactory.getLogger(NodeIdClaimGuard::class.java)
+    private val keeper = LeaseKeeper(
+        "app.nodeid=${nodeId.value}", props, context, scheduler, deadlines, "nodeid-claim-close", clock
+    )
 
-    private var granted: List<NodeIdClaimStore> = emptyList()
-    private var renewHandle: AutoCloseable? = null
-    private var deadlineHandle: AutoCloseable? = null
+    @Volatile
+    private var running = false
 
-    override fun afterPropertiesSet() {
+    override fun start() {
         if (stores.isEmpty()) {
+            running = true
             return
         }
 
-        val ordered = stores.sortedBy { it.backendName }
         val taken = mutableListOf<NodeIdClaimStore>()
-
+        keeper.begin()
         try {
-            ordered.forEach { store ->
+            stores.sortedBy { it.backendName }.forEach { store ->
+                val sentAt = keeper.now()
                 when (val result = store.claim(nodeId, owner.value, props.ttl)
                     .timeout(props.operationTimeout).block()) {
-                    is ClaimResult.Granted -> taken.add(store)
+                    is ClaimResult.Granted -> {
+                        taken.add(store)
+                        keeper.add(lease(store), sentAt)
+                    }
                     is ClaimResult.Denied ->
                         throw NodeIdClaimException(nodeId, store.scope, result.holder, props.ttl)
                     is ClaimResult.Lost ->
@@ -55,91 +69,43 @@ class NodeIdClaimGuard(
                         )
                 }
             }
+            keeper.held()
         } catch (failure: Throwable) {
-            releaseAll(taken.reversed())
+            keeper.releaseAll()
             throw failure
         }
 
-        granted = taken
         log.info("app.nodeid={} claimed in {}", nodeId.value, taken.joinToString { it.scope })
-        armDeadline()
-        renewHandle = scheduler.schedulePeriodic(props.renewInterval) { renewOnce() }
+        running = true
     }
+
+    override fun stop() {
+        keeper.releaseAll()
+        running = false
+    }
+
+    override fun isRunning(): Boolean = running
+
+    override fun getPhase(): Int = LeasePhases.NODE_ID_GUARD
 
     override fun destroy() {
-        renewHandle?.close()
-        deadlineHandle?.close()
+        keeper.releaseAll()
         scheduler.shutdownNow()
-        releaseAll(granted.reversed())
-        granted = emptyList()
+        if (deadlines !== scheduler) deadlines.shutdownNow()
     }
 
-    private fun armDeadline() {
-        deadlineHandle?.close()
-        deadlineHandle = scheduler.scheduleOnce(props.closeDeadline) {
-            closeContext(
-                "app.nodeid=${nodeId.value} was not renewed within ${props.closeDeadline.seconds}s. " +
-                    "The lease may have expired. Closing the application context."
-            )
-        }
-    }
+    private fun lease(store: NodeIdClaimStore) = object : HeldLease {
+        override val label = "app.nodeid=${nodeId.value} on ${store.backendName}"
 
-    private fun renewOnce() {
-        granted.forEach { store ->
-            val result = try {
-                store.renew(nodeId, owner.value, props.ttl).timeout(props.operationTimeout).block()
-            } catch (error: Throwable) {
-                log.warn(
-                    "app.nodeid={} renew failed on {}. Retrying at the next interval. Cause: {}",
-                    nodeId.value, store.backendName, error.message
-                )
-                return
-            }
+        override fun renew() = store.renew(nodeId, owner.value, props.ttl)
 
-            when (result) {
-                is ClaimResult.Granted -> Unit
-                is ClaimResult.Denied -> {
-                    closeContext(
-                        NodeIdClaimException(nodeId, store.scope, result.holder, props.ttl).message!!
-                    )
-                    return
-                }
-                is ClaimResult.Lost -> {
-                    closeContext(
-                        "app.nodeid=${nodeId.value} is no longer held in the ${store.scope}. " +
-                            "This process lost its lease. Closing the application context."
-                    )
-                    return
-                }
-                null -> {
-                    log.warn(
-                        "app.nodeid={} renew returned no result from {}. Retrying at the next interval.",
-                        nodeId.value, store.backendName
-                    )
-                    return
-                }
-            }
-        }
-        armDeadline()
-    }
+        override fun release() = store.release(nodeId, owner.value)
 
-    // The close runs off the scheduler. A close started on a scheduler thread
-    // would run destroy on that same thread, and destroy would wait for it.
-    private fun closeContext(reason: String) {
-        log.error(reason)
-        scheduler.runDetached("nodeid-claim-close") { context.close() }
-    }
+        override fun deniedMessage(holder: String): String =
+            NodeIdClaimException(nodeId, store.scope, holder, props.ttl).message!!
 
-    private fun releaseAll(ordered: List<NodeIdClaimStore>) {
-        ordered.forEach { store ->
-            try {
-                store.release(nodeId, owner.value).timeout(props.operationTimeout).block()
-            } catch (error: Throwable) {
-                log.debug(
-                    "app.nodeid={} release failed on {}. The lease expires on its own. Cause: {}",
-                    nodeId.value, store.backendName, error.message
-                )
-            }
-        }
+        override fun lostMessage(): String =
+            "app.nodeid=${nodeId.value} is no longer held in the ${store.scope}. " +
+                "This process lost its lease. Closing the application context."
     }
 }
