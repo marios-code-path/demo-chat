@@ -219,9 +219,12 @@ that it cannot write after the release.
 when a store shape check fails in `RootKeyStartup`. Spring then destroys the
 beans, and the lifecycle stop may not run. So each guard releases in two
 places: in `stop`, and in `destroy` when it still holds a lease. A release is
-conditional on the owner id, so a second release does nothing. Each guard
-depends on its lease stores, so Spring destroys the guard before the
-connection factory.
+conditional on the owner id, so a second release does nothing. Spring
+destroys a bean before the beans that it depends on. So each guard must be a
+registered dependent of its lease stores. A store read through an
+`ObjectProvider` stream registers no dependency. The node id guard reads its
+stores that way today, so its configuration registers the dependency by name.
+The service guard takes its store as a constructor parameter.
 
 The node id guard moves from `InitializingBean` to this lifecycle. **It must
 claim before any key is minted.** The plan measures the first key mint of a
