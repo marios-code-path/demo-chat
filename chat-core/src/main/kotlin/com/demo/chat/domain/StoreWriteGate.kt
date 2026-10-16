@@ -38,13 +38,15 @@ class StoreWriteGate(val drainTimeout: Duration) {
 
     val active: Int get() = synchronized(lock) { count }
 
-    fun <T : Any> admit(write: () -> Mono<T>): Mono<T> = Mono.defer {
-        if (!enter()) return@defer Mono.error<T>(StoreWriteRefusedException())
-        // toFuture subscribes now, so the write runs to its end. The cast drops
-        // the nullable type that toFuture gives. Mono.fromFuture reads a null
-        // value as an empty Mono.
+    fun <T : Any> admit(write: () -> Mono<T>): Mono<T> = Mono.deferContextual { context ->
+        if (!enter()) return@deferContextual Mono.error<T>(StoreWriteRefusedException())
+        // toFuture subscribes now, so the write runs to its end. That
+        // subscription has no subscriber, so it carries the subscriber's
+        // Context by hand. The cast drops the nullable type that toFuture
+        // gives. Mono.fromFuture reads a null value as an empty Mono.
         @Suppress("UNCHECKED_CAST")
-        val done = Mono.defer(write).doFinally { exit() }.toFuture() as java.util.concurrent.CompletableFuture<T>
+        val done = Mono.defer(write).contextWrite(context).doFinally { exit() }.toFuture()
+            as java.util.concurrent.CompletableFuture<T>
         Mono.fromFuture(done, true)
     }
 

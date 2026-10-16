@@ -44,6 +44,6 @@ docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/ag
 docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/LeaseKeeper.kt sig:8ed4056e1215bd8d
 docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/ServiceLease.kt sig:c7d7119da810de46
 docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/ServiceLeaseGuard.kt sig:8645a3d62e23c4c6
-docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/StoreWriteGate.kt sig:d2816071b6385602
+docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/StoreWriteGate.kt sig:5c70165df848ab6a
 docs/SERVICE-LEASE.md -> chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraServiceLeaseStore.kt sig:054905fdb85adb61
 docs/SERVICE-LEASE.md -> chat-persistence-redis/src/main/kotlin/com/demo/chat/persistence/redis/impl/RedisServiceLeaseStore.kt sig:79d70794e4470005

@@ -78,6 +78,15 @@ class StoreWriteGateTests {
     }
 
     @Test
+    fun `the write sees the subscriber context`() {
+        val seen = gate.admit {
+            Mono.deferContextual { context -> Mono.just(context.getOrDefault("trace", "none")!!) }
+        }.contextWrite { it.put("trace", "t-1") }
+
+        StepVerifier.create(seen).expectNext("t-1").verifyComplete()
+    }
+
+    @Test
     fun `a drain waits for an active write and times out when it never ends`() {
         val short = StoreWriteGate(Duration.ofMillis(300))
         short.admit { Mono.never<Void>() }.subscribe()

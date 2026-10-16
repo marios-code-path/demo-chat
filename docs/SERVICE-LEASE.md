@@ -151,7 +151,8 @@ running, and a canceled reactive chain does not prove that its store write
 stopped.
 
 - A `StoreWriteGate` counts each store write, from its start to its end in
-  the store. A caller that cancels does not end the count.
+  the store. A caller that cancels does not end the count. The write keeps
+  the Reactor `Context` of its subscriber.
 - The gate wraps each `add`, `rem` and `addEnriched` call of each store
   service. Reads pass through.
 - A Lucene index is not wrapped. It implements `ProcessLocalIndex`, because
