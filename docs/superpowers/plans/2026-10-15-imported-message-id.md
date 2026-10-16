@@ -65,8 +65,8 @@ These inputs are not exercised by every task's test. Each one is likely to hurt 
 | `chat-core/src/main/kotlin/com/demo/chat/domain/command/CommandTypes.kt` | 3 | `CommandSubmission.messageId` |
 | `chat-core/src/main/kotlin/com/demo/chat/service/core/KeyAllocator.kt` | 3 | `adopt` |
 | `chat-core/src/main/kotlin/com/demo/chat/service/command/CommandFingerprint.kt` | 3 | Version 4 with a supplied id |
-| `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt` | 3 | Supply and refuse rules |
-| `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt` | 3 | Refusal cases |
+| `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt` | 3, 4 | Supply and refuse rules |
+| `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt` | 3, 4 | Refusal cases |
 | `chat-core/src/test/kotlin/com/demo/chat/test/command/CommandFingerprintTests.kt` | 3 | Version 4 case |
 | `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt` | 4 | Derive, read, drop the scan |
 | `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt` | 4 | Rerun case |
@@ -197,7 +197,9 @@ fp comment CHAT-zxrgxdlx "Task 2 done: the derivation and its refusal."
 
 - [ ] **Step 1: Write the failing tests**
 
-An `IMPORT_MESSAGE` without a supplied id is refused. A supplied id outside `IMPORT_MESSAGE` is refused. Two submissions under one request id with two different supplied ids are a `RequestConflictException`.
+A supplied id outside `IMPORT_MESSAGE` is refused. Two submissions under one request id with two different supplied ids are a `RequestConflictException`.
+
+**The owner moved the refusal of an `IMPORT_MESSAGE` with no supplied id to Task 4 on 2026-10-15.** `MessagingServiceImpl` submits no id until Task 4. So a Task 3 refusal would break the import route between the two merges. The measured break was one failure in `MessageCommandServiceTests`. Task 3 keeps a minted id for an import with no id.
 
 - [ ] **Step 2: Run them and see them fail**
 
@@ -208,7 +210,7 @@ mvn -o -pl chat-core,chat-service-composite test -Dtest=MemoryAdmissionTests > $
 
 - [ ] **Step 3: Write the change**
 
-Add the field after `target`, so every existing positional construction keeps its meaning. Add `adopt` to `KeyAllocator` beside `allocate`. In `MemoryDomainCommandBus.stageAndCommit`, use the supplied id when the operation is `IMPORT_MESSAGE`. Both refusals are `DefinitiveRefusalException`, which is the rule the pointer and its `target` follow. Extend `CommandFingerprint.of` with the supplied id and write `VERSION + 3`.
+Add the field after `target`, so every existing positional construction keeps its meaning. Add `adopt` to `KeyAllocator` beside `allocate`. In `MemoryDomainCommandBus.stageAndCommit`, use the supplied id when the operation is `IMPORT_MESSAGE`. The refusal is a `DefinitiveRefusalException`, which is the rule the pointer and its `target` follow. Extend `CommandFingerprint.of` with the supplied id and write `VERSION + 3`.
 
 - [ ] **Step 4: Run the module tests**
 
@@ -233,6 +235,8 @@ fp comment CHAT-zxrgxdlx "Task 3 done: the bus carries a supplied message id."
 **Files:**
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt`
 - Modify: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt`
+- Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt`
 
 **Interfaces:**
 - Consumes: `ImportedMessageId.deriveFor`, `CommandSubmission.messageId`.
@@ -251,6 +255,8 @@ mvn -o -pl chat-core,chat-deploy-memory test -Dtest=MessageCommandRoutesTests > 
 
 In `importAsAdmin`, keep the three guards. Then derive the id with `ImportedMessageId.deriveFor`. Then read `messagePersistence.get(derivedKey)`. A live row is the answer. Otherwise submit with `messageId = derived`. **Remove the `history` scan and the text match.** Record the non-atomic limit in the KDoc.
 
+Then make `MemoryDomainCommandBus.admit` refuse an `IMPORT_MESSAGE` with no supplied id. Use a `DefinitiveRefusalException`, beside the Task 3 check. Change the `MemoryAdmissionTests` case `an import with no supplied id still gets a minted id` into the refusal case. Assert that the refusal leaves no staged mapping. The owner moved this refusal from Task 3 on 2026-10-15.
+
 - [ ] **Step 4: Measure the mutation**
 
 Drop the direct read, so every call submits. Run the rerun case alone. Restore from git by absolute path.
@@ -264,7 +270,7 @@ mvn -o -pl chat-core,chat-service-composite,chat-deploy-memory test > $LOG 2>&1;
 - [ ] **Step 6: Commit**
 
 ```bash
-git add chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt
+git add chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MessageCommandRoutesTests.kt chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/command/memory/MemoryDomainCommandBus.kt chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/command/MemoryAdmissionTests.kt
 git commit -m "Read the derived import key instead of scanning history (CHAT-zxrgxdlx)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
