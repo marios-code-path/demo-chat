@@ -185,6 +185,10 @@ object RSocketRouteCatalog {
         entry("MessageServiceController", "submit", "MessageSubmitRequest<T,V>",
             "req.dest" to service("MESSAGE_TOPIC"),
             "req.msg" to notIdentity("a payload value")),
+        // message.message-pointer. The creator is the authenticated user. The composite resolves the target in its named domain.
+        entry("MessageServiceController", "pointer", "MessagePointerRequest<T>",
+            "req.dest" to service("MESSAGE_TOPIC"),
+            "req.targetId" to service("any")),
         // message.message-command-status. The service answers only a command of the caller.
         entry("MessageServiceController", "commandStatus", "CommandStatusRequest"),
         // persist.authmetadata.add

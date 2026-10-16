@@ -63,6 +63,42 @@ class CommandFingerprintTests {
         ).isNotEqualTo(base)
     }
 
+    /** The Perl encoder computed the version 2 and version 4 goldens on 2026-10-15. */
+    @Test
+    fun `an import with no supplied id keeps the version 2 golden value`() {
+        assertThat(
+            CommandFingerprint.of(
+                CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", Instant.parse("2026-10-08T10:00:00.001Z"), false,
+            )
+        ).isEqualTo("476415663f32d0dee66e616375e8436806598932ecd47f6a46a5e4fe92e85392")
+    }
+
+    @Test
+    fun `a supplied id gives the version 4 golden value`() {
+        assertThat(
+            CommandFingerprint.of(
+                CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", Instant.parse("2026-10-08T10:00:00.001Z"), false,
+                messageId = "7777",
+            )
+        ).isEqualTo("1a9fc6b47071ffdb56aed047bd3d601d667f0199b30777c0ddeba676eae38778")
+    }
+
+    @Test
+    fun `a changed supplied id changes the value`() {
+        val at = Instant.parse("2026-10-08T10:00:00.001Z")
+        val base = CommandFingerprint.of(CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", at, false, messageId = "7777")
+        assertThat(CommandFingerprint.of(CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", at, false, messageId = "7778"))
+            .isNotEqualTo(base)
+        assertThat(CommandFingerprint.of(CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", at, true, messageId = "7777"))
+            .isNotEqualTo(base)
+        assertThat(
+            CommandFingerprint.of(
+                CommandOperation.IMPORT_MESSAGE, "10", "100", "hello", Instant.parse("2026-10-08T10:00:00.002Z"), false,
+                messageId = "7777",
+            )
+        ).isNotEqualTo(base)
+    }
+
     @Test
     fun `a non-text value is refused`() {
         assertThatThrownBy { CommandFingerprint.of(op, "10", "100", 42) }

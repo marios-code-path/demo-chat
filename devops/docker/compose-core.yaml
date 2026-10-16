@@ -1,0 +1,17 @@
+services:
+  core-service-rsocket:
+    image: ${CORE_IMAGE:?Set CORE_IMAGE}
+    environment:
+      CHAT_SERVICE_PASSWORD: ${CHAT_SERVICE_PASSWORD:?Set CHAT_SERVICE_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - chatnet
+    ports:
+      - "127.0.0.1:${CORE_PORT:-6790}:${CORE_PORT:-6790}"
+      - "127.0.0.1:${CORE_MGMT_PORT:-6791}:${CORE_MGMT_PORT:-6791}"
+
+networks:
+  chatnet:
+    external: true
+    name: ${CHAT_NETWORK:-docker_chatnet}

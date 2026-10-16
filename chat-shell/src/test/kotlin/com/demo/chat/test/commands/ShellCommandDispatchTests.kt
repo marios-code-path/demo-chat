@@ -8,6 +8,8 @@ import com.demo.chat.shell.commands.TopicCommands
 import com.demo.chat.shell.commands.TopicCommandsRegistrar
 import com.demo.chat.shell.commands.UserCommands
 import com.demo.chat.shell.commands.UserCommandsRegistrar
+import com.demo.chat.shell.commands.ClaudeImportCommands
+import com.demo.chat.shell.commands.ClaudeImportCommandsRegistrar
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
@@ -147,6 +149,39 @@ class ShellCommandDispatchTests {
         verify(commands).kv("payload")
     }
 
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `the Claude import command passes all six options in order`() {
+        val commands = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
+        val command = ClaudeImportCommandsRegistrar(commands).importClaudeCommand()
+
+        run(command, mapOf(
+            "file" to "/tmp/conversations.json",
+            "conversation" to "conversation-id",
+            "topic" to "roomname",
+            "generation" to "3",
+            "human" to "alice",
+            "assistant" to "claude",
+        ))
+
+        verify(commands).importConversation(
+            "/tmp/conversations.json", "conversation-id", "roomname", "3", "alice", "claude")
+    }
+
+    /**
+     * **The retired leaf selector must not return.** A leaf selector imports
+     * one path alone, and the import takes every path now.
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `the Claude import command declares no leaf message selector`() {
+        val commands = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
+        val command = ClaudeImportCommandsRegistrar(commands).importClaudeCommand()
+
+        assertThat(command.options.map { it.longName() }).doesNotContain("leaf-message")
+    }
+
+    @Suppress("UNCHECKED_CAST")
     @Test
     fun `every command executes without a missing option`() {
         // optionValue fails loudly when a command reads an option it never
@@ -156,12 +191,14 @@ class ShellCommandDispatchTests {
         val login = mock(LoginCommands::class.java) as LoginCommands<Any>
         val pubsub = mock(PubSubCommands::class.java) as PubSubCommands<Any>
         val user = mock(UserCommands::class.java) as UserCommands<Any>
+        val importer = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
 
         val registrars = listOf<Any>(
             TopicCommandsRegistrar(topic),
             LoginCommandsRegistrar(login),
             PubSubCommandsRegistrar(pubsub),
             UserCommandsRegistrar(user),
+            ClaudeImportCommandsRegistrar(importer),
         )
 
         val beans = registrars.flatMap { registrar ->

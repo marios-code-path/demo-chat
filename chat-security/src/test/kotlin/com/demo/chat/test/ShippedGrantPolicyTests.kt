@@ -82,10 +82,10 @@ class ShippedGrantPolicyTests {
     }
 
     @Test
-    fun `join - the SEND and SUBSCRIBE rows equal the policy`() {
+    fun `join - the SEND, SUBSCRIBE and FORWARD rows equal the policy`() {
         membership.grantMembership(MEMBER, ROOM).block()
 
-        assertRowsEqual(ShippedGrantPolicies.ROOM_JOIN, ActionContext(MEMBER, ROOM), expectedCount = 2)
+        assertRowsEqual(ShippedGrantPolicies.ROOM_JOIN, ActionContext(MEMBER, ROOM), expectedCount = 3)
     }
 
     @Test
@@ -104,7 +104,7 @@ class ShippedGrantPolicyTests {
 
         membership.expireMembership(MEMBER, ROOM).block()
 
-        assertRowsEqual(ShippedGrantPolicies.ROOM_LEAVE, ActionContext(MEMBER, ROOM), expectedCount = 2)
+        assertRowsEqual(ShippedGrantPolicies.ROOM_LEAVE, ActionContext(MEMBER, ROOM), expectedCount = 3)
     }
 
     @Test

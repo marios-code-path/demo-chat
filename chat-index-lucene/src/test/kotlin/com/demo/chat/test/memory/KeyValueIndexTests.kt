@@ -8,6 +8,7 @@ import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.LongUtil
@@ -48,7 +49,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
     KeyValueLuceneIndex(LongUtil(), ROOTS, IndexEntryEncoder.ofKeyValueFields(sampleFields)).openedInMemory(),
     Supplier { KeyValuePair.create(TestKeys.key(1234L), IndexedSample("TEST", 7) as Any) },
     Function { pair -> pair.key },
-    Supplier { IndexSearchRequest("name", "TEST", 1000) },
+    Supplier { IndexFieldKinds.KEY_VALUE.query("name", "TEST", 1000) },
     ROOTS,
     ChatDomain.KEY_VALUE_PAIR,
 ) {
@@ -65,7 +66,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
 
         val composed = index.add(KeyValuePair.create(TestKeys.key(4001L), IndexedSample("TEST", 1) as Any))
             .then(index.add(KeyValuePair.create(TestKeys.key(4002L), IndexedSample("TEST", 2) as Any)))
-            .thenMany(index.findBy(IndexSearchRequest("name", "TEST", 1000)))
+            .thenMany(index.findBy(IndexFieldKinds.KEY_VALUE.query("name", "TEST", 1000)))
 
         StepVerifier
             .create(composed)
@@ -84,12 +85,12 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
             .create(
                 index.add(KeyValuePair.create(key, IndexedSample("RUNNING", 1) as Any))
                     .then(index.add(KeyValuePair.create(key, IndexedSample("SUCCEEDED", 1) as Any)))
-                    .thenMany(index.findBy(IndexSearchRequest("name", "RUNNING", 10)))
+                    .thenMany(index.findBy(IndexFieldKinds.KEY_VALUE.query("name", "RUNNING", 10)))
             )
             .verifyComplete()
 
         StepVerifier
-            .create(index.findBy(IndexSearchRequest("name", "SUCCEEDED", 10)))
+            .create(index.findBy(IndexFieldKinds.KEY_VALUE.query("name", "SUCCEEDED", 10)))
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(5150L) }
             .verifyComplete()
     }
@@ -111,7 +112,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
                 index.add(KeyValuePair.create(first, IndexedSample("SHARED", 1) as Any))
                     .then(index.add(KeyValuePair.create(second, IndexedSample("SHARED", 2) as Any)))
                     .then(index.rem(first))
-                    .thenMany(index.findBy(IndexSearchRequest("name", "SHARED", 10)))
+                    .thenMany(index.findBy(IndexFieldKinds.KEY_VALUE.query("name", "SHARED", 10)))
             )
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(second.id) }
             .verifyComplete()
@@ -130,7 +131,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
                 index.add(KeyValuePair.create(first, IndexedSample("SHARED", 1) as Any))
                     .then(index.add(KeyValuePair.create(second, IndexedSample("SHARED", 2) as Any)))
                     .then(index.add(KeyValuePair.create(first, IndexedSample("CHANGED", 1) as Any)))
-                    .thenMany(index.findBy(IndexSearchRequest("name", "SHARED", 10)))
+                    .thenMany(index.findBy(IndexFieldKinds.KEY_VALUE.query("name", "SHARED", 10)))
             )
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(second.id) }
             .verifyComplete()
@@ -173,7 +174,7 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
             .verifyError(ChatException::class.java)
 
         StepVerifier
-            .create(index.findBy(IndexSearchRequest("name", "KEEP", 10)))
+            .create(index.findBy(IndexFieldKinds.KEY_VALUE.query("name", "KEEP", 10)))
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(8008L) }
             .verifyComplete()
     }
@@ -197,16 +198,16 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
     }
 
     // Pins the second defect. The value fields are typed Any, so a field that
-    // is not a String must reach lucene as text.
+    // is not a String must reach Lucene as an exact string value.
     @Test
-    fun `a field value that is not a string indexes as text`() {
+    fun `a field value that is not a string indexes as an exact value`() {
         val index = getIndex()
         val pair = KeyValuePair.create(TestKeys.key(99L), IndexedSample("OTHER", 42) as Any)
 
         StepVerifier
             .create(
                 index.add(pair)
-                    .thenMany(index.findBy(IndexSearchRequest("size", "42", 10)))
+                    .thenMany(index.findBy(IndexFieldKinds.KEY_VALUE.query("size", "42", 10)))
             )
             .assertNext { key -> Assertions.assertThat(key.id).isEqualTo(99L) }
             .verifyComplete()

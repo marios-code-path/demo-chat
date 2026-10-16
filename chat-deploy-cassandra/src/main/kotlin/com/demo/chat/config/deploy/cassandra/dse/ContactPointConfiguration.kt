@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.DriverConfigLoaderBuilderConfigurer
 import org.springframework.data.cassandra.config.SessionBuilderConfigurer
-import java.net.InetSocketAddress
 
 /**
  * Contact-point based Cassandra configuration for self-hosted / local
@@ -29,12 +28,14 @@ class ContactPointConfiguration(private val props: CassandraProperties) : Abstra
     // cassandra deployment with no keyspace cannot scope a node id claim.
     override fun getKeyspaceName(): String = NodeIdClaimConfiguration.keyspaceOf(props)
 
-    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer {
-        // The base class supplies localhost when nothing sets the contact
-        // points, and this keeps that optional behaviour. It is read here
-        // rather than inside the lambda, because super does not resolve there.
-        val contactPoint = props.contactPoints?.firstOrNull() ?: super.getContactPoints()
+    // Spring Data uses these values for every session it creates.
+    // A missing contact point keeps the base class's localhost default.
+    override fun getContactPoints(): String =
+        props.contactPoints?.takeIf { it.isNotEmpty() }?.joinToString(",") ?: super.getContactPoints()
 
+    override fun getPort(): Int = props.port
+
+    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer {
         // **Credentials are applied only when both are configured.** Spring
         // Boot 4 types them as nullable, and no deployment yml and no test in
         // this repository sets either one, measured on 2026-09-18. So the
@@ -48,7 +49,7 @@ class ContactPointConfiguration(private val props: CassandraProperties) : Abstra
             if (username != null && password != null) {
                 sessionBuilder.withAuthCredentials(username, password)
             }
-            sessionBuilder.addContactPoint(InetSocketAddress(contactPoint, props.port))
+            sessionBuilder
         }
     }
 

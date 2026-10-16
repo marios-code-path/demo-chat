@@ -7,6 +7,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.MessageTopic
@@ -22,10 +23,10 @@ class MessageTopicIndexTests : IndexTests<Long, MessageTopic<Long>, IndexSearchR
     LuceneIndex<Long, MessageTopic<Long>>(
         IndexEntryEncoder.ofTopic<Long>(),
         { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.MESSAGE_TOPIC).id) },
-        { t -> t.key }).openedInMemory(),
+        { t -> t.key }, IndexFieldKinds.TOPIC).openedInMemory(),
     Supplier { MessageTopic.create(TestKeys.key(NEXT_ID.incrementAndGet()), "TEST") },
     Function<MessageTopic<Long>, Key<Long>> { topic -> topic.key },
-    Supplier { IndexSearchRequest(TopicIndexService.NAME, "TEST", 1000) },
+    Supplier { IndexFieldKinds.TOPIC.query(TopicIndexService.NAME, "TEST", 1000) },
     ROOTS,
     ChatDomain.MESSAGE_TOPIC,
 ) {

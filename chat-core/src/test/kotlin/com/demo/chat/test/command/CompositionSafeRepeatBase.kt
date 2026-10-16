@@ -40,7 +40,11 @@ abstract class CompositionSafeRepeatBase : SafeRepeatContractTests() {
     /** The running composition. A subclass injects it or builds it. */
     abstract fun context(): ApplicationContext
 
-    /** Letters only. The Lucene name index splits a name on a hyphen. See `CHAT-hajmhslp`. */
+    /**
+     * Letters only. This keeps a room name to one Lucene token. The reason
+     * this comment named is gone: `CHAT-hajmhslp` made a name match as a whole
+     * value, so the index no longer splits a name on a hyphen.
+     */
     abstract val roomName: String
 
     @Suppress("UNCHECKED_CAST")

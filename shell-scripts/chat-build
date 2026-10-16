@@ -119,7 +119,6 @@ FEATURES: dict[str, Feature] = {
         description="Memory persistence + pubsub + Lucene index",
         module="chat-deploy-memory",
         spring_profiles=["prod"],
-        additional_configs=["classpath:/config/server-rsocket-consul.yml"],
         group="backend",
     ),
     "cassandra": Feature(
@@ -199,6 +198,7 @@ FEATURES: dict[str, Feature] = {
         name="rsocket",
         description="RSocket server transport",
         maven_profiles=["expose-rsocket"],
+        additional_configs=["classpath:/config/server-rsocket-consul.yml"],
         service_flags=[
             "-Dapp.server.proto=rsocket",
             "-Dspring.main.web-application-type=reactive",
@@ -485,6 +485,10 @@ SERVICES: dict[str, Service] = {
         ],
         opt_flags=[
             "-Dspring.shell.interactive.enabled=true",
+            # The shell runs a web server for its actuator endpoints, so the
+            # JVM would not exit when the shell loop ends. Spring Shell closes
+            # the context only when this property is true. See CHAT-ybmlcdiw.
+            "-Dspring.shell.context.close=true",
             "-Dspring.main.web-application-type=reactive",
             "-Dlogging.level.io.rsocket.FrameLogger=OFF",
         ],
@@ -842,6 +846,11 @@ class BuildContext:
             for key, value in feat.spring_properties.items():
                 if key.startswith("app.service.core."):
                     selectors[key] = value
+        if self.service.name == "core":
+            if self.args.index:
+                selectors["app.service.core.index"] = self.args.index
+            if self.args.pubsub:
+                selectors["app.service.core.pubsub"] = self.args.pubsub
         for key, value in selectors.items():
             prefix = f"-D{key}"
             flags = [
@@ -1057,6 +1066,11 @@ def build_parser() -> argparse.ArgumentParser:
     for service in SERVICES.values():
         sub = subparsers.add_parser(service.name, help=service.description)
         add_common_args(sub)
+        if service.name == "core":
+            sub.add_argument("--index", choices=("cassandra", "lucene"),
+                             help="index provider for a Cassandra core")
+            sub.add_argument("--pubsub", choices=("memory", "redis-pubsub"),
+                             help="pub/sub provider for a Cassandra core")
         group = sub.add_argument_group("features")
         for name in service.available_features:
             feat = FEATURES[name]
@@ -1070,6 +1084,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+
+    if args.service == "core" and (args.index or args.pubsub) and not args.cassandra:
+        print("chat-build: --index and --pubsub require --cassandra", file=sys.stderr)
+        return 1
 
     if args.native:
         print("chat-build: native builds are not supported at this time",
@@ -1153,7 +1171,7 @@ def main() -> int:
         if not args.index_root:
             print("chat-build: --index-root must not be empty", file=sys.stderr)
             return 1
-        if args.cassandra:
+        if args.cassandra and args.index != "lucene":
             print("chat-build: --index-root has no effect with --cassandra. "
                   "The Cassandra backend uses the Cassandra index, not Lucene",
                   file=sys.stderr)

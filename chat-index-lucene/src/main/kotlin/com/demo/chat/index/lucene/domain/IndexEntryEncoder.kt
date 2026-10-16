@@ -5,6 +5,7 @@ import com.demo.chat.service.core.KeyValueIndexFields
 import com.demo.chat.service.core.MembershipIndexService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.security.AuthMetaIndex
+import com.demo.chat.index.lucene.storage.IndexEntry
 import java.util.function.Function
 
 
@@ -19,50 +20,58 @@ fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>> {
          * is added by the index, so it is not repeated here.
          */
         fun <T> ofKeyValueFields(fields: KeyValueIndexFields): IndexEntryEncoder<KeyValuePair<T, Any>> =
-            IndexEntryEncoder { t -> fields.fieldsOf(t.data) }
+            IndexEntryEncoder { t ->
+                fields.fieldsOf(t.data).also(IndexEntry::requireNoReservedField)
+                    .map { (name, value) -> IndexFieldKinds.KEY_VALUE.field(name, value) }
+            }
 
         fun <T> ofAuthMeta(typeUtil: TypeUtil<T>): IndexEntryEncoder<AuthMetadata<T>> =
             IndexEntryEncoder { t ->
                 listOf(
-                    Pair(AuthMetaIndex.PRINCIPAL, typeUtil.toString(t.principal.id)),
-                    Pair(AuthMetaIndex.TARGET, typeUtil.toString(t.target.id)),
-                    Pair(AuthMetaIndex.ID, typeUtil.toString(t.key.id))
+                    IndexFieldKinds.AUTH.field(AuthMetaIndex.PRINCIPAL, typeUtil.toString(t.principal.id)),
+                    IndexFieldKinds.AUTH.field(AuthMetaIndex.TARGET, typeUtil.toString(t.target.id)),
+                    IndexFieldKinds.AUTH.field(AuthMetaIndex.ID, typeUtil.toString(t.key.id))
                 )
             }
 
         fun <T> ofUser(): IndexEntryEncoder<User<T>> =
             IndexEntryEncoder { t ->
                 listOf(
-                    Pair("key", t.key.id.toString()),
-                    Pair("handle", t.handle),
-                    Pair("name", t.name)
+                    IndexFieldKinds.USER.field("key", t.key.id.toString()),
+                    IndexFieldKinds.USER.field("handle", t.handle),
+                    IndexFieldKinds.USER.field("name", t.name)
                 )
             }
 
+        /** A pointer carries no text, so it writes no data field. See `CHAT-erkoxybm`. */
         fun <T> ofMessage(): IndexEntryEncoder<Message<T, String>> =
             IndexEntryEncoder { t ->
-                listOf(
-                    Pair(MessageIndexService.ID, t.key.id.toString()),
-                    Pair(MessageIndexService.DATA, t.data),
-                    Pair(MessageIndexService.TOPIC, t.key.dest.toString()),
-                    Pair(MessageIndexService.USER, t.key.from.toString()),
+                listOfNotNull(
+                    IndexFieldKinds.MESSAGE.field(MessageIndexService.ID, t.key.id.toString()),
+                    IndexFieldKinds.MESSAGE.field(MessageIndexService.DATA, t.data).takeUnless { t is PointerMessage<*> },
+                    IndexFieldKinds.MESSAGE.field(MessageIndexService.TOPIC, t.key.dest.toString()),
+                    IndexFieldKinds.MESSAGE.field(MessageIndexService.USER, t.key.from.toString()),
                 )
             }
 
         fun <T> ofTopic(): IndexEntryEncoder<MessageTopic<T>> =
             IndexEntryEncoder { t ->
                 listOf(
-                    Pair("key", t.key.id.toString()),
-                    Pair("name", t.data)
+                    IndexFieldKinds.TOPIC.field("key", t.key.id.toString()),
+                    IndexFieldKinds.TOPIC.field("name", t.data)
                 )
             }
 
         fun <T> ofTopicMembership(): IndexEntryEncoder<TopicMembership<T>> =
             IndexEntryEncoder { t ->
                 listOf(
-                    Pair("key", t.key.toString()),
-                    Pair(MembershipIndexService.MEMBER, t.member.toString()),
-                    Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
+                    IndexFieldKinds.MEMBERSHIP.field("key", t.key.toString()),
+                    IndexFieldKinds.MEMBERSHIP.field(MembershipIndexService.MEMBER, t.member.toString()),
+                    IndexFieldKinds.MEMBERSHIP.field(MembershipIndexService.MEMBEROF, t.memberOf.toString()),
+                    IndexFieldKinds.MEMBERSHIP.field(
+                        MembershipIndexService.MEMBER_PAIR,
+                        MembershipIndexService.pairKeyOf(t.member, t.memberOf),
+                    )
                 )
             }
     }

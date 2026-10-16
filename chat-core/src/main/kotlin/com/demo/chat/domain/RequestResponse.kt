@@ -22,6 +22,20 @@ data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T) : Requ
 @JsonTypeName("MessageSubmitRequest")
 data class MessageSubmitRequest<T, V>(val msg: V, val dest: T, val requestId: String) : RequestResponse<T>()
 
+/**
+ * A request to post a pointer into room [dest]. See `CHAT-erkoxybm`.
+ *
+ * [targetDomain] is `Message` or `MessageTopic`. The request carries no
+ * creator. The server binds the creator to the authenticated user.
+ */
+@JsonTypeName("MessagePointerRequest")
+data class MessagePointerRequest<T>(
+    val dest: T,
+    val targetId: T,
+    val targetDomain: String,
+    val requestId: String,
+) : RequestResponse<T>()
+
 @JsonTypeName("MessageImportRequest")
 data class MessageImportRequest<T, V>(
     val msg: V,

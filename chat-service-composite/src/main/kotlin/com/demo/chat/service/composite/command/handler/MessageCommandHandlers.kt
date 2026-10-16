@@ -15,8 +15,15 @@ import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageVectorIndexer
 import reactor.core.publisher.Mono
 
+private val MESSAGE_OPERATIONS = setOf(CommandOperation.RECORD_MESSAGE, CommandOperation.IMPORT_MESSAGE)
+
+/**
+ * `V` has no pointer obligation, so only `P`, `I` and `U` declare
+ * `RECORD_POINTER`. See `CHAT-erkoxybm`.
+ */
 private fun descriptorOf(backend: BackendId) = HandlerDescriptor(
-    backend, setOf(ChatDomain.MESSAGE), setOf(CommandOperation.RECORD_MESSAGE, CommandOperation.IMPORT_MESSAGE),
+    backend, setOf(ChatDomain.MESSAGE),
+    if (backend == BackendId.VECTOR) MESSAGE_OPERATIONS else MESSAGE_OPERATIONS + CommandOperation.RECORD_POINTER,
     SafeRepeatContracts.SUPPORTED.getValue(backend),
 )
 

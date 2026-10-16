@@ -191,6 +191,9 @@ object RestRouteCatalog {
         // POST /message/submit/{id}. The sender is the authenticated user, so the request names none.
         entry("ChatMessageServiceController", "restSubmit", "VerifiedKey<T>,String,String",
             "id" to resolver("MESSAGE_TOPIC")),
+        // POST /message/pointer/{id}. The creator is the authenticated user. The body id is text, and the composite resolves it.
+        entry("ChatMessageServiceController", "restPointer", "VerifiedKey<T>,RestPointerBody,String",
+            "id" to resolver("MESSAGE_TOPIC")),
         // GET /message/command/{commandId}
         entry("ChatMessageServiceController", "restCommandStatus", "String",
             "commandId" to notIdentity("a command ID, which the service matches to the caller")),

@@ -5,6 +5,7 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.domain.knownkey.ChatDomain
 
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
@@ -27,5 +28,6 @@ open class KeyValueLuceneIndex<T>(
     LuceneIndex<T, KeyValuePair<T, Any>>(
         entryEncoder,
         keyEncoder = { str -> Key.of(typeUtil.fromString(str), rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id) },
-        keyReceiver = { t -> t.key }
+        keyReceiver = { t -> t.key },
+        fieldKinds = IndexFieldKinds.KEY_VALUE,
     )

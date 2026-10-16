@@ -85,7 +85,6 @@ class StoreWritePathTests {
 
     private fun root(domain: ChatDomain) = rootKeys.of(domain).id
 
-    // The handle index tokenizes on a hyphen, so each handle is one token.
     private fun newUser(handle: String): Key<Long> =
         composite.userService().addUser(UserCreateRequest("name-$handle", handle, "http://u")).block(timeout)!!
 
@@ -99,9 +98,9 @@ class StoreWritePathTests {
             )
         )
 
-    // The topic name index tokenizes the same way.
     private fun newRoom(name: String): Key<Long> =
         composite.topicService().addRoom(ByStringRequest(name)).block(timeout)!!
+
 
     // E1
     @Test

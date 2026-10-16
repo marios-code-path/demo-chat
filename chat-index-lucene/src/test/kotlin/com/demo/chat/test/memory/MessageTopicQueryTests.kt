@@ -4,6 +4,7 @@ import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.IndexSearchRequestConverters
+import com.demo.chat.domain.IndexFieldKinds
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.Message
@@ -26,6 +27,7 @@ class MessageTopicQueryTests {
         IndexEntryEncoder.ofMessage(),
         { str -> TestKeys.key(LongUtil().fromString(str)) },
         { message -> message.key },
+        IndexFieldKinds.MESSAGE,
     ).openedInMemory()
 
     private val converters = IndexSearchRequestConverters()

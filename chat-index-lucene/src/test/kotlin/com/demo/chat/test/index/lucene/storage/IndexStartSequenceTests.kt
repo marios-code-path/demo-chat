@@ -140,10 +140,10 @@ class IndexStartSequenceTests {
     }
 
     @Test
-    fun `a header change builds`(@TempDir root: Path) {
+    fun `a format 1 header rebuilds`(@TempDir root: Path) {
         FSDirectory.open(dir(root).also { Files.createDirectories(it) }, NativeFSLockFactory.INSTANCE).use { d ->
             IndexWriter(d, IndexWriterConfig(StandardAnalyzer())).use { w ->
-                val header = IndexHeader.current("user", "long", "1", StandardAnalyzer()).copy(format = "0")
+                val header = IndexHeader.current("user", "long", "1", StandardAnalyzer()).copy(format = "1")
                 w.setLiveCommitData(header.userData().entries)
                 w.commit()
             }

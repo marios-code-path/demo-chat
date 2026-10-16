@@ -14,7 +14,8 @@ Measured on 2026-09-18.
 
 The migration goes to **programmatic** command registration rather than the new
 annotations. Spring Shell 4 does not support declarative commands under GraalVM
-native compilation, and this repository compiles its tools natively. See
+native compilation. `chat-shell` has no native profile. `CHAT-ulrkvfit` tracks
+that gap. `CHAT-emwhnlay` permits the JVM importer command. See
 https://github.com/spring-projects/spring-shell/issues/1229
 
 ## How a command name is produced today
@@ -50,7 +51,6 @@ See `Positional input` below.
 
 | Command | Method | Help | Options | By position |
 |---|---|---|---|---|
-| `bye` | `bye` | bye | none. Aliases `exit` and `quit` | none |
 | `root-keys` | `rootKeys` | rootkeys | none | none |
 | `whoami` | `whoami` | whoami | none | none |
 | `login` | `login` | login | `--username` `String` required<br>`--password` `String` optional. The shell prompts for it when it is absent | `--username` |
@@ -71,6 +71,23 @@ repeat of `send` with the printed request ID and the same text recovers the
 same receipt and admits nothing new. The server binds the sender to the login,
 so `send` sends no sender. `command-status` prints the state of each backend of
 a command that the login owns. A command of another owner answers not found.
+
+### ClaudeImportCommands
+
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `import-claude` | `importConversation` | Import one Claude conversation | `--file` `String` required<br>`--conversation` `String` required<br>`--topic` `String` required<br>`--generation` `String` required<br>`--human` `String` required<br>`--assistant` `String` required | none |
+
+Set `CHAT_IMPORT_ADMIN_PASSWORD` before this command. The command reads one
+conversation from the file. It uses the Admin login for the import route. It
+checks both user handles before it creates a topic. It imports every leaf path,
+and each path receives its own topic. A topic name is
+`<topic>:<conversation-uuid>:<generation>:<leaf-uuid>`. The operator supplies
+the generation as a decimal value. The importer never computes one. A hyphen
+and a colon are accepted in the name. The source ID of each record is
+`<topic-id>:<message-uuid>`, and the route prefixes `import:`. The command
+reports the topics created, the messages imported, the missing parents, and
+the skipped content.
 
 ### TopicCommands
 
@@ -101,9 +118,10 @@ a command that the login owns. A command of another owner answers not found.
 | `all-permissions` | `allPermissions` | Get all Perms | none | none |
 | `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required | none |
 
-**27 commands and 33 options.** `ShellCommandContractTests` pins both counts,
-every option and every positional argument. The migration table held 26
-commands. `CHAT-rghaeqsa` added `messages`.
+**28 commands and 41 options.** `ShellCommandContractTests` pins every
+command, option, and positional argument. The migration table held 26
+commands. `messages` and `command-status` raised the count to 28. `CHAT-ybmlcdiw`
+removed `bye`. `CHAT-emwhnlay` adds `import-claude`.
 
 ## Availability is not used, and the dead check is gone
 
@@ -162,12 +180,35 @@ session on 2026-10-02.
   prints `Created room <name> (id <id>)`. `join` and `leave` print the room
   name. `listen` and `hangup` print the room id. Before, each printed nothing,
   so a success looked like a failure.
-- **`exit` and `quit` run `bye`.** `CommandRegistry.getCommandByName` falls back
-  to the aliases.
+- **`exit` and `quit` leave the shell.** `InteractiveShellRunner` reads the two
+  literals before it dispatches. See `No command exits the shell` below.
 - **`login` prompts for the password when `--password` is absent.** The prompt
   reads through `InputReader.readPassword`, so the password does not echo and it
   does not enter the command history. **A typed `--password` still enters the
   history.**
+
+## No command exits the shell
+
+`CHAT-ybmlcdiw`. The `bye` command is removed. `exit` is the way out.
+
+**The runner owns the exit literals.** `InteractiveShellRunner.doRun` reads the
+typed line. It tests the line against `quit` and `exit` before any dispatch. It
+prints `Exiting the shell` and leaves its loop. So `bye` never ran from a typed
+line. The `exit` and `quit` aliases of `CHAT-dxkkzvrf` never ran either. A
+scripted line reached the alias, and no interactive line did.
+
+**The shell runs a web server, so the loop alone did not end the process.** The
+shell carries `@EnableWebFlux`. The launch sets
+`spring.main.web-application-type=reactive` and a management port. Spring
+Boot's `NettyWebServer` starts a non-daemon thread named `server`. That thread
+kept the JVM alive after `main` returned, and it kept the port bound.
+
+**The launch sets `spring.shell.context.close=true`.** Spring Shell closes the
+context when the shell ends. The close stops the server, so the process exits
+and the port frees. `chat-build` sets the property on the `shell` service.
+`golden/shell-client.flags` and `golden/shell-consul.flags` pin it.
+
+**No command replaces `bye`.** A caller leaves through `exit` or `quit`.
 
 ## One room option
 

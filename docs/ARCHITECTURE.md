@@ -190,9 +190,16 @@ sequenceDiagram
 
 **Every Lucene index opens before readiness.** Without `app.index.lucene.root`, each index lives in process memory, and each start builds it from its store. With the root, each index lives in `<root>/<keyType>/<nodeId>/<index>`. A start reuses the files when every stored entity matches its document byte for byte, and builds otherwise. Six indexes open this way: auth, user, topic, message, membership and key-value. A store error, a repeated store key or a lock held elsewhere fails the start. A `NONE` process opens no index. The compare is exact only when no other process writes the store during the start (`CHAT-lswjobhz`). Two concurrent updates of one key can still leave a stale entry until the next start (`CHAT-oltrsgws`). See `docs/LUCENE-INDEX-FILES.md`.
 
+Lucene matches identity fields as whole values after NFC normalization. The
+user handle also uses `Locale.ROOT` lowercase. Among encoder fields, only
+message `data` uses the text analyzer. The internal stored key is also
+analyzed, but application lookups do not read it. A field layout change from
+format 1 to format 2 rebuilds file
+indexes at the next start. See `docs/LUCENE-INDEX-FILES.md`.
+
 **The user index load keeps the identity users.** The initial users start after the loads, and they find each identity by its handle. Before `CHAT-uxgdzpag` added the load on 2026-10-04, the user index was empty after a restart. So each restart on a persistent store created a new `Admin`, with a new key and a new set of wildcard rows. **A store that already holds such duplicates fails the start now**, because the handle lookup finds more than one user. Measured on 2026-10-04 with two `Admin` users in one Redis store: the start fails with `Failed to start bean 'rootKeyStartup'`, caused by `Source emitted more than one item`. The message does not name the user. Recreate that store.
 
-**The shape checks run first on every path.** Each Cassandra backend registers a check for the tables that it reads. The Redis key backend refuses the old `chat:keys` hash. A failed check names the missing table or column, and it tells the operator to recreate the store. The Cassandra checks also compare the type of each message id column: `bigint` for a `long` key and `timeuuid` for a `uuid` key. A long store from before `CHAT-xcmpudyb` declares `msg_id TIMESTAMP`, so it now fails the start and does not fail at the first message write. This release has no migration.
+**The shape checks run first on every path.** Each Cassandra backend registers a check for the tables that it reads. The Redis key backend refuses the old `chat:keys` hash. A failed check names the missing table or column, and it tells the operator to recreate the store. The Cassandra checks also compare the type of each message id column: `bigint` for a `long` key and `uuid` for a `uuid` key. A long store from before `CHAT-xcmpudyb` declares `msg_id TIMESTAMP`, so it now fails the start and does not fail at the first message write. A uuid store from before `CHAT-agqnxkbs` declares `msg_id TIMEUUID`, so it also fails the start. A `uuid` column accepts the version 3 id of an import, and a `TIMEUUID` column does not. This release has no migration.
 
 A store node publishes the snapshot to Consul only after it stores the initial users, because `RootKeyUpdatedEvent` starts the publish.
 

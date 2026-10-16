@@ -4,6 +4,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.CommandStatusRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageImportRequest
+import com.demo.chat.domain.MessagePointerRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.MessageSubmitRequest
 import com.demo.chat.domain.command.CommandStatus
@@ -53,6 +54,12 @@ open class MessagingClient<T, V>(
     override fun submit(req: MessageSubmitRequest<T, V>): Mono<out MessageSendResult<T>> =
             requester
                     .route("${prefix}message-submit")
+                    .data(req)
+                    .retrieveMono()
+
+    override fun pointer(req: MessagePointerRequest<T>): Mono<out MessageSendResult<T>> =
+            requester
+                    .route("${prefix}message-pointer")
                     .data(req)
                     .retrieveMono()
 

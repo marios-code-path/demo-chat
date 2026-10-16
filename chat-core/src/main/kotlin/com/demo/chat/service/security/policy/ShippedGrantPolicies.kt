@@ -12,6 +12,7 @@ object ShippedGrantPolicies {
 
     const val SEND = "SEND"
     const val SUBSCRIBE = "SUBSCRIBE"
+    const val FORWARD = "FORWARD"
 
     /**
      * The creator of a room gets `*` on the room, with no expiry. `Anon` gets
@@ -25,9 +26,9 @@ object ShippedGrantPolicies {
     )
 
     /**
-     * The member of a join gets `SEND` and `SUBSCRIBE` on the room, with no
-     * expiry. `Anon` and the `User` root get no row. See `CHAT-mfveaecc` and
-     * `CHAT-lfaajjcj`.
+     * The member of a join gets `SEND`, `SUBSCRIBE` and `FORWARD` on the room,
+     * with no expiry. `Anon` and the `User` root get no row. See
+     * `CHAT-mfveaecc`, `CHAT-lfaajjcj` and `CHAT-erkoxybm`.
      */
     val ROOM_JOIN = GrantPolicy(
         name = "roomjoin",
@@ -35,13 +36,14 @@ object ShippedGrantPolicies {
         rules = listOf(
             GrantRule(PrincipalSource.ACTIVE, TargetSource.ROOM, SEND, GrantExpiry.NONE),
             GrantRule(PrincipalSource.ACTIVE, TargetSource.ROOM, SUBSCRIBE, GrantExpiry.NONE),
+            GrantRule(PrincipalSource.ACTIVE, TargetSource.ROOM, FORWARD, GrantExpiry.NONE),
         ),
         noGrant = setOf(NoGrantPrincipal.ANON, NoGrantPrincipal.USER_ROOT),
     )
 
     /**
-     * The `SEND` and `SUBSCRIBE` grants of the member of a leave expire at the
-     * time of the leave. `Anon` and the `User` root get no row.
+     * The `SEND`, `SUBSCRIBE` and `FORWARD` grants of the member of a leave
+     * expire at the time of the leave. `Anon` and the `User` root get no row.
      */
     val ROOM_LEAVE = GrantPolicy(
         name = "roomleave",
@@ -49,6 +51,7 @@ object ShippedGrantPolicies {
         rules = listOf(
             GrantRule(PrincipalSource.ACTIVE, TargetSource.ROOM, SEND, GrantExpiry.NOW),
             GrantRule(PrincipalSource.ACTIVE, TargetSource.ROOM, SUBSCRIBE, GrantExpiry.NOW),
+            GrantRule(PrincipalSource.ACTIVE, TargetSource.ROOM, FORWARD, GrantExpiry.NOW),
         ),
         noGrant = setOf(NoGrantPrincipal.ANON, NoGrantPrincipal.USER_ROOT),
     )

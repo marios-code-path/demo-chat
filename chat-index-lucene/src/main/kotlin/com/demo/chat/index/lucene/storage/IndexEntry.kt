@@ -1,6 +1,7 @@
 package com.demo.chat.index.lucene.storage
 
 import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.IndexFieldKinds
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
 import org.apache.lucene.document.StoredField
@@ -31,7 +32,13 @@ class IndexEntry(val keyText: String, val bytes: ByteArray, val document: Docume
             requireNoReservedField(fields)
             val bytes = EntryEncoding.encode(keyText, fields)
             val document = Document().apply {
-                fields.forEach { (name, value) -> add(Field(name, value, TextField.TYPE_NOT_STORED)) }
+                fields.forEach { (name, value) ->
+                    if (name.startsWith(IndexFieldKinds.EXACT_PREFIX)) {
+                        add(StringField(name, value, Field.Store.NO))
+                    } else {
+                        add(Field(name, value, TextField.TYPE_NOT_STORED))
+                    }
+                }
                 add(Field(IndexFields.STORED_KEY, keyText, TextField.TYPE_STORED))
                 add(StringField(IndexFields.EXACT_KEY, keyText, Field.Store.NO))
                 add(StoredField(IndexFields.ENTRY, bytes))

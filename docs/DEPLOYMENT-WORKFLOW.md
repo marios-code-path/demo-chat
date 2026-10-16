@@ -46,8 +46,10 @@ the one-time notes in `docs/BUILD-HEALTH.md`.
 
 ## Step 2 — choose the composition
 
-A deployment is a set of selectors, not a build. One classpath carries every
-provider, and the launch chooses.
+A backend flag selects a deploy module. Each module carries a fixed set of
+providers. Launch flags select providers from that module. The approved
+[capability composition design](superpowers/specs/2026-08-24-capability-composition-design.md)
+would allow one artifact to carry all providers. That design is not implemented.
 
 | Choice | Flag | Notes |
 |---|---|---|
@@ -202,8 +204,27 @@ your machine is wrong inside a container. `chat-build` refuses `--jwk` with
 names the container itself, so override it through the environment variable
 before you build, or supply the property when you run the image.
 
-*Measured: the cassandra image builds and starts. No other backend image was
-built or run.*
+*Measured on 2026-09-22: the Cassandra image builds and starts. The memory
+image was built and run later through the container launcher.*
+
+### Launch the core container
+
+The [container launcher](../shell-scripts/README-chat-build.md#container-launch)
+documents its provider map, commands, requirements, and startup gates. It
+builds one core RSocket image through `chat-build`. It reuses a healthy Consul
+or starts the existing local Consul service. It then starts the core container.
+For the mixed composition, it starts Cassandra and Redis when no external
+addresses are set. It checks the Cassandra keyspace before core starts.
+Select pub/sub explicitly. The Cassandra image supports memory or Redis
+pub/sub and Cassandra or Lucene indexes.
+
+On 2026-10-12, the memory command built its image and started a healthy core
+container. Consul reported one passing core service. The root key entry
+answered HTTP 200. The Cassandra image built with Consul support. No live
+Cassandra core launch was measured in that run. It had no Cassandra service
+or schema. Later on 2026-10-12, the mixed launcher reached core health and
+passing Consul registration. Authorization, REST, and gateway remain
+separate service launches.
 
 ## Step 6 — read the result
 
@@ -222,8 +243,9 @@ most often were a missing property and a bean that only a test supplied.
 
 ## What this document does not cover
 
-- **Consul discovery.** `--consul` exists and this order of work has not been
-  run with it. `shell-scripts/run-consul-in-docker.sh` starts one.
+- **Other Consul clients.** The container launcher measured one memory core
+  registration. This document does not measure discovery from REST or other
+  client services.
 - **A real cluster.** Every measurement here is one machine, with backends in
   local containers.
 - **The native image.** `--native` is refused today. `CHAT-arcqfjuc` holds the

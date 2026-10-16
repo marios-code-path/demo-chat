@@ -160,6 +160,23 @@ exits 1 on drift that no source change caused. **The image is then not rebuilt,
 and `chat-shell` tests whatever image the machine already holds.** Read the
 image id before you trust a shell result.
 
+**`chat-shell` runs two images since `CHAT-bwzjstoh`.** The `test-build`
+profile builds `chat-deploy-long-memory-integration-test:0.0.1` and
+`chat-deploy-uuid-memory-integration-test:0.0.1`. They share one launch
+option property and differ in `-Dapp.key.type` alone. An import derives a
+name-based UUID message id, so `ClaudeImportDeploymentTests` runs the UUID
+image through `UuidShellIntegrationTestBase`. Every other container test runs
+the long image. **Read both ids.** A stale UUID image passes the long tests
+and fails only the import tests.
+
+Measured on 2026-10-16 on branch `chat-bwzjstoh-derived-read`, with an empty
+`DOCKER_CONFIG`. `--ci` exits 0 with no drift: 30 modules, 2617 tests, 0
+failures, 0 errors, 82 skipped, and `agent http gate: ok`. `chat-shell` ran
+154 tests with 33 skipped. The long image moved from `sha256:d01b3b20` to
+`sha256:e87172fd`. The UUID image moved from `sha256:3064995d` to
+`sha256:8ecffee1`. Each built image holds its own key type in its launch
+options file.
+
 An earlier run on 2026-10-01 reported 29 modules, 1820 tests, 2 failures, 5
 errors and 59 skipped, under B12. An earlier run on 2026-09-30 reported 1747 tests with 0
 failures, before B12 landed. An earlier run on 2026-09-22 at master `67762d51`
@@ -415,6 +432,46 @@ classes claim collides there. `docs/NODEID-CLAIM.md` holds the allocation.
 
 **Read `docker events --filter event=oom` before you trust a red Cassandra
 run.** Other sessions and other modules use the same VM memory.
+
+### A foreign cluster on localhost:9042
+
+`CHAT-fmvsylrv` recorded a `chat-deploy-cassandra` failure that a `--ci` run
+reported as a new failing module. `CassandraClaimBootTests` seeds node 21 in
+the test container, then boots the application. The claim was granted, so
+`assertThrows` found no exception.
+
+The cause was a second contact point. `ContactPointConfiguration` added the
+configured address. `AbstractSessionConfiguration.getContactPoints()` returns
+`localhost`, and `getPort()` returns `9042`. `SessionBuilder` has no clear
+method. So the session carried both addresses. A docker compose stack of
+another session answered on `127.0.0.1:9042` and held the `chat_long` keyspace.
+The claim store read that cluster.
+
+`ContactPointConfiguration` overrides `getContactPoints()` and `getPort()` now.
+The session builder applies credentials alone, and it adds no contact point.
+PR #225 merged the fix on 2026-10-14.
+
+**A failure of this module is not always a defect in this repository.** Before
+you treat one as a regression, look for a foreign listener on the port. Run
+`lsof -nP -iTCP:9042 -sTCP:LISTEN`.
+
+## The forward register size check
+
+`AGENTS.md` imports `forward-register.md`, so that file loads in every session.
+Its size is a cost on every turn. It must stay under 64 KB.
+
+`build-health.sh` measures the file in every mode. A file above 65,536 bytes
+fails the run and prints `REGISTER TOO LARGE`. The oldest dated sections then
+move to their period archive.
+
+The split of 2026-10-15 moved every section before 2026-10-08 into three period
+logs: `forward-register-archive-2026-08.md`,
+`forward-register-archive-2026-09.md` and `forward-register-archive-2026-10.md`.
+Nothing imports those files, so they cost no context until a reader opens one.
+The live register holds the durable core and the current period.
+
+**The check compares the byte count alone.** It cannot see a loss of content,
+and it cannot see a section that belongs in an archive. See `CHAT-nxbtadan`.
 
 ## Resolved
 

@@ -16,7 +16,9 @@ import java.time.Instant
 data class ChatMessageById<T>(
     @PrimaryKey val key: ChatMessageByIdKey<T>,
     @field:Column("text") val data: String,
-    @field:Column("visible") val record: Boolean
+    @field:Column("visible") val record: Boolean,
+    /** Null for a text message. A target domain name for a pointer. See `CHAT-erkoxybm`. */
+    @field:Column("kind") val kind: String? = null,
 )
 
 @PrimaryKeyClass

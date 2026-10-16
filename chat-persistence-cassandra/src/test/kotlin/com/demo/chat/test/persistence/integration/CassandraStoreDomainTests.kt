@@ -6,8 +6,11 @@ import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.PointerMessage
 import com.demo.chat.domain.SimpleMessageKey
 import com.demo.chat.domain.TopicMembership
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.persistence.cassandra.impl.AuthMetaPersistenceCassandra
@@ -25,11 +28,14 @@ import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
 import com.demo.chat.persistence.cassandra.repository.TopicRepository
 import com.demo.chat.service.core.IKeyGenerator
 import com.datastax.oss.driver.api.core.uuid.Uuids
+import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.key.FakeKeyServices
+import com.demo.chat.test.persistence.PointerStoreTestBase
 import com.demo.chat.test.persistence.StoreDomainTestBase
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -46,7 +52,7 @@ import java.util.UUID
 
 private val ROOTS = FakeKeyServices.uuidRoots()
 
-// The message table keys on a TIMEUUID, which takes only a time-based UUID.
+// The ids are time based, as the live CassandraUUIDKeyGenerator makes them.
 private val TIME_BASED = object : IKeyGenerator<UUID> {
     override fun nextId(): UUID = Uuids.timeBased()
 }
@@ -79,7 +85,7 @@ class CassandraTopicStoreDomainTests @Autowired constructor(template: ReactiveCa
 @Tag("integration")
 class CassandraMessageStoreDomainTests @Autowired constructor(template: ReactiveCassandraTemplate, repo: ChatMessageRepository<UUID>) :
     StoreDomainTestBase<UUID, Message<UUID, String>>(
-        MessagePersistenceCassandra(keys(template), ROOTS, repo), keys(template), ROOTS, ChatDomain.MESSAGE,
+        MessagePersistenceCassandra(keys(template), ROOTS, repo, UUIDUtil()), keys(template), ROOTS, ChatDomain.MESSAGE,
         { Message.create(MessageKey.of(it.id, it.root, UUID.randomUUID(), UUID.randomUUID()), "m", true) },
         { Key.of(it.key.id, it.key.root) },
     )
@@ -131,7 +137,7 @@ class CassandraMessageIdentityTests @Autowired constructor(
     @Test
     fun `a stored message reads back by its supplied key with every identity field`() {
         val registry = keys(template)
-        val store = MessagePersistenceCassandra(registry, ROOTS, repo)
+        val store = MessagePersistenceCassandra(registry, ROOTS, repo, UUIDUtil())
         val minted = store.key().block()!!
         val sender = registry.key(ChatDomain.USER).block()!!
         val room = registry.key(ChatDomain.MESSAGE_TOPIC).block()!!
@@ -149,5 +155,54 @@ class CassandraMessageIdentityTests @Autowired constructor(
         assertThat(read.key.timestamp).isEqualTo(sentAt)
         assertThat(read.data).isEqualTo("hello")
         assertThat(registry.rootOf(minted.id).block()).isEqualTo(ROOTS.of(ChatDomain.MESSAGE).id)
+    }
+}
+
+private val LONG_ROOTS = FakeKeyServices.longRoots()
+
+private fun longKeys(template: ReactiveCassandraTemplate) = KeyServiceCassandra(template, TestLongKeyGenerator(), LONG_ROOTS)
+
+/** A pointer round trip on a uuid keyspace. See `CHAT-erkoxybm`. */
+@ExtendWith(SpringExtension::class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [RepositoryTestConfiguration::class])
+@TestPropertySource(properties = ["app.key.type=uuid"])
+@Tag("integration")
+class CassandraUuidPointerStoreTests @Autowired constructor(template: ReactiveCassandraTemplate, repo: ChatMessageRepository<UUID>) :
+    PointerStoreTestBase<UUID>(MessagePersistenceCassandra(keys(template), ROOTS, repo, UUIDUtil()), keys(template), ROOTS)
+
+/** A pointer round trip on a long keyspace. See `CHAT-erkoxybm`. */
+@ExtendWith(SpringExtension::class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [RepositoryTestConfiguration::class])
+@TestPropertySource(properties = ["app.key.type=long"])
+@Tag("integration")
+class CassandraLongPointerStoreTests @Autowired constructor(
+    private val template: ReactiveCassandraTemplate,
+    private val repo: ChatMessageRepository<Long>,
+) : PointerStoreTestBase<Long>(MessagePersistenceCassandra(longKeys(template), LONG_ROOTS, repo, TypeUtil.LongUtil), longKeys(template), LONG_ROOTS) {
+
+    /** A text row carries a null kind and reads back as text. */
+    @Test
+    fun `a text message reads back as text`() {
+        val own = keys.key(ChatDomain.MESSAGE).block()!!
+        val text = Message.create(MessageKey.of(own.id, own.root, 1L, 2L), "plain text", true)
+        store.add(text).block()
+
+        val read = store.get(Key.of(own.id, own.root)).block()!!
+
+        assertThat(read).isNotInstanceOf(PointerMessage::class.java)
+        assertThat(read.data).isEqualTo("plain text")
+    }
+
+    /** A kind that names no target domain fails the read. It never becomes a text message. */
+    @Test
+    fun `a row with an unknown kind fails the read`() {
+        val own = keys.key(ChatDomain.MESSAGE).block()!!
+        template.reactiveCqlOperations.execute(
+            "INSERT INTO chat_message_id (msg_id, msg_time, user_id, topic_id, text, visible, kind) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            own.id, Instant.now().truncatedTo(ChronoUnit.MILLIS), 1L, 2L, "77", true, "User",
+        ).block()
+
+        assertThatThrownBy { store.get(Key.of(own.id, own.root)).block() }
+            .hasMessageContaining("unknown kind 'User'")
     }
 }

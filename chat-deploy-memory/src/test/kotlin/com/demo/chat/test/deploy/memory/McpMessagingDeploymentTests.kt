@@ -133,7 +133,7 @@ class McpMessagingDeploymentTests {
     }
 
     @Test
-    fun `the server refuses room access and the adapter hides a globally readable message`() {
+    fun `the server refuses room access and a message read from another room`() {
         val allowed = readyRoom()
         val denied = createRoom("client-claude")
         val hiddenText = "private${UUID.randomUUID()}"
@@ -143,9 +143,11 @@ class McpMessagingDeploymentTests {
         val receipt = Json.parseToJsonElement(raw.body()).jsonObject.getValue("receipt").jsonObject
         val messageId = receipt.getValue("messageKey").jsonObject.getValue("key").jsonObject.text("id")
         awaitRawStatus("client-claude", receipt.text("commandId"))
-        val readable = request("client-agent", "GET", "/message/id/$messageId")
-        assertThat(readable.statusCode()).isEqualTo(200)
-        assertThat(readable.body()).contains(hiddenText)
+        // The server checks SUBSCRIBE on the room of the message since CHAT-erkoxybm.
+        // Before, every caller read every message by id.
+        val unreadable = request("client-agent", "GET", "/message/id/$messageId")
+        assertThat(unreadable.statusCode()).isEqualTo(403)
+        assertThat(unreadable.body()).doesNotContain(hiddenText)
 
         // Both rooms are configured so the server evaluates history and send access.
         val refused = calls("$allowed,$denied",

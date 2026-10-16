@@ -21,7 +21,13 @@ class IndexShapeTypesTests {
     }
 
     @Test
-    fun `a uuid store requires a timeuuid message id`() {
-        assertThat(IndexServiceConfiguration.idType(UUIDUtil())).isEqualTo("timeuuid")
+    fun `a uuid store requires a uuid message id in every message index table`() {
+        assertThat(IndexServiceConfiguration.indexTypes(UUIDUtil())).isEqualTo(
+            mapOf(
+                "chat_message_user" to mapOf("msg_id" to "uuid"),
+                "chat_message_topic" to mapOf("msg_id" to "uuid"),
+                "chat_message_index_by_id" to mapOf("msg_id" to "uuid"),
+            )
+        )
     }
 }

@@ -88,17 +88,18 @@ CREATE TABLE chat_uuid.chat_secret (
 
 
 CREATE TABLE chat_uuid.chat_message_id (
-                                      msg_id TIMEUUID,
+                                      msg_id UUID,
                                       user_id UUID,
                                       topic_id UUID,
                                       text    varchar,
                                       msg_time timestamp,
                                       visible Boolean,
+                                      kind text,
                                       PRIMARY KEY (msg_id, msg_time))
     WITH CLUSTERING ORDER BY (msg_time DESC);
 
 CREATE TABLE chat_uuid.chat_message_user (
-                                        msg_id TIMEUUID,
+                                        msg_id UUID,
                                         user_id UUID,
                                         topic_id UUID,
                                         text    varchar,
@@ -108,7 +109,7 @@ CREATE TABLE chat_uuid.chat_message_user (
     WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
 CREATE TABLE chat_uuid.chat_message_topic (
-                                         msg_id TIMEUUID,
+                                         msg_id UUID,
                                          user_id UUID,
                                          topic_id UUID,
                                          text    varchar,
@@ -120,7 +121,7 @@ CREATE TABLE chat_uuid.chat_message_topic (
 -- The message index rows keyed by the message id. rem() receives the message
 -- key alone, so it reads this table to name the rows to delete. See CHAT-xcmpudyb.
 CREATE TABLE chat_uuid.chat_message_index_by_id (
-    msg_id TIMEUUID,
+    msg_id UUID,
     user_id UUID,
     topic_id UUID,
     msg_time timestamp,

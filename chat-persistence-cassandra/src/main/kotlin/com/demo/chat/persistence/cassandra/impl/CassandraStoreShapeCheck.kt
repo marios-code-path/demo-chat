@@ -31,16 +31,19 @@ class CassandraStoreShapeCheck(
 
         val PERSISTENCE_TABLES: Map<String, Set<String>> = mapOf(
             "auth_metadata" to setOf("principal_root", "target_root"),
+            // A pointer row marks its target domain here. See CHAT-erkoxybm.
+            "chat_message_id" to setOf("kind"),
         )
 
         /**
          * The CQL type of a message id for [typeUtil]. A `Long` id is `bigint`.
-         * A `UUID` id is `timeuuid`. `chat-index-cassandra` holds the same rule
-         * in `IndexServiceConfiguration`.
+         * A `UUID` id is `uuid`, so an imported version 3 id fits. See
+         * `CHAT-agqnxkbs`. `chat-index-cassandra` holds the same rule in
+         * `IndexServiceConfiguration`.
          */
         fun idType(typeUtil: TypeUtil<*>): String = when (typeUtil.empty()) {
             is Long -> "bigint"
-            is UUID -> "timeuuid"
+            is UUID -> "uuid"
             else -> throw ChatException("No Cassandra message id type for the key type of ${typeUtil::class.java.name}.")
         }
 

@@ -21,18 +21,14 @@ import java.util.function.Function
  *
  * **No command carries an availability provider**, because none carried one
  * before. See CHAT-fxrwtvef.
+ *
+ * **No command exits the shell.** `InteractiveShellRunner` reads the literals
+ * `exit` and `quit` before it dispatches, so a command that names them is
+ * unreachable. The shell exits through that path. See `CHAT-ybmlcdiw`.
  */
 @Configuration
 @Profile("shell")
 class LoginCommandsRegistrar<T>(private val commands: LoginCommands<T>) {
-    @Bean
-    fun byeCommand(): Command = Command.builder()
-        .name("bye")
-        .aliases("exit", "quit")
-        .description("bye")
-        .group("Login")
-        .execute(Function<CommandContext, String> { ctx -> commands.bye()?.toString() ?: "" })
-
     @Bean
     fun rootKeysCommand(): Command = Command.builder()
         .name("root-keys")

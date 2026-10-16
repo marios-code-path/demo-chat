@@ -194,3 +194,27 @@ class AuthMetadataDeserializer<T>(keyConverter: Converter<JsonNode, T>) : JsonDe
     }
 
 }
+
+/**
+ * A pointer. The message key and the target key each sit inside their own
+ * wrapper. See `CHAT-erkoxybm`.
+ */
+class PointerMessageDeserializer<T>(keyCodec: Converter<JsonNode, T>) : JsonDeserializer<PointerMessage<T>>() {
+    private val kd = KeyDeserializer(keyCodec)
+
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): PointerMessage<T> {
+        val oc: ObjectCodec = jp?.codec!!
+        val node: JsonNode = readNode(jp, oc)
+
+        val key = kd.deserialize(node.get("key").first().traverse(oc), ctxt)
+        val target = kd.deserialize(node.get("target").first().traverse(oc), ctxt)
+        // The flag is read, and not defaulted. A decoder that dropped it read a
+        // removed pointer as a live one. See `CHAT-erkoxybm`.
+        val visible = node.get("record").asBoolean()
+
+        return when (key) {
+            is MessageKey<T> -> PointerMessage(key, target, visible)
+            else -> throw ChatException("Invalid Message Key")
+        }
+    }
+}

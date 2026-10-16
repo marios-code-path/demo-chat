@@ -52,6 +52,16 @@ interface MembershipIndexService<T, Q> : IndexService<T, TopicMembership<T>, Q> 
     companion object {
         const val MEMBER = "member"
         const val MEMBEROF = "memberOf"
+
+        /**
+         * The member and the room in one field. A whole-value match needs one
+         * field and one value, so the pair travels as one value.
+         * [pairKeyOf] builds it, and the writer and the reader both call it.
+         */
+        const val MEMBER_PAIR = "memberPair"
+
+        /** The value of [MEMBER_PAIR] for one member and one room. */
+        fun pairKeyOf(member: Any?, memberOf: Any?): String = "$member|$memberOf"
     }
 }
 

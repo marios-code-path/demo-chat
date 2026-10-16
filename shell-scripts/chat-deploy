@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+compose_file="$script_dir/../devops/docker/compose-core.yaml"
+lucene_compose_file="$script_dir/../devops/docker/compose-core-lucene.yaml"
+redis_compose_file="$script_dir/../devops/docker/compose-core-redis.yaml"
+
+if [[ "${1:-}" != core ]]; then
+    echo 'Usage: chat-deploy core --stop OR chat-deploy core --cassandra --pubsub PROVIDER --notls --node-id ID' >&2
+    exit 2
+fi
+shift
+
+if [[ "${1:-}" == --stop ]]; then
+    if (($# != 1)); then
+        echo 'chat-deploy: --stop takes no other options' >&2
+        exit 2
+    fi
+    docker info --format '{{.ServerVersion}}' >/dev/null
+    for container in chat-deploy-core-core-service-rsocket-1 \
+        docker-redis-1 docker-cassandra-1 docker-consul-1; do
+        running="$(docker container inspect --format '{{.State.Running}}' "$container" 2>/dev/null)" || running=''
+        if [[ "$running" == true ]]; then
+            docker stop --time 60 "$container"
+        fi
+    done
+    echo 'Deployment containers are stopped'
+    exit 0
+fi
+
+backend=''
+pubsub=''
+index=''
+dry_run=false
+init_phases=''
+build_args=()
+while (($#)); do
+    case "$1" in
+        --cassandra|--memory)
+            if [[ -n "$backend" ]]; then
+                echo 'chat-deploy: select one backend' >&2
+                exit 2
+            fi
+            backend="${1#--}"
+            build_args+=("$1")
+            shift
+            ;;
+        --pubsub)
+            if (($# < 2)); then
+                echo 'chat-deploy: --pubsub needs a provider' >&2
+                exit 2
+            fi
+            pubsub="$2"
+            shift 2
+            ;;
+        --index)
+            if (($# < 2)); then
+                echo 'chat-deploy: --index needs a provider' >&2
+                exit 2
+            fi
+            index="$2"
+            shift 2
+            ;;
+        --init)
+            if (($# < 2)); then
+                echo 'chat-deploy: --init needs phases' >&2
+                exit 2
+            fi
+            init_phases="$2"
+            shift 2
+            ;;
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        --local|--run|--build|--consul)
+            echo "chat-deploy: $1 is selected by the launcher" >&2
+            exit 2
+            ;;
+        --tls|--tls=*)
+            echo 'chat-deploy: this container launch supports --notls only' >&2
+            exit 2
+            ;;
+        *)
+            build_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "$backend" ]]; then
+    echo 'chat-deploy: select --cassandra or --memory' >&2
+    exit 2
+fi
+if [[ -z "$pubsub" ]]; then
+    if [[ -t 0 ]]; then
+        if [[ "$backend" == cassandra ]]; then
+            read -r -p 'Pub/sub provider (memory or redis-pubsub): ' pubsub
+        else
+            read -r -p 'Pub/sub provider (memory): ' pubsub
+        fi
+    else
+        echo 'chat-deploy: specify --pubsub memory or redis-pubsub' >&2
+        exit 2
+    fi
+fi
+if [[ "$pubsub" != memory ]]; then
+    if [[ "$backend" != cassandra || "$pubsub" != redis-pubsub ]]; then
+        echo "chat-deploy: $backend image cannot provide pub/sub with $pubsub" >&2
+        exit 2
+    fi
+fi
+if [[ -z "$index" ]]; then
+    index="$backend"
+    if [[ "$backend" == memory ]]; then index=lucene; fi
+fi
+if [[ "$backend" == cassandra && "$index" != cassandra && "$index" != lucene ]] || \
+   [[ "$backend" == memory && "$index" != lucene ]]; then
+    echo "chat-deploy: $backend image cannot provide index with $index" >&2
+    exit 2
+fi
+if [[ "$backend" == cassandra && -z "${CASSANDRA_CONTACT_POINTS:-}" ]]; then
+    export CASSANDRA_CONTACT_POINTS=cassandra
+fi
+if [[ "$backend" == cassandra && "${CASSANDRA_CONTACT_POINTS}" =~ ^(127\.0\.0\.1|localhost)$ ]]; then
+    echo 'chat-deploy: Cassandra localhost names the core container. Use host.docker.internal or a reachable host.' >&2
+    exit 2
+fi
+if [[ -z "$init_phases" ]]; then
+    init_phases=users,rootkeys
+elif [[ ",$init_phases," != *',rootkeys,'* ]]; then
+    init_phases="$init_phases,rootkeys"
+fi
+build_args+=(--init "$init_phases" --consul --build)
+if [[ "$backend" == cassandra ]]; then
+    build_args+=(--index "$index" --pubsub "$pubsub")
+fi
+
+consul_host="${CONSUL_HOST:-127.0.0.1}"
+container_consul_host="$consul_host"
+if [[ "$consul_host" == 127.0.0.1 || "$consul_host" == localhost ]]; then
+    container_consul_host=host.docker.internal
+fi
+
+if [[ "$dry_run" == false ]]; then
+    if [[ -z "${CHAT_SERVICE_PASSWORD:-}" ]]; then
+        echo 'chat-deploy: set CHAT_SERVICE_PASSWORD before starting core' >&2
+        exit 2
+    fi
+    "$script_dir/run-consul-in-docker.sh"
+    chat_network="${CHAT_NETWORK:-docker_chatnet}"
+    if ! docker network inspect "$chat_network" >/dev/null 2>&1; then
+        echo "chat-deploy: Docker network $chat_network is unavailable" >&2
+        exit 1
+    fi
+    if [[ "$backend" == cassandra ]]; then
+        "$script_dir/run-cassandra-in-docker.sh" "${CASSANDRA_CONTACT_POINTS}" "${CASSANDRA_PORT:-9042}" \
+            "$( [[ " ${build_args[*]} " == *' --uuid '* ]] && echo uuid || echo long )" "$chat_network"
+    fi
+    if [[ "$pubsub" == redis-pubsub ]]; then
+        export REDIS_TOPICS_HOST="${REDIS_TOPICS_HOST:-redis}"
+        "$script_dir/run-redis-in-docker.sh" "$REDIS_TOPICS_HOST" "${REDIS_TOPICS_PORT:-6379}" "$chat_network"
+    fi
+fi
+
+plan="$(env CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host" \
+    conda run -n base "$script_dir/chat-build" core "${build_args[@]}" --dry-run)"
+image="$(awk '/^# image:/ {print $3}' <<< "$plan")"
+module="$(awk '/^# module:/ {print $3}' <<< "$plan")"
+image_version="$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>.*/\1/p' \
+    "$module/pom.xml" | head -n 1)"
+image_repo="${IMAGE_REPO_PREFIX:-docker.io/library}"
+image_template="$(sed -n 's:.*<appImageName>\(.*\)</appImageName>.*:\1:p' \
+    "$module/pom.xml" | head -n 1)"
+image_ref="${image_template//\$\{image.repo\}/$image_repo}"
+image_ref="${image_ref//\$\{imageName\}/$image}"
+image_ref="${image_ref//\$\{project.version\}/$image_version}"
+if [[ -z "$image" || -z "$image_version" || -z "$image_template" || \
+      "$image_ref" == *'${'* || "$plan" != *"  -Dapp.service.core.pubsub=$pubsub"* || \
+      "$plan" != *"  -Dapp.service.core.index=$index"* ]]; then
+    echo 'chat-deploy: chat-build did not resolve the requested composition' >&2
+    exit 1
+fi
+if [[ "$backend" == cassandra && "$plan" != *'/chat-deploy-cassandra'* ]]; then
+    echo 'chat-deploy: chat-build did not select the Cassandra deploy module' >&2
+    exit 1
+fi
+
+if [[ "$dry_run" == true ]]; then
+    printf '%s\n' "$plan"
+    echo "# docker image: $image_ref"
+    echo "# compose service: core-service-rsocket"
+    exit 0
+fi
+
+build_env=(CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host")
+if [[ -n "${CHAT_BUILD_DOCKER_CONFIG:-}" ]]; then
+    build_env+=(DOCKER_CONFIG="$CHAT_BUILD_DOCKER_CONFIG")
+else
+    build_docker_config_dir="$(mktemp -d "${TMPDIR:-/tmp}/chat-build-docker.XXXXXX")"
+    printf '{}\n' > "$build_docker_config_dir/config.json"
+    trap 'rm -rf -- "$build_docker_config_dir"' EXIT
+    build_env+=(DOCKER_CONFIG="$build_docker_config_dir")
+fi
+env CONDA_NO_PLUGINS=true conda run -n base mvn -f "$script_dir/../pom.xml" \
+    -pl "${module##*/}" -am -Pregister-consul -Dmaven.test.skip=true \
+    -Dkotlin.compiler.daemon=false install
+env "${build_env[@]}" conda run -n base \
+    "$script_dir/chat-build" core "${build_args[@]}"
+
+compose_args=(-f "$compose_file")
+if [[ "$index" == lucene && "$backend" == cassandra ]]; then
+    compose_args+=(-f "$lucene_compose_file")
+fi
+if [[ "$pubsub" == redis-pubsub ]]; then
+    compose_args+=(-f "$redis_compose_file")
+fi
+CORE_IMAGE="$image_ref" docker compose -p chat-deploy-core "${compose_args[@]}" \
+    up -d core-service-rsocket
+
+core_health_port="${CORE_MGMT_PORT:-6791}"
+core_ready=false
+core_health_attempts=60
+if [[ "$backend" == cassandra ]]; then core_health_attempts=120; fi
+for ((attempt = 1; attempt <= core_health_attempts; attempt++)); do
+    if curl --connect-timeout 2 --max-time 3 --fail --silent \
+        "http://127.0.0.1:$core_health_port/actuator/health" >/dev/null; then
+        core_ready=true
+        break
+    fi
+    sleep 1
+done
+
+if [[ "$core_ready" == false ]]; then
+    echo "chat-deploy: core did not become ready on port $core_health_port" >&2
+    exit 1
+fi
+
+for ((attempt = 1; attempt <= 30; attempt++)); do
+    registered="$(curl --connect-timeout 2 --max-time 3 --fail --silent \
+        "http://$consul_host:${CONSUL_PORT:-8500}/v1/health/service/core-service-rsocket?passing=true")" || registered=''
+    if [[ -n "$registered" && "$registered" != '[]' ]]; then
+        echo "Core is ready on port $core_health_port and registered in Consul"
+        exit 0
+    fi
+    sleep 1
+done
+
+echo 'chat-deploy: core did not register as healthy in Consul' >&2
+exit 1

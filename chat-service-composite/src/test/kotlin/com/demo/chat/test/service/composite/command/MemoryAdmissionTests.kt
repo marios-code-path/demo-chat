@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite.command
 
+import com.demo.chat.domain.DefinitiveRefusalException
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.command.CommandSubmission
 import com.demo.chat.domain.command.CommandOperation
@@ -52,22 +54,21 @@ class MemoryAdmissionTests {
         assertThat(notifications.get()).isEqualTo(1)
     }
 
+    private fun import(messageId: Long?, requestId: String = "import:claude-turn") = CommandSubmission(
+        owner = 99L,
+        requestId = requestId,
+        sender = 11L,
+        dest = 100L,
+        content = "imported",
+        operation = CommandOperation.IMPORT_MESSAGE,
+        timestamp = Instant.parse("2026-10-08T10:00:00.001234Z"),
+        publish = false,
+        messageId = messageId,
+    )
+
     @Test
     fun `an import keeps owner sender and millisecond time and can omit publication`() {
-        val importedAt = Instant.parse("2026-10-08T10:00:00.001234Z")
-        val localBus = bus()
-        localBus.submit(
-            CommandSubmission(
-                owner = 99L,
-                requestId = "import:claude-turn",
-                sender = 11L,
-                dest = 100L,
-                content = "imported",
-                operation = CommandOperation.IMPORT_MESSAGE,
-                timestamp = importedAt,
-                publish = false,
-            )
-        ).block()!!
+        bus().submit(import(7777L)).block()!!
 
         val command = log.iterator().next().command
         assertThat(command.owner).isEqualTo(99L)
@@ -75,6 +76,61 @@ class MemoryAdmissionTests {
         assertThat(command.message.key.from).isEqualTo(11L)
         assertThat(command.message.key.timestamp).isEqualTo(Instant.parse("2026-10-08T10:00:00.001Z"))
         assertThat(command.obligations).containsExactlyInAnyOrder(BackendId.PERSISTENCE, BackendId.INDEX)
+    }
+
+    @Test
+    fun `an import uses the supplied id under the message root`() {
+        val receipt = bus().submit(import(7777L)).block()!!
+
+        assertThat(receipt.messageKey.id).isEqualTo(7777L)
+        assertThat(receipt.messageKey.root).isEqualTo(roots.of(ChatDomain.MESSAGE).id)
+        assertThat(log.iterator().next().command.message.key.id).isEqualTo(7777L)
+        assertThat(log.iterator().next().command.rootId).isEqualTo(roots.of(ChatDomain.MESSAGE).id)
+    }
+
+    /** The owner moved this refusal from T3 to T4 on 2026-10-15. */
+    @Test
+    fun `an import with no supplied id is refused before the mapping is written`() {
+        val bus = bus()
+        StepVerifier.create(bus.submit(import(null)))
+            .expectError(DefinitiveRefusalException::class.java)
+            .verify()
+        assertRefusedBeforeStaging(bus)
+        assertThat(bus.submit(import(7777L)).block()!!.messageKey.id).isEqualTo(7777L)
+    }
+
+    @Test
+    fun `a supplied id on another operation is refused before the mapping is written`() {
+        val bus = bus()
+        val target = Key.of(500L, roots.of(ChatDomain.MESSAGE).id)
+        listOf(
+            CommandSubmission(10L, "r-send", 10L, 100L, "hello", messageId = 7777L),
+            CommandSubmission(10L, "r-pointer", 10L, 100L, "", CommandOperation.RECORD_POINTER, target = target, messageId = 7777L),
+        ).forEach { refused ->
+            StepVerifier.create(bus.submit(refused))
+                .`as`(refused.operation.name)
+                .expectError(DefinitiveRefusalException::class.java)
+                .verify()
+        }
+        assertRefusedBeforeStaging(bus)
+    }
+
+    @Test
+    fun `two supplied ids under one request id are a conflict and the original stays`() {
+        val bus = bus()
+        val first = bus.submit(import(7777L)).block()!!
+        StepVerifier.create(bus.submit(import(7778L)))
+            .expectError(RequestConflictException::class.java)
+            .verify()
+        assertThat(bus.submit(import(7777L)).block()).isEqualTo(first)
+        assertThat(log.size()).isEqualTo(1)
+    }
+
+    private fun assertRefusedBeforeStaging(bus: MemoryDomainCommandBus<Long, String>) {
+        assertThat(bus.committedMappings()).isZero()
+        assertThat(bus.stagedMappings()).isZero()
+        assertThat(log.size()).isZero()
+        assertThat(notifications.get()).isZero()
     }
 
     @Test

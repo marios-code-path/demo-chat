@@ -237,7 +237,7 @@ Set `app.command.completion.timeout=5s` on the command service.
 That starting value is below the adapter deadline of `30s`.
 A transport deadline can still produce an unknown submission outcome.
 
-The shipped message-by-ID policy permits any authenticated agent to read any message.
+The server checks `SUBSCRIBE` on the room of a message read by ID since `CHAT-erkoxybm`.
 The adapter checks the returned room and blocks content outside `topicIds`.
 This local restriction does not narrow the same token's direct HTTP permissions.
 See `docs/MCP-ADAPTER.md` for message schemas, error metadata, and retry limits.
@@ -290,6 +290,9 @@ HTTP/1.1 201 Created
 
 The name is one token. A hyphen splits the Lucene field, so this run avoids one.
 `CHAT-hajmhslp` holds that defect.
+
+Correction for `CHAT-hajmhslp`: identity lookups now match whole values. This
+single-token name records the original run, not a current name restriction.
 
 **The acceptance run used a second topic, `mcpcredential`.** The command above
 created `mcpissuance` to re-prove the create route on the day of this writing.
