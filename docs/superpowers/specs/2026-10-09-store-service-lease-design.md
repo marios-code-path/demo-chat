@@ -198,8 +198,10 @@ The process claims one lease for each store service that it creates. The list
 comes from the service beans that are present, not from a fixed list of
 domains. A later deployment that runs some of the services claims only those.
 
-- A store service bean is a bean that implements `PersistenceStore` or
-  `IndexService`.
+- A store service is what a `PersistenceServiceBeans` or `IndexServiceBeans`
+  holder bean returns. Each zero-argument method of those interfaces is read.
+  An RSocket controller implements `PersistenceStore` or `IndexService`, and it
+  is not a store service.
 - `ServiceLeaseNames` maps each bean to its lease name through the domain
   interface that the bean implements. For example, `UserPersistence` maps to
   `persistence:user`, and `AuthMetaIndex` maps to `index:authmeta`.
@@ -263,10 +265,17 @@ can still be running when its server stops. A canceled reactive chain does not
 prove that its store write stopped. So a clean close must hold the leases until
 the accepted writes end.
 
-- **A `StoreWriteGate` wraps each store service bean of a leased process.** A
-  bean post processor puts a proxy around each bean that implements
-  `PersistenceStore` or `IndexService`. The proxy sends each `add`, `rem` and
-  `addEnriched` call through the gate. Reads pass through.
+- **A `StoreWriteGate` wraps each store service of a leased process.** A
+  store service is what a `PersistenceServiceBeans` or `IndexServiceBeans`
+  holder returns. A bean post processor wraps it in one of two places. A store
+  service that is a bean gets a proxy. A plain holder bean, which is not a
+  `@Configuration`, gets a proxy that wraps each service that it returns. The
+  Cassandra index holder has that shape, and its services are not beans. A
+  `@Controller` bean that implements a store interface is not wrapped. The
+  proxy sends each `add`, `rem` and `addEnriched` call through the gate. Reads
+  pass through. Corrected on 2026-10-16 during Task 3: the plan wrapped every
+  bean that implements `PersistenceStore` or `IndexService`, and that set holds
+  the RSocket controllers and misses the Cassandra services.
 - **An index that writes only to local files is not wrapped.** It implements
   the `ProcessLocalIndex` marker. The Lucene indexes do. Their writes never
   reach the shared store. The Lucene configuration also casts its index beans

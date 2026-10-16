@@ -10,8 +10,9 @@ import org.springframework.context.SmartLifecycle
  * `CHAT-lswjobhz`.
  *
  * It claims after the node id guard and before `RootKeyStartup`, so it holds
- * the leases before any start scan reads the store. It releases in [stop] and,
- * after a failed refresh, in [destroy].
+ * the leases before any start scan reads the store. [stop] closes the write
+ * gate, waits for the active writes, and then releases. [destroy] does the
+ * same after a failed refresh. See `The write drain` in the spec.
  *
  * [services] is read at start, when every singleton exists. It maps bean
  * names to the store service beans. `ServiceLeaseNames` derives the lease
@@ -20,6 +21,7 @@ import org.springframework.context.SmartLifecycle
 class ServiceLeaseGuard(
     private val store: ServiceLeaseStore,
     private val services: () -> Map<String, Any>,
+    private val gate: StoreWriteGate,
     private val nodeId: NodeId,
     owner: RuntimeOwnerId,
     private val props: NodeIdClaimProperties,
@@ -77,8 +79,11 @@ class ServiceLeaseGuard(
         running = true
     }
 
+    @Volatile
+    private var drained = false
+
     override fun stop() {
-        keeper.releaseAll()
+        drainAndRelease()
         running = false
     }
 
@@ -87,9 +92,26 @@ class ServiceLeaseGuard(
     override fun getPhase(): Int = LeasePhases.SERVICE_GUARD
 
     override fun destroy() {
-        keeper.releaseAll()
+        drainAndRelease()
         scheduler.shutdownNow()
         if (deadlines !== scheduler) deadlines.shutdownNow()
+    }
+
+    // The renewals continue during the drain. A drain that times out keeps the
+    // leases, so they expire after ttl and not while a write is active.
+    @Synchronized
+    private fun drainAndRelease() {
+        if (drained) return
+        drained = true
+        if (gate.closeAndDrain()) {
+            keeper.releaseAll()
+        } else {
+            log.error(
+                "{} store writes were still active {}s after the close started. The leases are kept.",
+                gate.active, gate.drainTimeout.seconds
+            )
+            keeper.abandon()
+        }
     }
 
     private fun lease(name: String) = object : HeldLease {

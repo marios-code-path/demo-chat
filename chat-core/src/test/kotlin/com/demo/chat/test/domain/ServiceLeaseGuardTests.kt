@@ -48,7 +48,7 @@ class ServiceLeaseGuardTests {
     )
 
     private fun guard(services: Map<String, Any> = userServices) = ServiceLeaseGuard(
-        store, { services }, NodeId(7), owner, NodeIdClaimProperties(null, null, null, null), context, scheduler,
+        store, { services }, StoreWriteGate(Duration.ofSeconds(1)), NodeId(7), owner, NodeIdClaimProperties(null, null, null, null), context, scheduler,
         clock = { 0L },
     )
 
@@ -99,7 +99,7 @@ class ServiceLeaseGuardTests {
                 return store.claim(name, owner, ttl)
             }
         }
-        ServiceLeaseGuard(recording, { mapOf("userIndex" to stub(UserIndexService::class.java)) }, NodeId(7), owner,
+        ServiceLeaseGuard(recording, { mapOf("userIndex" to stub(UserIndexService::class.java)) }, StoreWriteGate(Duration.ofSeconds(1)), NodeId(7), owner,
             NodeIdClaimProperties(null, null, null, null), context, scheduler, clock = { 0L }).start()
         assertThat(owners.single()).isEqualTo("node 7 ${owner.value}")
     }
