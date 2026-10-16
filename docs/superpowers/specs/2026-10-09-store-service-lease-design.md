@@ -2,6 +2,11 @@
 
 Issue: `CHAT-lswjobhz`. Parent: `CHAT-aqpcacwv`. Date: 2026-10-09.
 
+Revised on 2026-10-16 after the owner review. The review required three
+corrections: a narrower guarantee, a start and stop order, and a statement
+that split deployments stay unsupported. The sections `The guarantee`,
+`The lifecycle order` and `Split deployments` hold them.
+
 ## The problem
 
 Each Lucene index lives in one process. Before this change, two core
@@ -59,13 +64,44 @@ writes to it. The node id lease uses the store for the same reason.
 ### What the rule gives today
 
 One core process opens all its store services together. So a second complete
-core on one backend fails at its first service lease. That closes gap 1 and
-gap 2 for every launch path that exists today.
+core on one backend fails at its first service lease. A second core that
+starts while the first core holds its leases cannot serve the store. That is
+the start-time half of gap 1 and gap 2. `The guarantee` states the limit
+after a lease expires.
 
-The rule does not block a later split of services across deployments. That
-split is the owner's longer-term direction, and it is out of scope here.
+## The guarantee
+
+A TTL lease selects one current holder. It does not stop an old holder. The
+lease therefore gives this guarantee, and no stronger one:
+
+1. **At most one process holds a service lease at one time**, as the backend
+   measures time.
+2. **A holder closes its own context before its lease can expire.** The guard
+   closes the context when no renewal succeeds within
+   `ttl - safety-margin`, measured on the holder's clock. The defaults are
+   30 s and 5 s, so the close comes 25 s after the last renewal.
+3. **A holder that pauses longer than the safety margin can still write.** A
+   garbage collection pause or a suspended host can stop the holder's clock
+   check. Its lease can expire, and a new holder can claim the service. The old
+   holder can then complete requests that were in flight before its close.
+   Those writes reach the store, and they can miss the index of the new holder.
+
+The lease does not fence writes. A fencing token on every store write would
+remove case 3. Redis documents this limit of a TTL lock, and it recommends
+fencing for correctness. Fencing needs a token check on every persistence
+write path, Cassandra and Redis, so it is out of scope here. The node id lease
+has the same limit.
+
+**An operator must not start a replacement until the old holder has stopped,
+or until a full `ttl` has passed since the old holder was last seen.** The
+swap procedure in `docs/SERVICE-LEASE.md` states this.
+
+Tests pin cases 1 and 2. Case 3 is a recorded limit and has no test.
 
 ## Approaches considered
+
+The four approaches below choose the lease scope. A fifth choice, fencing,
+decides what an expired holder can do. `The guarantee` rejects it for now.
 
 1. **A lease per store, for Lucene processes only.** It ignored a second core
    with another index type. It also refused a safe split by domain.
@@ -132,8 +168,9 @@ deployment that runs some of the services claims only those.
 
 `ServiceLeaseGuard` in `chat-core`:
 
-- It claims every lease during the context refresh, before `RootKeyStartup`. So
-  it holds the leases before any start scan reads the store.
+- It claims every lease when its lifecycle phase starts, before
+  `RootKeyStartup`. So it holds the leases before any start scan reads the
+  store. `The lifecycle order` gives the phases.
 - It claims in a fixed sorted order of lease names.
 - A refused claim releases the leases that the guard already holds, and it fails
   the start. The message names the service, the scope and the holder.
@@ -149,15 +186,61 @@ deployment that runs some of the services claims only those.
 
 The node id lease keeps its Redis key format and its `node_claim` table.
 
-### Release on close
+### The lifecycle order
 
-`CHAT-ocpojbyy` measured that a Redis close does not release the node id lease.
-`LettuceConnectionFactory` is a `SmartLifecycle`, so it stops before singletons
-are destroyed, and the release then fails.
+Spring starts `SmartLifecycle` beans in ascending phase order and stops them in
+descending phase order. The phases that matter, measured on 2026-10-16:
 
-Both guards become `SmartLifecycle` beans whose phase stops them before the
-connection factory stops. The release then runs on a live connection. This
-change closes `CHAT-ocpojbyy`.
+| Bean | Phase |
+|---|---|
+| `LettuceConnectionFactory` (spring-data-redis 4.1.1) | `0` |
+| `NodeIdClaimGuard` | `Int.MAX_VALUE - 6144`, new |
+| `ServiceLeaseGuard` | `Int.MAX_VALUE - 5120`, new |
+| `RootKeyStartup` | `Int.MAX_VALUE - 4096` |
+| Reactive web server | `Int.MAX_VALUE - 2048` |
+| RSocket server | `Int.MAX_VALUE` |
+
+**Start.** The connection factory starts first. The node id guard then claims
+its lease, and the service guard claims the service leases. `RootKeyStartup`
+then runs the start scan. The servers start last. So no start scan and no
+request runs without the leases.
+
+**Stop.** The servers stop first, and then `RootKeyStartup`. The service guard
+releases its leases, and then the node id guard releases its lease. The
+connection factory stops last. So each release runs on a live connection.
+
+**Other writers.** A background writer that is not a `SmartLifecycle` stops at
+bean destruction, after the guards release. Such a writer can write without a
+lease. The plan lists every background writer of a store-backed deployment.
+Each one must stop in a phase above `ServiceLeaseGuard`, or the plan must show
+that it cannot write after the release.
+
+**Failed start.** A refresh can fail after a guard has claimed, for example
+when a store shape check fails in `RootKeyStartup`. Spring then destroys the
+beans, and the lifecycle stop may not run. So each guard releases in two
+places: in `stop`, and in `destroy` when it still holds a lease. A release is
+conditional on the owner id, so a second release does nothing. Each guard
+depends on its lease stores, so Spring destroys the guard before the
+connection factory.
+
+The node id guard moves from `InitializingBean` to this lifecycle. **It must
+claim before any key is minted.** The plan measures the first key mint of a
+start, and it keeps the claim before it.
+
+`CHAT-ocpojbyy` measured that a Redis close does not release the node id lease,
+because the connection factory stopped before the destroy. This order closes
+`CHAT-ocpojbyy`.
+
+## Split deployments
+
+The lease names permit a future split of services across deployments. **They
+do not make a split safe.** In a split, a persistence writer in one deployment
+changes the store, and the index owner in another deployment does not see the
+change. That is gap 1 again, across deployments.
+
+**Split deployments stay unsupported until a persistence writer has a path to
+the separate index owner.** No launch path splits services today. This work
+adds no such path, and it adds no check that refuses a split.
 
 ## Failure cases
 
@@ -167,8 +250,10 @@ change closes `CHAT-ocpojbyy`.
   the context when the renewals do not succeed in time.
 - A refused claim never leaves a partial set of leases.
 - A process that comes back after a long pause and finds its lease lost closes
-  its context. A TTL lease does not protect against a pause longer than the
-  safety margin. The node id lease has the same limit.
+  its context. Writes that it completes before that close are not fenced. See
+  `The guarantee`, case 3.
+- A failed start releases every lease that the guards took. See
+  `The lifecycle order`.
 
 ## Tests
 
@@ -185,12 +270,20 @@ change closes `CHAT-ocpojbyy`.
   serves.
 - **Swap.** Core A stops renewing and its lease expires. Core B then starts and
   finds the user of core A through its rebuilt index.
-- **Release on close.** A Redis restart with the same node id starts at once,
-  with no wait for the TTL.
+- **Release on close.** A Redis restart with the same node id and the same
+  services starts at once, with no wait for the TTL.
+- **Release after a failed start.** A start that fails in `RootKeyStartup`
+  after the guards claimed leaves no lease. A second start claims at once.
+- **The close deadline.** A guard whose renewals fail closes its context within
+  `ttl - safety-margin`, and a server of that context then refuses a request.
+  This pins case 2 of `The guarantee`.
+- **The phase order.** A unit test reads the phases of the guards, of
+  `RootKeyStartup` and of the connection factory, and pins the order.
 - **Cassandra.** The same refusal on one keyspace, and a shape check refusal for
   a store without `service_lease`.
 - **Mutation proofs.** With the guard disabled, the refusal test fails. With the
-  release order repair removed, the restart test fails.
+  release order repair removed, the restart test fails. With the `destroy`
+  release removed, the failed start test fails.
 
 ### The suite and the rule
 
@@ -219,8 +312,9 @@ That breaks the rule. The owner chose one context at a time.
 
 ## Out of scope
 
-- A split of services across deployments. The rule allows it. No launch path
-  does it today.
+- A split of services across deployments. It stays unsupported. See
+  `Split deployments`.
+- Fencing tokens on store writes. See `The guarantee`.
 - A Redis Stack vector store (`vector=redis`). The key and persistence
   selectors do not name it. It stays an operator rule.
 - Check-then-act races inside one instance, such as two concurrent adds of one
