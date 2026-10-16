@@ -15,7 +15,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.BDDMockito.given
+import org.mockito.Mockito.clearInvocations
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.mockingDetails
 import org.mockito.Mockito.verifyNoInteractions
@@ -224,5 +227,73 @@ class ClaudeImportMapTests {
         }.isInstanceOf(IllegalStateException::class.java).hasMessageContaining("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
 
         verifyNoInteractions(login, topics, messages)
+    }
+
+    /**
+     * A section that is absent or not an object would read as empty, and the
+     * next write would erase it. The map is refused, and the file stays as it was.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = [
+        """"messages":{}""",
+        """"topics":{}""",
+        """"topics":[],"messages":{}""",
+        """"topics":{},"messages":"none"""",
+    ])
+    fun `a map with a missing or malformed section stops the run before any write`(sections: String) {
+        val original = """{"conversation":"$conversationUuid","generation":"7","export":"/x.json",$sections}"""
+        Files.writeString(mapPath(), original)
+        roomsExist()
+        stubFork()
+
+        assertThatThrownBy {
+            command().importConversation(forked().toString(), "Forked", "lobby", "7", "alice", "claude")
+        }.isInstanceOf(IllegalStateException::class.java).hasMessageContaining(mapPath().toString())
+
+        verifyNoInteractions(login, topics, messages)
+        assertThat(Files.readString(mapPath())).isEqualTo(original)
+    }
+
+    /**
+     * The map keys a topic by its leaf. A second topic base names a second room
+     * for the same leaf, so a write would replace the first room. The run is refused.
+     */
+    @Test
+    fun `a changed topic base stops the run before any write`() {
+        roomsExist()
+        stubFork()
+        command().importConversation(forked().toString(), "Forked", "lobby", "7", "alice", "claude")
+        val first = Files.readString(mapPath())
+        clearInvocations(login, topics, messages)
+
+        assertThatThrownBy {
+            command().importConversation(forked().toString(), "Forked", "hall", "7", "alice", "claude")
+        }.isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining(firstName)
+            .hasMessageContaining(claudeTopicName("hall", conversationUuid, "7", firstBranchUuid))
+
+        verifyNoInteractions(login, topics, messages)
+        assertThat(Files.readString(mapPath())).isEqualTo(first)
+    }
+
+    /**
+     * A recreated store gives the same topic name a new room. The map holds the
+     * earlier room, so the leaf is refused before its thread imports a message.
+     */
+    @Test
+    fun `a leaf in another room stops the run before its messages`() {
+        val original = """{"conversation":"$conversationUuid","generation":"7","export":"/x.json",
+          "topics":{"$firstBranchUuid":{"topic":"$firstName","roomId":"9"},"$leafUuid":{"topic":"$secondName","roomId":"9"}},
+          "messages":{}}"""
+        Files.writeString(mapPath(), original)
+        roomsExist()
+        stubFork()
+
+        assertThatThrownBy {
+            command().importConversation(forked().toString(), "Forked", "lobby", "7", "alice", "claude")
+        }.isInstanceOf(IllegalStateException::class.java).hasMessageContaining("room 9")
+
+        assertThat(importCount()).isZero()
+        assertThat(Files.readString(mapPath())).isEqualTo(original)
     }
 }

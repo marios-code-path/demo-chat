@@ -57,6 +57,7 @@ class ClaudeImportCommands<T : Any>(
         // lose its entries on the first write of this run.
         val mapPath = ClaudeImportMap.pathFor(export, parsed.uuid, generationValue)
         val map = ClaudeImportMap.load(mapPath, parsed.uuid, generationValue, export)
+        parsed.threads.forEach { map.checkTopicName(it.leafUuid, claudeTopicName(topic, parsed.uuid, generationValue, it.leafUuid)) }
 
         val previousUser = ShellStateConfiguration.loggedInUser
         val previousCredential = ShellStateConfiguration.loginMetadata
@@ -83,7 +84,7 @@ class ClaudeImportCommands<T : Any>(
                         "Room '$name' was not created."
                     }.id
                 }
-                map.topics[thread.leafUuid] = ClaudeMapTopic(name, roomId.toString())
+                map.putTopic(thread.leafUuid, name, roomId.toString())
                 if (thread.pathEndsAtOmittedParent) {
                     omittedParents += thread.leafUuid
                 }

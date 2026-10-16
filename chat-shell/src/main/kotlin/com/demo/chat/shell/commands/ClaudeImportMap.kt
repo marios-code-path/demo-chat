@@ -33,6 +33,33 @@ class ClaudeImportMap(
     fun messageId(sourceId: String): String? = messages[sourceId]?.messageId
 
     /**
+     * Refuses a leaf that the map holds under another topic name. A second
+     * topic base names a second room for one leaf, and a write would replace
+     * the first room while its message entries stay.
+     */
+    fun checkTopicName(leaf: String, topic: String) {
+        val earlier = topics[leaf] ?: return
+        check(earlier.topic == topic) {
+            "The import map holds leaf $leaf as topic ${earlier.topic}, not $topic. " +
+                "Use the earlier topic base, or another generation."
+        }
+    }
+
+    /**
+     * Records the room of a leaf. A leaf that the map holds in another room
+     * is refused. A recreated store gives a topic name a new room.
+     */
+    fun putTopic(leaf: String, topic: String, roomId: String) {
+        checkTopicName(leaf, topic)
+        val earlier = topics[leaf]
+        check(earlier == null || earlier.roomId == roomId) {
+            "The import map holds leaf $leaf of topic $topic in room ${earlier?.roomId}, not room $roomId. " +
+                "Move the map aside before an import into the new room."
+        }
+        topics[leaf] = ClaudeMapTopic(topic, roomId)
+    }
+
+    /**
      * Writes a temporary file beside the map, and then moves it over the map.
      * A failed write therefore never leaves a partial map.
      */
@@ -81,11 +108,18 @@ class ClaudeImportMap(
                 check(value != null && value.isTextual) { "The import map $path has no text field '$field'." }
                 return value.asText()
             }
+            // An absent or scalar section would read as empty, and the next
+            // write would erase it.
+            fun section(field: String): JsonNode {
+                val value = root.get(field)
+                check(value != null && value.isObject) { "The import map $path has no object field '$field'." }
+                return value
+            }
             val map = ClaudeImportMap(text(root, "conversation"), text(root, "generation"), text(root, "export"))
-            root.path("topics").properties().forEach { (leaf, entry) ->
+            section("topics").properties().forEach { (leaf, entry) ->
                 map.topics[leaf] = ClaudeMapTopic(text(entry, "topic"), text(entry, "roomId"))
             }
-            root.path("messages").properties().forEach { (sourceId, entry) ->
+            section("messages").properties().forEach { (sourceId, entry) ->
                 map.messages[sourceId] = ClaudeMapMessage(text(entry, "messageId"), text(entry, "roomId"), text(entry, "topic"))
             }
             return map
