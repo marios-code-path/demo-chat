@@ -2,7 +2,7 @@
 
 Issue: `CHAT-zxrgxdlx`. Parent: `CHAT-emwhnlay`.
 
-Status: Accepted on 2026-10-15. No code exists yet.
+Status: Accepted on 2026-10-15. Implementation merged through PR #241 on 2026-10-16.
 
 ## Goal
 
