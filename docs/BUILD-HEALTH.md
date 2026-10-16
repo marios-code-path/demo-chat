@@ -470,6 +470,10 @@ logs: `forward-register-archive-2026-08.md`,
 Nothing imports those files, so they cost no context until a reader opens one.
 The live register holds the durable core and the current period.
 
+The close of 2026-10-16 moved the sections from 2026-10-08 to 2026-10-15 into
+`forward-register-archive-2026-10.md`. The live file went from 64,385 bytes to
+about 22 KB. See `CHAT-jgegpcoi`.
+
 **The check compares the byte count alone.** It cannot see a loss of content,
 and it cannot see a section that belongs in an archive. See `CHAT-nxbtadan`.
 
