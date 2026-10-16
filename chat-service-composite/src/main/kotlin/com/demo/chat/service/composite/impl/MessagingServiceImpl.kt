@@ -193,8 +193,11 @@ open class MessagingServiceImpl<T : Any, V, Q>(
     }
 
     private fun importDerived(req: MessageImportRequest<T, V>, timestamp: Instant, derived: T): Mono<out Message<T, V>> =
-        // A Cassandra removal keeps the row and sets record to false.
-        messagePersistence.get(Key.of(derived, rootKeys.of(ChatDomain.MESSAGE).id))
+        // The registry refuses an id that P never registered, so that id has no row.
+        verifier.resolve(derived, ChatDomain.MESSAGE)
+            .onErrorResume(KeyVerificationException::class.java) { Mono.empty() }
+            .flatMap { verified -> messagePersistence.get(verified.key) }
+            // A Cassandra removal keeps the row and sets record to false.
             .filter { it.record }
             .map { it as Message<T, V> }
             .switchIfEmpty(Mono.defer {

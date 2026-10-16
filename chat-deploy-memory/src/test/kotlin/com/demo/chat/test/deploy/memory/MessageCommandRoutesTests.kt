@@ -146,47 +146,26 @@ class MessageCommandRoutesTests {
         assertThat(runtime.bus.committedMappings()).isEqualTo(before)
     }
 
+    // The import case moved to MessageImportRoutesTests, on a uuid deployment.
+    // A long key cannot hold the derived id, and no long fallback id exists. CHAT-bwzjstoh.
     @Test
-    fun `Admin imports turns with their sender and time and a repeat writes nothing`() {
-        val room = composite.topicService().addRoom(ByStringRequest("importroom")).block(timeout)!!
-        val firstSender = standardUser("importfirst", "importfirstsecret")
-        val secondSender = standardUser("importsecond", "importsecondsecret")
+    fun `an Admin import on a long deployment is refused and stores nothing`() {
+        val room = composite.topicService().addRoom(ByStringRequest("importlongroom")).block(timeout)!!
+        val sender = standardUser("importlong", "importlongsecret")
         val admin = connect("Admin", "changeme")
-        val early = Instant.parse("2026-10-08T10:00:00.001234Z")
-        val middle = Instant.parse("2026-10-08T10:00:01.001234Z")
-        val late = Instant.parse("2026-10-08T10:00:02.001234Z")
+        val before = runtime.bus.committedMappings()
 
-        admin.route("message.message-import")
-            .data(MessageImportRequest("late", secondSender.id, room.id, late, "claude-late"))
-            .retrieveMono(Map::class.java).block(timeout)
-        admin.route("message.message-import")
-            .data(MessageImportRequest("early", firstSender.id, room.id, early, "claude-early"))
-            .retrieveMono(Map::class.java).block(timeout)
-        admin.route("message.message-import")
-            .data(MessageImportRequest("middle", firstSender.id, room.id, middle, "claude-middle"))
-            .retrieveMono(Map::class.java).block(timeout)
-        val mappingsBeforeHistoryRepeat = runtime.bus.committedMappings()
-        admin.route("message.message-import")
-            .data(MessageImportRequest("late", secondSender.id, room.id, late, "claude-late-rerun"))
-            .retrieveMono(Map::class.java).block(timeout)
-        assertThat(runtime.bus.committedMappings()).isEqualTo(mappingsBeforeHistoryRepeat)
+        val error = catchThrowable {
+            admin.route("message.message-import")
+                .data(MessageImportRequest("long", sender.id, room.id, Instant.parse("2026-10-08T10:00:00Z"), "${room.id}:turn-long"))
+                .retrieveMono(Map::class.java).block(timeout)
+        }
 
+        assertThat(error).hasMessageContaining("The key type Long cannot hold an imported id")
+        assertThat(runtime.bus.committedMappings()).isEqualTo(before)
         val messages = admin.route("message.message-list-topic").data(ByIdRequest(room.id))
             .retrieveFlux(Map::class.java).collectList().block(timeout)!!
-        assertThat(messages).hasSize(3)
-        val first = messages[0]["message"] as Map<*, *>
-        val second = messages[1]["message"] as Map<*, *>
-        val third = messages[2]["message"] as Map<*, *>
-        val firstKey = ((first["key"] as Map<*, *>) ["key"] as Map<*, *>)
-        val secondKey = ((second["key"] as Map<*, *>) ["key"] as Map<*, *>)
-        val thirdKey = ((third["key"] as Map<*, *>) ["key"] as Map<*, *>)
-        assertThat(first["data"]).isEqualTo("early")
-        assertThat(second["data"]).isEqualTo("middle")
-        assertThat(third["data"]).isEqualTo("late")
-        assertThat(firstKey["from"].toString()).isEqualTo(firstSender.id.toString())
-        assertThat(secondKey["from"].toString()).isEqualTo(firstSender.id.toString())
-        assertThat(thirdKey["from"].toString()).isEqualTo(secondSender.id.toString())
-        assertThat(firstKey["timestamp"].toString()).isEqualTo("2026-10-08T10:00:00.001Z")
+        assertThat(messages).isEmpty()
     }
 
     @Test
