@@ -81,12 +81,19 @@ With the defaults that is 25 seconds.
 A clean shutdown releases the lease, so a restart is immediate. A crash
 leaves the lease to expire.
 
-**Correction, 2026-09-27: on Redis a clean shutdown does not release the
-lease.** `LettuceConnectionFactory` is a `SmartLifecycle`, so it stops before
-the claim guard releases the claim. The release fails with "LettuceConnectionFactory
-has been STOPPED", and the guard logs it at debug level only. A restart with the
-same `app.nodeid` then fails as already claimed until the lease expires.
-`CHAT-ocpojbyy` holds the defect. Cassandra releases the lease on a clean close.
+**A clean close releases the lease on Redis and on Cassandra, since
+`CHAT-lswjobhz`.** The guard is a `SmartLifecycle` at phase
+`Int.MAX_VALUE - 6144`. It releases in `stop`, before
+`LettuceConnectionFactory` stops at phase 0. Before that change, the guard
+released at bean destruction, after the connection factory stopped, and a Redis
+restart with the same `app.nodeid` failed until the lease expired.
+`RedisServiceLeaseBootTests` pins the immediate restart. `CHAT-ocpojbyy` held
+that defect. A release that fails logs a warning, and the lease expires on its
+own.
+
+The guard claims before `RootKeyStartup`, so a refused claim mints no key.
+`RedisClaimBootTests` pins it on an empty store. The renew loop and the close
+deadline are the ones of the store service lease. See `docs/SERVICE-LEASE.md`.
 
 ## Cassandra upgrade
 
@@ -136,6 +143,12 @@ Every container-backed test that activates a claim store uses its own
 would collide. That collision is correct behaviour, and it appears as a test
 failure.
 
+**The store service lease adds a second rule.** Two open cores on one store
+collide on their service leases, even with distinct node ids. A Spring test
+class that keeps a store-backed core in the context cache closes it after the
+class, with `@DirtiesContext(classMode = AFTER_CLASS)`. `RedisDeployBootTests`
+and `CassandraDeployTest` do. See `docs/SERVICE-LEASE.md`.
+
 The test classes of one Cassandra test module share one container, so they
 share one keyspace. A node id that two classes claim collides in that keyspace.
 Give each class its own ids. `CHAT-znodyvcc`.
@@ -143,7 +156,7 @@ Give each class its own ids. `CHAT-znodyvcc`.
 | Module and test | `app.nodeid` |
 |---|---|
 | `chat-persistence-redis` claim store tests | 100 to 109 |
-| `chat-persistence-cassandra` claim store tests | 200 to 209 |
+| `chat-persistence-cassandra` claim store tests | 200 to 209. `CassandraServiceLeaseStoreTests` holds 203 |
 | `chat-persistence-cassandra` `NodeClaimTableProbeTests` | 210 to 212 |
 | `chat-deploy-redis` `RedisDeployBootTests` | 1 |
 | `chat-deploy-redis` `RedisClaimBootTests` | 11 and 12 |
@@ -151,7 +164,8 @@ Give each class its own ids. `CHAT-znodyvcc`.
 | `chat-deploy-redis` `RedisLuceneFilesRestartTests` | 18 and 19 |
 | `chat-deploy-redis` `RedisKeyAndPersistenceSafeRepeatTests` | 40 |
 | `chat-deploy-redis` `RedisPubSubSafeRepeatTests` | 41 |
-| `chat-deploy-redis` `RedisSharedStoreIndexTests` | 50 and 51 |
+| `chat-deploy-redis` `RedisSharedStoreIndexTests` | 50 and 51, for the refusal of a second core |
+| `chat-deploy-redis` `RedisServiceLeaseBootTests` | 52 to 58 |
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
@@ -160,6 +174,7 @@ Give each class its own ids. `CHAT-znodyvcc`.
 | `chat-deploy-cassandra` `CassandraMessagePointerTests` | 29 |
 | `chat-deploy-cassandra` `CassandraKeyAndPersistenceSafeRepeatTests` | 43 |
 | `chat-deploy-cassandra` `CassandraIndexSafeRepeatTests` | 44 |
+| `chat-deploy-cassandra` `CassandraServiceLeaseBootTests` | 45 to 47 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |
 
 `chat-deploy-kafka` claims nothing, and it still reads `app.nodeid` for its

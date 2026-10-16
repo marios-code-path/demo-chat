@@ -328,9 +328,13 @@ Each one must stop in a phase above `ServiceLeaseGuard`, or the plan must show
 that it cannot write after the release.
 
 **Failed start.** A refresh can fail after a guard has claimed, for example
-when a store shape check fails in `RootKeyStartup`. Spring then destroys the
-beans, and the lifecycle stop may not run. So each guard releases in two
-places: in `stop`, and in `destroy` when it still holds a lease. A release is
+when a store shape check fails in `RootKeyStartup`. So each guard releases in
+two places: in `stop`, and in `destroy` when it still holds a lease.
+**Measured on 2026-10-16:** Spring 7.0.9 `AbstractApplicationContext.refresh`
+calls `LifecycleProcessor.stop()` on a failed refresh, before it destroys the
+beans. So `stop` releases on a failed start, and the `destroy` release is a
+second path. A mutation that removes the `destroy` release fails no boot
+test. Unit tests pin it. A release is
 conditional on the owner id, so a second release does nothing. Spring
 destroys a bean before the beans that it depends on. So each guard must be a
 registered dependent of its lease stores. A store read through an

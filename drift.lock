@@ -8,11 +8,11 @@ docs/LUCENE-INDEX-FILES.md -> chat-deploy/src/main/kotlin/com/demo/chat/config/d
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexLoad.kt sig:b23de4231f0070f4
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/LuceneIndexRegistry.kt sig:bbd6363a345f4057
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/domain/IndexEntryEncoder.kt sig:dec9f4d3cc14092f
-docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/LuceneIndex.kt sig:acbbc09dcaba486a
+docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/impl/LuceneIndex.kt sig:96c3d2bdbb6968d6
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/EntryEncoding.kt sig:abe24489762ab8d3
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexEntry.kt sig:79b14d06ced58808
 docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexRequests.kt sig:38c6e55f52111248
-docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt sig:ea45ab71565e09e1
+docs/LUCENE-INDEX-FILES.md -> chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/storage/IndexStartSequence.kt sig:650b9e756998b3fb
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusSettings.kt sig:c8c3008bbf745a1c
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/CommandBusValidation.kt sig:80fedc67d1b0bf61
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/KeyTypeValidation.kt sig:83e12877b8489299
@@ -41,3 +41,9 @@ docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/We
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentResourceServerChain.kt sig:aa88a1ecd09ec0b5
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt sig:cfca97170f7b02f2
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/CoreRestControllers.kt sig:7535afb3ee97d1a4
+docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/LeaseKeeper.kt sig:8ed4056e1215bd8d
+docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/ServiceLease.kt sig:c7d7119da810de46
+docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/ServiceLeaseGuard.kt sig:8645a3d62e23c4c6
+docs/SERVICE-LEASE.md -> chat-core/src/main/kotlin/com/demo/chat/domain/StoreWriteGate.kt sig:d2816071b6385602
+docs/SERVICE-LEASE.md -> chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraServiceLeaseStore.kt sig:054905fdb85adb61
+docs/SERVICE-LEASE.md -> chat-persistence-redis/src/main/kotlin/com/demo/chat/persistence/redis/impl/RedisServiceLeaseStore.kt sig:79d70794e4470005

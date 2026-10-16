@@ -42,7 +42,14 @@ lucene index user: built, reason=MISMATCH, 42 entries written
 | `REQUESTED_DROP` | An operator requested a drop. |
 
 The compare is exact only when no other process writes the store during the
-start. `CHAT-lswjobhz` holds that limit.
+start. The store service lease of `CHAT-lswjobhz` keeps another core of the
+same services off the store, because the lease guard claims before this start
+runs. A split deployment stays outside that protection, and a paused former
+lease holder can still write. See `docs/SERVICE-LEASE.md`.
+
+`LuceneIndex` implements `ProcessLocalIndex`. Its writes go to local files, and
+never to the shared store. So the store write gate of the lease does not wrap
+a Lucene index.
 
 ## Field matching
 

@@ -41,7 +41,10 @@ class Started(
  * sequence for one index", CHAT-ybtirmgj.
  *
  * The compare is exact only when no other process writes the store during the
- * start. CHAT-lswjobhz holds that limit.
+ * start. The store service lease of CHAT-lswjobhz keeps another core of the
+ * same services off the store: the lease guard claims before this start runs.
+ * A split deployment stays outside that protection, and a paused former lease
+ * holder can still write. See docs/SERVICE-LEASE.md.
  */
 class IndexStartSequence<E : Any> internal constructor(
     private val name: String,

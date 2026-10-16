@@ -455,6 +455,34 @@ PR #225 merged the fix on 2026-10-14.
 you treat one as a regression, look for a foreign listener on the port. Run
 `lsof -nP -iTCP:9042 -sTCP:LISTEN`.
 
+### A cached store-backed context holds the store service leases
+
+A store-backed core claims one store service lease for each of its twelve
+store services. See `docs/SERVICE-LEASE.md`. Spring caches a test context for
+the life of the test JVM. So a cached core keeps its leases, and a later core
+on the same store fails at start with a `ServiceLeaseException`.
+
+**Measured on 2026-10-16, the first `--ci` run with the lease on:** 30 modules,
+2689 tests, 0 failures, 5 errors and 82 skipped. All five errors were lease
+refusals with the holder node 1: `CassandraAuthorizationMatrixTests` and
+`CassandraGrantRestartTests` in `chat-deploy-cassandra`, and
+`RedisPubSubSafeRepeatTests` and `RedisLuceneFilesRestartTests` in
+`chat-deploy-redis`. Node 1 is the cached context of `CassandraDeployTest` and
+of `RedisDeployBootTests`.
+
+Both classes now close their context after the class, with
+`@DirtiesContext(classMode = AFTER_CLASS)`. The second `--ci` run exited 0:
+30 modules, 2692 tests, 0 failures, 0 errors, 82 skipped, `agent http gate:
+ok`, and the baseline matched. The count moved from 2631 at T8 of
+`CHAT-zxrgxdlx`, because `CHAT-lswjobhz` added its guard, gate, store and boot
+tests. Docker reported no OOM event in the run window. The shell images moved:
+long from `sha256:b00d3f751ae3` to `sha256:8b5aece85baf`, and UUID from
+`sha256:6d10ddb90cf9` to `sha256:50075457819d`.
+
+**The signature:** a deploy class fails at its start with "The store service
+index:authmeta is already held", and the holder is the node id of another class
+in the same module. Close that other context after its class.
+
 ## The forward register size check
 
 `AGENTS.md` imports `forward-register.md`, so that file loads in every session.
