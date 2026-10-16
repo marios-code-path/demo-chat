@@ -73,8 +73,8 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         val topic = UUID.randomUUID()
         val otherTopic = UUID.randomUUID()
         val user = UUID.randomUUID()
-        // msg_id is a TIMEUUID column, so a message identifier must be time
-        // based. A version 4 uuid is rejected by the schema.
+        // The ids are time based, as the live generator makes them. The
+        // msg_id column is uuid since CHAT-agqnxkbs, so it also takes other versions.
         val first = Uuids.timeBased()
         val second = Uuids.timeBased()
         val other = Uuids.timeBased()

@@ -381,9 +381,6 @@ mvn -o -pl chat-core,chat-deploy-cassandra test -Dtest='CassandraMessageSendTest
 
 The second run proves that the minted version 1 ids still import on a UUID Cassandra deployment before Task 4.
 
-```bash
-```
-
 - [ ] **Step 6: Commit**
 
 ```bash

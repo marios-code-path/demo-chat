@@ -53,12 +53,13 @@ class IndexServiceConfiguration {
 
         /**
          * The CQL type of a message id for [typeUtil]. A `Long` id is `bigint`.
-         * A `UUID` id is `timeuuid`. `CassandraStoreShapeCheck.idType` in
+         * A `UUID` id is `uuid`, so an imported version 3 id fits. See
+         * `CHAT-agqnxkbs`. `CassandraStoreShapeCheck.idType` in
          * `chat-persistence-cassandra` holds the same rule.
          */
         fun idType(typeUtil: TypeUtil<*>): String = when (typeUtil.empty()) {
             is Long -> "bigint"
-            is UUID -> "timeuuid"
+            is UUID -> "uuid"
             else -> throw ChatException("No Cassandra message id type for the key type of ${typeUtil::class.java.name}.")
         }
 

@@ -52,7 +52,7 @@ import java.util.UUID
 
 private val ROOTS = FakeKeyServices.uuidRoots()
 
-// The message table keys on a TIMEUUID, which takes only a time-based UUID.
+// The ids are time based, as the live CassandraUUIDKeyGenerator makes them.
 private val TIME_BASED = object : IKeyGenerator<UUID> {
     override fun nextId(): UUID = Uuids.timeBased()
 }

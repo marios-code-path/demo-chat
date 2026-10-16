@@ -156,7 +156,7 @@ abstract class MessageIndexCassandraTests<T : Any>(
 class LongMessageIndexCassandraTests :
     MessageIndexCassandraTests<Long>(TestLongKeyGenerator(), String::toLong, FakeKeyServices.longRoots())
 
-/** A `TIMEUUID` column accepts only a time based id, so the generator makes those. */
+/** The generator makes time-based ids, as the live `CassandraUUIDKeyGenerator` does. */
 @TestPropertySource(properties = ["app.key.type=uuid"])
 class UUIDMessageIndexCassandraTests : MessageIndexCassandraTests<UUID>(
     object : IKeyGenerator<UUID> {
