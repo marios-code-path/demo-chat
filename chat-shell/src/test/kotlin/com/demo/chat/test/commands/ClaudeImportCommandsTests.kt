@@ -36,8 +36,19 @@ class ClaudeImportCommandsTests {
     private val messages = mock(ChatMessageService::class.java) as ChatMessageService<Long, String>
     private val beans = mock(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
     private val login = mock(LoginCommands::class.java) as LoginCommands<Long>
-    private val fixture = Path.of("src/test/resources/import/claude-conversations.json").toString()
-    private val result = mock(Message::class.java) as Message<Long, String>
+    /**
+     * A copy of the export in [temp]. The import writes its map beside the
+     * export, so a run on the resource file would write into the source tree.
+     */
+    private val fixture: String
+        get() {
+            val copy = temp.resolve("claude-conversations.json")
+            if (Files.notExists(copy)) Files.copy(Path.of("src/test/resources/import/claude-conversations.json"), copy)
+            return copy.toString()
+        }
+
+    /** The import map reads the message id from the result key. */
+    private val result: Message<Long, String> = Message.create(MessageKey.of(100L, 7L, 11L, 5L), "", true)
 
     private val conversationUuid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     private val rootUuid = "11111111-1111-4111-8111-111111111111"

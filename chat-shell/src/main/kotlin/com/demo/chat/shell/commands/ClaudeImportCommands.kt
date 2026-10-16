@@ -49,9 +49,14 @@ class ClaudeImportCommands<T : Any>(
     ): String {
         require(topic.isNotBlank()) { "Topic base '$topic' cannot be empty." }
         val generationValue = requireGeneration(generation)
-        val parsed = parser.parse(Path.of(file), conversation)
+        val export = Path.of(file)
+        val parsed = parser.parse(export, conversation)
         val password = environment.getProperty("CHAT_IMPORT_ADMIN_PASSWORD")
         require(!password.isNullOrBlank()) { "CHAT_IMPORT_ADMIN_PASSWORD is required." }
+        // The map is read before any write. A map that cannot be read would
+        // lose its entries on the first write of this run.
+        val mapPath = ClaudeImportMap.pathFor(export, parsed.uuid, generationValue)
+        val map = ClaudeImportMap.load(mapPath, parsed.uuid, generationValue, export)
 
         val previousUser = ShellStateConfiguration.loggedInUser
         val previousCredential = ShellStateConfiguration.loginMetadata
@@ -78,6 +83,7 @@ class ClaudeImportCommands<T : Any>(
                         "Room '$name' was not created."
                     }.id
                 }
+                map.topics[thread.leafUuid] = ClaudeMapTopic(name, roomId.toString())
                 if (thread.pathEndsAtOmittedParent) {
                     omittedParents += thread.leafUuid
                 }
@@ -88,18 +94,23 @@ class ClaudeImportCommands<T : Any>(
                     val sourceId = "$roomId:${turn.uuid}"
                     require("import:$sourceId".length <= 128) { "Message ${turn.uuid} has a request ID above 128 characters." }
                     val senderId = if (turn.sender == "human") humanId else assistantId
-                    requireNotNull(messages.importMessage(MessageImportRequest(turn.text, senderId, roomId, turn.createdAt, sourceId)).block()) {
+                    val imported = requireNotNull(messages.importMessage(MessageImportRequest(turn.text, senderId, roomId, turn.createdAt, sourceId)).block()) {
                         "Message ${turn.uuid} returned no import result."
                     }
+                    map.messages[sourceId] = ClaudeMapMessage(imported.key.id.toString(), roomId.toString(), name)
                     messagesImported++
                 }
+                // Each thread writes the map, so a later failure keeps the
+                // entries of the threads before it.
+                map.write(mapPath)
             }
             return "Topics created: $topicsCreated of ${parsed.threads.size}. " +
                 "Messages imported: $messagesImported. " +
                 "Missing parents: ${omittedParents.size}" +
                 (if (omittedParents.isEmpty()) ". " else " for ${omittedParents.joinToString(", ")}. ") +
                 "Skipped turns: ${parsed.skippedTurns}. Skipped content blocks: ${parsed.skippedBlocks}. " +
-                "Skipped attachments: ${parsed.skippedAttachments}. Skipped files: ${parsed.skippedFiles}."
+                "Skipped attachments: ${parsed.skippedAttachments}. Skipped files: ${parsed.skippedFiles}. " +
+                "Map: $mapPath."
         } finally {
             ShellStateConfiguration.loggedInUser = previousUser
             ShellStateConfiguration.loginMetadata = previousCredential
