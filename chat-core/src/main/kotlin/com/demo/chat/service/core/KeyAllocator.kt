@@ -11,4 +11,7 @@ import com.demo.chat.domain.knownkey.RootKeys
  */
 class KeyAllocator<T>(private val ids: IKeyGenerator<T>, private val rootKeys: RootKeys<T>) {
     fun allocate(domain: ChatDomain): Key<T> = Key.of(ids.nextId(), rootKeys.of(domain).id)
+
+    /** Places an id that the caller supplies under the root of [domain]. It mints nothing. */
+    fun adopt(domain: ChatDomain, id: T): Key<T> = Key.of(id, rootKeys.of(domain).id)
 }
