@@ -12,6 +12,7 @@ import com.demo.chat.index.lucene.storage.MemoryStorage
 import com.demo.chat.index.lucene.storage.StartOutcome
 import com.demo.chat.index.lucene.storage.Started
 import com.demo.chat.service.core.IndexService
+import com.demo.chat.service.core.ProcessLocalIndex
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.Term
@@ -42,7 +43,7 @@ open class LuceneIndex<T, E : Any>(
     private val keyEncoder: Function<String, Key<T>>,
     private val keyReceiver: Function<E, Key<T>>,
     private val fieldKinds: IndexFieldKinds = IndexFieldKinds(emptyMap(), IndexMatch.TEXT),
-) : IndexService<T, E, IndexSearchRequest> {
+) : IndexService<T, E, IndexSearchRequest>, ProcessLocalIndex {
 
     val analyzer = StandardAnalyzer()
 

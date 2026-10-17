@@ -1,6 +1,8 @@
 package com.demo.chat.test.deploy.redis
 
 import com.demo.chat.domain.NodeIdClaimStore
+import com.demo.chat.domain.ServiceLeaseStore
+import com.demo.chat.domain.StoreWriteGate
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -11,6 +13,8 @@ import org.springframework.context.ApplicationListener
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -121,5 +125,74 @@ class RedisClaimBootTests {
         }
 
         Assertions.assertTrue(ready.get())
+    }
+
+    @Test
+    fun `a redis key selector with memory persistence claims a node id and no service lease`() {
+        val ready = AtomicBoolean(false)
+
+        boot(
+            "app.nodeid=12",
+            "app.service.core.key=redis",
+            "app.service.core.persistence=memory",
+            ready = ready
+        ).run().use { context ->
+            Assertions.assertEquals(1, context.getBeansOfType(NodeIdClaimStore::class.java).size)
+            Assertions.assertTrue(context.getBeansOfType(ServiceLeaseStore::class.java).isEmpty())
+            Assertions.assertTrue(context.getBeansOfType(StoreWriteGate::class.java).isEmpty())
+        }
+    }
+
+    /**
+     * The node id claim comes before the first key mint. See `CHAT-lswjobhz`.
+     *
+     * `RootKeyStartup` mints the root keys on an empty store. So a refused
+     * claim on an empty store must leave only the seeded claim. The deployment
+     * reads `redis-topics.host` and `redis-topics.port` alone, and it ignores
+     * `spring.data.redis.database`. So this test uses its own empty container.
+     * The control start proves that a start that passes the claim mints keys.
+     */
+    @Test
+    fun `a refused claim on an empty store mints no key`() {
+        GenericContainer<Nothing>("redis:5.0.14").apply {
+            withExposedPorts(6379)
+            waitingFor(
+                LogMessageWaitStrategy()
+                    .withRegEx(".*Ready to accept connections.*\\s")
+                    .withStartupTimeout(Duration.ofSeconds(60))
+            )
+            start()
+        }.use { empty ->
+            val target = arrayOf(
+                "redis-topics.host=${empty.containerIpAddress}",
+                "redis-topics.port=${empty.getMappedPort(6379)}",
+            )
+            val store = ReactiveStringRedisTemplate(
+                LettuceConnectionFactory(RedisStandaloneConfiguration(empty.containerIpAddress, empty.getMappedPort(6379)))
+                    .apply { afterPropertiesSet() }
+            )
+            store.opsForValue().setIfAbsent("chat:nodeclaim:long:11", "foreign-owner@host-z:1#deadbeef", Duration.ofSeconds(120)).block()
+
+            Assertions.assertThrows(Exception::class.java) {
+                boot(
+                    "app.nodeid=11",
+                    "app.service.core.key=redis",
+                    "app.service.core.persistence=redis",
+                    *target,
+                    ready = AtomicBoolean(false)
+                ).run().close()
+            }
+            Assertions.assertEquals(listOf("chat:nodeclaim:long:11"), store.keys("*").collectList().block())
+
+            boot(
+                "app.nodeid=12",
+                "app.service.core.key=redis",
+                "app.service.core.persistence=redis",
+                *target,
+                ready = AtomicBoolean(false)
+            ).run().close()
+            val minted = store.keys("*").collectList().block()!!.filterNot { it.startsWith("chat:nodeclaim:") }
+            Assertions.assertTrue(minted.isNotEmpty(), "the control start must write keys to the empty store")
+        }
     }
 }

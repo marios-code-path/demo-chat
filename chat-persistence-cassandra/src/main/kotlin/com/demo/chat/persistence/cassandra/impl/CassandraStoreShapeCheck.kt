@@ -33,6 +33,8 @@ class CassandraStoreShapeCheck(
             "auth_metadata" to setOf("principal_root", "target_root"),
             // A pointer row marks its target domain here. See CHAT-erkoxybm.
             "chat_message_id" to setOf("kind"),
+            // The store service leases. See CHAT-lswjobhz.
+            "service_lease" to setOf("name", "owner_id"),
         )
 
         /**

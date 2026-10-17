@@ -30,6 +30,17 @@ CREATE TABLE chat_uuid.node_claim(
     PRIMARY KEY(node_id)
 );
 
+-- Holds the store service leases, such as index:user. One row per claimed
+-- service. The row carries a TTL, so a crashed deployment releases its
+-- services. This table is deliberately absent from truncate-uuid.cql. A live
+-- lease must expire. A test cleanup script must not delete it. See
+-- docs/SERVICE-LEASE.md and CHAT-lswjobhz.
+CREATE TABLE chat_uuid.service_lease(
+    name     text,
+    owner_id text,
+    PRIMARY KEY(name)
+);
+
 CREATE TABLE chat_uuid.kv_pair(
                                   id UUID,
                                   vdata text,

@@ -335,3 +335,69 @@ No deployment enables `app.message.import` in this work. An import before the
 derived-key change can duplicate on rerun. Two simultaneous imports can both
 submit, because the read and write are not atomic. The map holds the latest
 export path alone.
+
+## The store service lease (CHAT-lswjobhz, 2026-10-16)
+
+`CHAT-lswjobhz`. Branch `chat-lswjobhz-shared-store-index`. **This work is not
+merged.** Spec: `docs/superpowers/specs/2026-10-09-store-service-lease-design.md`.
+Plan: `docs/superpowers/plans/2026-10-16-store-service-lease.md`, ten child
+issues. Operator document: `docs/SERVICE-LEASE.md`. The `Checkout` row does
+not move here.
+
+### The rule and its limit
+
+- **On a shared backend, each store service has at most one current lease
+  holder.** A store service is what a `PersistenceServiceBeans` or
+  `IndexServiceBeans` holder returns. A lease name is `<kind>:<domain>`, and a
+  full core claims twelve.
+- **A TTL lease cannot prove that an old process stopped.** The owner accepted
+  this narrow guarantee on 2026-10-16. A holder that pauses longer than the
+  safety margin can still write after replacement. No fencing exists.
+- **A safe swap needs confirmed termination of the old process.** One `ttl` of
+  waiting is not proof.
+- Split deployments stay unsupported.
+
+### What changed
+
+- `LeaseKeeper` renews before the first claim, sends one renewal round
+  together, and runs the close deadline on its own thread.
+- `NodeIdClaimGuard` and `ServiceLeaseGuard` are `SmartLifecycle` beans at
+  `Int.MAX_VALUE - 6144` and `Int.MAX_VALUE - 5120`. The command runtime stops
+  at `Int.MAX_VALUE - 4608`. **A clean Redis close releases the node id lease
+  now, so `CHAT-ocpojbyy` is closed by this work.**
+- `StoreWriteGate` counts each store write to its end. The service guard
+  drains it before the release. A drain timeout keeps the leases.
+- Redis holds `chat:lease:<keyType>:<name>`. Cassandra holds `service_lease`
+  in both keyspace scripts. **An old Cassandra keyspace fails its start and
+  must be recreated.**
+- `CorePersistenceServices` declares its six services as beans, so the gate
+  wraps them.
+
+### Findings during the work
+
+- **RSocket controllers implement `PersistenceStore` and `IndexService`.** A
+  bean-type list would hold them, so names and the gate read the holders.
+- **The Cassandra services were not beans.** A boot check failed on six
+  ungated Cassandra persistence services before the `@Bean` change.
+- **Spring 7.0.9 calls `LifecycleProcessor.stop()` on a failed refresh.** So
+  `stop` releases on a failed start. The `destroy` release is a second path,
+  and its mutation fails no boot test.
+- **A cached store-backed test context holds the leases.**
+  `RedisDeployBootTests` and `CassandraDeployTest` close after their class
+  now. `docs/BUILD-HEALTH.md` records the signature.
+
+### Measured
+
+- Mutations, each alone and restored: five for the keeper and node guard, two
+  for the names, three for the gate, one for the phases, and four on Redis
+  boot. Each failed its target test, except the `destroy` mutation above.
+- `--ci` with an empty `DOCKER_CONFIG`: first run 2689 tests and 5 lease
+  errors, then exit 0 with 30 modules, 2692 tests, 0 failures, 0 errors, 82
+  skipped, and `agent http gate: ok`. No OOM event.
+- **The final gates are at `2b7e64ae`, the head of PR #244.** Two commits
+  followed the 2692-test run: the Reactor `Context` fix, with one new test, and
+  the removal of real-time limits from the lease tests. Default mode: exit 0,
+  30 modules, 2274 tests, 0 failures, 0 errors, 47 skipped. `--ci` mode: exit
+  0, 30 modules, 2693 tests, 0 failures, 0 errors, 82 skipped, and
+  `agent http gate: ok`. Both matched the baseline, and Docker reported no OOM
+  event. `docs/BUILD-HEALTH.md` holds the image ids.

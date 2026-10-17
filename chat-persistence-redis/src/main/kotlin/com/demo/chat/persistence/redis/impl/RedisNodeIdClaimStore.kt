@@ -42,10 +42,10 @@ class RedisNodeIdClaimStore(
             )
 
     override fun renew(nodeId: NodeId, owner: String, ttl: Duration): Mono<ClaimResult> =
-        run(renewScript, nodeId, owner, ttl.toMillis().toString())
+        run(RedisLeaseScripts.renew, nodeId, owner, ttl.toMillis().toString())
 
     override fun release(nodeId: NodeId, owner: String): Mono<Void> =
-        run(releaseScript, nodeId, owner, "0").then()
+        run(RedisLeaseScripts.release, nodeId, owner, "0").then()
 
     private fun attempt(nodeId: NodeId, owner: String, ttl: Duration): Mono<ClaimResult> =
         template.opsForValue().setIfAbsent(key(nodeId), owner, ttl)
@@ -64,45 +64,5 @@ class RedisNodeIdClaimStore(
     ): Mono<ClaimResult> =
         template.execute(script, listOf(key(nodeId)), listOf(owner, millis))
             .next()
-            .map { reply ->
-                when {
-                    reply == "granted" -> ClaimResult.Granted
-                    reply == "lost" -> ClaimResult.Lost
-                    reply.startsWith("denied:") -> ClaimResult.Denied(reply.removePrefix("denied:"))
-                    else -> throw IllegalStateException(
-                        "The $scope returned an unknown claim reply: $reply"
-                    )
-                }
-            }
-
-    companion object {
-        // Lua gives the compare and set that plain commands cannot. The reply
-        // is one string, because ReactiveStringRedisTemplate carries a string
-        // serializer and a mixed Lua array would need a mixed result type.
-        private val renewScript: RedisScript<String> = RedisScript.of(
-            """
-            local v = redis.call('GET', KEYS[1])
-            if v == false then return 'lost' end
-            if v == ARGV[1] then
-                redis.call('PEXPIRE', KEYS[1], ARGV[2])
-                return 'granted'
-            end
-            return 'denied:' .. v
-            """.trimIndent(),
-            String::class.java
-        )
-
-        private val releaseScript: RedisScript<String> = RedisScript.of(
-            """
-            local v = redis.call('GET', KEYS[1])
-            if v == false then return 'lost' end
-            if v == ARGV[1] then
-                redis.call('DEL', KEYS[1])
-                return 'granted'
-            end
-            return 'denied:' .. v
-            """.trimIndent(),
-            String::class.java
-        )
-    }
+            .map { reply -> RedisLeaseScripts.result(reply, scope) }
 }

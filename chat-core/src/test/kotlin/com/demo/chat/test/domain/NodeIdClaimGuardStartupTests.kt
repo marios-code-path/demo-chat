@@ -22,14 +22,14 @@ class NodeIdClaimGuardStartupTests {
         scheduler: ManualClaimScheduler = ManualClaimScheduler()
     ) = NodeIdClaimGuard(
         stores, NodeId(7), RuntimeOwnerId("core-service@host-a:4711#a3f19c2b"),
-        props, GenericApplicationContext(), scheduler
+        props, GenericApplicationContext(), scheduler, clock = { 0L }
     )
 
     @Test
     fun `one granted store starts and schedules a renew`() {
         val store = FakeClaimStore("redis")
         val scheduler = ManualClaimScheduler()
-        guard(listOf(store), scheduler).afterPropertiesSet()
+        guard(listOf(store), scheduler).start()
 
         Assertions.assertEquals(listOf("claim:redis"), store.calls)
         Assertions.assertNotNull(scheduler.periodic)
@@ -39,7 +39,7 @@ class NodeIdClaimGuardStartupTests {
     fun `two stores are claimed in backend name order`() {
         val redis = FakeClaimStore("redis")
         val cassandra = FakeClaimStore("cassandra")
-        guard(listOf(redis, cassandra)).afterPropertiesSet()
+        guard(listOf(redis, cassandra)).start()
 
         Assertions.assertEquals(listOf("claim:cassandra"), cassandra.calls)
         Assertions.assertEquals(listOf("claim:redis"), redis.calls)
@@ -54,7 +54,7 @@ class NodeIdClaimGuardStartupTests {
         )
 
         val thrown = Assertions.assertThrows(NodeIdClaimException::class.java) {
-            guard(listOf(redis, cassandra)).afterPropertiesSet()
+            guard(listOf(redis, cassandra)).start()
         }
 
         Assertions.assertEquals(listOf("claim:cassandra", "release:cassandra"), cassandra.calls)
@@ -68,7 +68,7 @@ class NodeIdClaimGuardStartupTests {
         val redis = FakeClaimStore("redis", claimAnswer = { throw IllegalStateException("redis is down") })
 
         Assertions.assertThrows(Exception::class.java) {
-            guard(listOf(redis, cassandra)).afterPropertiesSet()
+            guard(listOf(redis, cassandra)).start()
         }
 
         Assertions.assertEquals(listOf("claim:cassandra", "release:cassandra"), cassandra.calls)
@@ -89,7 +89,7 @@ class NodeIdClaimGuardStartupTests {
         val redis = FakeClaimStore("redis", claimAnswer = { ClaimResult.Denied("other") })
 
         val thrown = Assertions.assertThrows(NodeIdClaimException::class.java) {
-            guard(listOf(redis, cassandra)).afterPropertiesSet()
+            guard(listOf(redis, cassandra)).start()
         }
         Assertions.assertTrue(thrown.message!!.contains("app.nodeid=7"))
     }
@@ -97,7 +97,7 @@ class NodeIdClaimGuardStartupTests {
     @Test
     fun `the deadline timer is armed after a successful claim`() {
         val scheduler = ManualClaimScheduler()
-        guard(listOf(FakeClaimStore("redis")), scheduler).afterPropertiesSet()
+        guard(listOf(FakeClaimStore("redis")), scheduler).start()
 
         Assertions.assertNotNull(scheduler.once)
         Assertions.assertEquals(Duration.ofSeconds(25), scheduler.onceDelay)
@@ -106,7 +106,7 @@ class NodeIdClaimGuardStartupTests {
     @Test
     fun `no stores means no claim and no schedule`() {
         val scheduler = ManualClaimScheduler()
-        guard(emptyList(), scheduler).afterPropertiesSet()
+        guard(emptyList(), scheduler).start()
 
         Assertions.assertNull(scheduler.periodic)
         Assertions.assertNull(scheduler.once)
