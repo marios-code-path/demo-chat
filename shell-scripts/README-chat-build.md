@@ -152,8 +152,8 @@ volume mounts at `/var/lib/chat/vector`. The store creates one directory for
 each embedding identity.
 
 The vector launch exposes `/actuator/vectorindex`. Trigger a rebuild after
-imports, then wait for a `SUCCEEDED` job. See `docs/VECTOR-RECALL-API.md`.
-The existing launch without vector options still serves scenario 1.
+imports. Trigger a rebuild after each restart. Wait for a `SUCCEEDED` job.
+See `docs/VECTOR-RECALL-API.md`.
 
 Start the shell with the same key type. `--build` installs the current shell
 modules first:

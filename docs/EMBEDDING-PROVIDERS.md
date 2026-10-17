@@ -290,6 +290,7 @@ The endpoint above uses `http://node2.lan:6090/v1` as its base URL. The SDK
 adds `/embeddings`.
 
 The launch exposes `/actuator/vectorindex`. Trigger one rebuild after imports.
+Trigger a rebuild after each restart.
 Wait until its durable job reports `SUCCEEDED`. Then search for an imported
 message. See `docs/VECTOR-RECALL-API.md` for the rebuild procedure.
 
