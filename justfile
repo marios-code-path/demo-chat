@@ -86,7 +86,7 @@ deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	stop=false
 	extra=()
 	# Read every flag before any action, so a stop never ignores a later flag.
-	# chat-build checks the key type value, so a new key type needs no change here.
+	# chat-build checks the key type value. This recipe holds no list of key types.
 	while (($# > 0)); do
 	    case "$1" in
 	        --stop) stop=true ;;

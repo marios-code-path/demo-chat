@@ -289,8 +289,11 @@ before using either flag, or the single-module build cannot resolve them.
 ### Key type (pick one)
 
 `--long` (Snowflake, default) or `--uuid`. `--key-type TYPE` selects the same
-feature by name. Its choices are the features of the `keytype` group, so a new
-key type feature adds a choice with no other change.
+feature by name. Its choices are the features of the `keytype` group.
+
+Key types are rare and stable. A new key type needs its keyspace, its
+integration code, and its own acceptance tests. The `--key-type` option does
+not make one cheaper to add.
 
 ### Other
 

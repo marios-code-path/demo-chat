@@ -542,8 +542,8 @@ class BuildContext:
         self.args = args
         self.selected = self._resolve_features()
         self.backend = self._resolve_backend()
-        # The key type is the selected feature of the keytype group. A new
-        # keytype feature needs no change here. See CHAT-brlctoze.
+        # The key type is the selected feature of the keytype group, so
+        # --key-type and the feature flags agree. See CHAT-brlctoze.
         self.key_type = next(
             (n for n in self.selected if FEATURES[n].group == "keytype"), "long")
         self.node_id = args.node_id
@@ -1079,8 +1079,8 @@ def build_parser() -> argparse.ArgumentParser:
                              help="index provider for a Cassandra core")
             sub.add_argument("--pubsub", choices=("memory", "redis-pubsub"),
                              help="pub/sub provider for a Cassandra core")
-        # The choices come from the keytype feature group, so a new key type
-        # plugs in as a feature. See CHAT-brlctoze.
+        # The choices are the keytype features, so --key-type and the feature
+        # flags name the same key types. See CHAT-brlctoze.
         key_types = [n for n in service.available_features
                      if FEATURES[n].group == "keytype"]
         if key_types:
