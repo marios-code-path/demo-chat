@@ -204,6 +204,29 @@ if [[ "$dry_run" == true ]]; then
     exit 0
 fi
 
+status() { printf '[chat-deploy] %s\n' "$1"; }
+
+# The install and the image build write their output to this log. conda run
+# holds output until its command ends, so a terminal saw nothing for minutes.
+# --no-capture-output streams it, and the log keeps it. See CHAT-mzireodl.
+log_root="${TMPDIR:-/tmp}"
+build_log="$(mktemp "${log_root%/}/chat-deploy-build.XXXXXX")"
+status "Build log: $build_log"
+
+# run_stage NAME COMMAND... runs one build stage into the build log. It prints
+# the stage time, or the stage name and the end of the log on a failure.
+run_stage() {
+    local name="$1" started=$SECONDS rc=0
+    shift
+    "$@" >> "$build_log" 2>&1 || rc=$?
+    if ((rc != 0)); then
+        status "$name failed after $((SECONDS - started)) s. Last 40 lines of $build_log:" >&2
+        tail -n 40 "$build_log" >&2
+        exit "$rc"
+    fi
+    status "$name done in $((SECONDS - started)) s."
+}
+
 build_env=(CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host")
 if [[ -n "${CHAT_BUILD_DOCKER_CONFIG:-}" ]]; then
     build_env+=(DOCKER_CONFIG="$CHAT_BUILD_DOCKER_CONFIG")
@@ -213,10 +236,12 @@ else
     trap 'rm -rf -- "$build_docker_config_dir"' EXIT
     build_env+=(DOCKER_CONFIG="$build_docker_config_dir")
 fi
-env CONDA_NO_PLUGINS=true conda run -n base mvn -f "$script_dir/../pom.xml" \
-    -pl "${module##*/}" -am -Pregister-consul -Dmaven.test.skip=true \
-    -Dkotlin.compiler.daemon=false install
-env "${build_env[@]}" conda run -n base \
+status "Installing ${module##*/} and its dependencies."
+run_stage Install env CONDA_NO_PLUGINS=true conda run --no-capture-output -n base \
+    mvn -f "$script_dir/../pom.xml" -pl "${module##*/}" -am -Pregister-consul \
+    -Dmaven.test.skip=true -Dkotlin.compiler.daemon=false install
+status "Building the core image $image_ref."
+run_stage 'Image build' env "${build_env[@]}" conda run --no-capture-output -n base \
     "$script_dir/chat-build" core "${build_args[@]}"
 
 compose_args=(-f "$compose_file")
@@ -226,6 +251,7 @@ fi
 if [[ "$pubsub" == redis-pubsub ]]; then
     compose_args+=(-f "$redis_compose_file")
 fi
+status "Starting the core container."
 CORE_IMAGE="$image_ref" docker compose -p chat-deploy-core "${compose_args[@]}" \
     up -d core-service-rsocket
 
@@ -233,26 +259,37 @@ core_health_port="${CORE_MGMT_PORT:-6791}"
 core_ready=false
 core_health_attempts=60
 if [[ "$backend" == cassandra ]]; then core_health_attempts=120; fi
+status "Waiting for core health on port $core_health_port (up to $core_health_attempts attempts)."
+wait_started=$SECONDS
 for ((attempt = 1; attempt <= core_health_attempts; attempt++)); do
     if curl --connect-timeout 2 --max-time 3 --fail --silent \
         "http://127.0.0.1:$core_health_port/actuator/health" >/dev/null; then
         core_ready=true
         break
     fi
+    if ((attempt % 10 == 0)); then
+        status "Core is still starting (attempt $attempt of $core_health_attempts)."
+    fi
     sleep 1
 done
 
 if [[ "$core_ready" == false ]]; then
     echo "chat-deploy: core did not become ready on port $core_health_port" >&2
+    echo "chat-deploy: read 'docker logs chat-deploy-core-core-service-rsocket-1'" >&2
     exit 1
 fi
+status "Core is healthy after $((SECONDS - wait_started)) s."
 
+status "Waiting for the Consul registration (up to 30 attempts)."
 for ((attempt = 1; attempt <= 30; attempt++)); do
     registered="$(curl --connect-timeout 2 --max-time 3 --fail --silent \
         "http://$consul_host:${CONSUL_PORT:-8500}/v1/health/service/core-service-rsocket?passing=true")" || registered=''
     if [[ -n "$registered" && "$registered" != '[]' ]]; then
         echo "Core is ready on port $core_health_port and registered in Consul"
         exit 0
+    fi
+    if ((attempt % 10 == 0)); then
+        status "Core is not registered in Consul yet (attempt $attempt of 30)."
     fi
     sleep 1
 done

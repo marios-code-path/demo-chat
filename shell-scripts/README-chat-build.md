@@ -136,6 +136,15 @@ The launcher applies `keyspace-uuid.cql` only when `chat_uuid` is absent. A
 `chat_uuid` keyspace from before 2026-10-16 fails the start, because it lacks
 the `UUID` message columns and the `service_lease` table. Drop it, and the
 next start creates it again. `just check-deploy-recipe` checks these flags.
+
+A deployment prints one `[chat-deploy]` line at the start of each stage. The
+stages are the install, the image build, the container start, the health
+wait, and the Consul registration. The install and the image build print
+their time. Their Maven output goes to the build log that the first line
+names. A failed stage prints its name and the last 40 lines of that log. The
+two waits print a line every 10 attempts. The last line is
+`Core is ready on port 6791 and registered in Consul`.
+
 Stop this composition with the same task:
 
 ```bash
