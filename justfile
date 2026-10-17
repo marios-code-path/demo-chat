@@ -24,6 +24,10 @@ check-ci:
 check-flags:
 	./shell-scripts/test-flags.sh
 
+# Check the flags of the durable deploy recipe. Starts no service.
+check-deploy-recipe:
+	./shell-scripts/test-deploy-recipe.sh
+
 # Fail when a module pom declares a third-party dependency version.
 check-deps:
 	./shell-scripts/check-dependency-versions.sh
@@ -73,18 +77,31 @@ build-cassandra node_id:
 	./shell-scripts/chat-build core --cassandra --build --notls --node-id {{node_id}}
 
 # Deploy or stop core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
-deploy-core-cassandra-lucene-redis node_id="7" action="":
+# Flags: --uuid selects the uuid key type and keyspace chat_uuid. --dry-run prints the plan. --stop stops.
+[positional-arguments]
+deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	#!/usr/bin/env bash
 	set -euo pipefail
-	node_id={{quote(node_id)}}
-	action={{quote(action)}}
-	if [[ "$node_id" == --stop || "$action" == --stop ]]; then
+	node_id=7
+	stop=false
+	extra=()
+	# Read every flag before any action, so a stop never ignores a later flag.
+	for arg in "$@"; do
+	    case "$arg" in
+	        --stop) stop=true ;;
+	        --uuid|--dry-run) extra+=("$arg") ;;
+	        -*) echo "Unknown deployment flag: $arg" >&2; exit 2 ;;
+	        *) node_id="${arg#node_id=}" ;;
+	    esac
+	done
+	if [[ "$stop" == true ]]; then
+	    if ((${#extra[@]} > 0)); then
+	        echo "--stop takes no other flag" >&2
+	        exit 2
+	    fi
 	    ./shell-scripts/chat-deploy core --stop
-	elif [[ -n "$action" ]]; then
-	    echo "Unknown deployment flag: $action" >&2
-	    exit 2
 	else
-	    ./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id "${node_id#node_id=}"
+	    ./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id "$node_id" ${extra[@]+"${extra[@]}"}
 	fi
 
 # Build and start the authorization server container after checking its dependencies.
