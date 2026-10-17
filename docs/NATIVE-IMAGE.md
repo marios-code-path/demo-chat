@@ -104,8 +104,17 @@ property at launch cannot add a bean that the build left out.
 
 This conflicts with decision 1 of the capability design: one classpath with
 every provider, and selection at launch. A native image can carry one
-composition only, and the build must name it. That choice is an owner
-decision. `CHAT-arcqfjuc` does not make it. `CHAT-iudsqbuj` holds it.
+composition only, and the build must name it.
+
+**The owner decided on 2026-10-16.** Launch time selection stays the rule for
+the JVM images. A native image is one named, fixed composition, and its build
+names that composition with properties at AOT time. The first native image is
+the authorization server. `CHAT-iudsqbuj` holds the decision and the plan.
+
+Spring profiles are fixed at AOT time too. The authorization server selects
+beans with `@Profile("memory")`, `@Profile("jdbc")`,
+`@Profile("client-kv-store")`, and `@Profile("client-init")`. So its native
+build must name the profiles of the deployed launch.
 
 Observed failures:
 
