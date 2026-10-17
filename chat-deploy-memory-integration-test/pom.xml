@@ -44,7 +44,7 @@ backend has no claim store, so no lease check applies. -->
 -Dspring.cloud.consul.config.enabled=false
 -Dspring.cloud.consul.discovery.enabled=false
 -Dspring.cloud.consul.enabled=false</shellImageJavaOptions>
-        <mainClass>com.demo.chat.ChatApp</mainClass>
+        <mainClass>com.demo.chat.ChatAppKt</mainClass>
     </properties>
     <profiles>
         <profile>

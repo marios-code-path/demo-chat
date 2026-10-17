@@ -578,7 +578,7 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   start on one backend is not evidence that another backend starts.
 
   **A deploy module does not ship a main class. It inherits one.**
-  `com.demo.chat.ChatApp` lives in `chat-deploy`, and each backend module
+  `com.demo.chat.ChatAppKt` lives in `chat-deploy`, and each backend module
   depends on that artifact. `chat-deploy-memory` and `chat-deploy-kafka`
   declare no `mainClass` at all, and both launch. So the defect in
   `chat-deploy-cassandra` was **an override that named the wrong class**, not
@@ -605,6 +605,18 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   `IMAGE_REPO_PREFIX` in the environment until 2026-09-22, and only
   `shell-scripts/build.sh` defaulted it. `CHAT-gkwqnnxn` moved the default into
   the parent pom, so every entry point carries it now.
+
+  **The entry class is `com.demo.chat.ChatAppKt` since `CHAT-arcqfjuc`.**
+  `main` moved out of the companion object, so a native image finds its AOT
+  initializer. Measured on 2026-10-16: the default mode exited 0 with 30
+  modules, 2278 tests, 0 failures, 0 errors and 47 skipped. `--ci` mode, with
+  an empty `DOCKER_CONFIG`, exited 0 with 30 modules, 2697 tests, 0 failures,
+  0 errors, 82 skipped, and `agent http gate: ok`. Four new
+  `EntryPointShapeTests` cases account for the change from 2274 and 2693.
+  Both runs reported that the baseline matched. Docker reported no OOM event
+  from 18:33 to 18:49 PDT. Both shell image manifests read
+  `Start-Class: com.demo.chat.ChatAppKt`. The long shell image is
+  `sha256:a3910a60e9f7`, and the UUID shell image is `sha256:a1f3f1765bbe`.
 - **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
   `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
   holds a `credsStore` together with empty `auths` entries makes the build fail

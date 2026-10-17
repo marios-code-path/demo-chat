@@ -8,12 +8,14 @@ import reactor.core.publisher.Hooks
     scanBasePackages = ["com.demo.chat.config"],
     proxyBeanMethods = false
 )
-class ChatApp {
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            Hooks.onOperatorDebug()
-            runApplication<ChatApp>(*args)
-        }
-    }
+class ChatApp
+
+/**
+ * The entry point, in the class `com.demo.chat.ChatAppKt`. It is top level, not
+ * in a companion object. A native image reads the class of this frame to find
+ * its AOT initializer. See `docs/NATIVE-IMAGE.md` and `CHAT-arcqfjuc`.
+ */
+fun main(args: Array<String>) {
+    Hooks.onOperatorDebug()
+    runApplication<ChatApp>(*args)
 }

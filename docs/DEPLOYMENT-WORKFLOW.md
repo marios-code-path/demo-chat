@@ -180,7 +180,7 @@ A start looks like this, and both lines matter:
 
 ```
 app.nodeid=7 claimed in cassandra keyspace chat_long
-Started ChatApp.Companion in 3.172 seconds
+Started ChatAppKt in 3.172 seconds
 ```
 
 The claim line appears only for a backend that claims. A deployment on memory
@@ -230,7 +230,7 @@ separate service launches.
 
 | Signal | Meaning |
 |---|---|
-| `Started ChatApp.Companion in N seconds` | the context refreshed and the servers bound |
+| `Started ChatAppKt in N seconds` | the context refreshed and the servers bound |
 | `claimed in <store>` | the node id lease was taken |
 | `Netty RSocket started on port` | the RSocket transport is listening |
 | `Tomcat started on port` | the authorization server is listening |

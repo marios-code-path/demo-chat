@@ -16,7 +16,7 @@
         <!-- Composition root: chat-build targets this module directly
              for the memory backend. -->
         <appImageName>${image.repo}/chat-deploy-memory:${project.version}</appImageName>
-        <appMainClass>com.demo.chat.ChatApp</appMainClass>
+        <appMainClass>com.demo.chat.ChatAppKt</appMainClass>
     </properties>
 
     <dependencies>

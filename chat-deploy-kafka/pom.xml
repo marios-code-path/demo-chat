@@ -17,7 +17,7 @@
         <!-- Composition root: chat-build targets this module directly
              for the kafka backend. -->
         <appImageName>${image.repo}/chat-deploy-kafka:${project.version}</appImageName>
-        <appMainClass>com.demo.chat.ChatApp</appMainClass>
+        <appMainClass>com.demo.chat.ChatAppKt</appMainClass>
     </properties>
 
     <dependencies>
