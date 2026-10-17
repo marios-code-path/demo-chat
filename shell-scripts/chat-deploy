@@ -143,6 +143,18 @@ if [[ "$consul_host" == 127.0.0.1 || "$consul_host" == localhost ]]; then
     container_consul_host=host.docker.internal
 fi
 
+# The plan comes before any container starts. chat-build checks every flag,
+# and an unknown flag stops the launch before Docker changes. The Cassandra
+# keyspace follows the key type in the plan, so --key-type and --uuid select
+# the same keyspace. See CHAT-brlctoze.
+plan="$(env CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host" \
+    conda run -n base "$script_dir/chat-build" core "${build_args[@]}" --dry-run)"
+key_type="$(sed -n 's/^[[:space:]]*-Dapp\.key\.type=\([^[:space:]]*\).*/\1/p' <<< "$plan" | head -n 1)"
+if [[ -z "$key_type" ]]; then
+    echo 'chat-deploy: the chat-build plan names no app.key.type' >&2
+    exit 1
+fi
+
 if [[ "$dry_run" == false ]]; then
     if [[ -z "${CHAT_SERVICE_PASSWORD:-}" ]]; then
         echo 'chat-deploy: set CHAT_SERVICE_PASSWORD before starting core' >&2
@@ -156,7 +168,7 @@ if [[ "$dry_run" == false ]]; then
     fi
     if [[ "$backend" == cassandra ]]; then
         "$script_dir/run-cassandra-in-docker.sh" "${CASSANDRA_CONTACT_POINTS}" "${CASSANDRA_PORT:-9042}" \
-            "$( [[ " ${build_args[*]} " == *' --uuid '* ]] && echo uuid || echo long )" "$chat_network"
+            "$key_type" "$chat_network"
     fi
     if [[ "$pubsub" == redis-pubsub ]]; then
         export REDIS_TOPICS_HOST="${REDIS_TOPICS_HOST:-redis}"
@@ -164,8 +176,6 @@ if [[ "$dry_run" == false ]]; then
     fi
 fi
 
-plan="$(env CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host" \
-    conda run -n base "$script_dir/chat-build" core "${build_args[@]}" --dry-run)"
 image="$(awk '/^# image:/ {print $3}' <<< "$plan")"
 module="$(awk '/^# module:/ {print $3}' <<< "$plan")"
 image_version="$(sed -n 's/^[[:space:]]*<version>\([^<]*\)<\/version>.*/\1/p' \
