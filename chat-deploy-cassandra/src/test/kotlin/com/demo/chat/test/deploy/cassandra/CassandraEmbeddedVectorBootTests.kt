@@ -4,6 +4,7 @@ import com.demo.chat.ChatApp
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.GlobalRecallRequest
+import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.MessageImportRequest
 import com.demo.chat.domain.User
@@ -11,6 +12,7 @@ import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.command.ImportedMessageId
+import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.VectorIndexJobStore
@@ -34,9 +36,9 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import java.time.Duration
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 
 @SpringBootTest(
@@ -126,17 +128,31 @@ class CassandraEmbeddedVectorBootTests : CassandraContainerBase() {
             .contextWrite(ReactiveSecurityContextHolder.withAuthentication(admin))
             .block(Duration.ofSeconds(30))!!
 
+        val triggerAt = Instant.now().truncatedTo(ChronoUnit.MILLIS)
         client.post().uri("/actuator/vectorindex")
             .headers { it.setBasicAuth("actuator", "actuator") }
             .exchange()
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.accepted").isEqualTo(true)
+        Flux.interval(Duration.ZERO, Duration.ofMillis(100))
+            .filter { !reindex.status().running }
+            .next()
+            .block(Duration.ofSeconds(60))
+
         val job = Flux.interval(Duration.ZERO, Duration.ofMillis(100))
-            .flatMap { Mono.justOrEmpty(reindex.status().coveringJob).flatMap(jobs::readJob) }
+            .concatMap {
+                jobs.listJobTopics()
+                    .filter { JobTopicNames.matches(it.data, 30, "uuid") }
+                    .flatMap { jobs.readJobByTopic(it.key) }
+                    .filter { !it.startedAt.isBefore(triggerAt) }
+                    .collectList()
+                    .filter { it.isNotEmpty() }
+                    .map { found -> found.maxBy(IndexJob<UUID>::startedAt) }
+            }
             .filter { it.outcome != JobOutcome.RUNNING }
             .next()
-            .block(Duration.ofSeconds(60))!!
+            .block(Duration.ofSeconds(15))!!
         assertThat(job.outcome).isEqualTo(JobOutcome.SUCCEEDED)
         assertThat(job.failed).isZero()
 

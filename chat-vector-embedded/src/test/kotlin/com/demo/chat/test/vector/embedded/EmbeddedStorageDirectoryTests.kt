@@ -5,7 +5,11 @@ import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.service.dummy.DummyEmbeddingModel
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import org.springframework.ai.document.Document
 import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.ai.vectorstore.SearchRequest
+import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import java.nio.file.Files
 import java.nio.file.Path
@@ -86,5 +90,46 @@ class EmbeddedStorageDirectoryTests {
                     .describedAs("the bean must store under the identity directory")
                     .isTrue()
             }
+    }
+
+    @Test
+    fun `a reopened store retains vectors and accepts replacement and new writes`(@TempDir base: Path) {
+        val firstId = "message:long:1"
+        val secondId = "message:long:2"
+        val runner = ApplicationContextRunner()
+            .withPropertyValues(
+                "app.service.core.vector=embedded",
+                "app.service.core.vector.embedded.path=$base",
+            )
+            .withBean(EmbeddingModel::class.java, { DummyEmbeddingModel() })
+            .withBean(EmbeddingIdentity::class.java, { EmbeddingIdentity("reopen-v1") })
+            .withUserConfiguration(EmbeddedVectorStoreConfiguration::class.java)
+
+        fun document(id: String, text: String): Document =
+            Document.builder().id(id).text(text).metadata(mapOf("kind" to "message")).build()
+
+        runner.run { context ->
+            assertThat(context).hasNotFailed()
+            context.getBean(VectorStore::class.java).add(listOf(document(firstId, "apple pie")))
+        }
+
+        runner.run { context ->
+            assertThat(context).hasNotFailed()
+            val store = context.getBean(VectorStore::class.java)
+            val saved = store.similaritySearch(SearchRequest.builder().query("apple pie").topK(5).build())
+            assertThat(saved.map { it.id }).containsExactly(firstId)
+
+            store.delete(listOf(firstId))
+            store.add(listOf(document(firstId, "pear tart")))
+            store.add(listOf(document(secondId, "pear cake")))
+        }
+
+        runner.run { context ->
+            assertThat(context).hasNotFailed()
+            val saved = context.getBean(VectorStore::class.java)
+                .similaritySearch(SearchRequest.builder().query("pear").topK(5).build())
+            assertThat(saved.map { it.id }).containsExactlyInAnyOrder(firstId, secondId)
+            assertThat(saved.map { it.text }).containsExactlyInAnyOrder("pear tart", "pear cake")
+        }
     }
 }
