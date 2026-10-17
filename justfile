@@ -29,6 +29,10 @@ check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh
 	./shell-scripts/test-chat-deploy-progress.sh
 
+# Check the flags of the shell launch recipe. Starts no shell.
+check-shell-recipe:
+	./shell-scripts/test-shell-recipe.sh
+
 # Fail when a module pom declares a third-party dependency version.
 check-deps:
 	./shell-scripts/check-dependency-versions.sh
@@ -66,12 +70,24 @@ dry-run-memory node_id="0":
 	./shell-scripts/chat-build core --memory --run --notls --node-id {{node_id}} --init users,rootkeys --dry-run
 
 # Start the interactive shell client. Start a core service first.
-launch-shell node_id="1":
-	./shell-scripts/chat-build shell --run --notls --node-id {{node_id}}
+# Flags go to chat-build. The shell key type must match the core: use --key-type uuid for a uuid core.
+[positional-arguments]
+launch-shell node_id="1" *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	node_id=1
+	if (($# > 0)) && [[ "$1" != -* ]]; then
+	    node_id="${1#node_id=}"
+	    shift
+	fi
+	exec ./shell-scripts/chat-build shell --run --notls --node-id "$node_id" "$@"
 
 # Print the shell client launch command and properties.
-dry-run-shell node_id="1":
-	./shell-scripts/chat-build shell --run --notls --node-id {{node_id}} --dry-run
+[positional-arguments]
+dry-run-shell node_id="1" *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	exec just --justfile {{quote(justfile())}} launch-shell "$@" --dry-run
 
 # Build a Cassandra core service image.
 build-cassandra node_id:
