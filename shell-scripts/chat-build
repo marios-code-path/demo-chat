@@ -665,6 +665,8 @@ class BuildContext:
 
     def endpoint_flags(self) -> list[str]:
         endpoints = list(self.service.management_endpoints)
+        if self.args.service == "core" and self.args.vector:
+            endpoints.append("vectorindex")
         if self.discovery == "consul" and "health" not in endpoints:
             endpoints.append("health")
         if not endpoints:
@@ -845,6 +847,12 @@ class BuildContext:
 
     def service_flags(self) -> list[str]:
         flags = list(self.service.service_flags)
+        if self.args.service == "core" and self.args.vector:
+            flags.extend([
+                f"-Dapp.service.core.vector={self.args.vector}",
+                f"-Dapp.service.core.embedding={self.args.embedding}",
+                "-Dapp.controller.recall=true",
+            ])
         for feat in self._features():
             flags += feat.service_flags
         # A feature that names a backend for any app.service.core.* selector
@@ -1079,6 +1087,10 @@ def build_parser() -> argparse.ArgumentParser:
                              help="index provider for a Cassandra core")
             sub.add_argument("--pubsub", choices=("memory", "redis-pubsub"),
                              help="pub/sub provider for a Cassandra core")
+            sub.add_argument("--vector", choices=("embedded",),
+                             help="embedded vector store for a Cassandra core")
+            sub.add_argument("--embedding", choices=("openai",),
+                             help="OpenAI-compatible embedding provider for a Cassandra core")
         # The choices are the keytype features, so --key-type and the feature
         # flags name the same key types. See CHAT-brlctoze.
         key_types = [n for n in service.available_features
@@ -1115,6 +1127,13 @@ def main() -> int:
     if args.service == "core" and (args.index or args.pubsub) and not args.cassandra:
         print("chat-build: --index and --pubsub require --cassandra", file=sys.stderr)
         return 1
+
+    if args.service == "core" and bool(args.vector) != bool(args.embedding):
+        print("chat-build: --vector and --embedding must be set together", file=sys.stderr)
+        return 2
+    if args.service == "core" and args.vector and not args.cassandra:
+        print("chat-build: --vector and --embedding require --cassandra", file=sys.stderr)
+        return 2
 
     if args.native:
         print("chat-build: native builds are not supported at this time",

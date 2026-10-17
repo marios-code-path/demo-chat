@@ -5,9 +5,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 compose_file="$script_dir/../devops/docker/compose-core.yaml"
 lucene_compose_file="$script_dir/../devops/docker/compose-core-lucene.yaml"
 redis_compose_file="$script_dir/../devops/docker/compose-core-redis.yaml"
+vector_compose_file="$script_dir/../devops/docker/compose-core-vector-embedded.yaml"
 
 if [[ "${1:-}" != core ]]; then
-    echo 'Usage: chat-deploy core --stop OR chat-deploy core --cassandra --pubsub PROVIDER --notls --node-id ID --key-type TYPE' >&2
+    echo 'Usage: chat-deploy core --stop OR chat-deploy core --cassandra --pubsub PROVIDER --notls --node-id ID --key-type TYPE [--vector embedded --embedding openai]' >&2
     exit 2
 fi
 shift
@@ -32,6 +33,8 @@ fi
 backend=''
 pubsub=''
 index=''
+vector=''
+embedding=''
 dry_run=false
 init_phases=''
 build_args=()
@@ -60,6 +63,14 @@ while (($#)); do
                 exit 2
             fi
             index="$2"
+            shift 2
+            ;;
+        --vector|--embedding)
+            if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
+                echo "chat-deploy: $1 needs a provider" >&2
+                exit 2
+            fi
+            if [[ "$1" == --vector ]]; then vector="$2"; else embedding="$2"; fi
             shift 2
             ;;
         --init)
@@ -91,6 +102,14 @@ done
 
 if [[ -z "$backend" ]]; then
     echo 'chat-deploy: select --cassandra or --memory' >&2
+    exit 2
+fi
+if [[ -n "$vector" && -z "$embedding" ]] || [[ -z "$vector" && -n "$embedding" ]]; then
+    echo 'chat-deploy: --vector and --embedding must be set together' >&2
+    exit 2
+fi
+if [[ -n "$vector" && ( "$backend" != cassandra || "$vector" != embedded || "$embedding" != openai ) ]]; then
+    echo 'chat-deploy: this container supports --vector embedded --embedding openai with --cassandra' >&2
     exit 2
 fi
 if [[ -z "$pubsub" ]]; then
@@ -133,6 +152,9 @@ elif [[ ",$init_phases," != *',rootkeys,'* ]]; then
     init_phases="$init_phases,rootkeys"
 fi
 build_args+=(--init "$init_phases" --consul --build)
+if [[ -n "$vector" ]]; then
+    build_args+=(--vector "$vector" --embedding "$embedding")
+fi
 if [[ "$backend" == cassandra ]]; then
     build_args+=(--index "$index" --pubsub "$pubsub")
 fi
@@ -159,6 +181,15 @@ if [[ "$dry_run" == false ]]; then
     if [[ -z "${CHAT_SERVICE_PASSWORD:-}" ]]; then
         echo 'chat-deploy: set CHAT_SERVICE_PASSWORD before starting core' >&2
         exit 2
+    fi
+    if [[ -n "$vector" ]]; then
+        for variable in CHAT_EMBEDDING_OPENAI_BASE_URL CHAT_EMBEDDING_OPENAI_MODEL \
+            CHAT_EMBEDDING_IDENTITY CHAT_EMBEDDING_OPENAI_API_KEY; do
+            if [[ -z "${!variable:-}" ]]; then
+                echo "chat-deploy: set $variable before starting core" >&2
+                exit 2
+            fi
+        done
     fi
     "$script_dir/run-consul-in-docker.sh"
     chat_network="${CHAT_NETWORK:-docker_chatnet}"
@@ -194,6 +225,11 @@ if [[ -z "$image" || -z "$image_version" || -z "$image_template" || \
 fi
 if [[ "$backend" == cassandra && "$plan" != *'/chat-deploy-cassandra'* ]]; then
     echo 'chat-deploy: chat-build did not select the Cassandra deploy module' >&2
+    exit 1
+fi
+if [[ -n "$vector" && ( "$plan" != *"  -Dapp.service.core.vector=$vector"* || \
+                         "$plan" != *"  -Dapp.service.core.embedding=$embedding"* ) ]]; then
+    echo 'chat-deploy: chat-build did not resolve the requested vector pair' >&2
     exit 1
 fi
 
@@ -237,11 +273,11 @@ else
     build_env+=(DOCKER_CONFIG="$build_docker_config_dir")
 fi
 status "Installing ${module##*/} and its dependencies."
-run_stage Install env CONDA_NO_PLUGINS=true conda run --no-capture-output -n base \
+run_stage Install env -u CHAT_EMBEDDING_OPENAI_API_KEY CONDA_NO_PLUGINS=true conda run --no-capture-output -n base \
     mvn -f "$script_dir/../pom.xml" -pl "${module##*/}" -am -Pregister-consul \
     -Dmaven.test.skip=true -Dkotlin.compiler.daemon=false install
 status "Building the core image $image_ref."
-run_stage 'Image build' env "${build_env[@]}" conda run --no-capture-output -n base \
+run_stage 'Image build' env -u CHAT_EMBEDDING_OPENAI_API_KEY "${build_env[@]}" conda run --no-capture-output -n base \
     "$script_dir/chat-build" core "${build_args[@]}"
 
 compose_args=(-f "$compose_file")
@@ -250,6 +286,9 @@ if [[ "$index" == lucene && "$backend" == cassandra ]]; then
 fi
 if [[ "$pubsub" == redis-pubsub ]]; then
     compose_args+=(-f "$redis_compose_file")
+fi
+if [[ "$vector" == embedded ]]; then
+    compose_args+=(-f "$vector_compose_file")
 fi
 status "Starting the core container."
 CORE_IMAGE="$image_ref" docker compose -p chat-deploy-core "${compose_args[@]}" \

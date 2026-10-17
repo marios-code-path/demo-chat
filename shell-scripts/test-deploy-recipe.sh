@@ -75,6 +75,26 @@ expect_plan 'node_id= form with --key-type' \
 expect_plan 'the composition is unchanged with --key-type' \
     -Dapp.service.core.index=lucene -Dapp.service.core.pubsub=redis-pubsub \
     -Dapp.service.core.persistence=cassandra -- 16 --key-type uuid --dry-run
+expect_plan 'embedded vectors and OpenAI embeddings are selected together' \
+    -Dapp.service.core.vector=embedded -Dapp.service.core.embedding=openai \
+    -Dmanagement.endpoint.vectorindex.enabled=true \
+    -- 16 --key-type uuid --vector embedded --embedding openai --dry-run
+expect_refusal 'a vector store needs an embedding provider' \
+    '--vector and --embedding must be set together' \
+    -- 16 --key-type uuid --vector embedded --dry-run
+expect_refusal 'Redis stays limited to live pub/sub' \
+    'supports --vector embedded --embedding openai with --cassandra' \
+    -- 16 --key-type uuid --vector redis --embedding openai --dry-run
+expect_refusal 'a blank vector store is refused' '--vector needs a provider' \
+    -- 16 --key-type uuid --vector '' --embedding openai --dry-run
+secret_plan="$(CHAT_EMBEDDING_OPENAI_API_KEY='test-secret-marker' just "$recipe" 16 \
+    --key-type uuid --vector embedded --embedding openai --dry-run 2>&1)"
+if [[ "$secret_plan" == *'test-secret-marker'* ]]; then
+    echo 'FAIL the image plan contains the embedding API key'
+    failures=$((failures + 1))
+else
+    echo 'ok   the image plan excludes the embedding API key'
+fi
 expect_refusal 'chat-build refuses an unknown key type' "invalid choice: 'bogus'" \
     -- 16 --key-type bogus --dry-run
 expect_refusal '--key-type needs a value' '--key-type needs a value' \

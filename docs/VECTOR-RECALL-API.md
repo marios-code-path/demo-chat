@@ -13,17 +13,18 @@ The application chain requires a valid agent token on every route it owns. See
 
 ## Read this first
 
-**No deployment sets the vector selectors.** The feature is off in every
-composition this repository ships. You must set the properties below yourself.
+The Cassandra deployment accepts `--vector embedded --embedding openai`.
+Those options select the providers together. A launch without the options
+does not enable vector indexing. See `shell-scripts/README-chat-build.md`.
 
-**The embedding model is a mock.** `DummyEmbeddingModel` builds character bigram
+**The examples below use a mock embedding model.** `DummyEmbeddingModel` builds character bigram
 vectors at 256 dimensions. So a search matches on shared character pairs, not on
 meaning. A search for `car` finds `cart` and it does not find `automobile`. Do
 not read the examples below as semantic search.
 
 **The vector store is a derived cache.** The persisted messages are the source
-of truth. A lost store is rebuilt from them, and no deployment mounts a volume
-for it.
+of truth. A lost store is rebuilt from them. The Cassandra vector deployment
+mounts a named volume for the embedded store.
 
 ## Waiting for a rebuild
 

@@ -41,7 +41,7 @@ data class VectorIndexReport<T>(
  * management.endpoints.web.exposure.include=vectorindex
  * ```
  *
- * No deployment in this repository sets either value.
+ * The Cassandra vector option sets both values in the image plan.
  *
  * Both gates are needed. `VectorRecallServiceConfiguration` carries the
  * composite gate at class level and the selectors at bean level, so a

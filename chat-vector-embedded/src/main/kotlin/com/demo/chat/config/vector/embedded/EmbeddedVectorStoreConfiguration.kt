@@ -19,7 +19,7 @@ import java.nio.file.Path
  *
  * The store is a derived cache. The persisted messages are the source of
  * truth. A lost storage directory is a rebuild, not a data loss, so the
- * default path is ephemeral and no deployment mounts a volume.
+ * default path is ephemeral. The Cassandra vector deployment mounts a volume.
  * MessageReindexServiceImpl and VectorIndexStartupAction supply the rebuild.
  * Issue CHAT-oghjsnad delivered them.
  *

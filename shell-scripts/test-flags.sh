@@ -76,6 +76,7 @@ CASES=(
   "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
   "core-agent-brackets|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 0f3a7c21-1b2d-4e5f-8a9b-1c2d3e4f5a6b=Bot_1 --agent 9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b=Bot1"
   "core-build-image|core --memory --build --notls --long --node-id 0"
+  "core-cassandra-vector-embedded|core --cassandra --build --notls --key-type uuid --node-id 0 --vector embedded --embedding openai"
   # Lucene index files. See CHAT-eesnvnad.
   "core-redis-index-root|core --redis --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene"
   "core-redis-index-root-home|core --redis --run --notls --long --node-id 0 --index-root ~/chat-lucene"
@@ -121,6 +122,8 @@ REFUSALS=(
   # --key-type. See CHAT-brlctoze.
   "refuse-key-type-unknown|core --memory --run --notls --key-type bogus --node-id 0|2|invalid choice: 'bogus'"
   "refuse-key-type-conflict|core --memory --run --notls --key-type long --uuid --node-id 0|1|--long conflicts with --uuid"
+  "refuse-vector-without-embedding|core --cassandra --build --notls --key-type uuid --node-id 0 --vector embedded|2|--vector and --embedding must be set together"
+  "refuse-embedding-without-vector|core --cassandra --build --notls --key-type uuid --node-id 0 --embedding openai|2|--vector and --embedding must be set together"
 )
 
 UPDATE=0
