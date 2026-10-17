@@ -41,7 +41,7 @@ key that the deployment trusts.
 
 ```sh
 export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
-./shell-scripts/chat-build authserv --run --notls --node-id 8 \
+./shell-scripts/chat-build authserv --run --notls --node-id 8 --key-type long \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" --profile memory \
   --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
   --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
@@ -151,11 +151,11 @@ default, so the context refuses to start without them.
 #### The supported route: chat-build rest
 
 ```sh
-./shell-scripts/chat-build core --memory --run --notls --node-id 1 --init users,rootkeys \
+./shell-scripts/chat-build core --memory --run --notls --node-id 1 --init users,rootkeys --key-type long \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
   --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
   --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
-./shell-scripts/chat-build rest --run --notls --node-id 2 \
+./shell-scripts/chat-build rest --run --notls --node-id 2 --key-type long \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
   --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
   --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude

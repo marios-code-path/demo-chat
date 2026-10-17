@@ -111,6 +111,13 @@ REFUSALS=(
   "refuse-index-root-service|rest --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root requires the core service"
   "refuse-index-root-cassandra|core --cassandra --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root has no effect with --cassandra"
   "refuse-index-root-build|core --redis --build --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root cannot be baked into an image"
+  # A deployment names its key type, and none is a default. See CHAT-ehpgyapa.
+  "refuse-no-key-type-core|core --memory --run --notls --node-id 0|2|core needs a key type. Use --key-type TYPE with long or uuid."
+  "refuse-no-key-type-core-image|core --cassandra --build --notls --node-id 0|2|core needs a key type. Use --key-type TYPE with long or uuid."
+  "refuse-no-key-type-rest|rest --run --notls --node-id 0|2|rest needs a key type. Use --key-type TYPE with long or uuid."
+  "refuse-no-key-type-gateway|gateway --run --notls --node-id 0|2|gateway needs a key type. Use --key-type TYPE with long or uuid."
+  "refuse-no-key-type-authserv|authserv --run --notls --node-id 0 --jwk $GOLDEN_JWK|2|authserv needs a key type. Use --key-type TYPE with long or uuid."
+  "refuse-no-key-type-shell|shell --run --notls --node-id 0|2|shell needs a key type. Use --key-type TYPE with long or uuid."
   # --key-type. See CHAT-brlctoze.
   "refuse-key-type-unknown|core --memory --run --notls --key-type bogus --node-id 0|2|invalid choice: 'bogus'"
   "refuse-key-type-conflict|core --memory --run --notls --key-type long --uuid --node-id 0|1|--long conflicts with --uuid"

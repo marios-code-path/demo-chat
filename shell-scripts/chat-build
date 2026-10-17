@@ -7,9 +7,9 @@ Spring properties and JVM flags. The CLI resolves the requested features against
 a Service definition, composes JAVA_TOOL_OPTIONS in the same order build-app.sh
 does, writes an env file, and runs Maven.
 
-    chat-build core --memory --run --notls
+    chat-build core --memory --run --notls --key-type long
     chat-build core --kafka --build --notls --uuid
-    chat-build rest --run --notls --dry-run
+    chat-build rest --run --notls --key-type long --dry-run
 
 The module is chat-deploy for client-shaped services, chat-authorization-server
 for authserv, and chat-deploy-<backend> when a backend names its own composition
@@ -352,7 +352,7 @@ SERVICES: dict[str, Service] = {
         deployment_name="core-service-rsocket",
         image_name="{backend}-core-service-rsocket",
         default_backend="memory",
-        default_features=["rsocket", "local", "long"],
+        default_features=["rsocket", "local"],
         root_keys="store",
         service_flags=CORE_SERVICE_FLAGS,
         opt_flags=["-Dlogging.level.io.rsocket.FrameLogger=OFF"],
@@ -373,7 +373,7 @@ SERVICES: dict[str, Service] = {
         deployment_name="core-service-http",
         image_name="chat-rest",
         default_backend="client",
-        default_features=["rest", "local", "long"],
+        default_features=["rest", "local"],
         client_proto="rsocket",
         client_flags=[
             "-Dapp.client.protocol=rsocket",
@@ -404,7 +404,7 @@ SERVICES: dict[str, Service] = {
         deployment_name="chat-gateway",
         image_name="chat-gateway",
         default_backend="client",
-        default_features=["gateway", "local", "long"],
+        default_features=["gateway", "local"],
         opt_flags=[f"-Dapp.rest.port={CORE_MGMT_PORT}"],
         management_endpoints=["shutdown", "health"],
         port_flags_fn=lambda: [
@@ -421,7 +421,7 @@ SERVICES: dict[str, Service] = {
         deployment_name="chat-authserv",
         image_name="chat-authserv",
         default_backend="client",
-        default_features=["local", "long"],
+        default_features=["local"],
         # The authorization server reads no root. Its application.yml declares
         # the same role, so the launch and the application agree.
         root_keys="none",
@@ -465,7 +465,7 @@ SERVICES: dict[str, Service] = {
         deployment_name="chat-shell",
         image_name="chat-shell",
         default_backend="client",
-        default_features=["shell", "local", "long"],
+        default_features=["shell", "local"],
         client_proto="rsocket",
         client_flags=[
             "-Dapp.client.protocol=rsocket",
@@ -544,8 +544,8 @@ class BuildContext:
         self.backend = self._resolve_backend()
         # The key type is the selected feature of the keytype group, so
         # --key-type and the feature flags agree. See CHAT-brlctoze.
-        self.key_type = next(
-            (n for n in self.selected if FEATURES[n].group == "keytype"), "long")
+        # main() refuses a launch with no key type, so one is always selected.
+        self.key_type = next(n for n in self.selected if FEATURES[n].group == "keytype")
         self.node_id = args.node_id
         self.discovery = "consul" if "consul" in self.selected else "local"
         self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
@@ -1067,7 +1067,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="chat-build",
         description="Compose and run demo-chat Maven builds from feature flags.",
-        epilog="Example: chat-build core --memory --run --notls --init users,rootkeys",
+        epilog="Example: chat-build core --memory --run --notls --key-type long --node-id 0 --init users,rootkeys",
     )
     subparsers = parser.add_subparsers(dest="service", required=True,
                                        metavar="SERVICE")
@@ -1100,6 +1100,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+
+    # Every run and every image build is a deployment, and a deployment names
+    # its key type. No key type is a default. See CHAT-ehpgyapa.
+    key_types = [n for n in SERVICES[args.service].available_features
+                 if FEATURES[n].group == "keytype"]
+    if key_types and not (getattr(args, "key_type", None)
+                          or any(getattr(args, n, False) for n in key_types)):
+        print(f"chat-build: {args.service} needs a key type. Use --key-type TYPE with "
+              f"{' or '.join(key_types)}. A launch and an image build have no default "
+              f"key type.", file=sys.stderr)
+        return 2
 
     if args.service == "core" and (args.index or args.pubsub) and not args.cassandra:
         print("chat-build: --index and --pubsub require --cassandra", file=sys.stderr)

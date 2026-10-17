@@ -9,7 +9,7 @@ declarative feature flags. It replaces the flag assembly spread across
 Python 3.10+, stdlib only. No virtualenv, no `pip install`.
 
 ```bash
-./shell-scripts/chat-build core --memory --run --notls --node-id 0
+./shell-scripts/chat-build core --memory --run --notls --node-id 0 --key-type long
 # or via the wrapper
 ./shell-scripts/run core --memory --run --notls --node-id 0
 ```
@@ -23,25 +23,25 @@ chat-build keeps emitting the flags recorded under `golden/`.
 
 ```bash
 # Core RSocket service, in-memory backend, seeding users and root keys
-chat-build core --memory --run --notls --node-id 0 --init users,rootkeys
+chat-build core --memory --run --notls --node-id 0 --init users,rootkeys --key-type long
 
 # Same, but Cassandra-backed with UUID keys
 chat-build core --cassandra --run --notls --node-id 0 --uuid --init users,rootkeys
 
 # Kafka backend (Kafka messaging, memory persistence, Lucene index)
-chat-build core --kafka --run --notls --node-id 0
+chat-build core --kafka --run --notls --node-id 0 --key-type long
 
 # REST facade (talks to core over RSocket)
-chat-build rest --run --notls --node-id 0
+chat-build rest --run --notls --node-id 0 --key-type long
 
 # Interactive shell client
-chat-build shell --run --notls --node-id 0
+chat-build shell --run --notls --node-id 0 --key-type long
 
 # Build a container image instead of running
-chat-build core --cassandra --build --notls --node-id 0
+chat-build core --cassandra --build --notls --node-id 0 --key-type long
 
 # See what would happen, run nothing
-chat-build core --memory --run --notls --node-id 0 --dry-run
+chat-build core --memory --run --notls --node-id 0 --dry-run --key-type long
 ```
 
 `--dry-run` prints the resolved feature set, the Maven command, every
@@ -111,16 +111,17 @@ Start the mixed Cassandra, Lucene, and Redis core container:
 
 ```bash
 export CHAT_SERVICE_PASSWORD='<service password>'
-just deploy-core-cassandra-lucene-redis
+just deploy-core-cassandra-lucene-redis --key-type long
 ```
 
 The task uses node ID 7. Use `node_id=16` or `16` to select node ID 16.
 The task selects the memory command bus through `chat-build`.
 
-The task uses the `long` key type and keyspace `chat_long` by default.
-Add `--key-type uuid` to use the `uuid` key type and keyspace `chat_uuid`.
-Claude import supports the `uuid` key type alone. The task passes the value
-to `chat-build`, which checks it:
+The task needs `--key-type TYPE`, and no key type is a default. Without it,
+the task exits 2 before any container starts. `long` uses keyspace
+`chat_long`, and `uuid` uses keyspace `chat_uuid`. Claude import supports the
+`uuid` key type alone. The task passes the value to `chat-build`, which checks
+it:
 
 ```bash
 just deploy-core-cassandra-lucene-redis 16 --key-type uuid
@@ -178,7 +179,7 @@ Set `CHAT_SERVICE_PASSWORD`, `SPRING_DATASOURCE_USERNAME`, and
 `SPRING_DATASOURCE_PASSWORD`. Start the authserv container with:
 
 ```bash
-just deploy-authserv jwk=encrypt-keys/authserv.jwk
+just deploy-authserv jwk=encrypt-keys/authserv.jwk --key-type long
 ```
 
 The recipe checks core health and its passing RSocket Consul registration.
@@ -302,10 +303,12 @@ before using either flag, or the single-module build cannot resolve them.
 | `--local` | Default. Disables Consul. A client with no store reads the root key snapshot from the actuator of a store node over HTTP. |
 | `--consul` | Adds `register-consul`. A store node with the `rootkeys` phase publishes the root key snapshot to Consul KV. A client with no store reads that snapshot. Falls back to `docker inspect` to find the Consul IP if `CONSUL_HOST` is unset. |
 
-### Key type (pick one)
+### Key type (required)
 
-`--long` (Snowflake, default) or `--uuid`. `--key-type TYPE` selects the same
-feature by name. Its choices are the features of the `keytype` group.
+`--long` (Snowflake) or `--uuid`. `--key-type TYPE` selects the same feature by
+name. Its choices are the features of the `keytype` group. Every run and every
+image build is a deployment, and a deployment names its key type. No key type
+is a default. `chat-build` exits 2 without one.
 
 Key types are rare and stable. A new key type needs its keyspace, its
 integration code, and its own acceptance tests. The `--key-type` option does
@@ -399,14 +402,14 @@ from muscle memory, an old runbook, or a branch that predates their removal.
 
 | Old | New |
 |---|---|
-| `run-core.sh runlocal memory -c notls` | `chat-build core --memory --run --notls --node-id 0 --init users,rootkeys` |
-| `run-core.sh runlocal cassandra -c notls` | `chat-build core --cassandra --run --notls --node-id 0 --init users,rootkeys` |
-| `run-core.sh runlocal kafka` | `chat-build core --kafka --run --notls --node-id 0` |
-| `run-core.sh build memory -c notls` | `chat-build core --memory --build --notls --node-id 0` |
-| `run-rest.sh local` | `chat-build rest --run --notls --node-id 0` |
-| `run-gateway.sh local` | `chat-build gateway --run --notls --node-id 0` |
-| `run-authserv.sh local` | `chat-build authserv --run --notls --node-id 0` |
-| `run-shell.sh local` | `chat-build shell --run --notls --node-id 0` |
+| `run-core.sh runlocal memory -c notls` | `chat-build core --memory --run --notls --node-id 0 --init users,rootkeys --key-type long` |
+| `run-core.sh runlocal cassandra -c notls` | `chat-build core --cassandra --run --notls --node-id 0 --init users,rootkeys --key-type long` |
+| `run-core.sh runlocal kafka` | `chat-build core --kafka --run --notls --node-id 0 --key-type long` |
+| `run-core.sh build memory -c notls` | `chat-build core --memory --build --notls --node-id 0 --key-type long` |
+| `run-rest.sh local` | `chat-build rest --run --notls --node-id 0 --key-type long` |
+| `run-gateway.sh local` | `chat-build gateway --run --notls --node-id 0 --key-type long` |
+| `run-authserv.sh local` | `chat-build authserv --run --notls --node-id 0 --key-type long` |
+| `run-shell.sh local` | `chat-build shell --run --notls --node-id 0 --key-type long` |
 | `build-app.sh ... -x` | `chat-build ... --dry-run` |
 | `-g` | `--debug` |
 | `-w` | `--websocket` |
