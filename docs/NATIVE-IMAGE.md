@@ -105,7 +105,7 @@ property at launch cannot add a bean that the build left out.
 This conflicts with decision 1 of the capability design: one classpath with
 every provider, and selection at launch. A native image can carry one
 composition only, and the build must name it. That choice is an owner
-decision. `CHAT-arcqfjuc` does not make it.
+decision. `CHAT-arcqfjuc` does not make it. `CHAT-iudsqbuj` holds it.
 
 Observed failures:
 
