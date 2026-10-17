@@ -394,3 +394,10 @@ not move here.
 - `--ci` with an empty `DOCKER_CONFIG`: first run 2689 tests and 5 lease
   errors, then exit 0 with 30 modules, 2692 tests, 0 failures, 0 errors, 82
   skipped, and `agent http gate: ok`. No OOM event.
+- **The final gates are at `2b7e64ae`, the head of PR #244.** Two commits
+  followed the 2692-test run: the Reactor `Context` fix, with one new test, and
+  the removal of real-time limits from the lease tests. Default mode: exit 0,
+  30 modules, 2274 tests, 0 failures, 0 errors, 47 skipped. `--ci` mode: exit
+  0, 30 modules, 2693 tests, 0 failures, 0 errors, 82 skipped, and
+  `agent http gate: ok`. Both matched the baseline, and Docker reported no OOM
+  event. `docs/BUILD-HEALTH.md` holds the image ids.

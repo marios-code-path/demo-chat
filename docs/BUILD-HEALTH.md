@@ -479,6 +479,17 @@ tests. Docker reported no OOM event in the run window. The shell images moved:
 long from `sha256:b00d3f751ae3` to `sha256:8b5aece85baf`, and UUID from
 `sha256:6d10ddb90cf9` to `sha256:50075457819d`.
 
+**The final reading is at `2b7e64ae`, the head of PR #244, measured on
+2026-10-16.** Two commits followed the 2692-test run. One keeps the subscriber
+Reactor `Context` in a gated write, and it adds one test. The other removes the
+real-time limits from the lease tests, and it keeps the test count. Default
+mode exited 0: 30 modules, 2274 tests, 0 failures, 0 errors and 47 skipped.
+`--ci` mode, with an empty `DOCKER_CONFIG`, exited 0: 30 modules, 2693 tests,
+0 failures, 0 errors, 82 skipped, and `agent http gate: ok`. Both runs reported
+that the baseline matched. Docker reported no OOM event in the window that
+started at 17:07:56 PDT. After the run, the long shell image is
+`sha256:20c61022bfd3`, and the UUID shell image is `sha256:d0231e3c6f0b`.
+
 **The signature:** a deploy class fails at its start with "The store service
 index:authmeta is already held", and the holder is the node id of another class
 in the same module. Close that other context after its class.
