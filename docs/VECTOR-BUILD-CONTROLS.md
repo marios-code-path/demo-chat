@@ -135,7 +135,7 @@ management.endpoint.vectorindex.enabled=true
 management.endpoints.web.exposure.include=vectorindex
 ```
 
-No deployment in this repository sets either value.
+The Cassandra vector option sets both values in its image plan.
 
 ## The seam worth remembering
 

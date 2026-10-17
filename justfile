@@ -161,7 +161,8 @@ build-cassandra node_id *flags:
 	exec ./shell-scripts/chat-build core --cassandra --build --notls --node-id "$node_id" "$@"
 
 # Deploy or stop core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
-# Flags: --key-type TYPE selects the key type and keyspace chat_TYPE. --dry-run prints the plan. --stop stops.
+# Flags: --key-type TYPE selects chat_TYPE. --vector embedded and --embedding openai enable vectors.
+# --dry-run prints the plan. --stop stops.
 [positional-arguments]
 deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	#!/usr/bin/env bash
@@ -182,6 +183,13 @@ deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	                exit 2
 	            fi
 	            extra+=(--key-type "$2")
+	            shift ;;
+	        --vector|--embedding)
+	            if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
+	                echo "$1 needs a provider" >&2
+	                exit 2
+	            fi
+	            extra+=("$1" "$2")
 	            shift ;;
 	        -*) echo "Unknown deployment flag: $1" >&2; exit 2 ;;
 	        *) node_id="${1#node_id=}" ;;

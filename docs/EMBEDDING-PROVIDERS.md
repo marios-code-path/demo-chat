@@ -69,7 +69,7 @@ reads the vectors of the old identity again, and nothing deletes them either.
 
 ```properties
 app.service.core.embedding=openai
-app.service.core.embedding.openai.base-url=https://api.openai.com
+app.service.core.embedding.openai.base-url=https://api.openai.com/v1
 app.service.core.embedding.openai.api-key=<the key>
 app.service.core.embedding.openai.model=text-embedding-3-small
 app.service.core.embedding.openai.max-attempts=10
@@ -187,7 +187,7 @@ java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-depl
     --app.service.core.vector=simple \
     --app.service.core.embedding=openai \
     --app.service.core.embedding.identity=text-embedding-3-small-1536 \
-    --app.service.core.embedding.openai.base-url=https://api.openai.com \
+    --app.service.core.embedding.openai.base-url=https://api.openai.com/v1 \
     --app.service.core.embedding.openai.api-key="$OPENAI_API_KEY" \
     --app.service.core.embedding.openai.model=text-embedding-3-small \
     --app.controller.recall=true \
@@ -251,15 +251,18 @@ measured against it on 2026-09-15.
 
 ```properties
 app.service.core.embedding=openai
-app.service.core.embedding.openai.base-url=http://node2.lan:6090
+app.service.core.embedding.openai.base-url=http://node2.lan:6090/v1
 app.service.core.embedding.openai.api-key=not-a-secret
 app.service.core.embedding.openai.model=nomic-embed-text-v1.5.Q8_0.gguf
 app.service.core.embedding.identity=nomic-embed-text-v1-5-768
 ```
 
-**Give `base-url` the host and the port, and nothing else.** The client appends
-`/v1/embeddings` itself. A base URL that already ends in `/v1` makes the client
-call `/v1/v1/embeddings`, and that path answered 404.
+**Give `base-url` the `/v1` prefix.** The current OpenAI SDK appends
+`/embeddings`. With the host and port alone, the SDK called `/embeddings`.
+That route returned an array, which the SDK could not read as an OpenAI
+response. The `/v1/embeddings` route returned an object. An isolated Cassandra
+test completed import, an HTTP rebuild, and search with the `/v1` base URL on
+2026-10-17.
 
 **This endpoint reads no key.** Project policy requires a value, so the launch
 supplies one that is not a secret.
@@ -271,6 +274,41 @@ truncate. So the identity names 768.
 
 **Put the width in the identity.** A later change to a narrower width is a new
 corpus, and it must carry a new name.
+
+### The durable Cassandra deployment
+
+`just deploy-core-cassandra-lucene-redis` accepts `--vector embedded` and
+`--embedding openai` together. The image contains both providers. Redis still
+carries live pub/sub messages. Compose mounts the `chat_vector` volume at
+`/var/lib/chat/vector`. The embedded store writes under the embedding identity.
+
+The launcher requires `CHAT_EMBEDDING_OPENAI_BASE_URL`,
+`CHAT_EMBEDDING_OPENAI_MODEL`, `CHAT_EMBEDDING_IDENTITY`, and
+`CHAT_EMBEDDING_OPENAI_API_KEY` for a live vector launch. Compose passes these
+values when the container starts. The image contains no embedding API key.
+The endpoint above uses `http://node2.lan:6090/v1` as its base URL. The SDK
+adds `/embeddings`.
+
+The launch exposes `/actuator/vectorindex`. Trigger one rebuild after imports.
+Trigger a rebuild after each restart.
+Wait until its durable job reports `SUCCEEDED`. Then search for an imported
+message. See `docs/VECTOR-RECALL-API.md` for the rebuild procedure.
+
+The isolated acceptance test uses Testcontainers Cassandra and the house
+endpoint. It does not start the node-16 deployment.
+
+```bash
+mvn -q -pl chat-deploy-cassandra -am -Pintegration \
+    -Dtest=CassandraEmbeddedVectorBootTests \
+    -Dsurefire.failIfNoSpecifiedTests=false \
+    -Dchat.embedding.real=true test
+```
+
+On 2026-10-17, that test imported one UUID message. It sent an HTTP POST to
+`/actuator/vectorindex`. Its durable rebuild job
+reported `SUCCEEDED`, `attempted=1`, `indexed=1`, and `failed=0`. Search returned
+the imported message. Without `chat.embedding.real=true`, the same test uses
+the test-only mock model. The real run needs network access to `node2.lan`.
 
 ## Manual procedure two: a real ONNX model
 

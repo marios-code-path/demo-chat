@@ -1,0 +1,23 @@
+services:
+  vector-volume-init:
+    image: busybox:1.36
+    user: root
+    command: chown -R ${VECTOR_OWNER:-1002:1001} /var/lib/chat/vector
+    volumes:
+      - chat_vector:/var/lib/chat/vector
+
+  core-service-rsocket:
+    depends_on:
+      vector-volume-init:
+        condition: service_completed_successfully
+    environment:
+      APP_SERVICE_CORE_VECTOR_EMBEDDED_PATH: /var/lib/chat/vector
+      APP_SERVICE_CORE_EMBEDDING_OPENAI_BASE_URL: ${CHAT_EMBEDDING_OPENAI_BASE_URL:?Set CHAT_EMBEDDING_OPENAI_BASE_URL}
+      APP_SERVICE_CORE_EMBEDDING_OPENAI_MODEL: ${CHAT_EMBEDDING_OPENAI_MODEL:?Set CHAT_EMBEDDING_OPENAI_MODEL}
+      APP_SERVICE_CORE_EMBEDDING_IDENTITY: ${CHAT_EMBEDDING_IDENTITY:?Set CHAT_EMBEDDING_IDENTITY}
+      APP_SERVICE_CORE_EMBEDDING_OPENAI_API_KEY: ${CHAT_EMBEDDING_OPENAI_API_KEY:?Set CHAT_EMBEDDING_OPENAI_API_KEY}
+    volumes:
+      - chat_vector:/var/lib/chat/vector
+
+volumes:
+  chat_vector:

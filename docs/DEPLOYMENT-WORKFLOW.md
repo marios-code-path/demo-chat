@@ -250,7 +250,8 @@ most often were a missing property and a bean that only a test supplied.
   local containers.
 - **The native image.** `--native` is refused today. `CHAT-arcqfjuc` holds the
   reason, and `docs/NATIVE-IMAGE.md` the detail.
-- **Vector recall and embeddings.** No deployment yml sets those selectors.
-  `docs/EMBEDDING-PROVIDERS.md` carries that path.
+- **Vector recall and embeddings.** The Cassandra recipe can select embedded
+  vectors and OpenAI-compatible embeddings. This document does not measure
+  that launch. See `docs/EMBEDDING-PROVIDERS.md`.
 - **Four backend images.** Only the cassandra deployment image has been built
   and started.

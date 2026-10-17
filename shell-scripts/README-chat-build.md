@@ -127,6 +127,34 @@ it:
 just deploy-core-cassandra-lucene-redis 16 --key-type uuid
 ```
 
+Add `--vector embedded --embedding openai` to enable vector indexing. Both
+options are required together. The Cassandra image contains both providers.
+Redis remains the pub/sub provider. The vector store uses a named volume.
+
+Set these values before a live vector launch:
+
+```bash
+export CHAT_EMBEDDING_OPENAI_BASE_URL=http://node2.lan:6090/v1
+export CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf
+export CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768
+export CHAT_EMBEDDING_OPENAI_API_KEY=not-a-secret
+just deploy-core-cassandra-lucene-redis 16 --key-type uuid \
+    --vector embedded --embedding openai
+```
+
+The base URL ends in `/v1`. The current SDK adds `/embeddings`.
+The node2 endpoint does not read the key. It accepts `not-a-secret`.
+Use a real runtime key when another endpoint requires one.
+The launcher requires all four values before it starts a container.
+Compose passes them to the core when the container starts. The image plan
+contains the provider selectors, but it contains no API key. The vector
+volume mounts at `/var/lib/chat/vector`. The store creates one directory for
+each embedding identity.
+
+The vector launch exposes `/actuator/vectorindex`. Trigger a rebuild after
+imports. Trigger a rebuild after each restart. Wait for a `SUCCEEDED` job.
+See `docs/VECTOR-RECALL-API.md`.
+
 Start the shell with the same key type. `--build` installs the current shell
 modules first:
 
@@ -333,6 +361,8 @@ not make one cheaper to add.
 | `--agent CLIENT_ID=HANDLE` | One agent. Repeat it for each agent. See below. |
 | `--agent-scope SCOPE` | The one scope of every agent token. Defaults to `chat.mcp`. |
 | `--index-root DIR` | `core` only. Keep the Lucene indexes in files under `DIR`. See below. |
+| `--vector embedded` | Select the embedded vector store for `core --cassandra`. Requires `--embedding openai`. |
+| `--embedding openai` | Select the OpenAI-compatible provider for `core --cassandra`. Requires `--vector embedded`. |
 
 **Agents.** `--agent` names one OAuth client and the chat user that it acts as.
 The token `client_id` selects the agent. See `CHAT-frcrctdp`.

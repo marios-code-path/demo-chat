@@ -16,7 +16,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
  *
  * The deployment sets `management.endpoints.enabled-by-default` to false, so an
  * operator must enable this endpoint and expose it. Both values here are test
- * values. The plan adds neither to any deployment.
+ * values. The Cassandra vector option sets both values for its deployment.
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -37,7 +37,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
         "app.service.security.userdetails",
         // management-defaults.yml sets enabled-by-default to false, so an
         // operator must enable this endpoint and expose it. Both values are
-        // test values. The plan adds neither to any deployment.
+        // test values. The Cassandra vector option sets both values.
         "management.endpoint.vectorindex.enabled=true",
         "management.endpoints.web.exposure.include=vectorindex",
     ]

@@ -26,6 +26,10 @@ for arg in "\$@"; do
     if [[ "\$arg" == --dry-run ]]; then exec "$repo/shell-scripts/chat-build" "\$@"; fi
 done
 echo 'stub image build output'
+if [[ "\${STUB_REQUIRE_NO_KEY:-}" == 1 && -n "\${CHAT_EMBEDDING_OPENAI_API_KEY:-}" ]]; then
+    echo 'FAIL the image build received the embedding API key'
+    exit 5
+fi
 if [[ "\${STUB_FAIL:-}" == build ]]; then echo 'STUB BUILD FAILED'; exit 3; fi
 EOF
 cat > "$work/bin/conda" <<'EOF'
@@ -41,9 +45,19 @@ EOF
 cat > "$work/bin/mvn" <<'EOF'
 #!/usr/bin/env bash
 echo 'stub maven install output'
+if [[ "${STUB_REQUIRE_NO_KEY:-}" == 1 && -n "${CHAT_EMBEDDING_OPENAI_API_KEY:-}" ]]; then
+    echo 'FAIL the install received the embedding API key'
+    exit 5
+fi
 if [[ "${STUB_FAIL:-}" == install ]]; then echo 'STUB MVN FAILED'; exit 4; fi
 EOF
-printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/docker"
+cat > "$work/bin/docker" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${STUB_REQUIRE_KEY_AT_CONTAINER:-}" == 1 && "$1" == compose ]]; then
+    [[ "${CHAT_EMBEDDING_OPENAI_API_KEY:-}" == test-key ]] || exit 6
+fi
+exit 0
+EOF
 printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/sleep"
 # Health answers after STUB_HEALTH_AFTER calls. Consul answers at once.
 cat > "$work/bin/curl" <<EOF
@@ -63,6 +77,7 @@ EOF
 chmod +x "$work/bin/"* "$work/shell-scripts/"*
 
 failures=0
+vector_args=()
 
 # run_deploy LABEL -- ENV... ; sets output and status
 run_deploy() {
@@ -70,7 +85,8 @@ run_deploy() {
     output="$(env PATH="$work/bin:$PATH" CHAT_SERVICE_PASSWORD=stub \
         CONSUL_HOST=10.0.0.5 TMPDIR="$work" "$@" \
         "$work/shell-scripts/chat-deploy" core --cassandra --index lucene \
-        --pubsub redis-pubsub --notls --node-id 16 --key-type uuid 2>&1)"
+        --pubsub redis-pubsub --notls --node-id 16 --key-type uuid \
+        "${vector_args[@]}" 2>&1)"
     status=$?
 }
 
@@ -133,6 +149,22 @@ run_deploy env STUB_FAIL=build
 expect_status 'a failed image build exits with its status' 3
 expect 'a failed image build names its stage and shows the log end' \
     '[chat-deploy] Image build failed after ' 'STUB BUILD FAILED'
+
+vector_args=(--vector embedded --embedding openai)
+run_deploy env -u CHAT_EMBEDDING_OPENAI_BASE_URL \
+    CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf \
+    CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768 \
+    CHAT_EMBEDDING_OPENAI_API_KEY=test-key
+expect_status 'a missing base URL stops the vector launch before Docker' 2
+expect 'a missing base URL names the required variable' \
+    'set CHAT_EMBEDDING_OPENAI_BASE_URL before starting core'
+
+run_deploy env STUB_REQUIRE_NO_KEY=1 STUB_REQUIRE_KEY_AT_CONTAINER=1 \
+    CHAT_EMBEDDING_OPENAI_BASE_URL=http://node2.lan:6090/v1 \
+    CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf \
+    CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768 \
+    CHAT_EMBEDDING_OPENAI_API_KEY=test-key
+expect_status 'the key bypasses install and image build but reaches container start' 0
 
 if ((failures > 0)); then
     echo "$failures case(s) failed"
