@@ -578,7 +578,7 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   start on one backend is not evidence that another backend starts.
 
   **A deploy module does not ship a main class. It inherits one.**
-  `com.demo.chat.ChatApp` lives in `chat-deploy`, and each backend module
+  `com.demo.chat.ChatAppKt` lives in `chat-deploy`, and each backend module
   depends on that artifact. `chat-deploy-memory` and `chat-deploy-kafka`
   declare no `mainClass` at all, and both launch. So the defect in
   `chat-deploy-cassandra` was **an override that named the wrong class**, not
