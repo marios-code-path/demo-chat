@@ -213,11 +213,11 @@ Each test fails before its change. No test reaches the owner's deployment.
   contract adds the `!` command, so the counts move from 28 to 29 commands.
 - The image: build `chat-shell` once, then run bash in it. Record the image
   id. `chat-build shell` requires `--node-id`. A dry run of the first command
-  exited 0 on 2026-10-17 and named the image `chat-shell`.
+  exited 0 on 2026-10-17. The image tag is `chat-shell:0.0.1`.
 
   ```bash
   shell-scripts/chat-build shell --build --notls --node-id 1 --key-type uuid
-  docker run --rm --entrypoint /bin/bash chat-shell -c 'echo ok'
+  docker run --rm --entrypoint /bin/bash chat-shell:0.0.1 -c 'echo ok'
   ```
 - Gates: `build-health.sh` in both modes, `drift check`, and
   `git diff --check`.
