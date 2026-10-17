@@ -116,7 +116,9 @@ uses `long`, and so does `just launch-shell` by default. A `uuid` core needs a
 just launch-shell 1 --key-type uuid
 ```
 
-`launch-shell` passes its flags to `chat-build`, which checks them. The shell
+`launch-shell` passes its flags to `chat-build`, which checks them. `--build` is
+the one exception: the recipe keeps it and runs `just build-shell` first. In
+`chat-build`, `--build` builds an image. The shell
 does not check the key type of the core. A mismatch fails at the first key
 that the shell decodes, and the error does not name the cause.
 
@@ -357,6 +359,16 @@ After a pull or a branch switch, refresh the installed artifacts once:
 ```bash
 mvn clean install -DskipTests
 ```
+
+To refresh only the shell client, run `just build-shell`, or add `--build` to
+`just launch-shell`. A shell that runs old jars fails in ways that do not name
+the cause. On 2026-10-16 a shell ran a `chat-shell` jar from 2026-10-10. It had
+no `import-claude` command, and its `find-user` sent a field name that the
+core refuses. `build-shell` installs `chat-shell` and the modules it needs. It
+cannot install the launch module under its `shell` profile, because that
+profile makes `chat-deploy` and `chat-shell` depend on each other.
+`shell-scripts/test-shell-recipe.sh` checks that the install covers every
+module that the shell launch loads.
 
 The launch and image commands pass `-Dmaven.test.skip=true`. Stale test classes in the local repository cannot break a launch.
 

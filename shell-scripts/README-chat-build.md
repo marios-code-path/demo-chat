@@ -126,10 +126,11 @@ to `chat-build`, which checks it:
 just deploy-core-cassandra-lucene-redis 16 --key-type uuid
 ```
 
-Start the shell with the same key type:
+Start the shell with the same key type. `--build` installs the current shell
+modules first:
 
 ```bash
-just launch-shell 1 --key-type uuid
+just launch-shell 1 --key-type uuid --build
 ```
 
 Add `--dry-run` to print the plan. A dry run starts no service:

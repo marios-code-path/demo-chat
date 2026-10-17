@@ -69,8 +69,29 @@ launch-memory node_id="0":
 dry-run-memory node_id="0":
 	./shell-scripts/chat-build core --memory --run --notls --node-id {{node_id}} --init users,rootkeys --dry-run
 
-# Start the interactive shell client. Start a core service first.
+# launch-shell loads these jars from ~/.m2. Flags: --dry-run prints the install command.
+# Install chat-shell and the modules it needs. Run it after a pull.
+[positional-arguments]
+build-shell *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	# Under its shell profile, chat-deploy depends on chat-shell, and chat-shell
+	# depends on chat-deploy. One reactor refuses that cycle. So this installs
+	# chat-shell -am without that profile. test-shell-recipe.sh checks that this
+	# reactor holds every module that the shell launch loads. See CHAT-tkijkkbc.
+	cmd=(mvn -B -ntp -pl chat-shell -am -Dmaven.test.skip=true install)
+	case "${1:-}" in
+	    "") ;;
+	    --dry-run) printf '%s\n' "${cmd[*]}"; exit 0 ;;
+	    *) echo "Unknown build-shell flag: $1" >&2; exit 2 ;;
+	esac
+	echo "[build-shell] Installing chat-shell and the modules it needs."
+	"${cmd[@]}"
+	echo "[build-shell] Done in $SECONDS s. Start the shell with just launch-shell."
+
 # Flags go to chat-build. The shell key type must match the core: use --key-type uuid for a uuid core.
+# --build runs build-shell first. The recipe keeps it, because chat-build --build builds an image.
+# Start the interactive shell client. Start a core service first. Add --build after a pull.
 [positional-arguments]
 launch-shell node_id="1" *flags:
 	#!/usr/bin/env bash
@@ -80,7 +101,24 @@ launch-shell node_id="1" *flags:
 	    node_id="${1#node_id=}"
 	    shift
 	fi
-	exec ./shell-scripts/chat-build shell --run --notls --node-id "$node_id" "$@"
+	build=false
+	dry_run=false
+	args=()
+	for arg in "$@"; do
+	    case "$arg" in
+	        --build) build=true ;;
+	        --dry-run) dry_run=true; args+=("$arg") ;;
+	        *) args+=("$arg") ;;
+	    esac
+	done
+	if [[ "$build" == true ]]; then
+	    if [[ "$dry_run" == true ]]; then
+	        just --justfile {{quote(justfile())}} build-shell --dry-run
+	    else
+	        just --justfile {{quote(justfile())}} build-shell
+	    fi
+	fi
+	exec ./shell-scripts/chat-build shell --run --notls --node-id "$node_id" ${args[@]+"${args[@]}"}
 
 # Print the shell client launch command and properties.
 [positional-arguments]
