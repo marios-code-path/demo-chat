@@ -103,7 +103,7 @@ class HostCommandTests {
 
     @Test
     fun `a typed bang line runs through the parser and the registered command`() {
-        val registry = CommandRegistry(setOf(HostCommandRegistrar(HostCommand()).hostCommand()))
+        val registry = CommandRegistry(setOf(HostCommandRegistrar(HostCommand()).bangCommand()))
         val parsed = BangCommandParser(DefaultCommandParser(registry)).parse("!echo 'a  b' | tr a A")
         val output = StringWriter()
 

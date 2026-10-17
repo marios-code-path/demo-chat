@@ -22,7 +22,7 @@ import java.util.function.Consumer
 @Profile("shell")
 class HostCommandRegistrar(private val host: HostCommand) {
     @Bean
-    fun hostCommand(): Command = Command.builder()
+    fun bangCommand(): Command = Command.builder()
         .name(BangCommandParser.BANG)
         .description("Run a host command with bash")
         .group("Host")
