@@ -24,9 +24,10 @@ check-ci:
 check-flags:
 	./shell-scripts/test-flags.sh
 
-# Check the flags of the durable deploy recipe. Starts no service.
+# Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh
+	./shell-scripts/test-chat-deploy-progress.sh
 
 # Fail when a module pom declares a third-party dependency version.
 check-deps:
