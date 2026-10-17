@@ -67,6 +67,10 @@ CASES=(
   "core-e2ee|core --memory --e2ee --run --notls --long --node-id 0"
   # core variants
   "core-uuid|core --memory --run --notls --uuid --node-id 0"
+  # --key-type names a keytype feature. Each golden equals the golden of its
+  # feature flag. See CHAT-brlctoze.
+  "core-key-type-uuid|core --memory --run --notls --key-type uuid --node-id 0"
+  "core-key-type-long|core --cassandra --run --notls --key-type long --init users,rootkeys --node-id 0"
   "core-websocket|core --memory --websocket --run --notls --long --node-id 0"
   "core-debug|core --memory --debug --run --notls --long --node-id 0"
   "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
@@ -107,6 +111,9 @@ REFUSALS=(
   "refuse-index-root-service|rest --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root requires the core service"
   "refuse-index-root-cassandra|core --cassandra --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root has no effect with --cassandra"
   "refuse-index-root-build|core --redis --build --notls --long --node-id 0 --index-root /var/lib/chat/lucene|1|--index-root cannot be baked into an image"
+  # --key-type. See CHAT-brlctoze.
+  "refuse-key-type-unknown|core --memory --run --notls --key-type bogus --node-id 0|2|invalid choice: 'bogus'"
+  "refuse-key-type-conflict|core --memory --run --notls --key-type long --uuid --node-id 0|1|--long conflicts with --uuid"
 )
 
 UPDATE=0

@@ -77,7 +77,7 @@ build-cassandra node_id:
 	./shell-scripts/chat-build core --cassandra --build --notls --node-id {{node_id}}
 
 # Deploy or stop core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
-# Flags: --uuid selects the uuid key type and keyspace chat_uuid. --dry-run prints the plan. --stop stops.
+# Flags: --key-type TYPE selects the key type and keyspace chat_TYPE. --dry-run prints the plan. --stop stops.
 [positional-arguments]
 deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	#!/usr/bin/env bash
@@ -86,13 +86,23 @@ deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	stop=false
 	extra=()
 	# Read every flag before any action, so a stop never ignores a later flag.
-	for arg in "$@"; do
-	    case "$arg" in
+	# chat-build checks the key type value, so a new key type needs no change here.
+	while (($# > 0)); do
+	    case "$1" in
 	        --stop) stop=true ;;
-	        --uuid|--dry-run) extra+=("$arg") ;;
-	        -*) echo "Unknown deployment flag: $arg" >&2; exit 2 ;;
-	        *) node_id="${arg#node_id=}" ;;
+	        --dry-run) extra+=("$1") ;;
+	        --key-type=?*) extra+=(--key-type "${1#--key-type=}") ;;
+	        --key-type)
+	            if (($# < 2)) || [[ "$2" == -* ]]; then
+	                echo "--key-type needs a value" >&2
+	                exit 2
+	            fi
+	            extra+=(--key-type "$2")
+	            shift ;;
+	        -*) echo "Unknown deployment flag: $1" >&2; exit 2 ;;
+	        *) node_id="${1#node_id=}" ;;
 	    esac
+	    shift
 	done
 	if [[ "$stop" == true ]]; then
 	    if ((${#extra[@]} > 0)); then

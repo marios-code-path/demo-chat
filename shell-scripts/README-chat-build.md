@@ -118,17 +118,18 @@ The task uses node ID 7. Use `node_id=16` or `16` to select node ID 16.
 The task selects the memory command bus through `chat-build`.
 
 The task uses the `long` key type and keyspace `chat_long` by default.
-Add `--uuid` to use the `uuid` key type and keyspace `chat_uuid`. Claude
-import supports the `uuid` key type alone:
+Add `--key-type uuid` to use the `uuid` key type and keyspace `chat_uuid`.
+Claude import supports the `uuid` key type alone. The task passes the value
+to `chat-build`, which checks it:
 
 ```bash
-just deploy-core-cassandra-lucene-redis 16 --uuid
+just deploy-core-cassandra-lucene-redis 16 --key-type uuid
 ```
 
 Add `--dry-run` to print the plan. A dry run starts no service:
 
 ```bash
-just deploy-core-cassandra-lucene-redis 16 --uuid --dry-run
+just deploy-core-cassandra-lucene-redis 16 --key-type uuid --dry-run
 ```
 
 The launcher applies `keyspace-uuid.cql` only when `chat_uuid` is absent. A
@@ -145,7 +146,8 @@ The stop flag stops core, Redis, Cassandra, and Consul in that order. It takes
 no other flag. It uses their current Compose container names. It also stops
 Consul when other services use that registry. Docker keeps the Cassandra and Lucene named volumes.
 The launcher command with `--dry-run` prints the resolved module, selectors,
-and image. It starts no service. Use `--uuid` to select the UUID Cassandra schema.
+and image. It starts no service. Use `--key-type uuid` or `--uuid` to select the
+UUID Cassandra schema. The keyspace follows the key type in the plan.
 Use `--index cassandra --pubsub memory` for the original Cassandra composition.
 
 ### Authorization server container
@@ -286,7 +288,9 @@ before using either flag, or the single-module build cannot resolve them.
 
 ### Key type (pick one)
 
-`--long` (Snowflake, default) or `--uuid`.
+`--long` (Snowflake, default) or `--uuid`. `--key-type TYPE` selects the same
+feature by name. Its choices are the features of the `keytype` group, so a new
+key type feature adds a choice with no other change.
 
 ### Other
 

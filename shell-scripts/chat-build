@@ -542,7 +542,10 @@ class BuildContext:
         self.args = args
         self.selected = self._resolve_features()
         self.backend = self._resolve_backend()
-        self.key_type = "uuid" if "uuid" in self.selected else "long"
+        # The key type is the selected feature of the keytype group. A new
+        # keytype feature needs no change here. See CHAT-brlctoze.
+        self.key_type = next(
+            (n for n in self.selected if FEATURES[n].group == "keytype"), "long")
         self.node_id = args.node_id
         self.discovery = "consul" if "consul" in self.selected else "local"
         self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
@@ -560,9 +563,14 @@ class BuildContext:
     # -- resolution ------------------------------------------------------
 
     def _resolve_features(self) -> list[str]:
-        chosen = [
+        # --key-type TYPE selects the keytype feature TYPE. It comes first, so a
+        # conflict with a feature flag names --key-type's value first.
+        key_type = getattr(self.args, "key_type", None)
+        chosen = [key_type] if key_type else []
+        chosen += [
             name for name in self.service.available_features
             if getattr(self.args, name.replace("-", "_"), False)
+            and name not in chosen
         ]
         for name in self.service.default_features:
             if name not in chosen and not self._group_taken(chosen, name):
@@ -1071,6 +1079,14 @@ def build_parser() -> argparse.ArgumentParser:
                              help="index provider for a Cassandra core")
             sub.add_argument("--pubsub", choices=("memory", "redis-pubsub"),
                              help="pub/sub provider for a Cassandra core")
+        # The choices come from the keytype feature group, so a new key type
+        # plugs in as a feature. See CHAT-brlctoze.
+        key_types = [n for n in service.available_features
+                     if FEATURES[n].group == "keytype"]
+        if key_types:
+            sub.add_argument("--key-type", choices=key_types, metavar="TYPE",
+                             help="key type: " + ", ".join(key_types)
+                             + ". Same as the feature flag of that name.")
         group = sub.add_argument_group("features")
         for name in service.available_features:
             feat = FEATURES[name]

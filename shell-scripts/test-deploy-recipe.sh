@@ -62,15 +62,25 @@ expect_refusal() {
 
 expect_plan 'the default key type is long' \
     -Dapp.key.type=long -Dapp.nodeid=16 -- 16 --dry-run
-expect_plan '--uuid selects the uuid key type' \
-    -Dapp.key.type=uuid -Dapp.nodeid=16 -- 16 --uuid --dry-run
-expect_plan '--uuid keeps the default node id' \
-    -Dapp.key.type=uuid -Dapp.nodeid=7 -- --uuid --dry-run
-expect_plan 'node_id= form with --uuid' \
-    -Dapp.key.type=uuid -Dapp.nodeid=16 -- node_id=16 --uuid --dry-run
-expect_plan 'the composition is unchanged with --uuid' \
+expect_plan '--key-type uuid selects the uuid key type' \
+    -Dapp.key.type=uuid -Dapp.nodeid=16 -- 16 --key-type uuid --dry-run
+expect_plan '--key-type=uuid form' \
+    -Dapp.key.type=uuid -Dapp.nodeid=16 -- 16 --key-type=uuid --dry-run
+expect_plan '--key-type long is explicit' \
+    -Dapp.key.type=long -Dapp.nodeid=16 -- 16 --key-type long --dry-run
+expect_plan '--key-type keeps the default node id' \
+    -Dapp.key.type=uuid -Dapp.nodeid=7 -- --key-type uuid --dry-run
+expect_plan 'node_id= form with --key-type' \
+    -Dapp.key.type=uuid -Dapp.nodeid=16 -- node_id=16 --key-type uuid --dry-run
+expect_plan 'the composition is unchanged with --key-type' \
     -Dapp.service.core.index=lucene -Dapp.service.core.pubsub=redis-pubsub \
-    -Dapp.service.core.persistence=cassandra -- 16 --uuid --dry-run
+    -Dapp.service.core.persistence=cassandra -- 16 --key-type uuid --dry-run
+expect_refusal 'chat-build refuses an unknown key type' "invalid choice: 'bogus'" \
+    -- 16 --key-type bogus --dry-run
+expect_refusal '--key-type needs a value' '--key-type needs a value' \
+    -- 16 --key-type
+expect_refusal 'the old --uuid flag is refused' 'Unknown deployment flag: --uuid' \
+    -- 16 --uuid --dry-run
 expect_refusal 'an unknown flag is refused' 'Unknown deployment flag: --bogus' \
     -- 16 --bogus
 
