@@ -1,6 +1,7 @@
 package com.demo.chat.test.commands
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.demo.chat.service.composite.ChatMessageService
@@ -12,16 +13,19 @@ import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.claudeTopicName
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.*
 import org.springframework.mock.env.MockEnvironment
+import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Instant
+import java.util.Optional
 
 /**
  * **No test here uses an argument matcher.** A Kotlin interface declares its
@@ -180,7 +184,7 @@ class ClaudeImportCommandsTests {
 
         assertThatThrownBy {
             command.importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
-        }.isInstanceOf(IllegalArgumentException::class.java).hasMessageContaining("CHAT_IMPORT_ADMIN_PASSWORD")
+        }.isInstanceOf(IllegalArgumentException::class.java).hasMessageContaining("import-claude needs an Admin session. Log in as Admin, or set CHAT_IMPORT_ADMIN_PASSWORD.")
 
         verifyNoInteractions(login, users, topics, messages)
     }
@@ -378,5 +382,89 @@ class ClaudeImportCommandsTests {
         command().importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
 
         assertThat(methodCalls(messages)).doesNotContain("pointer")
+    }
+
+    // The Admin session. See CHAT-wmfemntw. The shell login is static state,
+    // so each test forgets it.
+
+    @AfterEach
+    fun forgetLogin() = ShellStateConfiguration.clearLogin()
+
+    private fun commandWithoutVariable(): ClaudeImportCommands<Long> {
+        given(beans.userService()).willReturn(users)
+        given(beans.topicService()).willReturn(topics)
+        given(beans.messageService()).willReturn(messages)
+        return ClaudeImportCommands(beans, login, ClaudeExportParser(), MockEnvironment())
+    }
+
+    /** The state that LoginCommands.login leaves. The typed name keeps its case. */
+    private fun loggedInAs(id: Long, typed: String) {
+        ShellStateConfiguration.loginMetadata = Optional.of(UsernamePasswordMetadata(typed, "session-secret"))
+        ShellStateConfiguration.loggedInUser = Optional.of(id as Any)
+    }
+
+    private fun adminIs(id: Long) {
+        given(users.findByUsername(ByStringRequest("Admin"))).willReturn(Flux.just(user(id, "Admin")))
+    }
+
+    private fun stubFixtureImport() {
+        bothUsers()
+        roomOf(claudeTopicName("lobby", conversationUuid, "1", leafUuid))
+        val (first, second) = fixtureTurns(5L)
+        given(messages.importMessage(first)).willReturn(Mono.just(result))
+        given(messages.importMessage(second)).willReturn(Mono.just(result))
+    }
+
+    @Test
+    fun `a logged-in Admin session imports without the variable`() {
+        loggedInAs(1L, "admin")
+        adminIs(1L)
+        stubFixtureImport()
+
+        val summary = commandWithoutVariable()
+            .importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
+
+        assertThat(summary).startsWith("Imported as Admin (your session). ").contains("Messages imported: 2")
+        verifyNoInteractions(login)
+    }
+
+    @Test
+    fun `a logged-in Admin session wins over the variable`() {
+        loggedInAs(1L, "Admin")
+        adminIs(1L)
+        stubFixtureImport()
+
+        val summary = command().importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
+
+        assertThat(summary).startsWith("Imported as Admin (your session). ")
+        verifyNoInteractions(login)
+    }
+
+    @Test
+    fun `another user's session without the variable stops before login or writes`() {
+        loggedInAs(11L, "alice")
+        adminIs(1L)
+
+        assertThatThrownBy {
+            commandWithoutVariable()
+                .importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
+        }.isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("import-claude needs an Admin session. Log in as Admin, or set CHAT_IMPORT_ADMIN_PASSWORD.")
+
+        verifyNoInteractions(login, topics, messages)
+    }
+
+    @Test
+    fun `the variable logs in as Admin, names itself, and restores the earlier login`() {
+        loggedInAs(11L, "alice")
+        adminIs(1L)
+        stubFixtureImport()
+
+        val summary = command().importConversation(fixture, "Sanitized import fixture", "lobby", "1", "alice", "claude")
+
+        assertThat(summary).startsWith("Imported as Admin (CHAT_IMPORT_ADMIN_PASSWORD). ")
+        verify(login).login("Admin", "test-secret")
+        assertThat(ShellStateConfiguration.loggedInUser).contains(11L as Any)
+        assertThat(ShellStateConfiguration.loginMetadata.map { it.username }).contains("alice")
     }
 }

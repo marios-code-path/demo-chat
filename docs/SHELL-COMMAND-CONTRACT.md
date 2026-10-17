@@ -78,8 +78,14 @@ a command that the login owns. A command of another owner answers not found.
 |---|---|---|---|---|
 | `import-claude` | `importConversation` | Import one Claude conversation | `--file` `String` required<br>`--conversation` `String` required<br>`--topic` `String` required<br>`--generation` `String` required<br>`--human` `String` required<br>`--assistant` `String` required | none |
 
-Set `CHAT_IMPORT_ADMIN_PASSWORD` before this command. The command reads one
-conversation from the file. It uses the Admin login for the import route. It
+The import route needs an Admin session. Log in as Admin first, and the
+command uses that session. Otherwise set `CHAT_IMPORT_ADMIN_PASSWORD`, and the
+command logs in as Admin for the run and then restores the earlier login. With
+neither, it refuses before any write. The result starts with the session it
+used: `Imported as Admin (your session).` or
+`Imported as Admin (CHAT_IMPORT_ADMIN_PASSWORD).` See `CHAT-wmfemntw`.
+
+The command reads one conversation from the file. It
 checks both user handles before it creates a topic. It imports every leaf path,
 and each path receives its own topic. A topic name is
 `<topic>:<conversation-uuid>:<generation>:<leaf-uuid>`. The operator supplies

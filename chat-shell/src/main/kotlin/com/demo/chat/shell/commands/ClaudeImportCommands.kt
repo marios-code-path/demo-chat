@@ -51,8 +51,14 @@ class ClaudeImportCommands<T : Any>(
         val generationValue = requireGeneration(generation)
         val export = Path.of(file)
         val parsed = parser.parse(export, conversation)
+        // A logged-in Admin session needs no variable. Without one, the
+        // variable logs in as Admin for this run. See CHAT-wmfemntw.
         val password = environment.getProperty("CHAT_IMPORT_ADMIN_PASSWORD")
-        require(!password.isNullOrBlank()) { "CHAT_IMPORT_ADMIN_PASSWORD is required." }
+        val adminSession = sessionIsAdmin()
+        require(adminSession || !password.isNullOrBlank()) {
+            "import-claude needs an Admin session. Log in as Admin, or set CHAT_IMPORT_ADMIN_PASSWORD."
+        }
+        val session = if (adminSession) "your session" else "CHAT_IMPORT_ADMIN_PASSWORD"
         // The map is read before any write. A map that cannot be read would
         // lose its entries on the first write of this run.
         val mapPath = ClaudeImportMap.pathFor(export, parsed.uuid, generationValue)
@@ -62,7 +68,7 @@ class ClaudeImportCommands<T : Any>(
         val previousUser = ShellStateConfiguration.loggedInUser
         val previousCredential = ShellStateConfiguration.loginMetadata
         try {
-            login.login("Admin", password)
+            if (!adminSession) login.login(ADMIN, password!!)
             val users = services.userService()
             val humanId = exactUserId(users.findByUsername(ByStringRequest(human)).collectList().block().orEmpty(), human)
             val assistantId = exactUserId(users.findByUsername(ByStringRequest(assistant)).collectList().block().orEmpty(), assistant)
@@ -105,7 +111,8 @@ class ClaudeImportCommands<T : Any>(
                 // entries of the threads before it.
                 map.write(mapPath)
             }
-            return "Topics created: $topicsCreated of ${parsed.threads.size}. " +
+            return "Imported as Admin ($session). " +
+                "Topics created: $topicsCreated of ${parsed.threads.size}. " +
                 "Messages imported: $messagesImported. " +
                 "Missing parents: ${omittedParents.size}" +
                 (if (omittedParents.isEmpty()) ". " else " for ${omittedParents.joinToString(", ")}. ") +
@@ -129,9 +136,26 @@ class ClaudeImportCommands<T : Any>(
         return number.toString()
     }
 
+    /**
+     * True when the shell is logged in as the user with the exact handle
+     * [ADMIN]. The check compares user IDs, so `login admin` counts. A shell
+     * with no login is not Admin, and the check then makes no request.
+     */
+    private fun sessionIsAdmin(): Boolean {
+        val current = ShellStateConfiguration.loggedInUser.orElse(null) ?: return false
+        if (ShellStateConfiguration.loginMetadata.isEmpty) return false
+        val admins = services.userService().findByUsername(ByStringRequest(ADMIN)).collectList().block().orEmpty()
+        return admins.any { it.handle == ADMIN && it.key.id == current }
+    }
+
     private fun exactUserId(found: List<com.demo.chat.domain.User<T>>, handle: String): T {
         val exact = found.filter { it.handle == handle }
         require(exact.size == 1) { "Expected one user with exact handle '$handle', found ${exact.size}." }
         return exact.single().key.id
+    }
+
+    private companion object {
+        /** The handle of the Admin user that `userinit.yml` creates. */
+        const val ADMIN = "Admin"
     }
 }
