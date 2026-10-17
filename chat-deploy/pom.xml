@@ -14,7 +14,7 @@
     <description>Base Deployment Configuration and Routines</description>
     <properties>
         <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
-        <appMainClass>com.demo.chat.ChatApp</appMainClass>
+        <appMainClass>com.demo.chat.ChatAppKt</appMainClass>
     </properties>
     <profiles>
         <profile>

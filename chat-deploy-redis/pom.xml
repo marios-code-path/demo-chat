@@ -18,7 +18,7 @@
         <!-- Composition root: chat-build targets this module directly
              for the redis backend. -->
         <appImageName>${image.repo}/chat-deploy-redis:${project.version}</appImageName>
-        <appMainClass>com.demo.chat.ChatApp</appMainClass>
+        <appMainClass>com.demo.chat.ChatAppKt</appMainClass>
     </properties>
 
     <dependencies>
@@ -196,7 +196,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.demo.chat.ChatApp</mainClass>
+                    <mainClass>com.demo.chat.ChatAppKt</mainClass>
                     <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
                 </configuration>
                 <executions>

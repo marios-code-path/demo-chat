@@ -15,8 +15,9 @@
     <properties>
         <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
         <!--
-          The launchable class is ChatApp, which is what chat-deploy-redis also
-          names. CassandraAppConfiguration stood here until 2026-09-21, and it
+          The launchable class is ChatAppKt, which is what chat-deploy-redis also
+          names. It holds the top level main of ChatApp.kt. See CHAT-arcqfjuc.
+          CassandraAppConfiguration stood here until 2026-09-21, and it
           is a @Configuration class with one @Bean and no main method. So
           spring-boot:run failed with "Main method not found in class
           com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration", and
@@ -24,7 +25,7 @@
           No test saw it, because a test context never reads this property.
           See CHAT-ombbesyh.
         -->
-        <mainClass>com.demo.chat.ChatApp</mainClass>
+        <mainClass>com.demo.chat.ChatAppKt</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>
