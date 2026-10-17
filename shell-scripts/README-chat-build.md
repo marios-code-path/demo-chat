@@ -126,6 +126,12 @@ to `chat-build`, which checks it:
 just deploy-core-cassandra-lucene-redis 16 --key-type uuid
 ```
 
+Start the shell with the same key type:
+
+```bash
+just launch-shell 1 --key-type uuid
+```
+
 Add `--dry-run` to print the plan. A dry run starts no service:
 
 ```bash

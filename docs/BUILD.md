@@ -108,6 +108,18 @@ Start the interactive shell client against a running core service:
 just launch-shell 1
 ```
 
+The shell key type must match the key type of the core. `just launch-memory`
+uses `long`, and so does `just launch-shell` by default. A `uuid` core needs a
+`uuid` shell:
+
+```bash
+just launch-shell 1 --key-type uuid
+```
+
+`launch-shell` passes its flags to `chat-build`, which checks them. The shell
+does not check the key type of the core. A mismatch fails at the first key
+that the shell decodes, and the error does not name the cause.
+
 Print a launch command without execution:
 
 ```bash
