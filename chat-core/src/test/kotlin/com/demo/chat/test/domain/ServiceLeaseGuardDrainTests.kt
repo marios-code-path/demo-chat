@@ -34,33 +34,48 @@ class ServiceLeaseGuardDrainTests {
         return done
     }
 
+    /**
+     * Waits until the guard has closed the gate. A probe write passes an open
+     * gate and is refused by a closed one. The wait has no fixed delay, so a
+     * slow machine only makes it longer.
+     */
+    private fun awaitClosed(gate: StoreWriteGate) {
+        val end = System.nanoTime() + Duration.ofSeconds(30).toNanos()
+        while (System.nanoTime() < end) {
+            val refused = runCatching { gate.admit { Mono.empty<Void>() }.block() }.exceptionOrNull()
+            if (refused is StoreWriteRefusedException) return
+            Thread.sleep(10)
+        }
+        throw AssertionError("the guard did not close the write gate within 30 s")
+    }
+
     @Test
     fun `stop waits for an active write and then releases`() {
-        val gate = StoreWriteGate(Duration.ofSeconds(5))
+        val gate = StoreWriteGate(Duration.ofSeconds(60))
         val guard = guard(gate).apply { start() }
         val done = activeWrite(gate)
 
         val stopper = thread { guard.stop() }
-        Thread.sleep(200)
+        awaitClosed(gate)
         assertThat(store.calls).describedAs("the calls while the write is active").doesNotContain("release:index:user")
 
         done.tryEmitEmpty()
-        stopper.join(5000)
+        stopper.join(30_000)
         assertThat(store.calls).endsWith("write-end", "release:index:user")
     }
 
     @Test
     fun `destroy drains before it releases`() {
-        val gate = StoreWriteGate(Duration.ofSeconds(5))
+        val gate = StoreWriteGate(Duration.ofSeconds(60))
         val guard = guard(gate).apply { start() }
         val done = activeWrite(gate)
 
         val destroyer = thread { guard.destroy() }
-        Thread.sleep(200)
+        awaitClosed(gate)
         assertThat(store.calls).doesNotContain("release:index:user")
 
         done.tryEmitEmpty()
-        destroyer.join(5000)
+        destroyer.join(30_000)
         assertThat(store.calls).endsWith("write-end", "release:index:user")
     }
 

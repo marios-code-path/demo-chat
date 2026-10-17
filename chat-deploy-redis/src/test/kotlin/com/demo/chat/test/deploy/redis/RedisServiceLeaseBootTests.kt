@@ -37,8 +37,10 @@ import kotlin.concurrent.thread
  * `CHAT-ocpojbyy`.
  *
  * Node ids 52 to 58 belong to this class. See docs/NODEID-CLAIM.md. The
- * helpers set a 3 second TTL, a 1 second renew interval and a 1 second
- * safety margin.
+ * helpers set a 6 second TTL, a 2 second renew interval and a 1 second
+ * safety margin. No assertion here waits for a fixed time. Each wait polls a
+ * condition with a 30 second limit, so a slow machine only makes a test
+ * longer.
  */
 @Tag("integration")
 class RedisServiceLeaseBootTests {
@@ -68,11 +70,17 @@ class RedisServiceLeaseBootTests {
 
     @Test
     fun `a seeded lease refuses a start until it expires`() {
-        template().opsForValue().set("chat:lease:long:index:authmeta", "node 99 crashed@host:1#dead", Duration.ofSeconds(2)).block()
+        val seeded = "chat:lease:long:index:authmeta"
+        template().opsForValue().set(seeded, "node 99 crashed@host:1#dead", Duration.ofSeconds(60)).block()
         val thrown = assertThrows<Exception> { start(null, 55).close() }
         assertThat(generateSequence<Throwable>(thrown) { it.cause }.any { it is ServiceLeaseException }).isTrue()
+        assertThat(template().hasKey(seeded).block()).describedAs("the seeded lease after the refusal").isTrue()
 
-        Thread.sleep(2500)
+        // The lease expires on the Redis clock. The test waits for the key to
+        // go, and does not guess a time.
+        template().expire(seeded, Duration.ofMillis(1)).block()
+        val gone = System.nanoTime() + Duration.ofSeconds(30).toNanos()
+        while (template().hasKey(seeded).block() == true && System.nanoTime() < gone) Thread.sleep(20)
         start(null, 55).use { }
     }
 
@@ -91,18 +99,20 @@ class RedisServiceLeaseBootTests {
         val context = startWhenClaimFree(null, 57)
         template().delete("chat:lease:long:index:user").block()
 
-        val deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos()
+        val deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos()
         while (context.isActive && System.nanoTime() < deadline) Thread.sleep(100)
         assertThat(context.isActive).describedAs("the context after its lease was deleted").isFalse()
     }
 
     @Test
     fun `a write that is active during the close ends before the release`() {
-        val context = startWhenClaimFree(null, 58, "spring.main.sources=${SlowUserWrites::class.java.name}")
+        val context = startWhenClaimFree(
+            null, 58, "spring.main.sources=${SlowUserWrites::class.java.name}", "app.service.lease.drain-timeout=60s",
+        )
         val leases = template()
         val releasedAt = AtomicLong(0)
         val watch = thread {
-            val end = System.nanoTime() + Duration.ofSeconds(20).toNanos()
+            val end = System.nanoTime() + Duration.ofSeconds(60).toNanos()
             while (releasedAt.get() == 0L && System.nanoTime() < end) {
                 if (leases.hasKey("chat:lease:long:persistence:user").block() == false) releasedAt.set(System.nanoTime())
                 else Thread.sleep(10)
@@ -112,13 +122,13 @@ class RedisServiceLeaseBootTests {
         val users = context.getBean("userPersistence") as UserPersistence<Long>
         val key = users.key().block(Duration.ofSeconds(5))!!
         val write = users.add(User.create(key, "Drain", "drainwrite", "http://u")).toFuture()
-        assertThat(SlowUserWrites.entered.await(5, TimeUnit.SECONDS)).isTrue()
+        assertThat(SlowUserWrites.entered.await(30, TimeUnit.SECONDS)).isTrue()
         assertThat(StoreWriteGatePostProcessor.isGated(users)).describedAs("the user store bean is gated").isTrue()
         assertThat(context.getBean(StoreWriteGate::class.java).active).describedAs("the active writes before the close").isPositive()
 
         context.close()
-        runCatching { write.get(10, TimeUnit.SECONDS) }
-        watch.join(20_000)
+        runCatching { write.get(60, TimeUnit.SECONDS) }
+        watch.join(60_000)
 
         assertThat(releasedAt.get()).describedAs("the release time").isNotZero()
         assertThat(SlowUserWrites.finishedAt.get()).describedAs("the write end").isNotZero().isLessThan(releasedAt.get())

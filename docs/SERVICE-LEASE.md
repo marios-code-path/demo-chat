@@ -191,13 +191,13 @@ path to the separate index owner.** No launch path splits services today.
 
 | Class | What it proves |
 |---|---|
-| `LeaseKeeperTimingTests` | Slow claims, a claim batch past a deadline, blocked renewals, one renewal round |
+| `LeaseKeeperTests` | Slow claims, a claim batch past a deadline, a deadline on its own scheduler, one renewal round. A fake clock and manual schedulers, so no result depends on real time |
 | `ServiceLeaseNamesTests` | The name map, the refusal of an unmapped service, the holder source |
 | `ServiceLeaseGuardTests` | Claim order, refusal, holder text, release, loss |
 | `StoreWriteGateTests` | The count, cancel, refusal, the post processor rules |
 | `ServiceLeaseGuardDrainTests` | Drain before release, refusal after close, drain timeout |
 | `RedisServiceLeaseStoreTests`, `CassandraServiceLeaseStoreTests` | The store contract |
-| `RedisServiceLeaseBootTests` | Restart, swap, seeded lease, failed start, loss, drain |
+| `RedisServiceLeaseBootTests` | Restart, swap, seeded lease, failed start, loss, drain. Each wait polls a condition with a 30 s or 60 s limit |
 | `RedisSharedStoreIndexTests` | A second Redis core is refused |
 | `CassandraServiceLeaseBootTests` | A second Cassandra core is refused, restart, every service gated |
 | `LeasePhaseOrderTests` | The phase order |

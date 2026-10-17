@@ -28,9 +28,11 @@ import java.time.Duration
  * Node ids 18 and 19 belong to this class. See docs/NODEID-CLAIM.md. Each test
  * restarts on one node id, because the index path holds the node id. A clean
  * Redis close releases the node id claim and the store service leases since
- * CHAT-lswjobhz. The claim TTL is 3 seconds, and a start retries until the
- * leases are free. That retry covers a lease that a crashed or a concurrent
- * context still holds.
+ * CHAT-lswjobhz. The claim TTL is 6 seconds and the renew interval 2 seconds.
+ * So the close deadline is 5 seconds, and a renewal round can be about 3
+ * seconds late on a busy machine before a context closes itself. A start
+ * retries until the leases are free. That retry covers a lease that a crashed
+ * or a concurrent context still holds.
  */
 @Tag("integration")
 class RedisLuceneFilesRestartTests {
@@ -56,8 +58,8 @@ class RedisLuceneFilesRestartTests {
             "spring.cloud.consul.config.enabled=false",
             "redis-topics.host=${container.containerIpAddress}",
             "redis-topics.port=${container.getMappedPort(6379)}",
-            "app.nodeid.claim.ttl=3s", "app.nodeid.claim.renew-interval=1s",
-            "app.nodeid.claim.safety-margin=1s", "app.nodeid.claim.operation-timeout=500ms",
+            "app.nodeid.claim.ttl=6s", "app.nodeid.claim.renew-interval=2s",
+            "app.nodeid.claim.safety-margin=1s", "app.nodeid.claim.operation-timeout=1s",
         ).toList() + listOfNotNull(root?.let { "app.index.lucene.root=$it" })
 
         fun start(root: Path?, nodeId: Int, vararg extra: String): ConfigurableApplicationContext =
@@ -68,10 +70,10 @@ class RedisLuceneFilesRestartTests {
 
         /**
          * Retries only on a held node id claim or a held store service lease,
-         * and for at most 15 seconds. Any other failure ends the test.
+         * and for at most 30 seconds. Any other failure ends the test.
          */
         fun startWhenClaimFree(root: Path?, nodeId: Int, vararg extra: String): ConfigurableApplicationContext {
-            val deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos()
+            val deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos()
             while (true) {
                 try {
                     return start(root, nodeId, *extra)
