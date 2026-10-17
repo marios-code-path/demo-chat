@@ -19,7 +19,7 @@ docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/config/KeyTy
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/service/command/BackendExecutionPolicy.kt sig:596cedd2fb4df983
 docs/MESSAGE-COMMANDS.md -> chat-core/src/main/kotlin/com/demo/chat/service/command/ImportedMessageId.kt sig:37c4a366e98b7bd8
 docs/MESSAGE-COMMANDS.md -> chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/MessagingServiceImpl.kt sig:20fbcf6518779583
-docs/MESSAGE-COMMANDS.md -> chat-shell/src/main/kotlin/com/demo/chat/shell/commands/ClaudeImportCommands.kt sig:0031d449e39b5373
+docs/MESSAGE-COMMANDS.md -> chat-shell/src/main/kotlin/com/demo/chat/shell/commands/ClaudeImportCommands.kt sig:eec0faa2612e9758
 docs/MESSAGE-COMMANDS.md -> chat-shell/src/main/kotlin/com/demo/chat/shell/commands/ClaudeImportMap.kt sig:0cfcbf024a602b78
 docs/MESSAGE-COMMANDS.md -> chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/composite/mapping/SubmitStatus.kt sig:8c5a6e291e314fd5
 docs/REST-TOKEN-RELAY.md -> chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/CoreSecurityErrorDecoder.kt sig:59ee4b32bebf84ef

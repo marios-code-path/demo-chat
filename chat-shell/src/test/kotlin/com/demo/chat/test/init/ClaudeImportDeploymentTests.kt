@@ -186,6 +186,37 @@ class ClaudeImportDeploymentTests : UuidShellIntegrationTestBase() {
         return file.toString()
     }
 
+    /**
+     * The operator logs in as Admin and sets no variable. An empty value masks
+     * a variable that the developer exported, because the command reads a
+     * blank value as unset. See CHAT-wmfemntw.
+     */
+    @Test
+    fun `a logged-in Admin session imports without the variable`() = withoutAdminPassword {
+        login.login(ShellDeploymentAccount.ADMIN_HANDLE.lowercase(), ShellDeploymentAccount.adminPassword)
+        val suffix = System.nanoTime().toString()
+        val base = "claudeSession$suffix"
+        val human = "human$suffix"
+        val assistant = "assistant$suffix"
+        services.userService().addUser(UserCreateRequest("Human", human, "")).block()
+        services.userService().addUser(UserCreateRequest("Assistant", assistant, "")).block()
+
+        val summary = importer.importConversation(fixtureCopy(), "Sanitized import fixture", base, "1", human, assistant)
+
+        assertThat(summary).startsWith("Imported as Admin (your session). ").contains("Messages imported: 2")
+    }
+
+    private fun withoutAdminPassword(action: () -> Unit) {
+        environment.propertySources.addFirst(MapPropertySource("claude-import-no-variable", mapOf(
+            "CHAT_IMPORT_ADMIN_PASSWORD" to ""
+        )))
+        try {
+            action()
+        } finally {
+            environment.propertySources.remove("claude-import-no-variable")
+        }
+    }
+
     private fun withAdminPassword(action: () -> Unit) {
         environment.propertySources.addFirst(MapPropertySource("claude-import-test", mapOf(
             "CHAT_IMPORT_ADMIN_PASSWORD" to ShellDeploymentAccount.adminPassword
