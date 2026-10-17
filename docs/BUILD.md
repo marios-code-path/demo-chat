@@ -122,6 +122,16 @@ the one exception: the recipe keeps it and runs `just build-shell` first. In
 does not check the key type of the core. A mismatch fails at the first key
 that the shell decodes, and the error does not name the cause.
 
+A line that starts with `!` runs on the host with bash. The working directory
+of `launch-shell` is `chat-deploy`, so a repository file needs `../`:
+
+```
+chat-shell:anonymous :> !jq -r '.[] | .uuid' ../conversations.json
+```
+
+The command prints `exit status <n>` after its output. `!!` history events do
+not work. See `The ! escape` in `docs/SHELL-COMMAND-CONTRACT.md`.
+
 Print a launch command without execution:
 
 ```bash

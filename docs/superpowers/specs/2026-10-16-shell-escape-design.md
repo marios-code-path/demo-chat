@@ -1,6 +1,7 @@
 # Shell escape: run a host command from chat-shell with `!`
 
-Issue: `CHAT-jrlctimq`. Parent: `CHAT-aqpcacwv`. Status: draft for owner review.
+Issue: `CHAT-jrlctimq`. Parent: `CHAT-aqpcacwv`. Status: approved by the owner on
+2026-10-17, and implemented in the pull request of `CHAT-jrlctimq`.
 Revision 2, on 2026-10-17, answers the review of `2368e546`.
 
 ## Goal
@@ -60,8 +61,9 @@ sources in `~/.m2` on 2026-10-16.
 
   The interactive path has neither step. A probe on 2026-10-17 ran
   `FileInputProvider` and the same split and join on the three lines of the
-  `ScriptBangTests` cases below. The output matched those cases. The same
-  probe started `bash` from a `ProcessBuilder` whose child `PATH` was empty.
+  script cases of `ShellEscapeConfigurationTests` below. The output matched
+  those cases. The same probe started `bash` from a `ProcessBuilder` whose
+  child `PATH` was empty.
 - **The run loop.** `InteractiveShellRunner.doRun` reads a line, calls
   `commandParser.parse`, and runs the named command from the registry. A parse
   error prints "Error while parsing command" and the loop continues.
@@ -201,7 +203,7 @@ Each test fails before its change. No test reaches the owner's deployment.
   terminal and the Spring Shell parser, returns the jq line of the facts above
   byte for byte. Without the post-processor, the same test fails. This is the
   probe of 2026-10-16 as a test.
-- `ScriptBangTests`, with `script -f`:
+- `ShellEscapeConfigurationTests`, with `script -f`:
   - A file with a `!echo a` line runs it.
   - `!printf '[%s]\n' 'x  y'` prints `[x  y]`. Inner blanks survive.
   - The final escaped blank. Line 1 is `!printf '[%s]\n' a\ `, with one
