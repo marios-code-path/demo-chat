@@ -164,6 +164,9 @@ The reactor holds 36 modules.
 - **A message send is a captured command.** The Stage 1 command bus is
   `memory`, and it runs in one process. A restart loses unresolved commands.
   See `docs/MESSAGE-COMMANDS.md`.
+- **Vector indexing is off unless the launch selects it.** The Cassandra
+  recipe accepts `--vector embedded --embedding openai`. Trigger a rebuild
+  after imports and after each restart. See `docs/EMBEDDING-PROVIDERS.md`.
 - **No store migration exists.** A Cassandra keyspace from before a schema
   change fails its start. Recreate it from the scripts in
   `shared-resources-cassandra`.
