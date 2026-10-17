@@ -54,10 +54,12 @@ expect_refusal() {
     echo "ok   $name"
 }
 
-expect_plan 'the default stays long and node 1' \
-    -Dapp.key.type=long -Dapp.nodeid=1 --
-expect_plan 'a node id alone keeps long' \
-    -Dapp.key.type=long -Dapp.nodeid=3 -- 3
+expect_refusal 'no key type is refused, and long is no default' 'needs a key type. Use --key-type TYPE' \
+    --
+expect_refusal 'a node id alone is refused' 'needs a key type. Use --key-type TYPE' \
+    -- 3
+expect_plan '--key-type long is explicit' \
+    -Dapp.key.type=long -Dapp.nodeid=3 -- 3 --key-type long
 expect_plan '--key-type uuid matches a uuid core' \
     -Dapp.key.type=uuid -Dapp.nodeid=1 -- 1 --key-type uuid
 expect_plan '--key-type=uuid form' \
@@ -112,7 +114,7 @@ expect_output 'dry-run-shell --build prints the install, then the shell plan' \
     dry-run-shell 1 --build --key-type uuid -- \
     "$install_line" -Dapp.key.type=uuid spring-boot:run -- spring-boot:build-image
 expect_output 'dry-run-shell without --build installs nothing' \
-    dry-run-shell 1 -- spring-boot:run -- "$install_line"
+    dry-run-shell 1 --key-type long -- spring-boot:run -- "$install_line"
 expect_refusal_of() {
     local name="$1" recipe="$2" message="$3"
     shift 4
@@ -134,7 +136,7 @@ expect_refusal_of 'build-shell refuses an unknown flag' build-shell \
 # depends on the launch module, so one reactor cannot hold both with those
 # profiles. build-shell installs chat-shell -am instead. This check reads both
 # sets from Maven, offline, and changes nothing.
-plan="$(./shell-scripts/chat-build shell --run --notls --node-id 1 --dry-run 2>&1)"
+plan="$(./shell-scripts/chat-build shell --run --notls --node-id 1 --key-type long --dry-run 2>&1)"
 module="$(awk '/^# module:/ {print $3}' <<< "$plan")"
 profiles="$(grep -o -- '-P[^ ]*' <<< "$plan" | head -n 1)"
 needed="$( { mvn -o -B -ntp -f "$module/pom.xml" "$profiles" dependency:list \

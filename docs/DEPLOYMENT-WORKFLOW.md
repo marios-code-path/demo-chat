@@ -101,7 +101,7 @@ TLS material.
 ```bash
 ./shell-scripts/gen-dckeys.sh <password>
 export KEYSTORE_PASS=<password>
-./shell-scripts/chat-build core --memory --run --tls ./encrypt-keys --node-id 0
+./shell-scripts/chat-build core --memory --run --tls ./encrypt-keys --node-id 0 --key-type long
 ```
 
 That script builds one authority, a server identity and a client identity, and
@@ -166,8 +166,8 @@ and `keyspace-uuid.cql` beside it for the other key type.
 
 ```bash
 export CHAT_SERVICE_PASSWORD='<a password you choose>'
-./shell-scripts/chat-build core --cassandra --run --notls --node-id 7
-./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk /tmp/authserv.jwk
+./shell-scripts/chat-build core --cassandra --run --notls --node-id 7 --key-type long
+./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk /tmp/authserv.jwk --key-type long
 ```
 
 Both launches read `CHAT_SERVICE_PASSWORD`. The core routes require the
@@ -191,7 +191,7 @@ stores claims nothing.
 ### Build an image instead
 
 ```bash
-./shell-scripts/chat-build core --cassandra --build --notls --node-id 7
+./shell-scripts/chat-build core --cassandra --build --notls --node-id 7 --key-type long
 ```
 
 That command needs no environment variable. It builds

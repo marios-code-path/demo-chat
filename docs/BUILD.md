@@ -99,18 +99,18 @@ Use `chat-build` through `just` for common local launch commands.
 Start the core service with memory storage:
 
 ```bash
-just launch-memory 0
+just launch-memory 0 --key-type long
 ```
 
 Start the interactive shell client against a running core service:
 
 ```bash
-just launch-shell 1
+just launch-shell 1 --key-type long
 ```
 
-The shell key type must match the key type of the core. `just launch-memory`
-uses `long`, and so does `just launch-shell` by default. A `uuid` core needs a
-`uuid` shell:
+Every launch names its key type, and no key type is a default. A launch
+without one exits 2 with a message. The shell key type must match the key type
+of the core. A `uuid` core needs a `uuid` shell:
 
 ```bash
 just launch-shell 1 --key-type uuid
@@ -125,8 +125,8 @@ that the shell decodes, and the error does not name the cause.
 Print a launch command without execution:
 
 ```bash
-just dry-run-memory 0
-just dry-run-shell 1
+just dry-run-memory 0 --key-type long
+just dry-run-shell 1 --key-type long
 ```
 
 `app.nodeid` has no default.
@@ -151,7 +151,7 @@ Add `--index-root DIR` to a `core` launch. `DIR` must be an absolute path.
 A restart then reuses the index files when they match the store.
 
 ```bash
-./shell-scripts/chat-build core --redis --run --notls --node-id 0 \
+./shell-scripts/chat-build core --redis --run --notls --node-id 0 --key-type long \
   --init users,rootkeys --index-root ~/chat-lucene
 ```
 
@@ -202,18 +202,18 @@ the RSocket boundary.
 Pass one `--agent <client-id>=<handle>` per agent, and the trusted key. The
 application properties have no defaults.
 
-    ./chat-build rest --run --notls --node-id 2 \
+    ./chat-build rest --run --notls --node-id 2 --key-type long \
         --jwk /abs/path/server_keycert.jwk \
         --agent <client-id>=<handle> [--agent <client-id>=<handle> ...]
 
 Start the core with the same `--agent` list:
 
-    ./chat-build core --memory --run --notls --node-id 1 --init users,rootkeys \
+    ./chat-build core --memory --run --notls --node-id 1 --init users,rootkeys --key-type long \
         --jwk /abs/path/server_keycert.jwk \
         --agent <client-id>=<handle> [--agent <client-id>=<handle> ...]
 
-Both `--notls` and `--node-id` are required. Each launch exits 2 without
-either one. Give each process its own node id.
+`--notls`, `--node-id`, and a key type are required. Each launch exits 2 without
+any one of them. Give each process its own node id. Give both the same key type.
 
 Both launches emit `app.security.agents[n].client-id`,
 `app.security.agents[n].username`, `app.security.required-scope`, and
@@ -281,7 +281,7 @@ A client obtains its token from the authorization server. It does not mint one.
 Minting needs the private signing key, which belongs to the server alone.
 
     export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
-    ./chat-build authserv --run --notls --node-id 8 --profile memory \
+    ./chat-build authserv --run --notls --node-id 8 --profile memory --key-type long \
       --jwk "$PWD/encrypt-keys/server_keycert.jwk"
 
     curl -sS -u '<client-id>:<client-secret>' \
@@ -306,7 +306,7 @@ adapter, with the refusal matrix and the limits.
 ```bash
 ./shell-scripts/gen-dckeys.sh <cert-password>
 export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
-./shell-scripts/chat-build authserv --run --notls --node-id 8 \
+./shell-scripts/chat-build authserv --run --notls --node-id 8 --key-type long \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk"
 ```
 
@@ -385,5 +385,5 @@ Common direct commands:
 ./shell-scripts/build-health.sh --integration
 ./shell-scripts/build-health.sh --ci
 ./shell-scripts/test-flags.sh
-./shell-scripts/chat-build core --memory --run --notls --node-id 0 --init users,rootkeys
+./shell-scripts/chat-build core --memory --run --notls --node-id 0 --init users,rootkeys --key-type long
 ```

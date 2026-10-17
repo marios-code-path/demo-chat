@@ -7,7 +7,7 @@ lucene_compose_file="$script_dir/../devops/docker/compose-core-lucene.yaml"
 redis_compose_file="$script_dir/../devops/docker/compose-core-redis.yaml"
 
 if [[ "${1:-}" != core ]]; then
-    echo 'Usage: chat-deploy core --stop OR chat-deploy core --cassandra --pubsub PROVIDER --notls --node-id ID' >&2
+    echo 'Usage: chat-deploy core --stop OR chat-deploy core --cassandra --pubsub PROVIDER --notls --node-id ID --key-type TYPE' >&2
     exit 2
 fi
 shift

@@ -33,6 +33,10 @@ check-deploy-recipe:
 check-shell-recipe:
 	./shell-scripts/test-shell-recipe.sh
 
+# Check that every deployment recipe refuses to run without a key type. Starts nothing.
+check-key-type-rule:
+	./shell-scripts/test-key-type-required.sh
+
 # Fail when a module pom declares a third-party dependency version.
 check-deps:
 	./shell-scripts/check-dependency-versions.sh
@@ -61,13 +65,25 @@ dry-run-partial $modules $mode="unit":
 check-partial:
 	./shell-scripts/test-build-partial.sh
 
+# Flags go to chat-build. A launch needs --key-type TYPE, and no key type is a default.
 # Start the core service with memory storage.
-launch-memory node_id="0":
-	./shell-scripts/chat-build core --memory --run --notls --node-id {{node_id}} --init users,rootkeys
+[positional-arguments]
+launch-memory node_id="0" *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	node_id=0
+	if (($# > 0)) && [[ "$1" != -* ]]; then
+	    node_id="${1#node_id=}"
+	    shift
+	fi
+	exec ./shell-scripts/chat-build core --memory --run --notls --node-id "$node_id" --init users,rootkeys "$@"
 
 # Print the memory launch command and properties.
-dry-run-memory node_id="0":
-	./shell-scripts/chat-build core --memory --run --notls --node-id {{node_id}} --init users,rootkeys --dry-run
+[positional-arguments]
+dry-run-memory node_id="0" *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	exec just --justfile {{quote(justfile())}} launch-memory "$@" --dry-run
 
 # launch-shell loads these jars from ~/.m2. Flags: --dry-run prints the install command.
 # Install chat-shell and the modules it needs. Run it after a pull.
@@ -112,6 +128,9 @@ launch-shell node_id="1" *flags:
 	    esac
 	done
 	if [[ "$build" == true ]]; then
+	    # Check every argument, the key type too, before a long install.
+	    ./shell-scripts/chat-build shell --run --notls --node-id "$node_id" \
+	        ${args[@]+"${args[@]}"} --dry-run > /dev/null
 	    if [[ "$dry_run" == true ]]; then
 	        just --justfile {{quote(justfile())}} build-shell --dry-run
 	    else
@@ -127,9 +146,19 @@ dry-run-shell node_id="1" *flags:
 	set -euo pipefail
 	exec just --justfile {{quote(justfile())}} launch-shell "$@" --dry-run
 
+# An image is a deployment, so it needs --key-type TYPE. Flags go to chat-build.
 # Build a Cassandra core service image.
-build-cassandra node_id:
-	./shell-scripts/chat-build core --cassandra --build --notls --node-id {{node_id}}
+[positional-arguments]
+build-cassandra node_id *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	if [[ "$1" == -* ]]; then
+	    echo "build-cassandra needs a node id first, such as: just build-cassandra 16 --key-type uuid" >&2
+	    exit 2
+	fi
+	node_id="${1#node_id=}"
+	shift
+	exec ./shell-scripts/chat-build core --cassandra --build --notls --node-id "$node_id" "$@"
 
 # Deploy or stop core with Cassandra, Lucene, Redis pub/sub, and a memory command bus.
 # Flags: --key-type TYPE selects the key type and keyspace chat_TYPE. --dry-run prints the plan. --stop stops.
@@ -169,11 +198,32 @@ deploy-core-cassandra-lucene-redis node_id="7" *flags:
 	    ./shell-scripts/chat-deploy core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id "$node_id" ${extra[@]+"${extra[@]}"}
 	fi
 
+# The image is a deployment, so it needs --key-type TYPE. Match the key type of the core.
 # Build and start the authorization server container after checking its dependencies.
-deploy-authserv jwk:
+[positional-arguments]
+deploy-authserv jwk *flags:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	status() { printf '[deploy-authserv] %s\n' "$1"; }
+	shift
+	key_args=()
+	while (($# > 0)); do
+	    case "$1" in
+	        --key-type=?*) key_args=(--key-type "${1#--key-type=}") ;;
+	        --key-type)
+	            if (($# < 2)) || [[ "$2" == -* ]]; then
+	                echo "--key-type needs a value" >&2
+	                exit 2
+	            fi
+	            key_args=(--key-type "$2")
+	            shift ;;
+	        *) echo "Unknown deploy-authserv flag: $1" >&2; exit 2 ;;
+	    esac
+	    shift
+	done
+	# chat-build states the key type rule. This check runs before every other step.
+	CONSUL_HOST=127.0.0.1 ./shell-scripts/chat-build authserv --build --notls --node-id 8 \
+	    --consul ${key_args[@]+"${key_args[@]}"} --dry-run > /dev/null
 	status "Checking credentials and JWK file."
 	CHAT_SERVICE_PASSWORD="${CHAT_SERVICE_PASSWORD:-}"
 	SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-}"
@@ -272,7 +322,8 @@ deploy-authserv jwk:
 	status "Building the authserv Docker image. Maven will report build progress."
 	env CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host" \
 	    DOCKER_CONFIG="$build_docker_config" conda run -n base \
-	    ./shell-scripts/chat-build authserv --build --notls --node-id 8 --consul
+	    ./shell-scripts/chat-build authserv --build --notls --node-id 8 --consul \
+	    ${key_args[@]+"${key_args[@]}"}
 	status "The authserv Docker image build is complete."
 	status "Starting the authserv container."
 	docker compose -f "$compose_file" up -d authserv

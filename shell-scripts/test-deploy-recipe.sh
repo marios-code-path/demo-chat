@@ -60,8 +60,8 @@ expect_refusal() {
     echo "ok   $name"
 }
 
-expect_plan 'the default key type is long' \
-    -Dapp.key.type=long -Dapp.nodeid=16 -- 16 --dry-run
+expect_refusal 'no key type is refused, and long is no default' 'needs a key type. Use --key-type TYPE' \
+    -- 16 --dry-run
 expect_plan '--key-type uuid selects the uuid key type' \
     -Dapp.key.type=uuid -Dapp.nodeid=16 -- 16 --key-type uuid --dry-run
 expect_plan '--key-type=uuid form' \

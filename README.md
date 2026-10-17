@@ -44,8 +44,8 @@ just check-ci       # builds the shell test image, then runs every test
 Start a core service with memory storage, and then the shell client:
 
 ```bash
-just launch-memory 0
-just launch-shell 1
+just launch-memory 0 --key-type long
+just launch-shell 1 --key-type long
 ```
 
 Each launch needs its own node id. `chat-build --node-id` is the normal launch
