@@ -23,14 +23,30 @@ import kotlin.system.exitProcess
  * reason as `ChatAppKt`: a native image reads the class of this frame.
  */
 fun main(args: Array<String>) {
-    val status = try {
+    val status = statusOfRun(PrintWriter(OutputStreamWriter(System.err, Charsets.UTF_8))) {
         SpringApplication(ChatApp::class.java).apply { setBannerMode(Banner.Mode.OFF) }.run(*args).close()
-        ShellExitStatus.OK
-    } catch (e: Throwable) {
-        reportFailure(e, PrintWriter(OutputStreamWriter(System.err, Charsets.UTF_8)))
     }
     exitProcess(status.code)
 }
+
+/**
+ * The exit status of [run]. A failure writes its line on [err] unless a
+ * [ShellExit] wrote it already.
+ *
+ * **An [SpringApplication.AbandonedRunException] passes through.** The AOT
+ * processor of Spring Boot runs `main` and ends the run with that exception on
+ * purpose, to read the context it captured. A native build fails if `main`
+ * takes it for an error and exits.
+ */
+fun statusOfRun(err: PrintWriter, run: () -> Unit): ShellExitStatus =
+    try {
+        run()
+        ShellExitStatus.OK
+    } catch (e: SpringApplication.AbandonedRunException) {
+        throw e
+    } catch (e: Throwable) {
+        reportFailure(e, err)
+    }
 
 /**
  * The exit status of a failure that ended the run.

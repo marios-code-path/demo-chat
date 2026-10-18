@@ -12,6 +12,7 @@
 #   CORE_PORT, CORE_MGMT_PORT  the core, as chat-build reads them
 #   CHAT_SHELL_USER, CHAT_SHELL_PASSWORD_FILE  the login, both or neither
 #   CHAT_SHELL_LOG           a file for the log, which is off otherwise
+#   CHAT_SHELL_CLI_PRINT_OPTIONS=1  print the JVM options and end
 #
 # The exit status is 0 for success. The other statuses are in the design of
 # the topic register, section "chat-shell as a command tool", part 2.
@@ -21,10 +22,6 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
 node_id="${CHAT_SHELL_NODE_ID:-1}"
 classpath="$root/chat-deploy/target/shell-cli.classpath"
-if [[ ! -s "$classpath" ]]; then
-    echo "chat-shell-cli: no classpath file. Run just build-shell-cli first." >&2
-    exit 1
-fi
 
 # The options of the shell launch plan, as chat-build prints them for the
 # interactive shell. They go on the java command line, not in
@@ -53,6 +50,17 @@ opts+=(
 )
 if [[ -n "${CHAT_SHELL_LOG:-}" ]]; then
     opts+=("-Dlogging.file.name=$CHAT_SHELL_LOG")
+fi
+
+# CHAT_SHELL_CLI_PRINT_OPTIONS=1 prints the JVM options, one on each line, and ends.
+# The native proof reads them to set the AOT properties of its build.
+if [[ "${CHAT_SHELL_CLI_PRINT_OPTIONS:-}" == 1 ]]; then
+    printf '%s\n' "${opts[@]}"
+    exit 0
+fi
+if [[ ! -s "$classpath" ]]; then
+    echo "chat-shell-cli: no classpath file. Run just build-shell-cli first." >&2
+    exit 1
 fi
 
 exec java "${opts[@]}" -cp "$root/chat-deploy/target/classes:$(cat "$classpath")" \
