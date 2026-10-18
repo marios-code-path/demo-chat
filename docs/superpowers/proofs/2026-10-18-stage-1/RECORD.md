@@ -21,6 +21,8 @@ and after the review of PR #259. The table below is pass 2.
 | A6 | `@x` | 2 | 2 | pass | 3,315 ms | `chat-shell: a script file is not allowed in this mode` |
 | A7 | `listen lobby` | 2 | 2 | pass | 3,534 ms | `chat-shell: listen is not allowed in this mode` |
 | A13 | `! false` | 2 | 2 | pass | 3,330 ms | `chat-shell: ! is not allowed in this mode` |
+| A14 | `register-read`, launch stamp 28 s in the past | 124, empty standard output | 124 | pass | 2,158 ms | `chat-shell: register-read passed its 30000 ms limit` |
+| A15 | `register-read`, launch stamp 31 s in the past | 124, empty standard output | 124 | pass | 219 ms | `chat-shell: register-read passed its 30000 ms limit` |
 | A8 | `add-topic stage1-room`, login | 0 | 0 | pass | 3,748 ms | empty |
 | A9 | `post stage1-room`, 3-line UTF-8 input with no final newline | 0 | 0 | pass | 3,980 ms | empty |
 | A10 | `messages stage1-room --format records` | 0, the A9 text exactly | 0 | pass | 3,968 ms | empty |
@@ -49,7 +51,8 @@ N2, N5, and N10 did not run. The native image does not start a context
 - **The topic-read time of A10 is 3,968 ms.** One JVM process takes 3.1 to 4.0 s.
   See `READ-TIME.md` for a complete register read.
 - **`register-read` meets the 10-second target.** It reads the index and the
-  newest entry of 3 topics in one process, in 4,476 ms in the median of five runs,
+  newest entry of 3 topics in one process, in 4,476 ms and 4,479 ms in the median of
+  five runs (two runs of five),
   from the launch to the exit (`read.sh register`, see `READ-TIME.md`). It is not
   one of the numbered cases. Its checks are in `read.sh`.
 - **The end state is clean.** No listener on 6990, 6991, or 9101. The core group

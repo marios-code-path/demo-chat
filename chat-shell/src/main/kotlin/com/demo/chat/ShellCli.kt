@@ -1,5 +1,7 @@
 package com.demo.chat
 
+import com.demo.chat.shell.cli.HardLimits
+import com.demo.chat.shell.cli.LaunchDeadline
 import com.demo.chat.shell.cli.ShellExit
 import com.demo.chat.shell.cli.ShellExitStatus
 import org.springframework.boot.Banner
@@ -23,6 +25,13 @@ import kotlin.system.exitProcess
  * reason as `ChatAppKt`: a native image reads the class of this frame.
  */
 fun main(args: Array<String>) {
+    // A command with a hard limit gets a watchdog before the application starts, so a stalled startup ends too.
+    HardLimits.of(args.firstOrNull())?.let { limit ->
+        LaunchDeadline(args.first(), LaunchDeadline.launchOfProcess(), limit).also { deadline ->
+            LaunchDeadline.active = deadline
+            deadline.startWatchdog(PrintWriter(OutputStreamWriter(System.err, Charsets.UTF_8))) { Runtime.getRuntime().halt(it) }
+        }
+    }
     val status = statusOfRun(PrintWriter(OutputStreamWriter(System.err, Charsets.UTF_8))) {
         SpringApplication(ChatApp::class.java).apply { setBannerMode(Banner.Mode.OFF) }.run(*args).close()
     }

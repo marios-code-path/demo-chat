@@ -45,10 +45,11 @@ solved.
 
 ## The session-start command in one process
 
-The owner decided on 2026-10-18: keep the index read and the three topic reads,
-and run them in one JVM process. Measure from the launch to the last output
-line. Build resident mode only if that command misses 10 seconds. Enforce the
-30-second limit.
+Sigma recommended on 2026-10-18: keep the index read and the three topic
+reads, and run them in one JVM process. Measure from the launch to the last
+output line. Build resident mode only if that command misses 10 seconds.
+Enforce the 30-second limit. **This is Sigma's recommendation. Mario has not
+confirmed it as a design decision.** It does not authorize a merge.
 
 The command is `register-read`. `read.sh register` ran it 5 times on the same
 kind of data (20 pointers in the form `<fp-id> | <topic-name> | <kind> |
@@ -59,6 +60,7 @@ each of the 3 topics. No check failed. The output was 11,714 bytes.
 | Launcher | Command | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Median | Against 10 s | Against 30 s |
 |----------|---------|-------|-------|-------|-------|-------|--------|--------------|--------------|
 | `chat-shell-cli` (JVM) | `register-read` | 4,649 ms | 4,476 ms | 4,465 ms | 4,471 ms | 4,497 ms | **4,476 ms** | **under** | under |
+| `chat-shell-cli` (JVM), with the launch stamp, a second run | `register-read` | 4,661 ms | 4,382 ms | 4,408 ms | 4,479 ms | 4,555 ms | **4,479 ms** | **under** | under |
 
 **The time is from the launch to the exit of the process.** The last output line
 comes a few milliseconds before the exit. One start (about 3.7 s) plus the reads
@@ -68,9 +70,28 @@ comes a few milliseconds before the exit. One start (about 3.7 s) plus the reads
 built.** The four-process version above took 14,935 ms, because it paid four
 JVM starts.
 
-**The 30-second limit is enforced** in the command, and a unit test shows
-status 124 for a read that never ends (`PubSubRegisterReadTests`). In the shell
-modes the limit counts the JVM start. No live run reached the limit.
+**The 30-second limit is a hard limit from the launch.** Sigma found on PR #259
+that the first version started its timer when the command ran. A stall in the
+startup could pass the limit, and a budget that startup had used up still allowed
+a success. The limit now has three parts, and `LaunchDeadline` holds them.
+
+- `main` arms a watchdog thread before the application starts. At the limit it
+  writes one line on standard error and halts the process with status 124.
+- The command refuses to start its read when the budget is spent.
+- The command prints its output under a lock. If the limit passed during the read,
+  it prints nothing and gives 124. If the output is printed, the watchdog does
+  not halt the process afterwards.
+
+The launch time is the earlier of the stamp `CHAT_SHELL_LAUNCH_EPOCH_MS`, which
+`chat-shell-cli` sets, and the JVM start. A missing or broken stamp falls back to
+the JVM start, and never to the current time.
+
+Live proof, cases A14 and A15 of `RECORD.md`: with a launch stamp 28 s in the past,
+the process ended after 2.2 s with status 124, one line on standard error, and
+empty standard output. With a stamp 31 s in the past it ended after 0.2 s, with
+the same result. `LaunchDeadlineTests` and `PubSubRegisterReadTests` cover the
+watchdog, the spent budget, a budget that runs out during the read, and the
+launch time.
 
 ## What this does not show
 

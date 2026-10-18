@@ -1,5 +1,7 @@
 package com.demo.chat.shell.commands
 
+import com.demo.chat.shell.cli.HardLimits
+import com.demo.chat.shell.cli.LaunchDeadline
 import com.demo.chat.shell.cli.StreamInput
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -78,9 +80,12 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
      * process. See `PubSubCommands.registerRead`.
      *
      * **The 30-second limit runs from the launch of the process in the shell
-     * modes**, as owner decision 20 says, so the JVM start counts. In the
-     * interactive shell the process is old, so the limit runs from the command.
-     * An empty register prints nothing, and not even a blank line.
+     * modes**, as owner decision 20 says, so the JVM start counts. `main` also
+     * arms a watchdog before the application starts, so a startup that stalls
+     * ends with status 124 too. A spent budget refuses the read, and a budget
+     * that runs out during the read refuses the output. See [LaunchDeadline].
+     * In the interactive shell the process is old, so the limit runs from the
+     * command. An empty register prints nothing, and not even a blank line.
      */
     @Bean
     fun registerReadCommand(): Command = Command.builder()
@@ -94,13 +99,17 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
         .execute(Consumer<CommandContext> { ctx ->
             val hours = ctx.optionValue("maxAgeHours").toLongOrNull()?.takeIf { it > 0 }
                 ?: throw IllegalArgumentException("register-read needs a positive --maxAgeHours.")
-            val sinceLaunch = ctx.inputReader() is StreamInput
-            val used = if (sinceLaunch) ProcessHandle.current().info().startInstant()
-                .map { Duration.between(it, Instant.now()) }.orElse(Duration.ZERO) else Duration.ZERO
-            val limit = REGISTER_READ_LIMIT.minus(used).coerceAtLeast(Duration.ofMillis(1))
-            val text = commands.registerRead(ctx.optionValue("index"), Duration.ofHours(hours), limit)
-            if (text.isNotEmpty()) ctx.outputWriter().println(text)
-            ctx.outputWriter().flush()
+            // The shell modes count the limit from the launch of the process, so the JVM start counts.
+            // The interactive process is old, so there the limit counts from the command.
+            val deadline = if (ctx.inputReader() is StreamInput)
+                LaunchDeadline.forProcess(HardLimits.REGISTER_READ, HardLimits.REGISTER_READ_LIMIT)
+            else LaunchDeadline(HardLimits.REGISTER_READ, Instant.now(), HardLimits.REGISTER_READ_LIMIT)
+            deadline.requireBudget()
+            val text = commands.registerRead(ctx.optionValue("index"), Duration.ofHours(hours), deadline.remaining())
+            deadline.finish {
+                if (text.isNotEmpty()) ctx.outputWriter().println(text)
+                ctx.outputWriter().flush()
+            }
         })
 
     /** `command-status` reads the backends of a command that the login owns. */
@@ -165,9 +174,4 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
             if (text.isNotEmpty()) ctx.outputWriter().println(text)
             ctx.outputWriter().flush()
         })
-
-    private companion object {
-        /** The hard limit of a complete session-start read. Owner decision 20. */
-        val REGISTER_READ_LIMIT: Duration = Duration.ofSeconds(30)
-    }
 }

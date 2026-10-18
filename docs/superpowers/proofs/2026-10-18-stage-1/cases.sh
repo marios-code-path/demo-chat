@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 1, task 10: the acceptance cases A1 to A13 of the shell command tool.
+# Stage 1, task 10: the acceptance cases A1 to A15 of the shell command tool.
 # Every case is one chat-shell-cli process in its own process group, inside the
 # stage 0 sandbox, with a 60-second limit. The disposable memory core runs on
 # 6990 and 6991. Exit 0: every case has its expected status. Exit 1: a case
@@ -109,6 +109,12 @@ run_case A5 2 /dev/null -- no-such-command;                       record A5 no-s
 run_case A6 2 /dev/null -- @x;                                    record A6 @x 2
 run_case A7 2 /dev/null -- listen lobby;                          record A7 'listen lobby' 2
 run_case A13 2 /dev/null -- '!' false;                            record A13 '! false' 2
+# A launch stamp in the past stands for a startup that used part, or all, of the 30 s budget of
+# register-read. The watchdog must end the process with 124, one line on standard error, and no output.
+run_case A14 124 /dev/null "CHAT_SHELL_LAUNCH_EPOCH_MS=$(( $(now_ms) - 28000 ))" -- register-read
+[[ -s "$S/A14.out" ]] && verdict=FAIL;                            record A14 'register-read, 28 s of budget used' 124
+run_case A15 124 /dev/null "CHAT_SHELL_LAUNCH_EPOCH_MS=$(( $(now_ms) - 31000 ))" -- register-read
+[[ -s "$S/A15.out" ]] && verdict=FAIL;                            record A15 'register-read, budget spent' 124
 
 run_case A8 0 /dev/null "${login[@]}" -- add-topic stage1-room
 blocked=false

@@ -6,17 +6,21 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.shell.cli.LaunchDeadline
 import com.demo.chat.shell.cli.ShellExit
 import com.demo.chat.shell.cli.ShellExitStatus
+import com.demo.chat.shell.cli.StreamInput
 import com.demo.chat.shell.commands.PubSubCommands
 import com.demo.chat.shell.commands.PubSubCommandsRegistrar
 import com.demo.chat.shell.commands.ShellRooms
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.shell.core.InputReader
 import org.springframework.shell.core.command.CommandContext
 import org.springframework.shell.core.command.CommandRegistry
@@ -156,5 +160,71 @@ class PubSubRegisterReadTests {
             registry, PrintWriter(out), mock(InputReader::class.java)))
 
         assertThat(out.toString()).isEmpty()
+    }
+
+    @AfterEach
+    fun disarm() {
+        LaunchDeadline.active = null
+    }
+
+    /** The shell modes give a StreamInput, so the limit counts from the launch of the process. */
+    private fun runInMode(): Pair<Throwable?, String> {
+        val registered = PubSubCommandsRegistrar(commands()).registerReadCommand()
+        val registry = CommandRegistry(setOf(registered))
+        val out = StringWriter()
+        val failure = try {
+            registered.execute(CommandContext(DefaultCommandParser(registry).parse("register-read"),
+                registry, PrintWriter(out), StreamInput(java.io.ByteArrayInputStream(ByteArray(0)))))
+            null
+        } catch (e: Throwable) {
+            e
+        }
+        return failure to out.toString()
+    }
+
+    /** Startup used the whole budget: the read must not run, and it must not succeed. */
+    @Test
+    fun `in a mode, a budget that startup spent gives TIMEOUT, reads nothing, and prints nothing`() {
+        room("register-index", 100)
+        stored(100, Triple(1, hours(1), "CHAT-1 | topic-a | task | A"))
+        LaunchDeadline.active = LaunchDeadline("register-read", Instant.now().minusSeconds(31), Duration.ofSeconds(30))
+
+        val (failure, printed) = runInMode()
+
+        assertThat(failure).isInstanceOfSatisfying(ShellExit::class.java) { assertThat(it.status).isEqualTo(ShellExitStatus.TIMEOUT) }
+        assertThat(printed).isEmpty()
+        verifyNoInteractions(messages)
+    }
+
+    /** The read itself used the last of the budget: the output is refused. */
+    @Test
+    fun `in a mode, a budget that ran out during the read prints nothing`() {
+        room("register-index", 100)
+        stored(100, Triple(1, hours(1), "CHAT-1 | topic-a | task | A"))
+        room("topic-a", 101)
+        given(messages.listMessages(ByIdRequest(101L))).willAnswer {
+            Thread.sleep(400)
+            Flux.empty<Message<Long, String>>()
+        }
+        LaunchDeadline.active = LaunchDeadline("register-read", Instant.now().minusMillis(29_800), Duration.ofSeconds(30))
+
+        val (failure, printed) = runInMode()
+
+        assertThat(failure).isInstanceOfSatisfying(ShellExit::class.java) { assertThat(it.status).isEqualTo(ShellExitStatus.TIMEOUT) }
+        assertThat(printed).isEmpty()
+    }
+
+    @Test
+    fun `in a mode, a budget with time left prints the register`() {
+        room("register-index", 100)
+        stored(100, Triple(1, hours(1), "CHAT-1 | topic-a | task | A"))
+        room("topic-a", 101)
+        stored(101, Triple(10, hours(1), "a new"))
+        LaunchDeadline.active = LaunchDeadline("register-read", Instant.now().minusSeconds(4), Duration.ofSeconds(30))
+
+        val (failure, printed) = runInMode()
+
+        assertThat(failure).isNull()
+        assertThat(printed.lines().filter { it.isNotEmpty() }).hasSize(2)
     }
 }

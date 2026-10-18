@@ -88,8 +88,12 @@ entry is younger than `--maxAgeHours`. A pointer reads `<fp-id> | <topic-name> |
 does not follow the form fails the read. **The command prints nothing until every
 read has succeeded**, so a failure never leaves a partial register. An empty
 index prints nothing. The hard limit is 30 seconds. In the shell modes it runs
-from the launch of the process, so the JVM start counts, and a read past it gives
-status 124. In the interactive shell it runs from the command.
+from the launch of the process, so the JVM start counts. `main` arms a watchdog
+before the application starts, so a startup that stalls ends with status 124 too.
+A budget that startup spent refuses the read. A budget that runs out during the
+read refuses the output. Standard output is empty on 124. The launch time is the
+earlier of `CHAT_SHELL_LAUNCH_EPOCH_MS`, which `chat-shell-cli` sets, and the JVM
+start. In the interactive shell the limit runs from the command.
 
 ### ClaudeImportCommands
 

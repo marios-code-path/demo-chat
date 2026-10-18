@@ -396,6 +396,7 @@ type must match the core. These variables also apply:
 | `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE` | The login. Set both or neither. |
 | `CHAT_SHELL_LOG` | A file for the log. The console log is off. |
 | `CHAT_SHELL_CLI_PRINT_OPTIONS` | Set to 1 to print the JVM options and end. |
+| `CHAT_SHELL_LAUNCH_EPOCH_MS` | The launch time in epoch milliseconds, for the hard limit of `register-read`. The script sets it when it is absent. |
 
 The exit statuses are in `docs/SHELL-COMMAND-CONTRACT.md`, section `The shell
 modes`. The script `chat-shell-client` does not exist, because resident mode is

@@ -604,9 +604,12 @@ holds the cases. These facts are measured.
   `register-read` reads the index and the newest recent entry of each topic in
   one JVM. On representative data (20 pointers, 3 topics with 5 entries of about 2
   KB each) it takes 4,476 ms in the median of five runs, from the launch to the
-  exit. The owner chose this command on 2026-10-18 and said to build resident mode
-  only if it missed 10 seconds. It did not, so task 9 is not built. The command
-  enforces the 30-second limit, counted from the launch, with status 124.
+  exit. Sigma recommended this command on 2026-10-18, and said to build resident
+  mode only if it missed 10 seconds. Mario has not confirmed it as a design
+  decision. It did not miss, so task 9 is not built for this workload. The command
+  enforces the 30-second limit from the launch, with status 124: a watchdog in
+  `main`, a refusal when the budget is spent, and a refusal of the output when the
+  limit passes during the read. Live cases A14 and A15 show it.
 - **The native one-shot image builds and does not start a context.** The first
   failure is a missing `config/client-rsocket-local.yml`. See
   `docs/NATIVE-IMAGE.md`, section "Shell one-shot".

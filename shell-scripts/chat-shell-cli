@@ -13,10 +13,16 @@
 #   CHAT_SHELL_USER, CHAT_SHELL_PASSWORD_FILE  the login, both or neither
 #   CHAT_SHELL_LOG           a file for the log, which is off otherwise
 #   CHAT_SHELL_CLI_PRINT_OPTIONS=1  print the JVM options and end
+#   CHAT_SHELL_LAUNCH_EPOCH_MS  the launch time for a hard limit. The script sets it when it is absent.
 #
 # The exit status is 0 for success. The other statuses are in the design of
 # the topic register, section "chat-shell as a command tool", part 2.
 set -euo pipefail
+
+# The launch time counts toward the hard limit of register-read, so the JVM start and this
+# script count too. A caller can set the stamp. CHAT_SHELL_LAUNCH_EPOCH_MS is in milliseconds.
+: "${CHAT_SHELL_LAUNCH_EPOCH_MS:=$(perl -MTime::HiRes=time -e 'printf "%d", time * 1000')}"
+export CHAT_SHELL_LAUNCH_EPOCH_MS
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
