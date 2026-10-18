@@ -315,7 +315,7 @@ The owner asked on 2026-10-18 for native one-shot as an option, measured before 
 
 **Interfaces:**
 - Consumes: `ShellCli.kt` and `ShellModeConfiguration` from task 6, and the stage 0 isolation and core scripts.
-- Produces: `native.sh build <scratch-dir>` and `native.sh run <scratch-dir> [command words...]`. `build` writes the image path to `<scratch-dir>/native-image`. `run` starts the image inside the sandbox with the environment of `chat-shell-cli`.
+- Produces: `native.sh build <scratch-dir>` and `native.sh run <scratch-dir> [command words...]`. `build` writes the image path to `<scratch-dir>/native-image`. `run` starts the image inside the sandbox. **Every argument of `run` is a command word.** One-shot mode joins the program arguments into the command line, so `run` passes no option as an argument. `run` gives each runtime setting as an environment variable in the relaxed form of Spring Boot: `CORE_PORT`, `CORE_MGMT_PORT`, `SPRING_MAIN_BANNERMODE=off`, `LOGGING_THRESHOLD_CONSOLE=OFF`, and `SPRING_MAIN_WEBAPPLICATIONTYPE=none`, as `chat-shell-cli` sets them. A variable that the caller sets wins over the default of `run`.
 
 - [ ] **Step 1: Write `native.sh build`**
 
@@ -325,7 +325,7 @@ It runs `mvn -B -Pnative,deploy,shell,shell-host,client-backend -pl chat-deploy 
 
 Start the disposable core in the sandbox. Run `native.sh build "$S"`. Before any measurement, check the entry point in two ways:
 - `grep -r 'ShellCliKt' chat-deploy/target/native` finds the main class in the native-image arguments, and the build log names `ShellCliKt`, not `ChatAppKt`.
-- `native.sh run "$S" -Dlogging.threshold.console=INFO whoami` logs `Starting AOT-processed ShellCliKt`.
+- `LOGGING_THRESHOLD_CONSOLE=INFO native.sh run "$S" whoami` logs `Starting AOT-processed ShellCliKt`. The command line of that run is `whoami` alone.
 
 A check that names `ChatAppKt` means that the image is the wrong one. Fix the build before step 3. Then run `native.sh run "$S" whoami`.
 Expected: one of two results, and both are valid results of this task:
