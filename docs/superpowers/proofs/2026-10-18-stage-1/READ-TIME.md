@@ -3,48 +3,52 @@
 Measured on 2026-10-18 under `CHAT-jmnjvupr`, stage 1, task 8. The script is
 `read.sh`. Every run used the stage 0 sandbox and the disposable memory core on
 6990 and 6991, with a login as Admin. No run connected to a denied port.
-Standard error was empty in all 20 processes.
 
 A complete register read is 1 index read and 3 topic reads. That is 4 one-shot
 processes in a row.
 
-## The data was the exploratory stand-in
+## The representative read
 
-**These numbers are not a representative read.** `add-topic` fails on the core
-(`CHAT-siaetqtr`), so `read.sh seed` ended with status 3 and made no data. The
-stand-in is 4 `show-topics` reads with no data. It leaves out message loading,
-filtering, JSON output, and realistic response sizes.
+`read.sh seed` made the data on the core: 4 topics, 20 pointer lines in
+`register-index`, and 5 entries of about 2 KB in each of 3 topics. It then read
+every topic back and checked the record counts, and only then it wrote its
+marker. The seed took 2 min 40 s.
 
-**The stand-in has no pass or fail against the 10-second target of owner
-decision 20.** It cannot select the launch mode.
+`read.sh measure` ran the 4 reads 5 times: `messages register-index --format
+records`, and `messages <topic> --format records --limit 1` for each topic. It
+checked every response: exit status 0, empty standard error, and the expected
+number of records of the expected topic. No check failed. The response sizes were
+3,331 bytes for the index and about 2,500 bytes for a topic.
 
-## Results
+| Launcher | Data | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Median | Against 10 s | Against 30 s |
+|----------|------|-------|-------|-------|-------|-------|--------|--------------|--------------|
+| `chat-shell-cli` (JVM) | representative | 14,927 ms | 15,067 ms | 14,986 ms | 14,895 ms | 14,935 ms | **14,935 ms** | **over** | under |
+| native image | not run | | | | | | | none | none |
+| resident mode | not built | | | | | | | none | none |
 
-| Launcher | Data | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Median | Against 10 s |
-|----------|------|-------|-------|-------|-------|-------|--------|--------------|
-| `chat-shell-cli` (JVM) | stand-in | 18,514 ms | 15,777 ms | 15,023 ms | 14,983 ms | 15,159 ms | 15,159 ms | none |
-| native image | not run | | | | | | | none |
-| resident mode | not built | | | | | | | none |
+The 10-second target and the 30-second hard limit are from owner decision 20.
+**The JVM launcher exceeds the 10-second target** in all 5 runs. It is under the
+30-second limit. A read above the target blocks stage 4 until the query cost is
+solved.
 
 ## What the numbers show
 
-- One process takes about 3.8 s in the median run (15,159 ms for 4 processes).
-  This agrees with the 3.4 s of the single `whoami` run in task 6 and the 6.3 s
-  to 7.4 s of stage 0, which used a launch through Maven.
-- Four JVM starts in a row already exceed 10 s with no data. A representative
-  read adds message loading and JSON output to each process. So the JVM
-  launcher is unlikely to meet the target. **This is an inference from the
-  stand-in, not a measurement.**
-- The first run is slower by about 3 s. The cause is not known.
-- The native image does not start a context (`docs/NATIVE-IMAGE.md`, section
-  "Shell one-shot"). It has no row.
+- One process takes about 3.7 s. A topic read does not cost more than `whoami`
+  (3.1 to 4.0 s), so the time is the JVM and Spring start, not the read. Four
+  starts in a row therefore cost about 15 s whatever the data.
+- The exploratory stand-in of the earlier pass (4 `show-topics` reads, no data)
+  gave a median of 15,159 ms. The representative read is within 1.5 percent of it.
+- A one-shot launcher cannot meet the target with four starts at this cost. A
+  native image would need a start under about 2.4 s. It does not start a context
+  (`docs/NATIVE-IMAGE.md`, section "Shell one-shot").
+- Resident mode pays the start once. It is not built, so it has no row.
 
 ## What the owner decides
 
-The decision of task 9 needs a representative read. It waits for
-`CHAT-siaetqtr`. After that issue is fixed, run `read.sh seed` and
-`read.sh measure` again. The owner then chooses one of these:
+No one-shot launcher meets the target. Under the plan, task 9 (resident mode)
+then runs. The owner chooses one of these:
 
-- A one-shot launcher meets the target. Task 9 moves to its own issue.
-- No one-shot launcher meets the target. Task 9 runs.
-- The owner names another choice, or another basis.
+- Build resident mode (task 9).
+- Reduce the number of reads in a session-start read, for example one process
+  that reads the index and the topics. The design allows one command.
+- Name another choice, or another basis.

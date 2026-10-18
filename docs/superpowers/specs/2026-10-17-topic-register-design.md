@@ -596,16 +596,22 @@ holds the cases. These facts are measured.
 - **The exit statuses 0, 2, 69, and 77 are measured.** A5, A6, and A7 gave 2.
   A12, with the core stopped, gave 69. The statuses 75, 76, and 124 have no
   producer yet.
-- **A one-shot process takes 3.2 to 3.9 s** on the direct JVM launch, in cases
-  A1 to A12. Four in a row take 15,159 ms in the median of five runs. That is the
-  exploratory stand-in with no data. It has no result against the 10-second target
-  of decision 20. See `READ-TIME.md`.
+- **A one-shot process takes 3.1 to 4.0 s** on the direct JVM launch, in cases
+  A1 to A13. A complete register read, with 1 index read and 3 topic reads on
+  representative data, takes 14,935 ms in the median of five runs. That is over
+  the 10-second target of decision 20 and under the 30-second hard limit. The
+  time is the JVM start, so four starts cost about 15 s. See `READ-TIME.md`.
 - **The native one-shot image builds and does not start a context.** The first
   failure is a missing `config/client-rsocket-local.yml`. See
   `docs/NATIVE-IMAGE.md`, section "Shell one-shot".
-- **`add-topic` still fails on the core** (`CHAT-siaetqtr`). So cases A9 and A10
-  did not run. `post` and `messages --format records` have unit tests only. Item 6
-  below stays unverified until they run.
+- **`add-topic` works on a `uuid` core** after the fix of `CHAT-siaetqtr`. The
+  shell sends CBOR, which writes a UUID as 16 bytes, and the key routes now read
+  16 bytes as a UUID.
+- **`post` reads standard input unchanged.** Cases A9 and A10 posted a 3-line
+  UTF-8 entry with no final newline and read it back through `messages --format
+  records` with the same text. This measures item 6 below.
+- **The modes refuse `!`.** The host escape returns no status to Spring Shell,
+  so a mode would end with 0 after a failed host command. Case A13 gave 2.
 
 ## Unverified
 
@@ -616,12 +622,8 @@ Each item below is believed from reading code or config. No run has shown it.
    archive section must pass the import check.
 5. **Live follow.** A `listen` on the owner's shell should show an entry that
    an agent posts, through Redis. No run has shown it.
-6. **Command input.** An entry travels as command input. In one-shot mode,
-   `post` reads the process standard input through `StreamInput`. Unit tests
-   show the text arrives byte for byte: a missing final newline, a `\r\n` line
-   end, and non-ASCII text. No live run has shown it, because `add-topic` fails
-   on the core (`CHAT-siaetqtr`) and cases A9 and A10 did not run. This item
-   becomes measured when they pass.
+6. **Command input.** Measured in stage 1, cases A9 and A10. See "Measured in
+   stage 1". The number stays so that earlier references hold.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
    from the agent's own shell.
