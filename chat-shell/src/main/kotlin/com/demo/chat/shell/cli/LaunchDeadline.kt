@@ -67,13 +67,16 @@ class LaunchDeadline(
      * exit with 0.
      *
      * **A write that ends after the limit is not a success.** If the watchdog
-     * took over while [output] ran, this ends the process through [expire], and
-     * it never reports success. Sigma found the first version of this on PR #259.
+     * took over while [output] ran, or the time passed the limit before the
+     * watchdog ran, this ends the process through [expire], and it never reports
+     * success. Sigma found both cases on PR #259.
      */
     fun finish(output: () -> Unit) {
         if (!remaining().isPositive || !state.compareAndSet(RUNNING, PRINTING)) expire()
         output()
-        if (!state.compareAndSet(PRINTING, FINISHED)) expire()
+        // The output can end after the limit and before the watchdog runs. The state is still PRINTING then,
+        // so only the time shows that the limit passed. The check comes before the transition.
+        if (!remaining().isPositive || !state.compareAndSet(PRINTING, FINISHED)) expire()
     }
 
     /**

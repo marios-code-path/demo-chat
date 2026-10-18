@@ -102,8 +102,9 @@ as a spent budget, and the command fails closed with 124. The launcher uses no
 `perl`. If both the clock and the caller's stamp are unknown, the bound is 30
 seconds from the start of the script. In the JVM, one path ends the command at the
 limit: the watchdog, a spent budget, a read that times out, and an output that
-finishes after the watchdog took over all halt the process with 124 and write the
-line once. An output that finishes late is never a success. A budget that startup
+finishes after the watchdog took over, or after the limit but before the watchdog
+ran, all halt the process with 124 and write the line once. An output that
+finishes late is never a success. A budget that startup
 spent refuses the read. A budget that runs out during the read refuses the output.
 Standard output is empty on 124. **One case differs:** if the limit passes while a
 blocked reader holds up the write of the output, the watchdog halts the process

@@ -222,4 +222,45 @@ class LaunchDeadlineTests {
         assertThat(halts.get()).isGreaterThan(0)
         assertThat(err.toString()).isEqualTo("chat-shell: register-read passed its 30000 ms limit" + System.lineSeparator())
     }
+
+    /**
+     * The output ends after the limit and before the watchdog runs. The state is still
+     * PRINTING, so the transition to FINISHED succeeds, and the first fix reported
+     * success. `finish` must check the time after the output. Sigma found this on PR #259.
+     */
+    @Test
+    fun `finish does not report success when the output ends after the limit, before the watchdog ran`() {
+        var clockNow = now
+        val late = LaunchDeadline("register-read", now.minusSeconds(4), limit) { clockNow }
+
+        assertThatThrownBy { late.finish { clockNow = now.plusSeconds(26).plusMillis(1) } }
+            .isInstanceOfSatisfying(ShellExit::class.java) { assertThat(it.status).isEqualTo(ShellExitStatus.TIMEOUT) }
+    }
+
+    @Test
+    fun `finish still succeeds when the output ends with time left`() {
+        var clockNow = now
+        val punctual = LaunchDeadline("register-read", now.minusSeconds(4), limit) { clockNow }
+        var printed = false
+
+        punctual.finish { printed = true; clockNow = now.plusSeconds(25) }
+
+        assertThat(printed).isTrue()
+    }
+
+    /** The same case with a watchdog: the process must halt, and it must write the line once. */
+    @Test
+    fun `an output that ends after the limit halts the process once when a watchdog is armed`() {
+        var clockNow = now
+        val halts = AtomicInteger()
+        val err = StringWriter()
+        val late = LaunchDeadline("register-read", now.minusSeconds(4), limit) { clockNow }
+        late.startWatchdog(PrintWriter(err)) { halts.incrementAndGet() }
+
+        assertThatThrownBy { late.finish { clockNow = now.plusSeconds(27) } }.isInstanceOf(ShellExit::class.java)
+        Thread.sleep(200)
+
+        assertThat(halts.get()).isGreaterThan(0)
+        assertThat(err.toString()).isEqualTo("chat-shell: register-read passed its 30000 ms limit" + System.lineSeparator())
+    }
 }

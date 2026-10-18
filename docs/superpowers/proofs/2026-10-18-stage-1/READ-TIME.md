@@ -107,7 +107,11 @@ to the group of the child when it ends, and keeps bash notices off standard erro
 It uses no `perl`, and it reads the clock in a job with a 2-second bound that fails
 closed. In the JVM, `finish` and `requireBudget` end the command through one path,
 `LaunchDeadline.expire`, with the watchdog, so the line is written once and a late
-output is never a success. The tests find processes by the exact PID that a stub
+output is never a success. A fourth review found one more path: an output that ended after the 30 s mark but
+before the watchdog ran still counted as a success, because the state was still
+"printing". `finish` now checks the time after the output and before the
+transition, and `LaunchDeadlineTests` covers it with the clock seam.
+The tests find processes by the exact PID that a stub
 wrote and use `kill -0`, and they fail if no PID was written, so they work where a
 process list is not readable.
 
