@@ -108,6 +108,8 @@ class Feature:
     module: str | None = None
     # Backends are mutually exclusive within a group; transports are not.
     group: str | None = None
+    # A default feature that an operator can leave out with --no-<name>.
+    removable: bool = False
 
 
 # Each datastore-backed backend IS a module: chat-deploy-<backend> already
@@ -218,6 +220,12 @@ FEATURES: dict[str, Feature] = {
         maven_profiles=["shell"],
         spring_profiles=["shell"],
         group="expose",
+    ),
+    "host-command": Feature(
+        name="host-command",
+        description="The ! command of the shell, which runs bash on the host",
+        maven_profiles=["shell-host"],
+        removable=True,
     ),
     "gateway": Feature(
         name="gateway",
@@ -465,7 +473,7 @@ SERVICES: dict[str, Service] = {
         deployment_name="chat-shell",
         image_name="chat-shell",
         default_backend="client",
-        default_features=["shell", "local"],
+        default_features=["shell", "host-command", "local"],
         client_proto="rsocket",
         client_flags=[
             "-Dapp.client.protocol=rsocket",
@@ -497,7 +505,7 @@ SERVICES: dict[str, Service] = {
             f"-Dserver.port={SHELL_MGMT_PORT}",
             f"-Dmanagement.server.port={SHELL_MGMT_PORT}",
         ],
-        available_features=["client", "shell"] + COMMON_FEATURES,
+        available_features=["client", "shell", "host-command"] + COMMON_FEATURES,
     ),
 }
 
@@ -573,6 +581,10 @@ class BuildContext:
             and name not in chosen
         ]
         for name in self.service.default_features:
+            if FEATURES[name].removable and self._removed(name):
+                if name in chosen:
+                    sys.exit(f"chat-build: --{name} conflicts with --no-{name}")
+                continue
             if name not in chosen and not self._group_taken(chosen, name):
                 chosen.append(name)
 
@@ -593,6 +605,9 @@ class BuildContext:
                 )
             seen[group] = name
         return chosen
+
+    def _removed(self, name: str) -> bool:
+        return getattr(self.args, "no_" + name.replace("-", "_"), False)
 
     def _group_taken(self, chosen: list[str], candidate: str) -> bool:
         group = FEATURES[candidate].group
@@ -1107,6 +1122,9 @@ def build_parser() -> argparse.ArgumentParser:
                 suffix = " (default)"
             group.add_argument(f"--{name}", action="store_true",
                                help=feat.description + suffix)
+            if feat.removable and name in service.default_features:
+                group.add_argument(f"--no-{name}", action="store_true",
+                                   help=f"leave out --{name}")
     return parser
 
 

@@ -148,6 +148,7 @@
         <!-- chat-...-test-image -->
         <module>chat-deploy-memory-integration-test</module>
         <module>chat-shell</module>
+        <module>chat-shell-host</module>
         <module>chat-authorization-server</module>
 
         <!-- E2EE + Presence (merged from agent-bridge plan) -->

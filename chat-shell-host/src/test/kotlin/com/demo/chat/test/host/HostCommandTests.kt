@@ -1,8 +1,8 @@
-package com.demo.chat.test.commands
+package com.demo.chat.test.host
 
-import com.demo.chat.shell.commands.BangCommandParser
-import com.demo.chat.shell.commands.HostCommand
-import com.demo.chat.shell.commands.HostCommandRegistrar
+import com.demo.chat.shell.host.BangCommandParser
+import com.demo.chat.shell.host.HostCommand
+import com.demo.chat.shell.host.HostCommandRegistrar
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
@@ -111,6 +111,19 @@ class HostCommandTests {
             .execute(CommandContext(parsed, registry, PrintWriter(output), mock(InputReader::class.java)))
 
         assertThat(output.toString().lines()).startsWith("A  b", "exit status 0")
+    }
+
+    @Test
+    fun `the ! command declares its name, help, group, and no argument or option`() {
+        // docs/SHELL-COMMAND-CONTRACT.md lists the command. chat-shell pins the
+        // other 28 commands in ShellCommandContractTests.
+        val command = HostCommandRegistrar(HostCommand()).bangCommand()
+
+        assertThat(command.name).isEqualTo("!")
+        assertThat(command.description).isEqualTo("Run a host command with bash")
+        assertThat(command.group).isEqualTo("Host")
+        assertThat(command.arguments).isEmpty()
+        assertThat(command.options).isEmpty()
     }
 
     @Test

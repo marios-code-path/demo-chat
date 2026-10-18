@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Checks the run image of the chat-shell image build. The shell profile of
-# chat-deploy names a run image that holds bash, so the ! command works in a
-# chat-shell container. Other images keep the default tiny run image, which
-# holds no shell. Reads the effective POM. Builds no image. See CHAT-jrlctimq.
+# Checks the run image of the chat-shell image build. The shell-host profile of
+# chat-deploy adds the ! command and names a run image that holds bash, so the
+# ! command works in a chat-shell container. A shell image without the !
+# command and the core images keep the default tiny run image, which holds no
+# shell. Reads the effective POM. Builds no image. See CHAT-jrlctimq.
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
@@ -28,11 +29,19 @@ run_image() {
         sed -n 's:.*<runImage>\(.*\)</runImage>.*:\1:p' | sort -u
 }
 
-shell_image="$(run_image deploy,shell,client-backend)"
+shell_image="$(run_image deploy,shell,shell-host,client-backend)"
 if [[ "$shell_image" == "$expected" ]]; then
-    echo "ok   the shell image runs on $expected"
+    echo "ok   the shell image with ! runs on $expected"
 else
-    echo "FAIL the shell image runs on '$shell_image', want $expected"
+    echo "FAIL the shell image with ! runs on '$shell_image', want $expected"
+    failures=$((failures + 1))
+fi
+
+plain_shell_image="$(run_image deploy,shell,client-backend)"
+if [[ -z "$plain_shell_image" ]]; then
+    echo "ok   the shell image without ! keeps the default run image"
+else
+    echo "FAIL the shell image without ! names the run image '$plain_shell_image'"
     failures=$((failures + 1))
 fi
 

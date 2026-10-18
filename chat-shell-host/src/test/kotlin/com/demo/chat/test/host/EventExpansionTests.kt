@@ -1,6 +1,6 @@
-package com.demo.chat.test.commands
+package com.demo.chat.test.host
 
-import com.demo.chat.shell.commands.ShellEscapePostProcessor
+import com.demo.chat.shell.host.ShellEscapePostProcessor
 import org.assertj.core.api.Assertions.assertThat
 import org.jline.reader.LineReader
 import org.jline.reader.LineReaderBuilder

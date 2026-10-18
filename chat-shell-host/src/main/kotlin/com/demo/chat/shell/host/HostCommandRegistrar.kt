@@ -1,4 +1,4 @@
-package com.demo.chat.shell.commands
+package com.demo.chat.shell.host
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

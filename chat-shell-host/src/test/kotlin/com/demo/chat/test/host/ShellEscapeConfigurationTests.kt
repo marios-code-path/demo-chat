@@ -1,8 +1,8 @@
-package com.demo.chat.test.commands
+package com.demo.chat.test.host
 
-import com.demo.chat.shell.commands.BangCommandParser
-import com.demo.chat.shell.commands.HostCommandRegistrar
-import com.demo.chat.shell.commands.ShellEscapeConfiguration
+import com.demo.chat.shell.host.BangCommandParser
+import com.demo.chat.shell.host.HostCommandRegistrar
+import com.demo.chat.shell.host.ShellEscapeConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.jline.reader.LineReader
 import org.junit.jupiter.api.Test

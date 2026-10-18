@@ -135,16 +135,27 @@
                     <version>0.0.1</version>
                 </dependency>
             </dependencies>
+        </profile>
+        <profile>
+            <!-- The ! command of the shell, in chat-shell-host. chat-build adds
+                 this profile to every shell build. Its no-host-command flag
+                 leaves it out. XML forbids two dashes in a comment. The ! command runs bash. The default run image,
+                 ubuntu-noble-run-tiny, holds no /bin/sh and no /bin/bash.
+                 ubuntu-noble-run:0.0.145 holds /bin/bash 5.2.21, measured on
+                 2026-10-16. Only a shell image with the ! command takes it. A
+                 shell image without it and the core images keep the tiny run
+                 image. test-shell-run-image.sh checks all three. CHAT-jrlctimq. -->
+            <id>shell-host</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-shell-host</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>
-                        <!-- The ! command of chat-shell runs bash. The default
-                             run image, ubuntu-noble-run-tiny, holds no /bin/sh
-                             and no /bin/bash. ubuntu-noble-run:0.0.145 holds
-                             /bin/bash 5.2.21, measured on 2026-10-16. Only the
-                             shell image takes it. The core images keep the
-                             tiny run image. test-shell-run-image.sh checks
-                             both. CHAT-jrlctimq. -->
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>

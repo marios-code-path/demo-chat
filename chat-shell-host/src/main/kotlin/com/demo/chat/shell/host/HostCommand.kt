@@ -1,4 +1,4 @@
-package com.demo.chat.shell.commands
+package com.demo.chat.shell.host
 
 import java.io.File
 import java.io.IOException

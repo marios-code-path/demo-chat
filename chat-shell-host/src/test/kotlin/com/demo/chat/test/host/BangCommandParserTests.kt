@@ -1,6 +1,6 @@
-package com.demo.chat.test.commands
+package com.demo.chat.test.host
 
-import com.demo.chat.shell.commands.BangCommandParser
+import com.demo.chat.shell.host.BangCommandParser
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.shell.core.command.Command

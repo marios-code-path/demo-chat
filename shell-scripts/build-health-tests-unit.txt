@@ -24,6 +24,7 @@ chat-security
 chat-service-composite
 chat-service-controller
 chat-shell
+chat-shell-host
 chat-vector-embedded
 chat-vector-redis
 chat-vector-simple

@@ -1,7 +1,5 @@
 package com.demo.chat.test.commands
 
-import com.demo.chat.shell.commands.HostCommand
-import com.demo.chat.shell.commands.HostCommandRegistrar
 import com.demo.chat.shell.commands.LoginCommandsRegistrar
 import com.demo.chat.shell.commands.PubSubCommandsRegistrar
 import com.demo.chat.shell.commands.TopicCommandsRegistrar
@@ -71,7 +69,6 @@ class ShellCommandContractTests {
         Expected("get-permissions-for-user", "Gets user Permissions", listOf(Opt("userId", "_")), positional = "userId"),
         Expected("all-permissions", "Get all Perms", listOf()),
         Expected("add-permission", "Add a User Permission", listOf(Opt("userId", "_"), Opt("targetUserId", null), Opt("role", null), Opt("expireTime", null))),
-        Expected("!", "Run a host command with bash", listOf()),
     )
 
     private fun registered(): List<Command> {
@@ -80,9 +77,8 @@ class ShellCommandContractTests {
         val topic = TopicCommandsRegistrar(mock(com.demo.chat.shell.commands.TopicCommands::class.java) as com.demo.chat.shell.commands.TopicCommands<Any>)
         val user = UserCommandsRegistrar(mock(com.demo.chat.shell.commands.UserCommands::class.java) as com.demo.chat.shell.commands.UserCommands<Any>)
         val importer = ClaudeImportCommandsRegistrar(mock(com.demo.chat.shell.commands.ClaudeImportCommands::class.java) as com.demo.chat.shell.commands.ClaudeImportCommands<Any>)
-        val host = HostCommandRegistrar(HostCommand())
 
-        return listOf<Any>(login, pubsub, topic, user, importer, host).flatMap { registrar ->
+        return listOf<Any>(login, pubsub, topic, user, importer).flatMap { registrar ->
             registrar.javaClass.declaredMethods
                 .filter { Command::class.java.isAssignableFrom(it.returnType) }
                 .map { it.invoke(registrar) as Command }
@@ -165,12 +161,11 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty nine commands and forty one options`() {
+    fun `the contract holds twenty eight commands and forty one options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
-        // command-status and send --requestId raised them from 27 and 33. The
-        // ! command raised the commands to 29 and added no option.
-        assertThat(registered()).hasSize(29)
+        // command-status and send --requestId raised them from 27 and 33.
+        assertThat(registered()).hasSize(28)
         assertThat(registered().sumOf { it.options.size }).isEqualTo(41)
     }
 }

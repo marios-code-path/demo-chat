@@ -1,4 +1,4 @@
-package com.demo.chat.shell.commands
+package com.demo.chat.shell.host
 
 import org.jline.reader.LineReader
 import org.springframework.beans.factory.ObjectProvider

@@ -1,4 +1,4 @@
-package com.demo.chat.shell.commands
+package com.demo.chat.shell.host
 
 import org.springframework.shell.core.command.CommandArgument
 import org.springframework.shell.core.command.CommandParser
