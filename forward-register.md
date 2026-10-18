@@ -22,37 +22,41 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-17 at 21:00 PDT.
+Measured on 2026-10-18 at 00:35 PDT.
 
 | | |
 |---|---|
-| Checkout | `master` at `be71cd44`, the merge commit of PR #255, in sync with `origin`. Untracked owner files stay in the main checkout. |
-| Last merged PR | #255, merged on 2026-10-18 at 02:06 UTC, which is 2026-10-17 in PDT. |
+| Checkout | `master` at `be71cd44`, the merge commit of PR #255, in sync with `origin`. PR #256 merged after it as `e1070ff4`. That was a register change, so this row does not move. Untracked owner files stay in the main checkout. |
+| Last merged PR | #256, merged on 2026-10-18 at 04:05 UTC, which is 2026-10-17 in PDT. |
 | Merge strategy | Merge commits only. Every merge needs the owner's named `--admin` bypass. |
-| Open PRs | None before this work. |
-| Branches and worktrees | Twenty-one local branches. Two hold commits that master lacks, and the archive of 2026-10-17 names them. Every branch ref is kept. |
+| Open PRs | #257, a draft, and the PR of this change. |
+| Branches and worktrees | Two local branches hold commits that master lacks, and the archive of 2026-10-17 names them. Every branch ref is kept. |
 
 ## In flight
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-exkzongc` | `chat-exkzongc-register-tip` | This change. It archives the register of 2026-10-17 and starts this file. The PR is not merged. |
-| `CHAT-aqpcacwv` | none | Initial durable deployment: Cassandra, Redis pub/sub, Lucene, REST, MCP, and the shell. Last update on 2026-10-17 at 06:03 UTC. |
+| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. Draft PR #257 at `e3e0216a` holds the design, the stage 0 proof, and the stage 1 plan. Stage 1 has not started, and it waits for the owner's approval. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
+| `CHAT-siaetqtr` | none | A child of `CHAT-jmnjvupr`. `add-topic` fails on a `uuid` memory core with `A key id cannot be a byte[]`. It blocks task 8 of stage 1 and all of stage 3. |
 
-Four more issues are `in-progress` in fp, with no update in the last 24 hours:
-`CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-uxlstrdy`, and `CHAT-pphwooqm`.
+**The next Theta session starts here.**
+
+1. Run `fp context CHAT-jmnjvupr`, and read the hand-off comment.
+2. Ask the owner whether stage 1 runs.
+3. Run stage 1 in `.worktrees/chat-jmnjvupr-topic-register` with `superpowers:executing-plans`. Tasks 1 to 7 and 10 can run. Tasks 8 and 9 wait for `CHAT-siaetqtr`.
+4. Every live run uses the stage 0 sandbox and a disposable core on 6990 and 6991. Never use `chat-deploy core` near node 16.
+
+Five more issues are `in-progress` in fp, with no update in the last 24 hours:
+`CHAT-aqpcacwv`, `CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-uxlstrdy`, and `CHAT-pphwooqm`.
 
 ## Landed in the last 24 hours
 
 | PR | Issue | What |
 |----|-------|------|
-| #249 | `CHAT-msanybaw` | `just launch-shell` selects the key type of its core |
-| #250 | `CHAT-tkijkkbc` | `just build-shell` and `launch-shell --build` |
-| #251 | `CHAT-ehpgyapa` | The silent long key type fallback is gone |
-| #252 | `CHAT-wmfemntw` | `import-claude` uses a logged-in Admin session |
 | #253 | `CHAT-dteylnje` | Embedded vectors in the Cassandra deployment |
 | #254 | `CHAT-ynkmugeb` | The README states that vector indexing is opt-in |
 | #255 | `CHAT-jrlctimq` | The `!` command runs a host command from chat-shell |
+| #256 | `CHAT-exkzongc` | The register became this 24-hour tip, and its earlier text moved to `forward-register-archive-2026-10-17.md` |
 
 ## The archive
 
