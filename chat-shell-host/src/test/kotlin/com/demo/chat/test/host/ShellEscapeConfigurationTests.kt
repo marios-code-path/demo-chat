@@ -1,11 +1,14 @@
 package com.demo.chat.test.host
 
 import com.demo.chat.shell.host.BangCommandParser
+import com.demo.chat.shell.host.HostCommand
 import com.demo.chat.shell.host.HostCommandRegistrar
 import com.demo.chat.shell.host.ShellEscapeConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.jline.reader.LineReader
+import org.jline.terminal.Terminal
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.io.TempDir
 import org.mockito.Mockito.mock
 import org.springframework.boot.autoconfigure.AutoConfigurations
@@ -18,6 +21,7 @@ import org.springframework.shell.core.command.CommandParser
 import org.springframework.shell.core.command.CommandRegistry
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -86,6 +90,32 @@ class ShellEscapeConfigurationTests {
         contexts.run { context ->
             assertThat(script(context, "!printf '[%s]\\n' a\\ \n!echo next\n", directory))
                 .containsExactly("[a]", "[!echo]", "[next]", "exit status 0")
+        }
+    }
+
+    @Test
+    @Timeout(20)
+    fun `INT on the shell terminal stops a running bang command`() {
+        contexts.run { context ->
+            val terminal = context.getBean(Terminal::class.java)
+            val text = StringBuilder()
+            var sent = false
+            val writer = object : Writer() {
+                override fun write(cbuf: CharArray, off: Int, len: Int) {
+                    text.appendRange(cbuf, off, off + len)
+                }
+                override fun flush() {
+                    if (!sent && text.contains("started")) {
+                        sent = true
+                        terminal.raise(Terminal.Signal.INT)
+                    }
+                }
+                override fun close() {}
+            }
+
+            context.getBean(HostCommand::class.java).run("echo started; sleep 30", PrintWriter(writer))
+
+            assertThat(text.lines()).contains("! interrupted")
         }
     }
 }

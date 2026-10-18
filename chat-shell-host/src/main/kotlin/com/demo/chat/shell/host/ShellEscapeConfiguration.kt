@@ -1,6 +1,7 @@
 package com.demo.chat.shell.host
 
 import org.jline.reader.LineReader
+import org.jline.terminal.Terminal
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.config.BeanPostProcessor
 import org.springframework.context.annotation.Bean
@@ -32,8 +33,10 @@ class ShellEscapeConfiguration {
     fun bangCommandParser(registry: CommandRegistry): CommandParser =
         BangCommandParser(DefaultCommandParser(registry))
 
+    /** Ctrl-C on the shell terminal stops a running `!` command. See CHAT-wdokzwnj. */
     @Bean
-    fun hostCommand(): HostCommand = HostCommand()
+    fun hostCommand(terminal: ObjectProvider<Terminal>): HostCommand =
+        terminal.ifAvailable?.let { HostCommand(interrupts = TerminalInterrupts(it)) } ?: HostCommand()
 
     companion object {
         @Bean

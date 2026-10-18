@@ -18,6 +18,7 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.io.Writer
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 
 /**
  * The `!` command runs one line with bash and prints the output and the exit
@@ -32,6 +33,42 @@ class HostCommandTests {
     }
 
     private fun run(line: String?): List<String> = run(HostCommand(), line)
+
+    /** Holds the interrupt action that [HostCommand] registers for one command. */
+    private class Interrupts : (Runnable) -> AutoCloseable {
+        var action: Runnable? = null
+        var released = false
+
+        override fun invoke(action: Runnable): AutoCloseable {
+            this.action = action
+            return AutoCloseable { released = true }
+        }
+    }
+
+    /**
+     * Runs [line] and sends one interrupt when the output first holds
+     * `started`. The interrupt comes from inside the output flush, so the
+     * process is running and no thread or sleep is needed.
+     */
+    private fun runInterrupted(line: String): Pair<List<String>, Interrupts> {
+        val interrupts = Interrupts()
+        val text = StringBuilder()
+        var sent = false
+        val writer = object : Writer() {
+            override fun write(cbuf: CharArray, off: Int, len: Int) {
+                text.appendRange(cbuf, off, off + len)
+            }
+            override fun flush() {
+                if (!sent && text.contains("started")) {
+                    sent = true
+                    interrupts.action!!.run()
+                }
+            }
+            override fun close() {}
+        }
+        HostCommand(interrupts = interrupts).run(line, PrintWriter(writer))
+        return text.toString().lines().dropLastWhile { it.isEmpty() } to interrupts
+    }
 
     @Test
     fun `each output line prints and then the exit status`() {
@@ -111,6 +148,35 @@ class HostCommandTests {
             .execute(CommandContext(parsed, registry, PrintWriter(output), mock(InputReader::class.java)))
 
         assertThat(output.toString().lines()).startsWith("A  b", "exit status 0")
+    }
+
+    @Test
+    @Timeout(20)
+    fun `an interrupt stops the command, and the command returns`() {
+        // destroyForcibly sends SIGKILL, and Java reports 128 + 9.
+        val (lines, _) = runInterrupted("echo started; sleep 30; echo late")
+
+        assertThat(lines).containsExactly("started", "! interrupted", "exit status 137")
+    }
+
+    @Test
+    @Timeout(20)
+    fun `an interrupt also stops the processes that bash started`() {
+        val (lines, _) = runInterrupted("sleep 30 & echo \$!; echo started; wait")
+        val child = ProcessHandle.of(lines.first().toLong())
+
+        child.ifPresent { it.onExit().get(10, TimeUnit.SECONDS) }
+        assertThat(child.map { it.isAlive }.orElse(false)).isFalse()
+    }
+
+    @Test
+    fun `the interrupt action is released when the command ends`() {
+        val interrupts = Interrupts()
+
+        HostCommand(interrupts = interrupts).run("echo a", PrintWriter(StringWriter()))
+
+        assertThat(interrupts.action).isNotNull()
+        assertThat(interrupts.released).isTrue()
     }
 
     @Test
