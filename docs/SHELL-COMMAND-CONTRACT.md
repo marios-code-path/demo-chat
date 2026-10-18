@@ -63,7 +63,8 @@ See `Positional input` below.
 | `command-status` | `commandStatus` | Show the status of a message command | `--commandId` `String` required | none |
 | `listen` | `listen` | Listen to a topic | `--topic` `String` required | `--topic` |
 | `hangup` | `hangup` | Stop listening to a topic | `--topic` `String` required | `--topic` |
-| `messages` | `messages` | List the messages of a topic | `--topic` `String` required<br>`--limit` `Integer` optional | `--topic` |
+| `post` | `post` | Post the text of standard input to a topic | `--topic` `String` required<br>`--requestId` `String` default `_` | `--topic` |
+| `messages` | `messages` | List the messages of a topic | `--topic` `String` required<br>`--limit` `Integer` optional<br>`--format` `String` default `human`<br>`--since` `String` optional | `--topic` |
 
 `send` submits a message command. It prints the request ID, the message ID,
 the command ID, and the outcome. A `--requestId` of `_` makes a new ID. A
@@ -71,6 +72,12 @@ repeat of `send` with the printed request ID and the same text recovers the
 same receipt and admits nothing new. The server binds the sender to the login,
 so `send` sends no sender. `command-status` prints the state of each backend of
 a command that the login owns. A command of another owner answers not found.
+
+`post` sends the text of its command input to a topic, and it answers one JSON
+line with `messageId`, `commandId`, `requestId`, and `outcome`. The text arrives
+byte for byte: a missing final newline, a `\r\n` line end, and non-ASCII text
+stay as sent. Empty input is refused. Only the shell modes give a command input,
+so `post` in the interactive shell is refused. See `The shell modes` below.
 
 ### ClaudeImportCommands
 
@@ -136,13 +143,14 @@ out.
 
 See `The ! escape` below.
 
-**28 commands and 41 options in `chat-shell`, and 29 commands in a default
+**29 commands and 45 options in `chat-shell`, and 30 commands in a default
 build.** `ShellCommandContractTests` pins every command, option, and
 positional argument of `chat-shell`. `HostCommandTests` pins the `!` command.
 The migration table held 26 commands. `messages` and `command-status` raised
 the count to 28. `CHAT-ybmlcdiw` removed `bye`. `CHAT-emwhnlay` adds
 `import-claude`. `CHAT-jrlctimq` adds `!` in `chat-shell-host`, with no
-option.
+option. `CHAT-jmnjvupr` adds `post` with two options, and it adds `--format`
+and `--since` to `messages`.
 
 ## Availability is not used, and the dead check is gone
 
@@ -423,8 +431,61 @@ Any other caller reads `Access Denied`.
 The command does not use `GET`.
 The shipped `GET` row on the `MessageTopic` root reaches every caller.
 
+`messages <topic> --format records` prints one JSON line per message, oldest first.
+Each line holds `id`, `topic`, `sender`, `timestamp`, and `text`.
+The timestamp is the stored instant in UTC at its full precision.
+The text is the body unchanged, and a pointer message shows its arrow text.
+An empty result prints nothing.
+`--format` takes `human` or `records`, and any other value is refused.
+`--since <instant>` keeps the messages at or after an ISO-8601 instant, and `--limit` then keeps the newest N.
+A `--since` value that does not parse is refused.
+
 `listen` returns stored messages before live messages.
 It does not mark the boundary between history and live messages.
 `ChatMessageService.listMessages` returns the history and then completes.
 The RSocket route is `message.message-list-topic`.
 PR #178 added the REST route `GET /message/list/{id}`.
+
+## The shell modes
+
+`CHAT-jmnjvupr` adds two ways to run a command without the interactive prompt.
+`chat.shell.mode` selects the mode. Its values are `interactive` (the
+default), `one-shot`, and `resident`. Only `interactive` and `one-shot` exist.
+Resident mode waits for an owner decision. See
+`docs/superpowers/specs/2026-10-17-topic-register-design.md`.
+
+**One-shot mode.** `shell-scripts/chat-shell-cli <command words>` starts a JVM,
+logs in, runs the words as one command line, and exits with a status. Text for
+the command goes on standard input. Run `just build-shell-cli` first. The
+launcher needs `CHAT_SHELL_KEY_TYPE`. It starts silently: no banner, no log on
+the console, and an empty standard error after a success.
+
+**The exit status.** One table serves every mode.
+
+| Status | Meaning |
+|--------|---------|
+| 0 | The command succeeded. |
+| 1 | The command ran and failed. |
+| 2 | The command line is not valid, or the mode refuses it. |
+| 69 | The core is not available. |
+| 75 | A post was sent, but no read showed it in time. Nothing returns it yet. |
+| 76 | A resident request or response broke the protocol. Nothing returns it yet. |
+| 77 | The login failed. |
+| 124 | The command passed its time limit. Nothing returns it yet. |
+
+A failure writes one line on standard error: `chat-shell: <message>`.
+
+**The refused forms.** The modes refuse `listen`, `hangup`, `script`, a blank
+line, and a first word that starts with `@`. Each gives status 2. They stream,
+hold state across commands, or read a script file.
+
+**The login.** `CHAT_SHELL_USER` names the user. `CHAT_SHELL_PASSWORD_FILE`
+names a file that holds the password. One trailing newline is removed and
+nothing else. Set both or neither. One alone gives status 2. A password never
+goes in a program argument. A wrong password gives 77. A core that is down gives
+69.
+
+**Command output.** Every command writes through the writer of its context.
+`DirectOutputTests` fails on any direct print in the main source, except
+`PubSubCommands.listen`.
+

@@ -583,6 +583,30 @@ their numbers, because the stage 0 plan names them.
    every shell connection went to those two ports. Record Q6. Node 9 uses
    6890 and 6891, and no run has used those ports. Item 10 below covers it.
 
+## Measured in stage 1
+
+Stage 1 ran on 2026-10-18 against the disposable memory core on 6990 and 6991,
+inside the stage 0 sandbox. `docs/superpowers/proofs/2026-10-18-stage-1/RECORD.md`
+holds the cases. These facts are measured.
+
+- **One-shot mode works with a login from a password file.** Case A2 logged
+  in as Admin from `CHAT_SHELL_PASSWORD_FILE` and ran `whoami` with exit 0 and an
+  empty standard error. Case A3, with a wrong password, gave 77. Case A4, with
+  one variable alone, gave 2. This measures item 9 below.
+- **The exit statuses 0, 2, 69, and 77 are measured.** A5, A6, and A7 gave 2.
+  A12, with the core stopped, gave 69. The statuses 75, 76, and 124 have no
+  producer yet.
+- **A one-shot process takes 3.2 to 3.9 s** on the direct JVM launch, in cases
+  A1 to A12. Four in a row take 15,159 ms in the median of five runs. That is the
+  exploratory stand-in with no data. It has no result against the 10-second target
+  of decision 20. See `READ-TIME.md`.
+- **The native one-shot image builds and does not start a context.** The first
+  failure is a missing `config/client-rsocket-local.yml`. See
+  `docs/NATIVE-IMAGE.md`, section "Shell one-shot".
+- **`add-topic` still fails on the core** (`CHAT-siaetqtr`). So cases A9 and A10
+  did not run. `post` and `messages --format records` have unit tests only. Item 6
+  below stays unverified until they run.
+
 ## Unverified
 
 Each item below is believed from reading code or config. No run has shown it.
@@ -592,20 +616,19 @@ Each item below is believed from reading code or config. No run has shown it.
    archive section must pass the import check.
 5. **Live follow.** A `listen` on the owner's shell should show an entry that
    an agent posts, through Redis. No run has shown it.
-6. **Command input.** An entry travels as command input. The stage 0 proof
-   tested the current password prompt alone. In one-shot mode,
-   `login --username Admin` failed with `readPassword with prompt not
-   implemented` (record Q7). So the `InputReader` of a one-shot command gives
-   no input. No run has tested a command that reads `System.in` directly.
-   Stage 1 must prove that `post` reads multi-line input unchanged.
+6. **Command input.** An entry travels as command input. In one-shot mode,
+   `post` reads the process standard input through `StreamInput`. Unit tests
+   show the text arrives byte for byte: a missing final newline, a `\r\n` line
+   end, and non-ASCII text. No live run has shown it, because `add-topic` fails
+   on the core (`CHAT-siaetqtr`) and cases A9 and A10 did not run. This item
+   becomes measured when they pass.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
    from the agent's own shell.
 8. **The message text in the store.** The import check assumes that the
    store keeps text byte for byte. No run has shown it for a large section.
-9. **The login from the environment.** `CHAT_SHELL_USER` and
-   `CHAT_SHELL_PASSWORD_FILE` do not exist yet. No run has tested a login
-   from a password file. Stage 0 tested `login` with `--password` alone.
+9. **The login from the environment.** Measured in stage 1, cases A2 and A3.
+   See "Measured in stage 1". The number stays so that earlier references hold.
 10. **The node-9 address.** No shell has connected to 6890 and 6891. Item 3
     shows the mechanism with other ports.
 

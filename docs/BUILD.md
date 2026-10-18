@@ -382,6 +382,25 @@ profile makes `chat-deploy` and `chat-shell` depend on each other.
 `shell-scripts/test-shell-recipe.sh` checks that the install covers every
 module that the shell launch loads.
 
+To run one shell command and exit, run `just build-shell-cli`. It runs
+`build-shell`, and then it writes the runtime classpath file
+`chat-deploy/target/shell-cli.classpath`. Run it after a pull. Then run
+`CHAT_SHELL_KEY_TYPE=uuid shell-scripts/chat-shell-cli <command words>`. The key
+type must match the core. These variables also apply:
+
+| Variable | Meaning |
+|----------|---------|
+| `CHAT_SHELL_KEY_TYPE` | Required. `long` or `uuid`. |
+| `CHAT_SHELL_NODE_ID` | The node id of the shell. The default is 1. |
+| `CORE_PORT`, `CORE_MGMT_PORT` | The core, as `chat-build` reads them. |
+| `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE` | The login. Set both or neither. |
+| `CHAT_SHELL_LOG` | A file for the log. The console log is off. |
+| `CHAT_SHELL_CLI_PRINT_OPTIONS` | Set to 1 to print the JVM options and end. |
+
+The exit statuses are in `docs/SHELL-COMMAND-CONTRACT.md`, section `The shell
+modes`. The script `chat-shell-client` does not exist, because resident mode is
+not built.
+
 The launch and image commands pass `-Dmaven.test.skip=true`. Stale test classes in the local repository cannot break a launch.
 
 Use `mvn clean` whenever you build. A stale `target/` directory reports false results. See B6 in `docs/BUILD-HEALTH.md`.
