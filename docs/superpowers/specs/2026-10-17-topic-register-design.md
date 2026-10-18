@@ -93,6 +93,20 @@ The owner made these decisions on 2026-10-17.
     a socket can carry the commands.
 17. Sigma reviews the whole design.
 
+The owner passed on three more decisions on 2026-10-18, from a review of
+commit `985abf39`:
+
+18. Register text is task data. A topic entry must not change `AGENTS.md` or
+    the owner's instructions.
+19. Sender names are labels for this deployment. One macOS account cannot
+    prove which agent wrote an entry.
+20. A complete session-start read has a target of 10 seconds and a hard
+    time limit of 30 seconds. The time runs from the command start to the
+    last output line. It includes the JVM start, the index read, and the
+    reads of recent topics. If representative data passes the target, the
+    query cost is solved before the file migration. Stage 1 measures a topic
+    read. Stage 3 measures the complete command.
+
 ## Node 9
 
 ### Composition
@@ -268,7 +282,7 @@ The register holds task data. It is not a project instruction.
 - `AGENTS.md` states both rules next to the session-start step.
 
 This refines owner decision 7. Sigma raised it on 2026-10-18, because any
-user who joins a topic can post to it.
+user who joins a topic can post to it. Owner decision 18 accepts it.
 
 ### Authorship: names are labels
 
@@ -323,10 +337,14 @@ the interactive shell:
 **The bound is in the shell, not in the store.** `messages` loads the whole
 history of a topic, then applies `--limit`. The UUID message key gives no
 time order in the store, so a store-side "newest N" needs a new time-ordered
-query. Register topics are small. Stage 1 measures a full register read. A
-store-side bound becomes its own issue if the read passes a budget that the
-owner sets. This is the designer's call, and it departs from Sigma's request
-for a bounded query.
+query. Register topics are small, so the shell bound comes first. This
+departs from Sigma's request for a bounded query.
+
+Owner decision 20 sets the limit. Stage 1 measures one topic read. Stage 3
+measures the complete `register read`, from the command start to the last
+output line. If representative data passes 10 seconds, the query cost is
+solved before stage 4 starts. A store-side bound is one possible solution.
+At 30 seconds, `register read` stops and exits with status 124.
 
 ### The write command
 
@@ -387,6 +405,10 @@ a writer, but they do not prove that all output reaches it.
   `System.out` fails the test.
 - `listen`, `hangup`, and `script` stream or hold state across commands. Both
   modes refuse them with status 2.
+- One-shot mode also refuses a first argument that starts with `@`. Spring
+  Shell reads such an argument as a script file. A script file is several
+  commands, and the table gives one run one status. PR #255 also found that
+  `FileInputProvider` changes script lines. The refusal has status 2.
 
 One exit status table serves the one-shot process, the resident response, and
 the register client:
@@ -411,9 +433,10 @@ returns a status from the table above.
 **One-shot mode.** Spring Shell 4.0.3 has `NonInteractiveShellRunner`. When
 `spring.shell.interactive.enabled=false`, `JLineShellAutoConfiguration`
 supplies it. It joins the program arguments into one command line and runs
-it. An argument `@<file>` runs each line of that file. A failed command
-throws `CommandExecutionException` with an exit code. This was read from the
-sources, not run. These parts are missing:
+it. A first argument `@<file>` runs each line of that file, and part 2
+refuses that form. A failed command throws `CommandExecutionException` with
+an exit code. This was read from the sources, not run. These parts are
+missing:
 
 - a launch path. `chat-build shell` sets the interactive mode to `true`, and
   it starts the shell through Maven.
@@ -488,7 +511,8 @@ the shell through the environment when it starts. No run has shown that.
 1. `chat-shell` as a command tool: parts 1 to 5 above.
 2. Node 9 and the `node-9/` directory.
 3. `node-9/bin/register`, the register users, and the `AGENTS.md` step.
-4. The migration of the files.
+4. The migration of the files. It starts only when the stage 3 measure
+   meets the 10-second target, or after the query cost is solved.
 
 Each stage from 1 to 4 ends in its own PR.
 
@@ -580,9 +604,8 @@ The owner did not decide these. Each one can change.
 - The entry fields, and the 24-hour rule of the session-start output.
 - Hand-off points as the times to write.
 - `--as <name>` on every command. No agent holds the `Mario` password.
-- One password file per agent. Names are labels, not verified authors.
+- One password file per agent.
 - A setup step that creates missing secret files with random passwords.
-- Register text is task data, and it cannot change project rules.
 - `messages --format records`, with the bound in the shell, not the store.
 - The exit status table, the socket framing, and the time limits.
 - The earliest index pointer for an fp ID is the valid one.
