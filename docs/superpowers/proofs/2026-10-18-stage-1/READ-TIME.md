@@ -49,8 +49,8 @@ Sigma recommended on 2026-10-18: keep the index read and the three topic
 reads, and run them in one JVM process. Measure from the launch to the last
 output line. Build resident mode only if that command misses 10 seconds.
 Enforce the 30-second limit. Sigma recommended this command. Mario confirmed
-on 2026-10-18 that `AGENTS.md` will direct agents to run it. This decision
-does not authorize a merge.
+on 2026-10-18 that `AGENTS.md` will direct agents to run it (recorded in commit
+`93010a3c`). This decision does not authorize a merge.
 
 The command is `register-read`. `read.sh register` ran it 5 times on the same
 kind of data (20 pointers in the form `<fp-id> | <topic-name> | <kind> |
@@ -62,6 +62,7 @@ each of the 3 topics. No check failed. The output was 11,714 bytes.
 |----------|---------|-------|-------|-------|-------|-------|--------|--------------|--------------|
 | `chat-shell-cli` (JVM) | `register-read` | 4,649 ms | 4,476 ms | 4,465 ms | 4,471 ms | 4,497 ms | **4,476 ms** | **under** | under |
 | `chat-shell-cli` (JVM), with the launch stamp, a second run | `register-read` | 4,661 ms | 4,382 ms | 4,408 ms | 4,479 ms | 4,555 ms | **4,479 ms** | **under** | under |
+| `chat-shell-cli` (JVM), with the supervisor, a third run | `register-read` | 4,520 ms | 4,367 ms | 4,350 ms | 4,323 ms | 4,380 ms | **4,367 ms** | **under** | under |
 
 **The time is from the launch to the exit of the process.** The last output line
 comes a few milliseconds before the exit. One start (about 3.7 s) plus the reads
@@ -71,10 +72,10 @@ comes a few milliseconds before the exit. One start (about 3.7 s) plus the reads
 built.** The four-process version above took 14,935 ms, because it paid four
 JVM starts.
 
-**The 30-second limit is not yet guaranteed on every path.** Sigma found on PR #259
+**The 30-second limit is a hard limit from the launch.** Sigma found on PR #259
 that the first version started its timer when the command ran. A stall in the
 startup could pass the limit, and a budget that startup had used up still allowed
-a success. The limit now has three parts, and `LaunchDeadline` holds them.
+a success. The JVM side has three parts, and `LaunchDeadline` holds them.
 
 - `main` arms a watchdog thread before the application starts. At the limit it
   writes one line on standard error and halts the process with status 124.
@@ -83,7 +84,7 @@ a success. The limit now has three parts, and `LaunchDeadline` holds them.
   it prints nothing and gives 124. If the output is printed, the watchdog does
   not halt the process afterwards.
 
-Sigma found two more gaps on the second review. The first was that the launcher
+Sigma found two more gaps on the next review. The first was that the launcher
 script can stall before Java starts, where no JVM watchdog exists. `chat-shell-cli`
 now supervises `register-read` from its own start: it runs itself as a child in its
 own process group, ends the whole group at the limit, and exits with 124. It holds
@@ -106,10 +107,6 @@ empty standard output. With a stamp 31 s in the past it ended after 0.2 s, with
 the same result. `LaunchDeadlineTests` and `PubSubRegisterReadTests` cover the
 watchdog, the spent budget, a budget that runs out during the read, and the
 launch time.
-
-Sigma found two remaining paths on PR #259. The launcher can stall before
-Java starts. Output can block while it holds the watchdog lock. Those paths
-still need tests and a fix before the hard-limit claim is complete.
 
 ## What this does not show
 

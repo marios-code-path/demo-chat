@@ -610,10 +610,14 @@ holds the cases. These facts are measured.
   exit. Sigma recommended this command on 2026-10-18, and said to build resident
   mode only if it missed 10 seconds. Mario confirmed the session-start choice
   on 2026-10-18. It did not miss, so task 9 is not built for this workload.
-  The command returns 124 when its watchdog finds an expired budget.
-  Live cases A14 and A15 show this path. Sigma found two remaining gaps.
-  The launcher can stall before Java starts. Output can block while it holds
-  the watchdog lock. PR #259 must close these gaps before claiming the hard limit.
+  The command enforces the 30-second limit from the launch, with status 124.
+  A supervisor in `chat-shell-cli` covers the time before Java starts. A
+  watchdog in `main` covers the JVM, and it takes no lock, so a blocked write
+  cannot stop it. A spent budget refuses the read, and a budget that runs out
+  during the read refuses the output. Live cases A14 and A15 and
+  `shell-scripts/test-chat-shell-cli-deadline.sh` show it. When a blocked reader
+  holds up the output at the limit, standard output can hold part of the text,
+  and a caller discards the output of a command that does not exit with 0.
 - **The native one-shot image builds and does not start a context.** The first
   failure is a missing `config/client-rsocket-local.yml`. See
   `docs/NATIVE-IMAGE.md`, section "Shell one-shot".
