@@ -500,18 +500,26 @@ in the same module. Close that other context after its class.
 Its size is a cost on every turn. It must stay under 64 KB.
 
 `build-health.sh` measures the file in every mode. A file above 65,536 bytes
-fails the run and prints `REGISTER TOO LARGE`. The oldest dated sections then
-move to their period archive.
+fails the run and prints `REGISTER TOO LARGE`.
+
+**Since 2026-10-17, the register holds the in-flight tip alone.** Its known
+data covers at most 24 hours. Older data moves to
+`forward-register-archive-<date-of-archive>.md`. The owner set this rule under
+`CHAT-exkzongc`. The size check stays as a second limit.
 
 The split of 2026-10-15 moved every section before 2026-10-08 into three period
 logs: `forward-register-archive-2026-08.md`,
 `forward-register-archive-2026-09.md` and `forward-register-archive-2026-10.md`.
 Nothing imports those files, so they cost no context until a reader opens one.
-The live register holds the durable core and the current period.
+At that time, the live register held the durable core and the current period.
 
 The close of 2026-10-16 moved the sections from 2026-10-08 to 2026-10-15 into
 `forward-register-archive-2026-10.md`. The live file went from 64,385 bytes to
 about 22 KB. See `CHAT-jgegpcoi`.
+
+The archive of 2026-10-17 moved the whole register, at 29,301 bytes, into
+`forward-register-archive-2026-10-17.md`. A new tip file replaced it. See
+`CHAT-exkzongc`.
 
 **The check compares the byte count alone.** It cannot see a loss of content,
 and it cannot see a section that belongs in an archive. See `CHAT-nxbtadan`.
