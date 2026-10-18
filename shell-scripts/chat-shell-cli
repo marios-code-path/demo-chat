@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Runs one chat-shell command in a new JVM and exits with its status.
+#
+#   CHAT_SHELL_KEY_TYPE=uuid shell-scripts/chat-shell-cli messages lobby --format records
+#
+# The words are the command line. Text for a command, such as the entry for
+# post, goes on standard input. Run just build-shell-cli first.
+#
+# Settings, all from the environment:
+#   CHAT_SHELL_KEY_TYPE      required, long or uuid, and it must match the core
+#   CHAT_SHELL_NODE_ID       default 1
+#   CORE_PORT, CORE_MGMT_PORT  the core, as chat-build reads them
+#   CHAT_SHELL_USER, CHAT_SHELL_PASSWORD_FILE  the login, both or neither
+#   CHAT_SHELL_LOG           a file for the log, which is off otherwise
+#
+# The exit status is 0 for success. The other statuses are in the design of
+# the topic register, section "chat-shell as a command tool", part 2.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
+node_id="${CHAT_SHELL_NODE_ID:-1}"
+classpath="$root/chat-deploy/target/shell-cli.classpath"
+if [[ ! -s "$classpath" ]]; then
+    echo "chat-shell-cli: no classpath file. Run just build-shell-cli first." >&2
+    exit 1
+fi
+
+# The options of the shell launch plan, as chat-build prints them for the
+# interactive shell. They go on the java command line, not in
+# JAVA_TOOL_OPTIONS, because the JVM prints a line on standard error for that
+# variable.
+plan="$("$root/shell-scripts/chat-build" shell --run --notls --node-id "$node_id" \
+    --key-type "$key_type" --dry-run)"
+opts=()
+while IFS= read -r line; do
+    case "$line" in
+        # The vector module makes the JVM print a warning on standard error, and a shell client needs no vectors.
+        --add-modules=jdk.incubator.vector) ;;
+        -Dspring.shell.interactive.enabled=*|-Dspring-boot.run.*) ;;
+        *) opts+=("$line") ;;
+    esac
+done < <(sed -nE 's/^  +((-D|--)[^ ].*)$/\1/p' <<< "$plan")
+
+# These come last, so they win over the plan.
+opts+=(
+    -Dchat.shell.mode=one-shot
+    -Dspring.shell.interactive.enabled=false
+    -Dspring.main.banner-mode=off
+    -Dlogging.threshold.console=OFF
+    -Dspring.main.web-application-type=none
+    --sun-misc-unsafe-memory-access=allow
+)
+if [[ -n "${CHAT_SHELL_LOG:-}" ]]; then
+    opts+=("-Dlogging.file.name=$CHAT_SHELL_LOG")
+fi
+
+exec java "${opts[@]}" -cp "$root/chat-deploy/target/classes:$(cat "$classpath")" \
+    com.demo.chat.ShellCliKt "$@"

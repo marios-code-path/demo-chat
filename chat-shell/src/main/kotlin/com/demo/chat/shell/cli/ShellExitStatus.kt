@@ -43,6 +43,12 @@ enum class ShellExitStatus(val code: Int) {
             return FAILED
         }
 
+        /** The first line of the deepest cause message. A cause with no message gives its class name. */
+        internal fun messageOf(error: Throwable): String {
+            val cause = causes(error).lastOrNull { !it.message.isNullOrBlank() } ?: error
+            return cause.message?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: cause.javaClass.simpleName
+        }
+
         /** The error and its causes, outermost first. A cause that repeats ends the walk. */
         internal fun causes(error: Throwable): List<Throwable> {
             val chain = mutableListOf<Throwable>()

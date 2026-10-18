@@ -33,7 +33,7 @@ class CommandLineExecution(private val parser: CommandParser, private val regist
         } catch (e: CommandNotFoundException) {
             fail(err, ShellExitStatus.USAGE, "unknown command ${e.commandName}")
         } catch (e: Exception) {
-            fail(err, ShellExitStatus.of(e), message(e))
+            fail(err, ShellExitStatus.of(e), ShellExitStatus.messageOf(e))
         }
         out.flush()
         err.flush()
@@ -49,7 +49,7 @@ class CommandLineExecution(private val parser: CommandParser, private val regist
         val parsed = try {
             parser.parse(line)
         } catch (e: Exception) {
-            throw ShellExit(ShellExitStatus.USAGE, message(e))
+            throw ShellExit(ShellExitStatus.USAGE, ShellExitStatus.messageOf(e))
         }
         val context = CommandContext(parsed, registry, out, StreamInput(input))
         val result = CommandExecutor(registry).execute(context)
@@ -63,12 +63,6 @@ class CommandLineExecution(private val parser: CommandParser, private val regist
     private fun fail(err: PrintWriter, status: ShellExitStatus, message: String): ShellExitStatus {
         err.println("chat-shell: $message")
         return status
-    }
-
-    /** The first line of the deepest cause message. A cause with no message gives its class name. */
-    private fun message(error: Throwable): String {
-        val cause = ShellExitStatus.causes(error).lastOrNull { !it.message.isNullOrBlank() } ?: error
-        return cause.message?.lineSequence()?.firstOrNull { it.isNotBlank() } ?: cause.javaClass.simpleName
     }
 
     private companion object {

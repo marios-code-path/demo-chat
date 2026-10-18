@@ -36,11 +36,11 @@ class EnvironmentLogin(private val env: (String) -> String?, private val login: 
         try {
             login(user, password)
         } catch (e: Exception) {
-            val reason = ShellExitStatus.causes(e).last().message ?: e.javaClass.simpleName
+            val reason = ShellExitStatus.messageOf(e)
             // A core that is down is not a wrong password.
             val status = if (ShellExitStatus.of(e) == ShellExitStatus.UNAVAILABLE) ShellExitStatus.UNAVAILABLE
             else ShellExitStatus.LOGIN
-            throw ShellExit(status, "Authentication failed: ${reason.lineSequence().first()}")
+            throw ShellExit(status, "Authentication failed: $reason")
         }
     }
 
