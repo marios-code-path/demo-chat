@@ -563,11 +563,18 @@ Each item below is believed from reading code or config. None is measured.
    a one-shot command today. The design reads `NonInteractiveShellRunner`
    from the Spring Shell 4.0.3 sources. No run has shown that it works with
    `chat-shell`, its reactive web server, and its RSocket client.
+   **Measured in stage 0 on 2026-10-17:** it works. Each one-shot process ran
+   its command and exited. The exit status is 0 or 1 alone. See
+   `docs/superpowers/proofs/2026-10-17-one-shot/RECORD.md`, Q1 and Q3.
 2. **The time of one read.** Each run starts a JVM. If a read takes too long
    for a session start, a long-running shell may be needed. Measure it.
+   **Measured in stage 0:** one one-shot run takes 6.3 to 7.4 seconds. So a
+   session-start read must run in one process, or use the resident mode.
+   See `RECORD.md`, Q5.
 3. **The shell address.** `CORE_PORT` and `CORE_MGMT_PORT` set it, and a
    dry run shows the management port. No run has shown a shell connected to
-   6890.
+   6890. **Measured in stage 0:** with 6990 and 6991, every shell connection
+   went to those two ports. See `RECORD.md`, Q6.
 4. **The size of one message.** No text length limit was found in the
    application. Cassandra and RSocket frames may still set one. The largest
    archive section must pass the import check.
@@ -576,6 +583,9 @@ Each item below is believed from reading code or config. None is measured.
 6. **Command input.** An entry travels as command input. The
    `NonInteractiveShellRunner` gives each command an empty `InputReader`. So
    the `post` command must read the process standard input in its own way.
+   **Measured in stage 0:** the `login` prompt failed with
+   `readPassword with prompt not implemented`, so a one-shot command gets no
+   standard input today. See `RECORD.md`, Q7.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
    from the agent's own shell.
