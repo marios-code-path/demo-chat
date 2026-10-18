@@ -8,11 +8,13 @@
 set -uo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-now_ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
+# The harness pins the real perl, because a case puts a stub perl first on the PATH of the launcher.
+real_perl="$(command -v perl)"
+now_ms() { "$real_perl" -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
 failures=0
 
 T="$(mktemp -d)"
-trap 'pkill -f "sleep 59.5" 2>/dev/null; rm -rf "$T"' EXIT
+trap 'for f in "$T"/pid.*; do [[ -f "$f" ]] && kill -KILL "$(cat "$f")" 2>/dev/null; done; rm -rf "$T"' EXIT
 mkdir -p "$T/shell-scripts" "$T/chat-deploy/target" "$T/bin"
 cp "$here/chat-shell-cli" "$T/shell-scripts/chat-shell-cli"
 echo "unused.jar" > "$T/chat-deploy/target/shell-cli.classpath"
@@ -37,7 +39,7 @@ run_case() {
     start="$(now_ms)"
     printf '%s' "$input" | PATH="$T/bin:$PATH" CHAT_SHELL_KEY_TYPE=uuid \
         CHAT_SHELL_LAUNCH_EPOCH_MS="$(( start - age ))" \
-        perl -e 'alarm 20; exec @ARGV' "$T/shell-scripts/chat-shell-cli" "$@" > "$T/out" 2> "$T/err"
+        "$real_perl" -e 'alarm 20; exec @ARGV' "$T/shell-scripts/chat-shell-cli" "$@" > "$T/out" 2> "$T/err"
     status=$?
     wall=$(( $(now_ms) - start ))
     if [[ "$status" != "$expected" ]]; then
@@ -58,31 +60,98 @@ fail() { echo "FAIL $1: $2"; failures=$((failures + 1)); }
 
 LIMIT_LINE='chat-shell: register-read passed its 30000 ms limit'
 
+# gone NAME  The process whose PID a stub wrote to $T/pid.NAME must be dead. A missing PID file is a
+# failure, because then the check did not look at any process. The test uses kill -0 on the exact
+# PID, so it works where a process list is not readable.
+gone() {
+    local file="$T/pid.$1" pid i
+    [[ -s "$file" ]] || { echo "no PID file for $1"; return 1; }
+    pid="$(cat "$file")"
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        kill -0 "$pid" 2>/dev/null || return 0
+        sleep 0.3
+    done
+    echo "process $pid ($1) is still alive"
+    return 1
+}
+
 # 1. The launcher stalls before Java: chat-build never answers.
-stub_build 'exec sleep 59.5'
+rm -f "$T"/pid.*
+stub_build "sleep 59.5 & echo \$! > '$T/pid.build'; wait"
 stub_java 'exit 0'
 if run_case stall-before-java 124 28000 8000 '' -- register-read; then
     if [[ -s "$T/out" ]]; then fail stall-before-java "standard output is not empty"
     elif [[ "$(cat "$T/err")" != "$LIMIT_LINE" ]]; then fail stall-before-java "standard error is: $(cat "$T/err")"
-    elif pgrep -f 'sleep 59.5' > /dev/null; then fail stall-before-java "the stalled process is still alive"
+    elif ! why="$(gone build)"; then fail stall-before-java "$why"
     else ok stall-before-java; fi
 fi
 
 # 2. Java stalls after a fast launcher.
+rm -f "$T"/pid.*
 stub_build ':'
-stub_java 'exec sleep 59.5'
+stub_java "sleep 59.5 & echo \$! > '$T/pid.java'; wait"
 if run_case stall-in-java 124 28000 8000 '' -- register-read; then
     if [[ -s "$T/out" || "$(cat "$T/err")" != "$LIMIT_LINE" ]]; then fail stall-in-java "output: $(cat "$T/out") error: $(cat "$T/err")"
-    elif pgrep -f 'sleep 59.5' > /dev/null; then fail stall-in-java "the stalled process is still alive"
+    elif ! why="$(gone java)"; then fail stall-in-java "$why"
     else ok stall-in-java; fi
 fi
 
+# 1b. A child that ignores TERM must still die. Sigma reproduced a survivor, and a second stderr line
+# from the job notice of bash, on PR #259.
+rm -f "$T"/pid.*
+stub_build "trap '' TERM; echo \$\$ > '$T/pid.script'; sleep 59.5 & echo \$! > '$T/pid.sleep'; wait"
+stub_java 'exit 0'
+if run_case term-resistant-child 124 28000 8000 '' -- register-read; then
+    if [[ -s "$T/out" ]]; then fail term-resistant-child "standard output is not empty"
+    elif [[ "$(cat "$T/err")" != "$LIMIT_LINE" ]]; then fail term-resistant-child "standard error is: $(cat "$T/err")"
+    elif ! why="$(gone script)"; then fail term-resistant-child "$why"
+    elif ! why="$(gone sleep)"; then fail term-resistant-child "$why"
+    else ok term-resistant-child; fi
+fi
+
+# 1c. The launcher needs no perl. A stub perl would sleep, and a stamp 28 s old would leave 2 s.
+# The run must end at once with the status of Java, and the stub must never start.
+rm -f "$T"/pid.*
+cat > "$T/bin/perl" <<STUB
+#!/usr/bin/env bash
+echo \$\$ > '$T/pid.perl'
+exec sleep 59.5
+STUB
+chmod +x "$T/bin/perl"
+stub_build ':'
+stub_java 'exit 0'
+if run_case no-perl 0 28000 4000 '' -- register-read; then
+    if [[ -e "$T/pid.perl" ]]; then fail no-perl "the launcher started perl"
+    else ok no-perl; fi
+fi
+rm -f "$T/bin/perl"
+
+# 1d. A clock that stalls fails closed: with a stamp from the caller, the age is unknown, so the
+# launcher ends the command with 124 after 2 s and one line.
+rm -f "$T"/pid.*
+cat > "$T/bin/date" <<STUB
+#!/usr/bin/env bash
+echo \$\$ > '$T/pid.date'
+exec sleep 59.5
+STUB
+chmod +x "$T/bin/date"
+stub_build ':'
+stub_java 'exit 0'
+if run_case stalled-clock 124 28000 6000 '' -- register-read; then
+    if [[ -s "$T/out" || "$(cat "$T/err")" != "$LIMIT_LINE" ]]; then fail stalled-clock "output: $(cat "$T/out") error: $(cat "$T/err")"
+    elif ! why="$(gone date)"; then fail stalled-clock "$why"
+    else ok stalled-clock; fi
+fi
+rm -f "$T/bin/date"
+
 # 2b. Java writes its own limit line and then does not exit in time. The supervisor and the child
 # can both fire at the limit, and standard error must still hold one line.
+rm -f "$T"/pid.*
 stub_build ':'
-stub_java 'echo "chat-shell: register-read passed its 30000 ms limit" >&2; exec sleep 59.5'
+stub_java "echo 'chat-shell: register-read passed its 30000 ms limit' >&2; sleep 59.5 & echo \$! > '$T/pid.race'; wait"
 if run_case one-line-on-race 124 28000 8000 '' -- register-read; then
     if [[ "$(cat "$T/err")" != "$LIMIT_LINE" ]]; then fail one-line-on-race "standard error is: $(cat "$T/err")"
+    elif ! why="$(gone race)"; then fail one-line-on-race "$why"
     else ok one-line-on-race; fi
 fi
 
@@ -121,14 +190,12 @@ if run_case no-limit-elsewhere 0 40000 8000 '' -- whoami; then
     else ok no-limit-elsewhere; fi
 fi
 
-# 6. No child of a normal run is left behind, and no timer file is left in the temp directory.
-before="$(pgrep -f 'sleep ' | wc -l | tr -d ' ')"
+# 6. No child of a normal run is left behind. The stub starts a sleep and leaves it to the launcher.
+rm -f "$T"/pid.*
 stub_build ':'
-stub_java 'exit 0'
-run_case clean-exit 0 1000 8000 '' -- register-read > /dev/null
-sleep 0.5
-after="$(pgrep -f 'sleep ' | wc -l | tr -d ' ')"
-if (( after > before )); then fail clean-exit "a sleep process stayed ($before before, $after after)"; else ok clean-exit; fi
+stub_java "sleep 59.5 & echo \$! > '$T/pid.left'; exit 0"
+run_case clean-exit 0 1000 8000 '' -- register-read
+if ! why="$(gone left)"; then fail clean-exit "$why"; else ok clean-exit; fi
 
 (( failures == 0 )) || { echo "$failures case(s) failed"; exit 1; }
 echo "all cases passed"

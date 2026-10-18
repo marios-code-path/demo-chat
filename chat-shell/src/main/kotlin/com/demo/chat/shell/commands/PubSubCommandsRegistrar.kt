@@ -2,6 +2,8 @@ package com.demo.chat.shell.commands
 
 import com.demo.chat.shell.cli.HardLimits
 import com.demo.chat.shell.cli.LaunchDeadline
+import com.demo.chat.shell.cli.ShellExit
+import com.demo.chat.shell.cli.ShellExitStatus
 import com.demo.chat.shell.cli.StreamInput
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -105,7 +107,12 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
                 LaunchDeadline.forProcess(HardLimits.REGISTER_READ, HardLimits.REGISTER_READ_LIMIT)
             else LaunchDeadline(HardLimits.REGISTER_READ, Instant.now(), HardLimits.REGISTER_READ_LIMIT)
             deadline.requireBudget()
-            val text = commands.registerRead(ctx.optionValue("index"), Duration.ofHours(hours), deadline.remaining())
+            val text = try {
+                commands.registerRead(ctx.optionValue("index"), Duration.ofHours(hours), deadline.remaining())
+            } catch (e: ShellExit) {
+                // A read that passed the limit ends the command through the deadline, so the line is written once.
+                if (e.status == ShellExitStatus.TIMEOUT) deadline.expire() else throw e
+            }
             deadline.finish {
                 if (text.isNotEmpty()) ctx.outputWriter().println(text)
                 ctx.outputWriter().flush()

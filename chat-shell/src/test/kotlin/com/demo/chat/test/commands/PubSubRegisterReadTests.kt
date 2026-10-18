@@ -227,4 +227,24 @@ class PubSubRegisterReadTests {
         assertThat(failure).isNull()
         assertThat(printed.lines().filter { it.isNotEmpty() }).hasSize(2)
     }
+
+    /** The read phase times out at the same moment as the watchdog. The line must be written once. */
+    @Test
+    fun `in a mode, a read that times out with a watchdog armed writes one line and halts`() {
+        room("register-index", 100)
+        given(messages.listMessages(ByIdRequest(100L))).willReturn(Flux.never())
+        val halts = java.util.concurrent.atomic.AtomicInteger()
+        val err = StringWriter()
+        val armed = LaunchDeadline("register-read", Instant.now().minusMillis(29_000), Duration.ofSeconds(30))
+        armed.startWatchdog(PrintWriter(err)) { halts.incrementAndGet() }
+        LaunchDeadline.active = armed
+
+        val (failure, printed) = runInMode()
+        Thread.sleep(300)
+
+        assertThat(failure).isInstanceOfSatisfying(ShellExit::class.java) { assertThat(it.status).isEqualTo(ShellExitStatus.TIMEOUT) }
+        assertThat(printed).isEmpty()
+        assertThat(halts.get()).isGreaterThan(0)
+        assertThat(err.toString().lines().filter { it.isNotEmpty() }).hasSize(1)
+    }
 }

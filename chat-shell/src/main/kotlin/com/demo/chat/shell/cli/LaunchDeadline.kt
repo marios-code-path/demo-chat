@@ -4,6 +4,9 @@ import java.io.PrintWriter
 import java.lang.management.ManagementFactory
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -32,8 +35,16 @@ class LaunchDeadline(
     private val limit: Duration,
     private val clock: () -> Instant = Instant::now,
 ) {
-    /** RUNNING, then PRINTING while the output is written, then FINISHED. EXPIRED once the watchdog took over. */
+    /** RUNNING, then PRINTING while the output is written, then FINISHED. EXPIRED once the limit took over. */
     private val state = AtomicInteger(RUNNING)
+    private val lineStarted = AtomicBoolean(false)
+    private val lineDone = CountDownLatch(1)
+
+    @Volatile
+    private var err: PrintWriter? = null
+
+    @Volatile
+    private var halt: ((Int) -> Unit)? = null
 
     val message: String get() = "$name passed its ${limit.toMillis()} ms limit"
 
@@ -42,12 +53,11 @@ class LaunchDeadline(
 
     /** Refuses to start when the budget is spent. */
     fun requireBudget() {
-        if (!remaining().isPositive) throw ShellExit(ShellExitStatus.TIMEOUT, message)
+        if (!remaining().isPositive) expire()
     }
 
     /**
-     * Runs [output] only if the limit has not passed and the watchdog has not
-     * taken over.
+     * Runs [output] only if the limit has not passed and nothing has taken over.
      *
      * **No lock is held while [output] runs.** A reader that does not read can
      * block the write for ever, and a lock would then stop the watchdog from
@@ -55,13 +65,27 @@ class LaunchDeadline(
      * halts the process with status 124, and the standard output can hold part
      * of the text. A caller must discard the output of a command that does not
      * exit with 0.
+     *
+     * **A write that ends after the limit is not a success.** If the watchdog
+     * took over while [output] ran, this ends the process through [expire], and
+     * it never reports success. Sigma found the first version of this on PR #259.
      */
     fun finish(output: () -> Unit) {
-        if (!remaining().isPositive || !state.compareAndSet(RUNNING, PRINTING))
-            throw ShellExit(ShellExitStatus.TIMEOUT, message)
+        if (!remaining().isPositive || !state.compareAndSet(RUNNING, PRINTING)) expire()
         output()
-        // False when the watchdog took over during the write. The process is halting then.
-        state.compareAndSet(PRINTING, FINISHED)
+        if (!state.compareAndSet(PRINTING, FINISHED)) expire()
+    }
+
+    /**
+     * The one way that the limit ends a command. With a watchdog it writes the
+     * line once, halts the process with status 124, and so never returns. Without
+     * a watchdog, in a test or in the interactive shell, it throws a [ShellExit]
+     * of status [ShellExitStatus.TIMEOUT]. A caller that sees the limit passed
+     * calls this instead of writing its own line, so the line is never doubled.
+     */
+    fun expire(): Nothing {
+        halting()
+        throw ShellExit(ShellExitStatus.TIMEOUT, message)
     }
 
     /**
@@ -74,6 +98,8 @@ class LaunchDeadline(
      * follows after at most half a second.
      */
     fun startWatchdog(err: PrintWriter, halt: (Int) -> Unit) {
+        this.err = err
+        this.halt = halt
         Thread({
             while (remaining().isPositive) {
                 try {
@@ -82,15 +108,27 @@ class LaunchDeadline(
                     return@Thread
                 }
             }
-            if (state.getAndSet(EXPIRED) == FINISHED) return@Thread
-            val line = Thread({
-                err.println("chat-shell: $message")
-                err.flush()
-            }, "launch-deadline-line").apply { isDaemon = true }
-            line.start()
-            line.join(LINE_WAIT_MS)
-            halt(ShellExitStatus.TIMEOUT.code)
+            halting()
         }, "launch-deadline").apply { isDaemon = true }.start()
+    }
+
+    /** Takes over, writes the line once, and halts. It does nothing without a watchdog, or after the output finished. */
+    private fun halting() {
+        val stop = halt ?: return
+        val line = err ?: return
+        if (state.getAndSet(EXPIRED) == FINISHED) return
+        if (lineStarted.compareAndSet(false, true)) {
+            Thread({
+                try {
+                    line.println("chat-shell: $message")
+                    line.flush()
+                } finally {
+                    lineDone.countDown()
+                }
+            }, "launch-deadline-line").apply { isDaemon = true }.start()
+        }
+        lineDone.await(LINE_WAIT_MS, TimeUnit.MILLISECONDS)
+        stop(ShellExitStatus.TIMEOUT.code)
     }
 
     companion object {

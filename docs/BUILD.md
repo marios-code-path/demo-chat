@@ -396,11 +396,13 @@ type must match the core. These variables also apply:
 | `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE` | The login. Set both or neither. |
 | `CHAT_SHELL_LOG` | A file for the log. The console log is off. |
 | `CHAT_SHELL_CLI_PRINT_OPTIONS` | Set to 1 to print the JVM options and end. |
-| `CHAT_SHELL_LAUNCH_EPOCH_MS` | The launch time in epoch milliseconds, for the hard limit of `register-read`. The script sets it when it is absent. |
+| `CHAT_SHELL_LAUNCH_EPOCH_MS` | The launch time in epoch milliseconds, for the hard limit of `register-read`. The script sets it, in whole seconds, when it is absent. |
 
 `shell-scripts/test-chat-shell-cli-deadline.sh` checks the hard limit of the
-launcher with stubs for `chat-build` and `java`. It covers a stall before Java,
-a stall in Java, a spent budget, and one line of standard error at the limit.
+launcher with stubs for `chat-build`, `java`, `perl`, and `date`. It covers a stall
+before Java, a stall in Java, a child that ignores TERM, a stalled clock, a launcher
+with no `perl`, a spent budget, one line of standard error at the limit, and no
+leftover process. It finds processes by the exact PID that a stub wrote.
 
 The exit statuses are in `docs/SHELL-COMMAND-CONTRACT.md`, section `The shell
 modes`. The script `chat-shell-client` does not exist, because resident mode is

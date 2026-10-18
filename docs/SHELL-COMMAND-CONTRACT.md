@@ -91,9 +91,19 @@ index prints nothing. The hard limit is 30 seconds. In the shell modes it runs
 from the launch of the process, so the JVM start counts. `main` arms a watchdog
 before the application starts, so a startup that stalls in Java ends with status
 124 too. **`chat-shell-cli` supervises the command from its own start**, so a stall
-before Java starts, such as a stuck `chat-build`, ends with 124 as well. The
-supervisor ends the whole process group, owns standard error, and leaves one
-`chat-shell: register-read passed its 30000 ms limit` line. A budget that startup
+before Java starts, such as a stuck `chat-build`, ends with 124 as well. A timer
+starts before any external command. Every external command runs as a job in its
+own process group, and at the limit the supervisor sends TERM and then KILL to the
+group, so a child that ignores TERM does not survive. It also sends KILL to the
+group of the child when the child ends. The supervisor owns standard error and
+leaves one `chat-shell: register-read passed its 30000 ms limit` line. It reads
+the clock with `date` in a job. A clock that does not answer in 2 seconds counts
+as a spent budget, and the command fails closed with 124. The launcher uses no
+`perl`. If both the clock and the caller's stamp are unknown, the bound is 30
+seconds from the start of the script. In the JVM, one path ends the command at the
+limit: the watchdog, a spent budget, a read that times out, and an output that
+finishes after the watchdog took over all halt the process with 124 and write the
+line once. An output that finishes late is never a success. A budget that startup
 spent refuses the read. A budget that runs out during the read refuses the output.
 Standard output is empty on 124. **One case differs:** if the limit passes while a
 blocked reader holds up the write of the output, the watchdog halts the process

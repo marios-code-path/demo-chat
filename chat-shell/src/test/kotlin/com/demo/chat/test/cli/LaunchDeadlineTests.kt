@@ -169,4 +169,57 @@ class LaunchDeadlineTests {
 
         assertThat(script).contains("register-read) limit_ms=${HardLimits.REGISTER_READ_LIMIT.toMillis()} ;;")
     }
+
+    /**
+     * The watchdog marks the command as expired while the output is being written, and
+     * the write then returns. The first version ignored the failed transition and
+     * reported success, so the process could exit 0 before the halt. Sigma found this
+     * on PR #259.
+     */
+    @Test
+    fun `finish does not report success when the watchdog expired during the output`() {
+        val halts = AtomicInteger()
+        val err = StringWriter()
+        val outputStarted = CountDownLatch(1)
+        val releaseOutput = CountDownLatch(1)
+        val watched = LaunchDeadline("register-read", Instant.now().minusMillis(1_700), Duration.ofSeconds(2))
+        watched.startWatchdog(PrintWriter(err)) { halts.incrementAndGet() }
+        var returned = false
+        var failure: Throwable? = null
+        val writer = Thread({
+            try {
+                watched.finish { outputStarted.countDown(); releaseOutput.await() }
+                returned = true
+            } catch (e: Throwable) {
+                failure = e
+            }
+        }, "writer").apply { isDaemon = true }
+        writer.start()
+        assertThat(outputStarted.await(5, TimeUnit.SECONDS)).isTrue()
+        val deadline = System.currentTimeMillis() + 5_000
+        while (halts.get() == 0 && System.currentTimeMillis() < deadline) Thread.sleep(20)
+        assertThat(halts.get()).describedAs("the watchdog halted").isGreaterThan(0)
+
+        releaseOutput.countDown()
+        writer.join(5_000)
+
+        assertThat(returned).describedAs("finish reported success").isFalse()
+        assertThat(failure).isInstanceOfSatisfying(ShellExit::class.java) { assertThat(it.status).isEqualTo(ShellExitStatus.TIMEOUT) }
+        assertThat(err.toString()).describedAs("one line").isEqualTo("chat-shell: register-read passed its 2000 ms limit" + System.lineSeparator())
+    }
+
+    /** With a watchdog, a spent budget ends the process through the same path, so the line is written once. */
+    @Test
+    fun `a spent budget with a watchdog halts the process once and writes one line`() {
+        val halts = AtomicInteger()
+        val err = StringWriter()
+        val watched = LaunchDeadline("register-read", Instant.now().minusSeconds(31), limit)
+        watched.startWatchdog(PrintWriter(err)) { halts.incrementAndGet() }
+
+        assertThatThrownBy { watched.requireBudget() }.isInstanceOf(ShellExit::class.java)
+        Thread.sleep(300)
+
+        assertThat(halts.get()).isGreaterThan(0)
+        assertThat(err.toString()).isEqualTo("chat-shell: register-read passed its 30000 ms limit" + System.lineSeparator())
+    }
 }

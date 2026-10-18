@@ -97,6 +97,20 @@ standard output can hold part of the text, and the contract says to discard it.
 `shell-scripts/test-chat-shell-cli-deadline.sh` covers the launcher, and
 `LaunchDeadlineTests` covers the blocked output and the blocked standard error.
 
+Sigma found three more paths on the next review, and all three are fixed:
+a child that ignores TERM survived the timeout and the bash job notice made a
+second stderr line, a stalled `perl` before the timer had no deadline, and an
+output that finished after the watchdog marked the command expired could report
+success. The launcher now starts its timer first, runs every external command as
+a job in its own process group, sends TERM and then KILL to the groups, sends KILL
+to the group of the child when it ends, and keeps bash notices off standard error.
+It uses no `perl`, and it reads the clock in a job with a 2-second bound that fails
+closed. In the JVM, `finish` and `requireBudget` end the command through one path,
+`LaunchDeadline.expire`, with the watchdog, so the line is written once and a late
+output is never a success. The tests find processes by the exact PID that a stub
+wrote and use `kill -0`, and they fail if no PID was written, so they work where a
+process list is not readable.
+
 The launch time is the earlier of the stamp `CHAT_SHELL_LAUNCH_EPOCH_MS`, which
 `chat-shell-cli` sets, and the JVM start. A missing or broken stamp falls back to
 the JVM start, and never to the current time.
