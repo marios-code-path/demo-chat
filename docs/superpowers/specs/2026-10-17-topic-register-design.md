@@ -1,6 +1,6 @@
 # The topic register on node 9
 
-Status: draft for owner review. Issue: `CHAT-jmnjvupr`. Date: 2026-10-17.
+Status: draft for review by Sigma and the owner. Issue: `CHAT-jmnjvupr`. Date: 2026-10-17.
 
 ## Intent
 
@@ -87,6 +87,11 @@ The owner made these decisions on 2026-10-17.
 15. Every agent reads `AGENTS.md` by default. Each harness has its own
     instruction file, and that file gives the agent its name. So general
     rules, the session-start step too, go in `AGENTS.md`.
+16. `chat-shell` cannot run a one-shot command from the command line today.
+    It needs three things first: a silent startup, a way to run commands and
+    then exit or stay resident, and a login with no prompt. The owner asked if
+    a socket can carry the commands.
+17. Sigma reviews the whole design.
 
 ## Node 9
 
@@ -281,6 +286,85 @@ needs no `--as`, and it uses the `Mario` account. This is the designer's call.
 Every entry has several lines. The command must send the newlines of an entry
 unchanged. Unverified item 6 covers this.
 
+## chat-shell as a command tool
+
+The register needs three changes in `chat-shell` before node 9 is useful.
+The owner named them on 2026-10-17. This is build stage 1.
+
+### 1. A silent startup
+
+- Standard output holds command output alone.
+- No banner prints. `chat-shell` ships `banner.txt` today.
+- Logs go to a file, or to standard error at `WARN`. A successful run writes
+  nothing to standard error.
+- JLine must not print a terminal warning when no TTY exists.
+
+### 2. Command execution
+
+Both modes below use one execution path. It parses one command line, runs it
+through the command registry, writes the output to a given writer, and returns
+an exit status. The tests of PR #255 already run commands in this way, in
+`ShellEscapeConfigurationTests` and `HostCommandTests`.
+
+**One-shot mode.** Spring Shell 4.0.3 has `NonInteractiveShellRunner`. When
+`spring.shell.interactive.enabled=false`, `JLineShellAutoConfiguration`
+supplies it. It joins the program arguments into one command line and runs
+it. An argument `@<file>` runs each line of that file. A failed command
+throws `CommandExecutionException` with an exit code. This was read from the
+sources, not run. These parts are missing:
+
+- a launch path. `chat-build shell` sets the interactive mode to `true`, and
+  it starts the shell through Maven.
+- a process exit after the command, with the command's exit status.
+- the silent startup of part 1.
+
+Each one-shot call pays one JVM start and one connection to the core.
+
+**Resident mode.** The shell starts once, logs in, and stays connected to
+the core. It listens on a Unix domain socket. Java supports Unix domain
+sockets in `SocketChannel` since Java 16. So a socket is possible.
+
+- One socket per user, at `node-9/run/<user>.sock`, with mode `0600`.
+- One request per connection. The first line of a request is the command
+  line. The rest of the request, if any, is the input of that command.
+- The response is the command output, then a last line `exit <n>`.
+- A small client script sends a request and prints the response.
+
+**An entry travels as command input, not as an argument.** A new shell
+command, such as `post --topic <name>`, reads the entry text from its input.
+In one-shot mode, the input is the process standard input. In resident mode,
+it is the rest of the request. So the newlines of an entry need no quotes.
+
+**Designer's call:** build the one-shot mode first, because Spring Shell
+holds most of it. Then build the resident mode, because each register read
+and write would otherwise pay a JVM start.
+
+### 3. A login with no prompt
+
+- The shell logs in at start, before the first command.
+- `CHAT_SHELL_USER` names the user. `CHAT_SHELL_PASSWORD_FILE` names a file
+  that holds the password.
+- A password never goes in a program argument, because `ps` shows arguments.
+- A failed login prints one line to standard error. The shell runs no
+  command, and it exits non-zero.
+- Without these variables, the shell starts and logs in as it does today.
+- In resident mode, one process holds one user.
+
+### 4. The core address
+
+The shell reads the core address from `config/client-rsocket-local.yml`, and
+its root keys from `http://127.0.0.1:6791`. Node 9 uses 6890 and 6891. The
+shell needs a setting for both. Unverified item 3 covers this.
+
+## Build order
+
+1. `chat-shell` as a command tool: parts 1 to 4 above.
+2. Node 9 and the `node-9/` directory.
+3. `node-9/bin/register`, the register users, and the `AGENTS.md` step.
+4. The migration of the files.
+
+Each stage ends in its own PR.
+
 ## The migration
 
 The migration is a separate step, after the register works. It needs PR
@@ -322,11 +406,10 @@ Other files change with the removal:
 
 Each item below is believed from reading code or config. None is measured.
 
-1. **A one-shot `chat-shell` run.** The shell starts with
-   `spring.shell.interactive.enabled=true`. Tests start it with `false`. No
-   run has shown that the shell can log in, run one command, print, and exit.
-   `login --password` avoids the prompt. `script -f` is a second path. **The
-   first build task must prove this.**
+1. **The one-shot runner.** The owner reports that `chat-shell` cannot run
+   a one-shot command today. The design reads `NonInteractiveShellRunner`
+   from the Spring Shell 4.0.3 sources. No run has shown that it works with
+   `chat-shell`, its reactive web server, and its RSocket client.
 2. **The time of one read.** Each run starts a JVM. If a read takes too long
    for a session start, a long-running shell may be needed. Measure it.
 3. **The shell address.** The shell reads its core address from
@@ -338,9 +421,9 @@ Each item below is believed from reading code or config. None is measured.
    archive section must pass the import check.
 5. **Live follow.** A `listen` on the owner's shell should show an entry that
    an agent posts, through Redis. No run has shown it.
-6. **Newlines in one command.** An entry has several lines. Spring Shell
-   parses a command line, and a one-shot run passes the entry as an
-   argument. No run has shown that newlines arrive unchanged.
+6. **Command input.** An entry travels as command input. The
+   `NonInteractiveShellRunner` gives each command an empty `InputReader`. So
+   the `post` command must read the process standard input in its own way.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
    from the agent's own shell.
@@ -371,4 +454,8 @@ The owner did not decide these. Each one can change.
 - A setup step that creates `secrets.env` with random passwords.
 - One message per `##` section in the import.
 - A shell script in `node-9/bin/`, not a Kotlin tool.
+- One-shot mode first, then resident mode on a Unix domain socket.
+- An entry travels as command input, through a new `post` command.
+- `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE` for the login.
+- Four build stages, each with its own PR.
 - The register is not empty when node 9 is down. The command fails.
