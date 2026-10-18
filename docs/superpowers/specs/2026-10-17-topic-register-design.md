@@ -112,6 +112,9 @@ commit `985abf39`:
     output, login, exit status, or command input. The current native image
     does not start a full context, so a shell image needs a fixed build-time
     composition and its own start proof. The owner set this on 2026-10-18.
+22. `AGENTS.md` will direct each agent to run `register-read` at session start.
+    The stage 3 command `node-9/bin/register read --as <name>` will invoke it.
+    Mario confirmed this choice on 2026-10-18.
 
 ## Node 9
 
@@ -307,10 +310,10 @@ on node 9 is an attribution label, not a verified author.
 
 ### The session-start command
 
-`AGENTS.md` replaces `@forward-register.md` with one instruction: run
-`node-9/bin/register read --as <name>` and read the output as described in
-the trust rules above. Every agent reads `AGENTS.md`, so the one instruction
-reaches Sigma, Theta, and Phi. No harness file changes.
+In stage 3, `AGENTS.md` replaces `@forward-register.md` with one instruction.
+Run `node-9/bin/register read --as <name>`. That command invokes `register-read`.
+Read its output under the trust rules above. Every agent reads `AGENTS.md`,
+so the instruction reaches Sigma, Theta, and Phi. No harness file changes.
 
 The command prints:
 
@@ -605,11 +608,12 @@ holds the cases. These facts are measured.
   one JVM. On representative data (20 pointers, 3 topics with 5 entries of about 2
   KB each) it takes 4,476 ms in the median of five runs, from the launch to the
   exit. Sigma recommended this command on 2026-10-18, and said to build resident
-  mode only if it missed 10 seconds. Mario has not confirmed it as a design
-  decision. It did not miss, so task 9 is not built for this workload. The command
-  enforces the 30-second limit from the launch, with status 124: a watchdog in
-  `main`, a refusal when the budget is spent, and a refusal of the output when the
-  limit passes during the read. Live cases A14 and A15 show it.
+  mode only if it missed 10 seconds. Mario confirmed the session-start choice
+  on 2026-10-18. It did not miss, so task 9 is not built for this workload.
+  The command returns 124 when its watchdog finds an expired budget.
+  Live cases A14 and A15 show this path. Sigma found two remaining gaps.
+  The launcher can stall before Java starts. Output can block while it holds
+  the watchdog lock. PR #259 must close these gaps before claiming the hard limit.
 - **The native one-shot image builds and does not start a context.** The first
   failure is a missing `config/client-rsocket-local.yml`. See
   `docs/NATIVE-IMAGE.md`, section "Shell one-shot".

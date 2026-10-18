@@ -48,8 +48,9 @@ solved.
 Sigma recommended on 2026-10-18: keep the index read and the three topic
 reads, and run them in one JVM process. Measure from the launch to the last
 output line. Build resident mode only if that command misses 10 seconds.
-Enforce the 30-second limit. **This is Sigma's recommendation. Mario has not
-confirmed it as a design decision.** It does not authorize a merge.
+Enforce the 30-second limit. Sigma recommended this command. Mario confirmed
+on 2026-10-18 that `AGENTS.md` will direct agents to run it. This decision
+does not authorize a merge.
 
 The command is `register-read`. `read.sh register` ran it 5 times on the same
 kind of data (20 pointers in the form `<fp-id> | <topic-name> | <kind> |
@@ -70,7 +71,7 @@ comes a few milliseconds before the exit. One start (about 3.7 s) plus the reads
 built.** The four-process version above took 14,935 ms, because it paid four
 JVM starts.
 
-**The 30-second limit is a hard limit from the launch.** Sigma found on PR #259
+**The 30-second limit is not yet guaranteed on every path.** Sigma found on PR #259
 that the first version started its timer when the command ran. A stall in the
 startup could pass the limit, and a budget that startup had used up still allowed
 a success. The limit now has three parts, and `LaunchDeadline` holds them.
@@ -92,6 +93,10 @@ empty standard output. With a stamp 31 s in the past it ended after 0.2 s, with
 the same result. `LaunchDeadlineTests` and `PubSubRegisterReadTests` cover the
 watchdog, the spent budget, a budget that runs out during the read, and the
 launch time.
+
+Sigma found two remaining paths on PR #259. The launcher can stall before
+Java starts. Output can block while it holds the watchdog lock. Those paths
+still need tests and a fix before the hard-limit claim is complete.
 
 ## What this does not show
 
