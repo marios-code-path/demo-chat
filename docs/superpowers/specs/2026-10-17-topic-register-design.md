@@ -103,9 +103,15 @@ commit `985abf39`:
 20. A complete session-start read has a target of 10 seconds and a hard
     time limit of 30 seconds. The time runs from the command start to the
     last output line. It includes the JVM start, the index read, and the
-    reads of recent topics. If representative data passes the target, the
+    reads of recent topics. If representative data exceeds the target, the
     query cost is solved before the file migration. Stage 1 measures a topic
     read. Stage 3 measures the complete command.
+21. Native one-shot is an option for stage 1. Stage 1 measures a complete
+    register read for each one-shot launcher before it commits to the
+    resident mode. A native image can start faster, but it does not change
+    output, login, exit status, or command input. The current native image
+    does not start a full context, so a shell image needs a fixed build-time
+    composition and its own start proof. The owner set this on 2026-10-18.
 
 ## Node 9
 
@@ -342,7 +348,7 @@ departs from Sigma's request for a bounded query.
 
 Owner decision 20 sets the limit. Stage 1 measures one topic read. Stage 3
 measures the complete `register read`, from the command start to the last
-output line. If representative data passes 10 seconds, the query cost is
+output line. If representative data exceeds 10 seconds, the query cost is
 solved before stage 4 starts. A store-side bound is one possible solution.
 At 30 seconds, `register read` stops and exits with status 124.
 
@@ -510,7 +516,8 @@ the shell through the environment when it starts. Stage 0 showed this with
    with redirected standard input, output, and error. Record what each
    stream holds and the exit status. The plan of stage 1 fixes its interface
    only after this run. Node 16 is not the disposable core.
-1. `chat-shell` as a command tool: parts 1 to 5 above.
+1. `chat-shell` as a command tool: parts 1 to 5 above. The resident mode of
+   part 3 waits for the read measurement of owner decision 21.
 2. Node 9 and the `node-9/` directory.
 3. `node-9/bin/register`, the register users, and the `AGENTS.md` step.
 4. The migration of the files. It starts only when the stage 3 measure
@@ -630,7 +637,7 @@ The owner did not decide these. Each one can change.
 - A proof run before the plan of stage 1.
 - One message per `##` section in the import.
 - A shell script in `node-9/bin/`, not a Kotlin tool.
-- One-shot mode first, then resident mode on a Unix domain socket.
+- One-shot mode first. The resident mode waits for the read measurement of owner decision 21.
 - An entry travels as command input, through a new `post` command.
 - `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE` for the login.
 - Four build stages after the proof run, each with its own PR.
