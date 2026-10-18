@@ -15,15 +15,15 @@ artifact that is.
 
 | | |
 |---|---|
-| Checkout | `master` at `04dbe77a`, the merge commit of PR #228, in sync with `origin`. The working tree holds three untracked owner files, `conversations.json`, `conversations.jsonl`, and `forward-register-archive.md`. |
-| Register state | Restructured on 2026-10-15 into this file and three period logs. Refreshed on 2026-10-15, after PR #229. The period from 2026-10-08 to 2026-10-15 closed on 2026-10-16, under `CHAT-jgegpcoi`. |
-| Last merged PR | #229, merge commit `f63cd3a4`, merged on 2026-10-15. |
+| Checkout | `master` at `be71cd44`, the merge commit of PR #255, in sync with `origin`. Measured on 2026-10-17 at 21:00 PDT. The working tree holds untracked owner files: `conversations.json`, `conversations.jsonl`, `forward-register-archive.md`, and 24 `claude-import-map-*.json` files. |
+| Register state | Restructured on 2026-10-15 into this file and three period logs. The period from 2026-10-08 to 2026-10-15 closed on 2026-10-16, under `CHAT-jgegpcoi`. Refreshed on 2026-10-17, after PR #255. Then archived whole on 2026-10-17 as `forward-register-archive-2026-10-17.md`, under `CHAT-exkzongc`. |
+| Last merged PR | #255, merge commit `be71cd44`, merged on 2026-10-18 at 02:06 UTC, which is 2026-10-17 in PDT. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Local branches | Twenty-two, measured on 2026-10-15 at `master` at `f63cd3a4`. **This row records commit ancestry, and it states its snapshot point.** **Thirteen others hold no commit that master lacks**, so master holds their work by ancestry: `boot4-bump` at `179c2fd8`, `chat-bmmtojqm-chat-log-view` at `925a1db8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-ivtnvgyg-reach-check` at `c2b5fe5d`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **Four hold one commit that master lacks, and master holds an equivalent change**: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-xcmpudyb-message-id` at `20f3d014`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **Three hold commits that master lacks, and master holds no equivalent change.** The next row names them. **One is this work**, `chat-cdutiiyg-ancestry-fix`, cut from the snapshot tip. It holds the refresh commit alone and no other work. It joins the ancestry group once its pull request merges. **Every branch ref is kept.** |
-| Unmerged branches | Three, measured on 2026-10-15 at `master` at `f63cd3a4`. Each holds commits that master lacks, and master holds no equivalent patch: `backup/chat-bmmtojqm-before-review` at `93cada30`, with 1 commit absent, `chat-lswjobhz-shared-store-index` at `863b6d00`, with 2, and `chat-urhjrwbt-indexelastic` at `d8d797b3`, with 1. **The branch refs are kept.** `chat-lswjobhz-shared-store-index` is live work. |
-| Worktrees | Five, measured on 2026-10-15. The main checkout, on `master`. `.worktrees/chat-cdutiiyg-ancestry-fix`, which is this work. `.worktrees/chat-lswjobhz-shared-store-index` at `863b6d00`, which is live work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, whose branch is merged. **It is kept.** And `/Users/darkbit1001/.codex/worktrees/7768/demo-chat` at `3e1c5682`, detached, which holds the pre-merge tip of PR #225. |
-| Open PRs | None, measured on 2026-10-15, after PR #229 merged. |
-| In-progress issues | Eight, measured on 2026-10-15: `CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-aqpcacwv`, `CHAT-emwhnlay`, `CHAT-lswjobhz`, `CHAT-uxlstrdy`, `CHAT-pphwooqm`, and `CHAT-cdutiiyg`, which is this work. |
+| Local branches | Twenty-one, measured on 2026-10-17 at `master` at `be71cd44`. **This row records commit ancestry, and it states its snapshot point.** `master` is one. **Fourteen others hold no commit that master lacks**, so master holds their work by ancestry: `boot4-bump` at `179c2fd8`, `chat-bmmtojqm-chat-log-view` at `925a1db8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-ivtnvgyg-reach-check` at `c2b5fe5d`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-readme-refresh` at `3269e280`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **Four hold one commit that master lacks, and master holds an equivalent change**: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-xcmpudyb-message-id` at `20f3d014`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **Two hold commits that master lacks, and master holds no equivalent change.** The next row names them. **One is this work**, `chat-exkzongc-register-tip`, cut from `be71cd44`. **Every branch ref is kept.** |
+| Unmerged branches | Two, measured on 2026-10-17 at `master` at `be71cd44`. Each holds 1 commit that master lacks, and master holds no equivalent patch: `backup/chat-bmmtojqm-before-review` at `93cada30`, and `chat-urhjrwbt-indexelastic` at `d8d797b3`. **The branch refs are kept.** |
+| Worktrees | Seven, measured on 2026-10-17. The main checkout, on `master`. `.worktrees/chat-exkzongc-register-tip`, which is this work. `.worktrees/chat-bmmtojqm-chat-log-view` at `925a1db8`, and `.worktrees/chat-readme-refresh` at `3269e280`. Both branches are merged, and both worktrees are kept. Three detached Codex worktrees: `/Users/darkbit1001/.codex/worktrees/7768/demo-chat` at `3e1c5682`, the pre-merge tip of PR #225, and `11f7` and `a0b2`, both at `0fdc449b`, the merge commit of PR #242. |
+| Open PRs | None, measured on 2026-10-17, after PR #255 merged. |
+| In-progress issues | Six, measured on 2026-10-17: `CHAT-owiksxvz`, `CHAT-ivtnvgyg`, `CHAT-aqpcacwv`, `CHAT-uxlstrdy`, `CHAT-pphwooqm`, and `CHAT-exkzongc`, which is this work. |
 
 **The `Checkout` row records the last substantive merge before the refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -37,7 +37,7 @@ absent needs the second question. `git cherry <snapshot> <branch>` answers it,
 and a minus sign means master holds an equivalent patch.
 
 **Four branches hold one commit that the snapshot lacks, and master holds
-their change.** Three print a minus sign at `f63cd3a4`:
+their change.** Three print a minus sign at `be71cd44`:
 `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, and
 `chat-xcmpudyb-message-id` at `20f3d014`.
 
@@ -48,7 +48,7 @@ their change.** Three print a minus sign at `f63cd3a4`:
 `git diff d560c986 91af1c96` is empty. Its tree `3c9d0fd2` equals the tree of
 `d560c986`. So the snapshot holds that content.
 
-**One of the three unmerged branches carries no lost work, and its evidence
+**One of the two unmerged branches carries no lost work, and its evidence
 is the pull-request record.** `backup/chat-bmmtojqm-before-review` at
 `93cada30` holds one commit that master lacks, and `git cherry` prints a plus
 sign for it. The commit is the chat log before its review repairs, and PR #186
@@ -61,6 +61,12 @@ is gone**, and PR #163 carried its work into master.
 **Two merged branch refs are removed, local and remote.**
 `chat-nxbtadan-register-64kb` and `chat-ivtnvgyg-rsocket-loopback` are gone,
 and their worktrees with them.
+
+**Three more branch refs are gone on 2026-10-17, local and remote.**
+`chat-lswjobhz-shared-store-index` merged in PR #244, and
+`chat-cdutiiyg-ancestry-fix` merged in PR #230. Their worktrees are
+gone. `chat-jrlctimq-shell-escape` merged in PR #255, and its post-merge steps
+removed the worktree and the branch.
 
 **One branch on the remote has no local ref.** `origin` holds
 `chat-eroapfub-vector-runtime-flags` at `3245d308`, titled "build: add Java 25
@@ -338,8 +344,8 @@ export path alone.
 
 ## The store service lease (CHAT-lswjobhz, 2026-10-16)
 
-`CHAT-lswjobhz`. Branch `chat-lswjobhz-shared-store-index`. **This work is not
-merged.** Spec: `docs/superpowers/specs/2026-10-09-store-service-lease-design.md`.
+`CHAT-lswjobhz`. Branch `chat-lswjobhz-shared-store-index`. **PR #244 merged
+this work on 2026-10-17 as `f3c453ae`.** Spec: `docs/superpowers/specs/2026-10-09-store-service-lease-design.md`.
 Plan: `docs/superpowers/plans/2026-10-16-store-service-lease.md`, ten child
 issues. Operator document: `docs/SERVICE-LEASE.md`. The `Checkout` row does
 not move here.
@@ -401,3 +407,52 @@ not move here.
   0, 30 modules, 2693 tests, 0 failures, 0 errors, 82 skipped, and
   `agent http gate: ok`. Both matched the baseline, and Docker reported no OOM
   event. `docs/BUILD-HEALTH.md` holds the image ids.
+
+## The merges of 2026-10-17 (PRs #244 to #255)
+
+Twelve PRs merged on 2026-10-17 in PDT. The times below are UTC, so the
+last one shows 2026-10-18. Each issue holds its details.
+
+| PR | Merge commit | Merged (UTC) | Issue | What |
+|----|--------------|--------------|-------|------|
+| #244 | `f3c453ae` | 2026-10-17 00:52 | `CHAT-lswjobhz` | Store service lease, at most one current holder per store service |
+| #245 | `4c2f6ab2` | 2026-10-17 01:11 | `CHAT-hrwnvjrd` | Refresh the README from the current project state |
+| #246 | `de535320` | 2026-10-17 03:09 | `CHAT-arcqfjuc` | Move main out of the ChatApp companion object |
+| #247 | `bc95249a` | 2026-10-17 03:58 | `CHAT-brlctoze` | Select the key type of a launch by name with `--key-type` |
+| #248 | `992c877c` | 2026-10-17 04:21 | `CHAT-mzireodl` | Print each chat-deploy stage and its progress |
+| #249 | `e668aad3` | 2026-10-17 04:30 | `CHAT-msanybaw` | Let `just launch-shell` select the key type of its core |
+| #250 | `d9ce0cd3` | 2026-10-17 05:01 | `CHAT-tkijkkbc` | Add `just build-shell` and `launch-shell --build` |
+| #251 | `e0b7f058` | 2026-10-17 05:19 | `CHAT-ehpgyapa` | Remove the silent long key type fallback |
+| #252 | `8a858ca2` | 2026-10-17 06:23 | `CHAT-wmfemntw` | Use a logged-in Admin session for `import-claude` |
+| #253 | `946c0758` | 2026-10-17 22:42 | `CHAT-dteylnje` | Add embedded vectors to the Cassandra deployment |
+| #254 | `ca76be6d` | 2026-10-17 22:57 | `CHAT-ynkmugeb` | State in the README that vector indexing is opt-in |
+| #255 | `be71cd44` | 2026-10-18 02:06 | `CHAT-jrlctimq` | Run a host command from chat-shell with `!` |
+
+### PR #253, Cassandra embedded vectors
+
+The Cassandra core deployment gets embedded vectors and OpenAI-compatible
+embeddings. Compose mounts a named vector volume. Redis stays limited to live
+pub/sub. A Cassandra integration test imports a UUID message, rebuilds the
+index through `/actuator/vectorindex`, and finds the message in search. The
+PR reports `build-health.sh` at 2,278 tests and `--ci` at 2,699 tests, both
+with 0 failures. This session reviewed the PR before the merge.
+
+### PR #255, the `!` command
+
+- `!<line>` runs the line with `bash -c` on the host. The shell prints each
+  output line and then `exit status <n>`. A non-zero status does not end the
+  shell.
+- The `!` code is in the new module `chat-shell-host`. A shell build includes
+  it by default, and `chat-build shell --no-host-command` leaves it out. The
+  `shell-host` profile of `chat-deploy` adds the module and the
+  `ubuntu-noble-run` image, which has bash.
+- Ctrl-C stops a running `!` command and the processes that bash started. The
+  shell prints `! interrupted` and keeps running. A process that leaves its
+  process group, for example with `setsid`, keeps running. Ctrl-C at the empty
+  prompt still ends the shell.
+- Gates at `599c41c7`: default mode ran 31 modules and 2,312 tests, and `--ci`
+  mode ran 31 modules and 2,734 tests. Both had 0 failures and 0 errors.
+- After the merge, the owner rebuilt both images. The default image holds bash
+  and the current `chat-shell-host` jar. The `--no-host-command` image holds
+  neither.
+- `docs/SHELL-COMMAND-CONTRACT.md` holds the contract.
