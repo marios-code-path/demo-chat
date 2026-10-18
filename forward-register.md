@@ -22,7 +22,7 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-18 at 13:55 PDT.
+Measured on 2026-10-18 at 15:04 PDT.
 
 | | |
 |---|---|
@@ -36,7 +36,7 @@ Measured on 2026-10-18 at 13:55 PDT.
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. PR #257 (the design, the stage 0 proof, and the stage 1 plan) and PR #258 (the hand-off) are merged. Draft PR #259 holds stage 1, and it is not merged. Sigma's reviews found the `!` status, the `read.sh` checks, the UUID byte length, and the launch deadline of `register-read`. Sigma then found two deadline gaps: the launcher could stall before Java starts, and blocked output could stop the watchdog. The branch carries fixes for both at `2721a197`. Sigma has not reviewed those fixes yet. The session-start read is one command, `register-read`, in one JVM process. It takes about 4.5 s from launch to exit on representative data, under the 10 s target of decision 20. Sigma recommended that command. Mario confirmed on 2026-10-18 that `AGENTS.md` will direct agents to run it in stage 3. This decision does not authorize a merge. The 30 s limit counts from the launch and gives status 124: the launcher supervises the time before Java starts, a watchdog in the JVM covers the rest, and neither waits for a blocked write. Live cases A14 and A15 show it. So resident mode (task 9) is not built for this workload. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
+| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. PR #257 (the design, the stage 0 proof, and the stage 1 plan) and PR #258 (the hand-off) are merged. Draft PR #259 holds stage 1, and it is not merged. Sigma's reviews found the `!` status, the `read.sh` checks, the UUID byte length, and the launch deadline of `register-read`. Sigma then found two deadline gaps: the launcher could stall before Java starts, and blocked output could stop the watchdog. Those fixes are in. Sigma then found three more deadline paths: a child that ignores TERM, a stalled `perl` before the timer, and a late output that could report success. The branch carries fixes for all of them at `d4e37d2b`. Sigma has not reviewed those fixes yet. The session-start read is one command, `register-read`, in one JVM process. It takes about 4.5 s from launch to exit on representative data, under the 10 s target of decision 20. Sigma recommended that command. Mario confirmed on 2026-10-18 that `AGENTS.md` will direct agents to run it in stage 3. This decision does not authorize a merge. The 30 s limit counts from the launch and gives status 124: the launcher starts its timer first, ends every job group with TERM and then KILL, and uses no `perl`. A watchdog in the JVM covers the rest. Neither waits for a blocked write, and a late output is never a success. Live cases A14 and A15 show it. So resident mode (task 9) is not built for this workload. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
 | `CHAT-siaetqtr` | `chat-jmnjvupr-topic-register` | A child of `CHAT-jmnjvupr`. `add-topic` failed on a `uuid` core with `A key id cannot be a byte[]`. The cause was CBOR, which writes a UUID as 16 bytes. The fix is in draft PR #259 and it is not merged. Live cases A8 to A10 pass with it. |
 
 **The next Theta session starts here.**
