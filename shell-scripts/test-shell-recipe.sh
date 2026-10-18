@@ -71,9 +71,19 @@ expect_plan 'node_id= form' \
 expect_refusal 'chat-build refuses an unknown key type' "invalid choice: 'bogus'" \
     -- 1 --key-type bogus
 
+# The ! command is a build option, and a shell build includes it by default.
+# The shell-host profile adds chat-shell-host and the bash run image. See
+# CHAT-jrlctimq.
+expect_plan 'a shell build includes the ! command by default' \
+    shell-host -- 1 --key-type uuid
+expect_refusal '--host-command and --no-host-command are refused together' \
+    '--host-command conflicts with --no-host-command' \
+    -- 1 --key-type uuid --host-command --no-host-command
+
 # build-shell and launch-shell --build. See CHAT-tkijkkbc. Every case uses
 # --dry-run, so no case installs a module.
-install_line='mvn -B -ntp -pl chat-shell -am -Dmaven.test.skip=true install'
+install_modules='chat-shell,chat-shell-host'
+install_line="mvn -B -ntp -pl $install_modules -am -Dmaven.test.skip=true install"
 
 # expect_output NAME RECIPE ARGS... -- WANT... -- UNWANTED...
 expect_output() {
@@ -115,6 +125,8 @@ expect_output 'dry-run-shell --build prints the install, then the shell plan' \
     "$install_line" -Dapp.key.type=uuid spring-boot:run -- spring-boot:build-image
 expect_output 'dry-run-shell without --build installs nothing' \
     dry-run-shell 1 --key-type long -- spring-boot:run -- "$install_line"
+expect_output '--no-host-command leaves the ! command out' \
+    dry-run-shell 1 --key-type uuid --no-host-command -- spring-boot:run -- shell-host
 expect_refusal_of() {
     local name="$1" recipe="$2" message="$3"
     shift 4
@@ -134,19 +146,29 @@ expect_refusal_of 'build-shell refuses an unknown flag' build-shell \
 # The install must cover every com.demo module that the shell launch loads.
 # The launch module depends on chat-shell under its profiles, and chat-shell
 # depends on the launch module, so one reactor cannot hold both with those
-# profiles. build-shell installs chat-shell -am instead. This check reads both
+# profiles. build-shell installs chat-shell and chat-shell-host -am instead. This check reads both
 # sets from Maven, offline, and changes nothing.
 plan="$(./shell-scripts/chat-build shell --run --notls --node-id 1 --key-type long --dry-run 2>&1)"
 module="$(awk '/^# module:/ {print $3}' <<< "$plan")"
 profiles="$(grep -o -- '-P[^ ]*' <<< "$plan" | head -n 1)"
-needed="$( { mvn -o -B -ntp -f "$module/pom.xml" "$profiles" dependency:list \
-    -DincludeGroupIds=com.demo 2>&1 | grep -o 'com\.demo:[a-z0-9-]*' | sed 's/com\.demo://'
+# dependency:list resolves from ~/.m2. A module that is not installed fails
+# the resolution, and its error text also names com.demo modules. So a failed
+# resolution fails the check, and only the resolved dependency lines count.
+deps_status=0
+deps="$(mvn -o -B -ntp -f "$module/pom.xml" "$profiles" dependency:list \
+    -DincludeGroupIds=com.demo 2>&1)" || deps_status=$?
+needed="$( { grep -oE '^\[INFO\] +com\.demo:[a-z0-9-]+:' <<< "$deps" \
+    | sed -E 's/.*com\.demo:([a-z0-9-]+):/\1/'
     echo "${module##*/}"; } | sort -u)"
-reactor="$(mvn -o -B -ntp -pl chat-shell -am validate 2>&1 \
+reactor="$(mvn -o -B -ntp -pl "$install_modules" -am validate 2>&1 \
     | sed -n '/Reactor Summary/,/BUILD/p' | grep -o '^\[INFO\] [a-z][a-z0-9-]* \.' \
     | awk '{print $2}' | sort -u)"
 missing="$(comm -23 <(printf '%s\n' "$needed") <(printf '%s\n' "$reactor"))"
-if [[ -z "$needed" || -z "$reactor" ]]; then
+if ((deps_status != 0)); then
+    echo "FAIL dependency:list for the shell launch exited $deps_status. Run just build-shell first."
+    grep -m 1 'ERROR' <<< "$deps"
+    failures=$((failures + 1))
+elif [[ -z "$needed" || -z "$reactor" ]]; then
     echo "FAIL the install coverage check read no module list"
     failures=$((failures + 1))
 elif [[ -n "$missing" ]]; then

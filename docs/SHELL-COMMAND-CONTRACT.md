@@ -124,10 +124,25 @@ the skipped content.
 | `all-permissions` | `allPermissions` | Get all Perms | none | none |
 | `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required | none |
 
-**28 commands and 41 options.** `ShellCommandContractTests` pins every
-command, option, and positional argument. The migration table held 26
-commands. `messages` and `command-status` raised the count to 28. `CHAT-ybmlcdiw`
-removed `bye`. `CHAT-emwhnlay` adds `import-claude`.
+### HostCommandRegistrar
+
+This registrar is in the `chat-shell-host` module, not in `chat-shell`. A
+default shell build includes it. `chat-build shell --no-host-command` leaves it
+out.
+
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `!` | `HostCommand.run` | Run a host command with bash | none. The rest of the line is the host command | none |
+
+See `The ! escape` below.
+
+**28 commands and 41 options in `chat-shell`, and 29 commands in a default
+build.** `ShellCommandContractTests` pins every command, option, and
+positional argument of `chat-shell`. `HostCommandTests` pins the `!` command.
+The migration table held 26 commands. `messages` and `command-status` raised
+the count to 28. `CHAT-ybmlcdiw` removed `bye`. `CHAT-emwhnlay` adds
+`import-claude`. `CHAT-jrlctimq` adds `!` in `chat-shell-host`, with no
+option.
 
 ## Availability is not used, and the dead check is gone
 
@@ -215,6 +230,76 @@ and the port frees. `chat-build` sets the property on the `shell` service.
 `golden/shell-client.flags` and `golden/shell-consul.flags` pin it.
 
 **No command replaces `bye`.** A caller leaves through `exit` or `quit`.
+
+## The ! escape
+
+`CHAT-jrlctimq`. Design: `docs/superpowers/specs/2026-10-16-shell-escape-design.md`.
+
+A line that starts with `!` runs the rest of the line with bash.
+
+```
+chat-shell:anonymous :> !jq -r '.[] | .uuid' ../conversations.json
+```
+
+- **The parser takes the line first.** `BangCommandParser` replaces the
+  `CommandParser` bean. A line whose first non-blank character is `!` becomes
+  the `!` command with one argument. The argument is the rest of the line,
+  with the leading blanks removed and no other change. Every other line goes
+  to `DefaultCommandParser` unchanged.
+- **bash runs the argument.** `HostCommand` runs `bash -c <argument>`. The
+  working directory is the directory of the shell process. For
+  `just launch-shell`, that is `chat-deploy`. Standard input is `/dev/null`, so
+  a program that reads input ends at once. Standard error joins standard
+  output.
+- **Each line prints as it arrives.** The command flushes the output after
+  each line.
+- **The exit status always prints.** After the output, the command prints
+  `exit status <n>`, 0 included. No status ends the shell.
+- **The failure lines.** `!` alone prints a usage line. No `bash` on the
+  `PATH` prints `! needs bash on the PATH. This shell has none.` A failed start
+  prints `! could not start bash: <reason>`.
+- **History events are off.** JLine expanded `!jq` as a history event and
+  removed backslashes, so the shell sets `DISABLE_EVENT_EXPANSION`. `!!` and
+  `!n` do not work. The arrow keys and the `history` command still reach the
+  history.
+- **Ctrl-C stops the host command, and the shell continues.** While the
+  command runs, `TerminalInterrupts` holds the INT handler of the terminal.
+  The handler kills bash and every process that bash started. The command
+  prints `! interrupted`, then `exit status 130` or `exit status 137`. 130
+  means that the SIGINT of the terminal ended bash first. 137 means that the
+  kill ended it first. A process that leaves the process tree of bash, such
+  as one started with `setsid`, keeps running. `CHAT-wdokzwnj`.
+- **Ctrl-C at the prompt still ends the shell.** Spring Shell stops its loop
+  on any input error, and Ctrl-C at the prompt is one. The `!` work does not
+  change this.
+- **Interactive programs are out of scope.** `vim` and `less` get no
+  terminal.
+
+**A typed line reaches bash byte for byte. A script line does not.** Spring
+Shell changes a `script -f` line before any parser receives it:
+
+1. A line that ends with `\` and optional blanks continues on the next line.
+   The `\` and the blanks are removed, and one blank joins the two lines.
+2. A line that matches `\s*//.*` is a comment and does not run.
+3. The trailing blanks of the line are lost. `Script` splits the line on
+   single blanks, the runner joins the words again, and Java `split` drops
+   trailing empty strings.
+
+So a `!` line in a script file reaches bash unchanged only when it does not
+end with `\` or a blank. `ShellEscapeConfigurationTests` pins this limit.
+
+**The `!` command is a build option, and a shell build includes it by
+default.** The owner set this on 2026-10-17. The code is in the
+`chat-shell-host` module. The `shell-host` profile of `chat-deploy` adds that
+module. `chat-build` adds the profile to every `shell` build, and
+`--no-host-command` leaves it out. A shell without the module holds no `!`
+code, and the shell does not run a `!` line.
+
+**A chat-shell image with the `!` command holds bash.** The `shell-host`
+profile builds on `docker.io/paketobuildpacks/ubuntu-noble-run:0.0.145`. A
+shell image without the `!` command and the core images keep the tiny run
+image, which holds no shell. `shell-scripts/test-shell-run-image.sh` checks
+all three.
 
 ## One room option
 

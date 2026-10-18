@@ -86,7 +86,7 @@ dry-run-memory node_id="0" *flags:
 	exec just --justfile {{quote(justfile())}} launch-memory "$@" --dry-run
 
 # launch-shell loads these jars from ~/.m2. Flags: --dry-run prints the install command.
-# Install chat-shell and the modules it needs. Run it after a pull.
+# Install chat-shell, chat-shell-host, and the modules they need. Run it after a pull.
 [positional-arguments]
 build-shell *flags:
 	#!/usr/bin/env bash
@@ -95,13 +95,14 @@ build-shell *flags:
 	# depends on chat-deploy. One reactor refuses that cycle. So this installs
 	# chat-shell -am without that profile. test-shell-recipe.sh checks that this
 	# reactor holds every module that the shell launch loads. See CHAT-tkijkkbc.
-	cmd=(mvn -B -ntp -pl chat-shell -am -Dmaven.test.skip=true install)
+	# chat-shell-host holds the ! command, which a shell launch loads by default.
+	cmd=(mvn -B -ntp -pl chat-shell,chat-shell-host -am -Dmaven.test.skip=true install)
 	case "${1:-}" in
 	    "") ;;
 	    --dry-run) printf '%s\n' "${cmd[*]}"; exit 0 ;;
 	    *) echo "Unknown build-shell flag: $1" >&2; exit 2 ;;
 	esac
-	echo "[build-shell] Installing chat-shell and the modules it needs."
+	echo "[build-shell] Installing chat-shell, chat-shell-host, and the modules they need."
 	"${cmd[@]}"
 	echo "[build-shell] Done in $SECONDS s. Start the shell with just launch-shell."
 
