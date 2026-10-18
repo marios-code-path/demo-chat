@@ -435,8 +435,9 @@ returns a status from the table above.
 supplies it. It joins the program arguments into one command line and runs
 it. A first argument `@<file>` runs each line of that file, and part 2
 refuses that form. A failed command throws `CommandExecutionException` with
-an exit code. This was read from the sources, not run. These parts are
-missing:
+an exit code. Stage 0 confirmed the runner with `chat-shell`, and it found
+that the exit status is 0 or 1 alone ("Measured in stage 0", item 1). These
+parts are missing:
 
 - a launch path. `chat-build shell` sets the interactive mode to `true`, and
   it starts the shell through Maven.
@@ -500,7 +501,8 @@ No new setting is needed. `config/client-rsocket-local.yml` reads
 reads `CORE_PORT` and `CORE_MGMT_PORT`. Sigma reported a shell dry run with
 6890 and 6891 on 2026-10-18. A second dry run on 2026-10-18 printed
 `app.rootkeys.consume.source=http://127.0.0.1:6891`. The RSocket port reaches
-the shell through the environment when it starts. No run has shown that.
+the shell through the environment when it starts. Stage 0 showed this with
+6990 and 6991 ("Measured in stage 0", item 3).
 
 ## Build order
 
@@ -555,42 +557,47 @@ Other files change with the removal:
 - Every merge needs the owner's named `--admin` bypass.
 - Image builds use an empty `DOCKER_CONFIG`.
 
+## Measured in stage 0
+
+The stage 0 proof ran on 2026-10-17 against a disposable memory core on 6990
+and 6991. `docs/superpowers/proofs/2026-10-17-one-shot/RECORD.md` holds the
+evidence. These items were items 1 to 3 of the "Unverified" list. They keep
+their numbers, because the stage 0 plan names them.
+
+1. **The one-shot runner works with `chat-shell`.** With
+   `spring.shell.interactive.enabled=false`, each process ran one command and
+   exited by itself. The exit status is 0 or 1 alone. Record Q1 and Q3.
+2. **One one-shot run takes 6.3 to 7.4 seconds.** So a session-start read
+   must run in one process, or use the resident mode. Record Q5.
+3. **`CORE_PORT` and `CORE_MGMT_PORT` route the shell.** With 6990 and 6991,
+   every shell connection went to those two ports. Record Q6. Node 9 uses
+   6890 and 6891, and no run has used those ports. Item 10 below covers it.
+
 ## Unverified
 
-Each item below is believed from reading code or config. None is measured.
+Each item below is believed from reading code or config. No run has shown it.
 
-1. **The one-shot runner.** The owner reports that `chat-shell` cannot run
-   a one-shot command today. The design reads `NonInteractiveShellRunner`
-   from the Spring Shell 4.0.3 sources. No run has shown that it works with
-   `chat-shell`, its reactive web server, and its RSocket client.
-   **Measured in stage 0 on 2026-10-17:** it works. Each one-shot process ran
-   its command and exited. The exit status is 0 or 1 alone. See
-   `docs/superpowers/proofs/2026-10-17-one-shot/RECORD.md`, Q1 and Q3.
-2. **The time of one read.** Each run starts a JVM. If a read takes too long
-   for a session start, a long-running shell may be needed. Measure it.
-   **Measured in stage 0:** one one-shot run takes 6.3 to 7.4 seconds. So a
-   session-start read must run in one process, or use the resident mode.
-   See `RECORD.md`, Q5.
-3. **The shell address.** `CORE_PORT` and `CORE_MGMT_PORT` set it, and a
-   dry run shows the management port. No run has shown a shell connected to
-   6890. **Measured in stage 0:** with 6990 and 6991, every shell connection
-   went to those two ports. See `RECORD.md`, Q6.
 4. **The size of one message.** No text length limit was found in the
    application. Cassandra and RSocket frames may still set one. The largest
    archive section must pass the import check.
 5. **Live follow.** A `listen` on the owner's shell should show an entry that
    an agent posts, through Redis. No run has shown it.
-6. **Command input.** An entry travels as command input. The
-   `NonInteractiveShellRunner` gives each command an empty `InputReader`. So
-   the `post` command must read the process standard input in its own way.
-   **Measured in stage 0:** the `login` prompt failed with
-   `readPassword with prompt not implemented`, so a one-shot command gets no
-   standard input today. See `RECORD.md`, Q7.
+6. **Command input.** An entry travels as command input. The stage 0 proof
+   tested the current password prompt alone. In one-shot mode,
+   `login --username Admin` failed with `readPassword with prompt not
+   implemented` (record Q7). So the `InputReader` of a one-shot command gives
+   no input. No run has tested a command that reads `System.in` directly.
+   Stage 1 must prove that `post` reads multi-line input unchanged.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
    from the agent's own shell.
 8. **The message text in the store.** The import check assumes that the
    store keeps text byte for byte. No run has shown it for a large section.
+9. **The login from the environment.** `CHAT_SHELL_USER` and
+   `CHAT_SHELL_PASSWORD_FILE` do not exist yet. No run has tested a login
+   from a password file. Stage 0 tested `login` with `--password` alone.
+10. **The node-9 address.** No shell has connected to 6890 and 6891. Item 3
+    shows the mechanism with other ports.
 
 ## Left to the builder
 

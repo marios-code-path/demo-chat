@@ -34,7 +34,7 @@ No case hit a denied port. The `docker ps` lines after the run equal the lines b
 
 **Q6. Does `CORE_PORT=6990` route the connection? Yes.** Each run that sent an RSocket request (C2, C3, C4, C6, C7, and C10) had connections to 6990 and 6991 alone. C1, C5, C8, and C9 had a connection to 6991 alone, for the root keys. C11 had no connection, because the core was stopped. The read-back in C10 could not confirm a write, because no write succeeded. See finding F1.
 
-**Q7. Does the current `login` prompt read standard input? No.** C8 sent the password on standard input. The command failed with `java.lang.UnsupportedOperationException: readPassword with prompt not implemented`, and the exit status was 1. The `InputReader` of `NonInteractiveShellRunner` does not read standard input. This tests the current prompt path alone.
+**Q7. Does the current `login` prompt read standard input? No.** C8 sent the password on standard input. The command failed with `java.lang.UnsupportedOperationException: readPassword with prompt not implemented`, and the exit status was 1. So the `InputReader` that `NonInteractiveShellRunner` gives a command does not read standard input. This tests the current password prompt alone. No case ran a command that reads `System.in` directly, so the record does not show whether such a command gets the process standard input.
 
 **Q8. What does the shell do today with redirected input?** C9 ran in interactive mode with `/dev/null` as standard input. The shell logged `Running in interactive mode, arguments will be ignored`. It printed the prompt `chat-shell:anonymous :> ` on standard output, read the end of input, and exited with status 0. `whoami` did not run. This agrees with the owner's report that `chat-shell` cannot run a one-shot command today.
 
@@ -51,7 +51,7 @@ No case hit a denied port. The `docker ps` lines after the run equal the lines b
 | 1. A silent startup | Changes | The banner, the Logback lines, and the failure report all go to standard output, and all must move. A successful run writes JVM warnings to standard error. The rule "nothing on standard error" needs two more changes: the shell must not load `jdk.incubator.vector`, and the `sun.misc.Unsafe` warnings of `rsocket-core` must stop. If either one cannot change, the rule needs the owner. |
 | 2. One output path and one exit status | Changes | Today every failure gives status 1 through the Spring Boot failure report. Stage 1 must map each failure to the table: 77 for a failed login, 2 for an unknown command, 69 for a core that is not available at start (F2), and 1 for a command failure. `login` writes with `println` (C4). |
 | 3. Command execution | Holds, with two changes | `NonInteractiveShellRunner` works with `chat-shell`, and the process exits. The `@` refusal is needed (Q4). **One run takes about 6.5 seconds**, so a register read made of several one-shot runs passes the 10-second target of decision 20. The session-start read must run in one process, or use the resident mode. The web server on 9101 must not block a second run (F3). |
-| 4. A login with no prompt | Holds | The prompt path cannot read standard input (Q7), so a login from `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE` is necessary. Each one-shot run is a new process, so each one logs in again. |
+| 4. A login with no prompt | Holds | The password prompt gets no input in one-shot mode (Q7), so a login from `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE` is necessary. Each one-shot run is a new process, so each one logs in again. No run has tested a login from a password file. |
 | 5. The core address | Holds | `CORE_PORT` and `CORE_MGMT_PORT` routed every connection (Q6). |
 
 
@@ -101,7 +101,7 @@ Each project jar on the classpath, compared by SHA-256 with the jar that the bui
 
 ## Stream heads
 
-The first 10 lines of each stream that is not empty. The banner lines appear once, in C1.
+The first 10 lines of each stream that is not empty. The banner lines appear once, in C1. Trailing blanks are removed from each line, so that `git diff --check` passes. The raw stream files kept them.
 
 **C1, standard output:**
 
@@ -113,7 +113,7 @@ The first 10 lines of each stream that is not empty. The banner lines appear onc
    _|_|_|  _|    _|    _|_|_|      _|_|      _|_|_|    _|    _|    _|_|_|  _|  _|
 
 
- 
+
 Powered by Spring Boot 4.0.8
 23:22:25.429 [main] com.demo.chat.ChatAppKt.logStarting - Starting ChatAppKt using Java 25 with PID 54840 (/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-jmnjvupr-topic-register/chat-deploy/ta
 ```
@@ -182,7 +182,7 @@ WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
 23:22:51.800 [main] org.springframework.boot.reactor.netty.NettyWebServer.start - Netty started on port 9101 (http)
 23:22:51.814 [main] com.demo.chat.ChatAppKt.logStarted - Started ChatAppKt in 2.895 seconds (process running for 3.088)
 Authentication failed :Invalid Credentials
-23:22:51.987 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage - 
+23:22:51.987 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage -
 
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
 ```
@@ -206,7 +206,7 @@ WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
 23:22:59.719 [main] io.netty.resolver.dns.DnsServerAddressStreamProviders.<clinit> - Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This m
 23:22:59.960 [main] org.springframework.boot.reactor.netty.NettyWebServer.start - Netty started on port 9101 (http)
 23:22:59.973 [main] com.demo.chat.ChatAppKt.logStarted - Started ChatAppKt in 2.899 seconds (process running for 3.092)
-23:22:59.978 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage - 
+23:22:59.978 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage -
 
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
 23:22:59.983 [main] org.springframework.boot.SpringApplication.reportFailure - Application run failed
@@ -227,7 +227,7 @@ WARNING: Using incubator modules: jdk.incubator.vector
 23:23:07.554 [main] io.netty.resolver.dns.DnsServerAddressStreamProviders.<clinit> - Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This m
 23:23:07.797 [main] org.springframework.boot.reactor.netty.NettyWebServer.start - Netty started on port 9101 (http)
 23:23:07.810 [main] com.demo.chat.ChatAppKt.logStarted - Started ChatAppKt in 3.02 seconds (process running for 3.224)
-23:23:07.879 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage - 
+23:23:07.879 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage -
 
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
 23:23:07.885 [main] org.springframework.boot.SpringApplication.reportFailure - Application run failed
@@ -253,7 +253,7 @@ WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
 23:23:16.288 [main] org.springframework.boot.reactor.netty.NettyWebServer.start - Netty started on port 9101 (http)
 23:23:16.302 [main] com.demo.chat.ChatAppKt.logStarted - Started ChatAppKt in 3.261 seconds (process running for 3.483)
 Logged in as Admin
-23:23:16.609 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage - 
+23:23:16.609 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage -
 
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
 ```
@@ -277,7 +277,7 @@ WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
 23:23:24.417 [main] io.netty.resolver.dns.DnsServerAddressStreamProviders.<clinit> - Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This m
 23:23:24.662 [main] org.springframework.boot.reactor.netty.NettyWebServer.start - Netty started on port 9101 (http)
 23:23:24.675 [main] com.demo.chat.ChatAppKt.logStarted - Started ChatAppKt in 3.022 seconds (process running for 3.233)
-23:23:24.683 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage - 
+23:23:24.683 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage -
 
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
 23:23:24.689 [main] org.springframework.boot.SpringApplication.reportFailure - Application run failed
@@ -340,8 +340,8 @@ WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
 23:23:47.193 [main] com.demo.chat.ChatAppKt.logStartupProfileInfo - The following 1 profile is active: "shell"
 23:23:49.431 [main] org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver.<init> - Exposing 3 endpoints beneath base path '/actuator'
 23:23:49.688 [main] io.netty.resolver.dns.DnsServerAddressStreamProviders.<clinit> - Unable to load io.netty.resolver.dns.macos.MacOSDnsServerAddressStreamProvider, fallback to system defaults. This m
-23:23:51.786 [main] org.springframework.boot.web.server.reactive.context.AnnotationConfigReactiveWebServerApplicationContext.refresh - Exception encountered during context initialization - cancelling 
-23:23:51.799 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage - 
+23:23:51.786 [main] org.springframework.boot.web.server.reactive.context.AnnotationConfigReactiveWebServerApplicationContext.refresh - Exception encountered during context initialization - cancelling
+23:23:51.799 [main] org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger.logMessage -
 
 Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
 23:23:51.809 [main] org.springframework.boot.SpringApplication.reportFailure - Application run failed
