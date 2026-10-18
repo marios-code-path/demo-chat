@@ -22,6 +22,9 @@ import java.io.PrintWriter
  * **`listen`, `hangup`, and `script` are refused.** They stream or hold state
  * across commands. **A first word that starts with `@` is refused too.** Spring
  * Shell reads such a word as a script file, and one run has one status.
+ * **A first word that starts with `!` is refused too.** The host escape prints
+ * the status of its bash command and returns none to Spring Shell, so a mode
+ * would end with 0 after a failed host command.
  */
 @Component
 @Profile("shell")
@@ -44,6 +47,7 @@ class CommandLineExecution(private val parser: CommandParser, private val regist
         val word = line.trim().substringBefore(' ').substringBefore('\t')
         if (word.isEmpty()) throw ShellExit(ShellExitStatus.USAGE, "the command line is empty")
         if (word.startsWith("@")) throw ShellExit(ShellExitStatus.USAGE, "a script file is not allowed in this mode")
+        if (word.startsWith("!")) throw ShellExit(ShellExitStatus.USAGE, "! is not allowed in this mode")
         if (word in REFUSED) throw ShellExit(ShellExitStatus.USAGE, "$word is not allowed in this mode")
 
         val parsed = try {

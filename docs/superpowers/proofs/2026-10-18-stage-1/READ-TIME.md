@@ -31,7 +31,7 @@ decision 20.** It cannot select the launch mode.
 - One process takes about 3.8 s in the median run (15,159 ms for 4 processes).
   This agrees with the 3.4 s of the single `whoami` run in task 6 and the 6.3 s
   to 7.4 s of stage 0, which used a launch through Maven.
-- Four JVM starts in a row already pass 10 s with no data. A representative
+- Four JVM starts in a row already exceed 10 s with no data. A representative
   read adds message loading and JSON output to each process. So the JVM
   launcher is unlikely to meet the target. **This is an inference from the
   stand-in, not a measurement.**

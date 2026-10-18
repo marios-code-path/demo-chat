@@ -67,4 +67,29 @@ class ExactIdsTests {
         assertThatThrownBy { ExactIds.uuid(42) }.isInstanceOf(KeyInputException::class.java)
         assertThatThrownBy { ExactIds.uuid(mapOf("id" to "x")) }.isInstanceOf(KeyInputException::class.java)
     }
+
+    /** CBOR writes a UUID as 16 bytes, most significant half first. See `CHAT-siaetqtr`. */
+    @Test
+    fun `a UUID converts from the 16 bytes that CBOR writes`() {
+        val id = UUID.randomUUID()
+        val bytes = java.nio.ByteBuffer.allocate(16).putLong(id.mostSignificantBits).putLong(id.leastSignificantBits).array()
+
+        assertThat(ExactIds.uuid(bytes)).isEqualTo(id)
+    }
+
+    @Test
+    fun `a UUID refuses bytes of any other length`() {
+        for (length in listOf(0, 8, 15, 17)) {
+            assertThatThrownBy { ExactIds.uuid(ByteArray(length)) }
+                .isInstanceOf(KeyInputException::class.java)
+                .hasMessage("A key id of $length bytes is not a UUID.")
+        }
+    }
+
+    @Test
+    fun `a Long still refuses bytes`() {
+        assertThatThrownBy { ExactIds.long(ByteArray(8)) }
+            .isInstanceOf(KeyInputException::class.java)
+            .hasMessage("A key id cannot be a byte[].")
+    }
 }

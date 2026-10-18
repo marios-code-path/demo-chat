@@ -86,6 +86,25 @@ class CommandLineExecutionTests {
         }
     }
 
+    /**
+     * The `!` command prints the status of its bash command and returns no
+     * status to Spring Shell. So a mode that ran it would end with 0 after a
+     * failed host command. The caller has a shell of its own, so the modes
+     * refuse it. Sigma found this on PR #259.
+     */
+    @Test
+    fun `the host escape is refused with USAGE, with or without a space`() {
+        for (line in listOf("! false", "!false", "!  ls -l")) {
+            var called = false
+            val outcome = run(execution(command("!") { called = true; "x" }), line)
+
+            assertThat(outcome.status).describedAs(line).isEqualTo(ShellExitStatus.USAGE)
+            assertThat(outcome.err).describedAs(line)
+                .isEqualTo("chat-shell: ! is not allowed in this mode" + System.lineSeparator())
+            assertThat(called).describedAs(line).isFalse()
+        }
+    }
+
     @Test
     fun `an unknown command gives USAGE`() {
         val outcome = run(execution(command("echo-ish") { "hi" }), "no-such-command")

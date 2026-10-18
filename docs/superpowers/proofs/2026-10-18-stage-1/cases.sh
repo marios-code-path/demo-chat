@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 1, task 10: the acceptance cases A1 to A12 of the shell command tool.
+# Stage 1, task 10: the acceptance cases A1 to A13 of the shell command tool.
 # Every case is one chat-shell-cli process in its own process group, inside the
 # stage 0 sandbox, with a 60-second limit. The disposable memory core runs on
 # 6990 and 6991. Exit 0: every case has its expected status. Exit 1: a case
@@ -108,6 +108,7 @@ run_case A4 2 /dev/null CHAT_SHELL_USER=Admin -- whoami;          record A4 'who
 run_case A5 2 /dev/null -- no-such-command;                       record A5 no-such-command 2
 run_case A6 2 /dev/null -- @x;                                    record A6 @x 2
 run_case A7 2 /dev/null -- listen lobby;                          record A7 'listen lobby' 2
+run_case A13 2 /dev/null -- '!' false;                            record A13 '! false' 2
 
 run_case A8 0 /dev/null "${login[@]}" -- add-topic stage1-room
 blocked=false

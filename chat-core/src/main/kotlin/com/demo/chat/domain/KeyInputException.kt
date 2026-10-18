@@ -37,6 +37,10 @@ object ExactIds {
         is String ->
             if (canonicalUuid.matches(t)) java.util.UUID.fromString(t)
             else throw KeyInputException("The key id '$t' is not a canonical UUID.")
+        // CBOR writes a UUID as 16 bytes, and an untyped payload decodes them as a byte array. See CHAT-siaetqtr.
+        is ByteArray ->
+            if (t.size == 16) java.nio.ByteBuffer.wrap(t).let { java.util.UUID(it.long, it.long) }
+            else throw KeyInputException("A key id of ${t.size} bytes is not a UUID.")
         else -> throw KeyInputException("A key id cannot be a ${t.javaClass.simpleName}.")
     }
 

@@ -476,8 +476,10 @@ the console, and an empty standard error after a success.
 A failure writes one line on standard error: `chat-shell: <message>`.
 
 **The refused forms.** The modes refuse `listen`, `hangup`, `script`, a blank
-line, and a first word that starts with `@`. Each gives status 2. They stream,
-hold state across commands, or read a script file.
+line, a first word that starts with `@`, and a first word that starts with `!`.
+Each gives status 2. They stream, hold state across commands, read a script
+file, or run a host command whose status Spring Shell does not see. The
+interactive shell keeps `!` as it is.
 
 **The login.** `CHAT_SHELL_USER` names the user. `CHAT_SHELL_PASSWORD_FILE`
 names a file that holds the password. One trailing newline is removed and
@@ -488,4 +490,3 @@ goes in a program argument. A wrong password gives 77. A core that is down gives
 **Command output.** Every command writes through the writer of its context.
 `DirectOutputTests` fails on any direct print in the main source, except
 `PubSubCommands.listen`.
-
