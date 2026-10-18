@@ -31,7 +31,7 @@ import java.util.UUID
  *
  * SpringApplicationBuilder.properties() writes to defaultProperties, the
  * lowest precedence source, so every value below is a command line argument.
- * See forward-register.md.
+ * See forward-register-archive-2026-08.md.
  *
  * This test claims no node id. Key, persistence, index, and secrets all use
  * memory selectors, so no claim store activates. See docs/NODEID-CLAIM.md and

@@ -25,7 +25,7 @@ import java.net.ServerSocket
  *
  * SpringApplicationBuilder.properties() writes to defaultProperties, which is
  * the lowest precedence source. So each value below is a command line
- * argument. See forward-register.md.
+ * argument. See forward-register-archive-2026-08.md.
  */
 class DeadEmbeddingEndpointTests {
 

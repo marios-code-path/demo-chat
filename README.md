@@ -77,8 +77,8 @@ provider.
 - An unset `key`, `persistence`, `pubsub` or `secrets` selector selects
   `memory` today.
 - The capability design requires a startup failure for an unset or unknown
-  selector. The plan that enforces it is not started. See `forward-register.md`,
-  `Planned, not started`.
+  selector. The plan that enforces it is not started. See
+  `docs/superpowers/plans/2026-08-24-capability-mechanism.md`.
 - `VectorSelectorValidation` checks the `vector` and `embedding` pair at
   startup.
 
@@ -195,7 +195,8 @@ Measured on 2026-10-16 at the head of PR #244: the default gate ran 2274 tests
 and the `--ci` gate ran 2693 tests in 30 modules, with 0 failures. See
 `docs/BUILD-HEALTH.md` for the current reading.
 
-`forward-register.md` holds the current project state and the open threads.
+`forward-register.md` holds the in-flight work of the last 24 hours alone.
+Older entries are in the `forward-register-archive-*.md` files.
 The project tracks work in `fp`. Run `fp issue list --status in-progress` for
 the active issues.
 
