@@ -475,8 +475,11 @@ sockets in `SocketChannel` since Java 16.
   comes first with a byte count.
 - **Time limits.** A request must arrive within 10 seconds of the
   connection. A command has 120 seconds by default, set by
-  `CHAT_SHELL_COMMAND_TIMEOUT`. At the limit, the shell cancels the command
-  and answers status 124.
+  `CHAT_SHELL_COMMAND_TIMEOUT`. At the limit, the shell answers status 124,
+  removes the socket file, and stops. A Java thread can continue its core
+  request after a cancel. So the shell never starts a second command after a
+  timeout, and two commands never overlap under one login. Sigma found this
+  on 2026-10-18.
 - **Order.** The shell runs one request at a time, because all requests
   share one login. Other connections wait.
 - **Client.** A small client sends the request, reads the response, prints

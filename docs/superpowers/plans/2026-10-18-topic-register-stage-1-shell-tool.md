@@ -105,16 +105,21 @@ git commit -m "CHAT-jmnjvupr: Add the shell exit status and one execution path"
 
 ```kotlin
 // DirectOutputTests
-@Test fun `send, command-status, and a failed login write nothing to System out`()   // capture System.out with System.setOut, run each through CommandLineExecution with mocked services, assert captured == ""
-@Test fun `no chat-shell main source prints directly, except listen`()                // scan chat-shell/src/main/kotlin for "println(", "print(", "System.out", "System.err"; the only allowed hits are inside PubSubCommands.listen
+@Test fun `every command that the modes run writes nothing to System out`()
+@Test fun `the command table covers every registered command`()
+@Test fun `no chat-shell main source prints directly, except listen`()   // the second check: scan chat-shell/src/main/kotlin for "println(", "print(", "System.out", "System.err". The only allowed hits are inside PubSubCommands.listen.
 ```
+
+The first test builds the command registry from the `shell` profile with mocked service beans. It runs each command through `CommandLineExecution` with `System.out` captured by `System.setOut`, and asserts that the captured text is empty. The command may succeed or fail. Only direct output matters.
+
+The test holds one command line per command. The supported commands are every registered command except the refused `listen`, `hangup`, and `script`: `root-keys`, `whoami`, `login`, `send`, `command-status`, `messages`, `post`, `import-claude`, `show-topics`, `add-topic`, `topic-by-name`, `join`, `leave`, `member-of`, `list-members`, `kv`, `get-k-v`, `all-k-v`, `key`, `add-user`, `users`, `find-user`, `get-user`, `passwd`, `get-permissions-for-user`, `all-permissions`, `add-permission`, `!`, and the Spring Shell built-ins `help`, `clear`, and `history`. Add `post` in task 3 and the new `messages` options in task 4 to this table. The second test compares the table with the registry, so a new command fails the test until the table names it.
 
 Change `PubSubSubmitTests` so that each test asserts the returned text, not captured output.
 
 - [ ] **Step 2: Run them, and see them fail**
 
 Run: `mvn -o -B -ntp -pl chat-core,chat-shell-host,chat-shell test -Dtest='DirectOutputTests,PubSubSubmitTests' -Dsurefire.failIfNoSpecifiedTests=false > "$LOG" 2>&1; tail -20 "$LOG"`
-Expected: `DirectOutputTests` fails on the captured text and on the scan hits in `PubSubCommands`, `LoginCommands`, and `UserCommands`.
+Expected: `DirectOutputTests` fails on the captured text of `send`, `command-status`, a failed `login`, and `get-user`, and on the scan hits in `PubSubCommands`, `LoginCommands`, and `UserCommands`.
 
 - [ ] **Step 3: Move the four prints to returned text, and remove the `KEY =` debug print**
 
@@ -282,11 +287,14 @@ git commit -m "CHAT-jmnjvupr: Log in from CHAT_SHELL_USER and CHAT_SHELL_PASSWOR
 - [ ] **Step 5: Check the JVM warnings on a live run**
 
 Start the stage 0 disposable core inside the stage 0 sandbox (`docs/superpowers/proofs/2026-10-17-one-shot/isolation.sb.sh`, `core.sh start`). Run `just build-shell-cli`. Then run, inside the same sandbox, `CHAT_SHELL_KEY_TYPE=uuid CORE_PORT=6990 CORE_MGMT_PORT=6991 shell-scripts/chat-shell-cli whoami`.
-Expected: exit 0, one line on standard output, and nothing on standard error except `WARNING: Using incubator modules: jdk.incubator.vector`.
+Expected: exit 0 and one line on standard output. With `--add-modules=jdk.incubator.vector` still in the options, standard error holds `WARNING: Using incubator modules: jdk.incubator.vector`. The next paragraph removes it.
 
 If the context fails with `spring.main.web-application-type=none`, set `reactive` with `server.port=0` and `management.server.port=0` in its place. A port that the kernel picks still lets two runs start at once (record F3). Record that change in the ledger as a ruling.
 
-Then remove `--add-modules=jdk.incubator.vector` from the launcher options and run again. If the run still exits 0, keep it removed, and standard error is empty. If a class of `jdk.incubator.vector` is missing, keep the module, record the one warning line in the ledger as a ruling, and report it to the owner. Stop the core with `core.sh stop`.
+Then remove `--add-modules=jdk.incubator.vector` from the launcher options and run again.
+Expected: exit 0, one line on standard output, and **empty standard error**. The design requires empty standard error after a success, with no exception.
+
+If a class of `jdk.incubator.vector` is missing without the module, or standard error holds any other line, **stop and ask the owner**. A plan ruling cannot accept a line on standard error. Stop the core with `core.sh stop` in either case.
 
 - [ ] **Step 6: Commit**
 
@@ -311,11 +319,15 @@ The owner asked on 2026-10-18 for native one-shot as an option, measured before 
 
 - [ ] **Step 1: Write `native.sh build`**
 
-It runs `mvn -B -Pnative,deploy,shell,shell-host,client-backend -pl chat-deploy -am package -Dmaven.test.skip=true` with `-Dspring-boot.aot.jvmArguments="<options>"`. `<options>` are the options that `chat-shell-cli` sets for `CHAT_SHELL_KEY_TYPE=uuid`, with `-Dchat.shell.mode=one-shot`, because AOT fixes the mode at build time. The main class is `com.demo.chat.ShellCliKt`. The log goes to `$S/native-build.log`. The plugin may need the network on its first run (`docs/NATIVE-IMAGE.md`).
+It runs `mvn -B -Pnative,deploy,shell,shell-host,client-backend -pl chat-deploy -am package -Dmaven.test.skip=true -DappMainClass=com.demo.chat.ShellCliKt` with `-Dspring-boot.aot.jvmArguments="<options>"`. `chat-deploy/pom.xml` sets `appMainClass` to `com.demo.chat.ChatAppKt`, and both the native plugin and the AOT execution read that property. A user property on the command line wins over the POM property, so the explicit `-DappMainClass` selects the shell entry point. `<options>` are the options that `chat-shell-cli` sets for `CHAT_SHELL_KEY_TYPE=uuid`, with `-Dchat.shell.mode=one-shot`, because AOT fixes the mode at build time. The log goes to `$S/native-build.log`. The plugin may need the network on its first run (`docs/NATIVE-IMAGE.md`).
 
-- [ ] **Step 2: Build, and start one command**
+- [ ] **Step 2: Build, check the entry point, and start one command**
 
-Start the disposable core in the sandbox. Run `native.sh build "$S"`, then `native.sh run "$S" whoami`.
+Start the disposable core in the sandbox. Run `native.sh build "$S"`. Before any measurement, check the entry point in two ways:
+- `grep -r 'ShellCliKt' chat-deploy/target/native` finds the main class in the native-image arguments, and the build log names `ShellCliKt`, not `ChatAppKt`.
+- `native.sh run "$S" -Dlogging.threshold.console=INFO whoami` logs `Starting AOT-processed ShellCliKt`.
+
+A check that names `ChatAppKt` means that the image is the wrong one. Fix the build before step 3. Then run `native.sh run "$S" whoami`.
 Expected: one of two results, and both are valid results of this task:
 - the image runs `whoami` and exits 0 with one line of output, or
 - the context fails. Record the first failure line, as the "Observed failures" table of `docs/NATIVE-IMAGE.md` does.
@@ -350,7 +362,7 @@ This task decides whether task 9 (resident mode) runs. The owner makes the decis
 
 `read.sh seed <scratch-dir>` creates the representative data on the disposable core: 4 topics with `add-topic`, 20 pointer lines with `post` to `register-index`, and 5 entries with `post` to each of the 3 other topics. `read.sh measure <scratch-dir> <launcher>` runs the 4 reads as 4 one-shot processes, one after the other: `messages register-index --format records` and `messages <topic> --format records --limit 1` for each topic. It measures the total wall time, from the first process start to the last process exit. It runs 5 times, and it reports each total and the median.
 
-**`add-topic` fails today (`CHAT-siaetqtr`).** If that issue is not fixed, `seed` cannot run. Then `measure` uses a stand-in: 4 `show-topics` reads, each one RSocket round trip, with no data. The record names the stand-in. A stand-in measures startup and round trips, not representative data.
+**`add-topic` fails today (`CHAT-siaetqtr`).** If that issue is not fixed, `seed` cannot run. Then `measure` may run an exploratory stand-in: 4 `show-topics` reads with no data. The stand-in leaves out message loading, filtering, JSON output, and realistic response sizes. **So it cannot decide whether a complete register read meets the 10-second target, and it cannot select the launch mode.** The record labels it exploratory.
 
 - [ ] **Step 2: Measure**
 
@@ -359,7 +371,7 @@ Expected: 5 totals and a median for each launcher. No case hits a denied port.
 
 - [ ] **Step 3: Write `READ-TIME.md`**
 
-It holds a table of each launcher, the median total, and the 10-second target of owner decision 20. It also states whether the data was representative or the stand-in.
+It holds a table of each launcher, the median total, and the 10-second target of owner decision 20. It states whether the data was representative or the exploratory stand-in. A stand-in row has no pass or fail against the target.
 
 - [ ] **Step 4: Commit, push, and stop**
 
@@ -369,10 +381,14 @@ git commit -m "CHAT-jmnjvupr: Measure a complete register read for each one-shot
 git push
 ```
 
-Comment on `CHAT-jmnjvupr` and PR #257 with the table. **Stop here.** The owner chooses one of these:
+Comment on `CHAT-jmnjvupr` and PR #257 with the table. **Stop here.**
+
+**The task 9 decision needs a representative read.** If `CHAT-siaetqtr` blocked the seed, the decision waits. After that issue is fixed, run steps 1 to 3 again with representative data. The owner then chooses one of these:
 - A one-shot launcher meets the target. Task 9 then moves to its own issue, and stage 1 continues with task 10.
 - No one-shot launcher meets the target. Task 9 then runs.
-- The owner names another choice.
+- The owner names another choice, or another basis for the decision.
+
+While the decision waits, task 10 can run without A11.
 
 ### Task 9: Resident mode (only after the owner's choice in task 8)
 
@@ -389,7 +405,7 @@ Comment on `CHAT-jmnjvupr` and PR #257 with the table. **Stop here.** The owner 
 - Produces: `object ResidentProtocol` with `fun readRequest(channel: ReadableByteChannel): Request` (`Request(line: String, input: ByteArray)`) and `fun writeResponse(channel: WritableByteChannel, status: ShellExitStatus, output: ByteArray)`. The request header is `chat-shell/1 <command-bytes> <input-bytes>\n`. The response header is `chat-shell/1 <status> <output-bytes>\n`. Lengths count UTF-8 bytes. A bad header or a short body throws `ShellExit(PROTOCOL, ...)`.
 - Produces: `class ResidentShellServer(socket: Path, run: (String, InputStream, PrintWriter, PrintWriter) -> ShellExitStatus, requestTimeout: Duration = 10.seconds, commandTimeout: Duration)` with `fun bind()` and `fun serve(stop: AtomicBoolean)`.
 - `bind()` rules: the parent directory must be owned by the current user with mode `0700`, or `ShellExit(USAGE, ...)`. An existing path that is not a socket gives `ShellExit(USAGE, ...)`. An existing socket that accepts a connect gives `ShellExit(UNAVAILABLE, "another resident shell holds <path>")`. An existing socket that refuses is removed. The new socket file gets mode `0600`.
-- `serve` runs one request at a time. The output of `err` goes into the response body after the output of `out`. At `commandTimeout`, it answers 124 and replaces its worker thread, so a stuck command does not block the next request. On stop, it removes the socket file.
+- `serve` runs one request at a time. The output of `err` goes into the response body after the output of `out`. **At `commandTimeout`, the server answers 124, closes the socket, removes the socket file, and stops.** The process then exits with status 124. The server never starts a second command while a timed-out command can still run, because a Java thread can continue its core request after the response. So two commands never overlap under one login. A client after a timeout gets 69, and a new resident start serves it.
 - For `resident`, `ShellModeConfiguration` defines `springShellApplicationRunner`: login, `bind()`, then `serve` until the context closes. `CHAT_SHELL_SOCKET` gives the path, and it has no default. `CHAT_SHELL_COMMAND_TIMEOUT` gives the command limit in seconds, default 120.
 - `shell-scripts/chat-shell-client <command words...>` reads `CHAT_SHELL_SOCKET`, sends the words as the line and its standard input as the input, prints the body, and exits with the status. No socket file, or a refused connect, gives 69. A short or bad response gives 76.
 
@@ -408,7 +424,8 @@ Comment on `CHAT-jmnjvupr` and PR #257 with the table. **Stop here.** The owner 
 @Test fun `a stale socket file is removed at bind`()
 @Test fun `a live socket makes bind fail with UNAVAILABLE`()
 @Test fun `a short request gets 76 after the request limit, and the next client is served`()   // requestTimeout = 1 s in the test
-@Test fun `a command past its limit gets 124, and the next request is served`()                 // commandTimeout = 1 s, the fake run blocks forever on the first call
+@Test fun `a command past its limit gets 124, and the server stops`()                           // commandTimeout = 1 s, the fake run blocks forever. Then serve returns, the socket file is gone, and a new connect is refused.
+@Test fun `a late write of a timed-out command reaches no response`()                          // the fake run writes "late" to out 2 s after its start. The 124 response holds no "late", and no other response exists.
 @Test fun `two clients at once each get their own response`()
 @Test fun `stop removes the socket file`()
 ```
@@ -445,7 +462,7 @@ It reuses the stage 0 case loop: one process group per case, a 60-second limit, 
 | ID | Mode | Command | Input or setting | Expected status |
 |----|------|---------|------------------|-----------------|
 | A1 | one-shot | `whoami` | none | 0, empty standard error |
-| A2 | one-shot | `whoami` | `CHAT_SHELL_USER=Admin` and a password file | 0 |
+| A2 | one-shot | `whoami` | `CHAT_SHELL_USER=Admin` and a password file | 0, empty standard error |
 | A3 | one-shot | `whoami` | a password file with a wrong password | 77 |
 | A4 | one-shot | `whoami` | `CHAT_SHELL_USER` alone | 2 |
 | A5 | one-shot | `no-such-command` | none | 2 |
@@ -462,11 +479,11 @@ Record the wall time of A10, and of A11 if task 9 ran. These are the topic-read 
 - [ ] **Step 2: Run it**
 
 Run: `docs/superpowers/proofs/2026-10-18-stage-1/cases.sh "$S" > "$S/cases.log" 2>&1; echo $?`
-Expected: exit 0. Every row has its expected status. A1 and A2 have empty standard error, or the one ruled warning line of task 6 step 5. The end state check of stage 0 passes: no listener on 6990, 6991, or 9101, an empty core group, and an unchanged `docker ps`.
+Expected: exit 0. Every row has its expected status. A1 and A2 have empty standard error, with no exception. The end state check of stage 0 passes: no listener on 6990, 6991, or 9101, an empty core group, and an unchanged `docker ps`.
 
 - [ ] **Step 3: Write `RECORD.md`**
 
-It holds the results table, the A10 and A11 times, the standard error of A1 and A2, and the result of A8 to A11 (passed, or blocked by `CHAT-siaetqtr`).
+It holds the results table, the A10 and A11 times, the standard error of A1 and A2, and the result of A8 to A11. **While A9 and A10 are blocked by `CHAT-siaetqtr`, the record states that the acceptance of `post` and `messages --format records` is incomplete.** Their unit tests of tasks 3 and 4 do not replace a live run.
 
 - [ ] **Step 4: Update the documents**
 
@@ -487,4 +504,4 @@ git commit -m "CHAT-jmnjvupr: Record the stage 1 acceptance, and document the sh
 git push
 ```
 
-Comment on `CHAT-jmnjvupr` with the A-case results, the A10 and A11 times, and the gate totals.
+Comment on `CHAT-jmnjvupr` with the A-case results, the A10 and A11 times, and the gate totals. If A9 and A10 are blocked, say that the `post` and `messages` acceptance is incomplete, and that it waits for `CHAT-siaetqtr`.
