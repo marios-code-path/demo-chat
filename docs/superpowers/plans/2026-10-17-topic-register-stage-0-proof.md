@@ -58,7 +58,7 @@ So the profile uses the any-host form alone:
 1. **The sandbox rule does not cover the JVM.** The `localhost` form failed for Java. Task 1 tests the exact profile with a Java probe before the first shell case. A denied port that connects stops the proof.
 2. **Stale project jars.** A classpath can resolve `com.demo` jars from `~/.m2` that differ from the proof commit. Task 1 builds them at the commit and compares each jar on the classpath with the jar that the build made.
 3. **The core outlives the proof.** `chat-build` starts Maven, and Maven starts the Java core. Task 1 starts the core in its own process group, and stops that group.
-4. **A case does not exit.** The reactive web server on 9101 or a JLine terminal can keep a process alive. Each case has a 60-second limit.
+4. **A case does not exit.** The reactive web server on 9101 or a JLine terminal can keep a process alive. Each case runs in its own process group, with a 60-second limit. At the limit, the harness stops the group. It then confirms that the group holds no process and that 9101 has no listener.
 5. **Secrets in the record.** The case commands hold the `Admin` password of the disposable core. The record shows `<password>` in place of it.
 
 ---
@@ -77,7 +77,7 @@ So the profile uses the any-host form alone:
 - Produces: `Probe.java <port>...` tries a `SocketChannel` connect to `127.0.0.1:<port>` for each port, and prints `<port> connected` or `<port> denied: <exception>`.
 - Produces: `build.sh <scratch-dir>` builds the artifacts and writes `<scratch-dir>/shell.cp`, `<scratch-dir>/artifacts.tsv`, and `<scratch-dir>/commit`.
 - Produces: `core.sh start|stop <scratch-dir>`. `start` writes `<scratch-dir>/core.pgid` and `<scratch-dir>/service.password`.
-- Produces: `launch.sh <scratch-dir> [shell-args...]` execs one shell JVM inside the sandbox. Its process ID is the JVM process ID. Standard input, output, and error pass through, and it exits with the JVM exit status.
+- Produces: `launch.sh <scratch-dir> [shell-args...]` starts one shell JVM inside the sandbox. Standard input, output, and error pass through, and it exits with the JVM exit status. The plan does not assume that `sandbox-exec` replaces itself with Java.
 
 - [ ] **Step 1: Check the preconditions, and write the profile**
 
@@ -139,9 +139,11 @@ git commit -m "CHAT-jmnjvupr: Add the stage 0 isolation, build, core, and launch
 
 - [ ] **Step 1: Write `cases.sh`**
 
-Each case starts `launch.sh` in the background, with the given standard input. Because `launch.sh` and `sandbox-exec` use `exec`, the background process ID is the JVM. A watchdog kills that process after 60 s and sets `timed_out`. The harness measures `wall_ms` from the launch to process exit.
+Each case starts `launch.sh` in a new process group, with `perl -e 'setpgrp(0,0); exec @ARGV' launch.sh ...`, in the background, with the given standard input. The background process ID is the group ID. The harness measures `wall_ms` from the launch to the exit of that process.
 
-While a case runs, the harness polls `lsof -nP -a -p <pid> -iTCP -sTCP:ESTABLISHED` and writes each remote port to `remote_ports`. This is evidence for Q6 alone. The sandbox is the protection.
+At 60 s, a watchdog sends `TERM` to the group, waits 5 s, then sends `KILL` to the group, and sets `timed_out`. After every case, timed out or not, the harness checks that `pgrep -g <pgid>` finds no process and that 9101 has no listener. A failed check stops the harness with exit 4.
+
+While a case runs, the harness polls `lsof -nP -a -p <pid> -iTCP -sTCP:ESTABLISHED` for each process that `pgrep -g <pgid>` names. It writes each remote port to `remote_ports`. This is evidence for Q6 alone. The sandbox is the protection.
 
 | ID | Program arguments | Standard input | Answers |
 |----|-------------------|----------------|---------|
@@ -164,7 +166,7 @@ A case that hits a denied port fails with `Operation not permitted` in its strea
 - [ ] **Step 2: Run the harness**
 
 Run: `docs/superpowers/proofs/2026-10-17-one-shot/cases.sh "$S" >"$S/cases.log" 2>&1; echo $?`
-Expected: exit 0, and `results.tsv` has 11 rows. Exit 3 means that a shell tried a denied port. Do not run the harness again. Report it to the owner.
+Expected: exit 0, and `results.tsv` has 11 rows. Exit 3 means that a shell tried a denied port. Exit 4 means that a case left a process or a 9101 listener. For either one, do not run the harness again. Report it to the owner.
 
 - [ ] **Step 3: Check the end state**
 
