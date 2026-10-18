@@ -13,6 +13,8 @@ import com.demo.chat.shell.commands.ClaudeImportCommandsRegistrar
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.anyString
+import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.springframework.shell.core.InputReader
@@ -193,6 +195,8 @@ class ShellCommandDispatchTests {
         val pubsub = mock(PubSubCommands::class.java) as PubSubCommands<Any>
         val user = mock(UserCommands::class.java) as UserCommands<Any>
         val importer = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
+        // messages answers text, and a mock answers null for a text.
+        given(pubsub.messages(anyString(), org.mockito.ArgumentMatchers.any<Int>(), anyString(), org.mockito.ArgumentMatchers.any<java.time.Instant>())).willReturn("")
 
         val registrars = listOf<Any>(
             TopicCommandsRegistrar(topic),

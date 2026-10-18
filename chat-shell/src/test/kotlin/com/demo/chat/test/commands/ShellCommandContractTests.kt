@@ -50,7 +50,7 @@ class ShellCommandContractTests {
             Opt("generation", null), Opt("human", null), Opt("assistant", null))),
         Expected("listen", "Listen to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("hangup", "Stop listening to a topic", listOf(Opt("topic", null)), positional = "topic"),
-        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false)), positional = "topic"),
+        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false), Opt("format", "human"), Opt("since", null, required = false)), positional = "topic"),
         Expected("show-topics", "show topics", listOf()),
         Expected("add-topic", "Create a topic", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
         Expected("topic-by-name", "Topic by Name", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
@@ -162,12 +162,12 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty nine commands and forty three options`() {
+    fun `the contract holds twenty nine commands and forty five options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         // command-status and send --requestId raised them from 27 and 33.
-        // post raised them from 28 and 41.
+        // post raised them from 28 and 41. The messages format and since options raised the options to 45.
         assertThat(registered()).hasSize(29)
-        assertThat(registered().sumOf { it.options.size }).isEqualTo(43)
+        assertThat(registered().sumOf { it.options.size }).isEqualTo(45)
     }
 }

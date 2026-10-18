@@ -7,6 +7,9 @@ import org.springframework.context.annotation.Profile
 import org.springframework.shell.core.command.Command
 import org.springframework.shell.core.command.CommandContext
 import org.springframework.shell.core.command.CommandOption
+import java.time.Instant
+import java.time.format.DateTimeParseException
+import java.util.function.Consumer
 import java.util.function.Function
 
 /**
@@ -110,13 +113,26 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
         .options(
             CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
             CommandOption.with().longName("limit").required(false).type(Int::class.javaObjectType).build(),
+            CommandOption.with().longName("format").required(false).defaultValue("human").type(String::class.java).build(),
+            CommandOption.with().longName("since").required(false).type(String::class.java).build(),
         )
-        .execute(Function<CommandContext, String> { ctx ->
+        // A Consumer, because an empty result in the records format prints nothing. A Function always prints a line.
+        .execute(Consumer<CommandContext> { ctx ->
             val limit = ctx.getOptionByLongName("limit")?.let {
                 it.value()?.toIntOrNull()
                     ?: throw IllegalArgumentException("messages needs a positive --limit.")
             }
-            commands.messages(ctx.mainValue("topic"), limit)
+            val since = ctx.getOptionByLongName("since")?.let {
+                try {
+                    Instant.parse(it.value())
+                } catch (e: DateTimeParseException) {
+                    throw IllegalArgumentException(
+                        "messages needs --since as an ISO-8601 instant, such as 2026-10-17T23:21:19Z.", e)
+                }
+            }
+            val text = commands.messages(ctx.mainValue("topic"), limit, ctx.optionValue("format"), since)
+            if (text.isNotEmpty()) ctx.outputWriter().println(text)
+            ctx.outputWriter().flush()
         })
 
 }

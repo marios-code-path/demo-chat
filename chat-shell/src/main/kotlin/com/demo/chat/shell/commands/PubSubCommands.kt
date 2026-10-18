@@ -9,6 +9,7 @@ import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.fasterxml.jackson.databind.ObjectMapper
+import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
 import java.time.format.DateTimeFormatter
@@ -131,14 +132,23 @@ class PubSubCommands<T : Any>(
     /**
      * This command displays stored messages in time order. See `CHAT-bmmtojqm`.
      * The service checks SUBSCRIBE and preserves its Access Denied refusal.
+     *
+     * [since] keeps the messages at or after that instant. [limit] then keeps
+     * the newest ones. **The `records` [format] prints one JSON line per
+     * message** with `id`, `topic`, `sender`, `timestamp`, and `text`. The
+     * timestamp is the stored instant in UTC at its full precision, and the
+     * text is the body unchanged. An empty result prints nothing in that
+     * format.
      */
-    fun messages(topic: String, limit: Int? = null): String {
+    fun messages(topic: String, limit: Int? = null, format: String = "human", since: Instant? = null): String {
         require(limit == null || limit > 0) { "messages needs a positive --limit." }
+        require(format == "human" || format == "records") { "messages needs --format human or records." }
         val room = rooms.room(topic)
         val stored = messageService.listMessages(ByIdRequest(room.key.id))
             .collectList().block().orEmpty()
             .sortedBy { it.key.timestamp }
-        if (stored.isEmpty()) return "No messages in ${room.data}."
+            .filter { since == null || !it.key.timestamp.isBefore(since) }
+        if (stored.isEmpty()) return if (format == "records") "" else "No messages in ${room.data}."
 
         val selected = if (limit == null) stored else stored.takeLast(limit)
         val handles = selected.map { it.key.from }.distinct().associateWith { sender ->
@@ -146,6 +156,15 @@ class PubSubCommands<T : Any>(
                 .map { it.handle }
                 .onErrorResume(CoreNotFound::class.java) { Mono.empty() }
                 .block() ?: typeUtil.toString(sender)
+        }
+        if (format == "records") return selected.joinToString("\n") { message ->
+            mapper.writeValueAsString(linkedMapOf(
+                "id" to typeUtil.toString(message.key.id),
+                "topic" to room.data,
+                "sender" to handles.getValue(message.key.from),
+                "timestamp" to message.key.timestamp.toString(),
+                "text" to body(message),
+            ))
         }
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
             .withZone(ZoneId.systemDefault())
