@@ -11,6 +11,7 @@ import com.demo.chat.shell.commands.UserCommandsRegistrar
 import com.demo.chat.shell.commands.ClaudeImportCommands
 import com.demo.chat.shell.commands.ClaudeImportCommandsRegistrar
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -207,7 +208,11 @@ class ShellCommandDispatchTests {
                 .map { it.invoke(registrar) as Command }
         }
 
-        assertThat(beans).hasSize(28)
-        beans.forEach { command -> run(command) }
+        assertThat(beans).hasSize(29)
+        // post is the one command that needs a StreamInput. A mock reader is refused before any option is read.
+        beans.filter { it.name != "post" }.forEach { command -> run(command) }
+        assertThatThrownBy { run(beans.first { it.name == "post" }) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("standard input")
     }
 }

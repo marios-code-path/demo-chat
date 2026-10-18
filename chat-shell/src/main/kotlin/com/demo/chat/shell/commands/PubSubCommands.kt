@@ -8,6 +8,7 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.security.rsocket.CoreNotFound
+import com.fasterxml.jackson.databind.ObjectMapper
 import java.time.ZoneId
 import java.util.UUID
 import java.time.format.DateTimeFormatter
@@ -56,6 +57,25 @@ class PubSubCommands<T : Any>(
                 ).joinToString("\n")
             }
             .block().orEmpty()
+    }
+
+    /**
+     * Sends [text] to the room that [topic] names, and answers one JSON line.
+     *
+     * The line holds `messageId`, `commandId`, `requestId`, and `outcome`.
+     * The text arrives unchanged, because it came from the command input and
+     * not from an argument. [requestId] `_` creates a new ID, as `send` does.
+     */
+    fun post(topic: String, text: String, requestId: String): String {
+        val id = if (requestId == "_") UUID.randomUUID().toString() else requestId
+        val result = messageService.submit(MessageSubmitRequest(text, rooms.idOf(topic), id)).block()
+            ?: throw IllegalStateException("the core answered no receipt for request $id")
+        return mapper.writeValueAsString(linkedMapOf(
+            "messageId" to typeUtil.toString(result.receipt.messageKey.id),
+            "commandId" to result.receipt.commandId,
+            "requestId" to id,
+            "outcome" to result.outcome.toString(),
+        ))
     }
 
     /** Answers the state of each backend of a command that the login owns. */
@@ -133,6 +153,10 @@ class PubSubCommands<T : Any>(
             val prefix = "${formatter.format(message.key.timestamp)} | ${handles.getValue(message.key.from)} | "
             prefix + body(message).lines().joinToString("\n" + " ".repeat(prefix.length))
         }
+    }
+
+    private companion object {
+        val mapper = ObjectMapper()
     }
 
     /** A pointer shows its target and no text. No read of the target runs. See `CHAT-erkoxybm`. */

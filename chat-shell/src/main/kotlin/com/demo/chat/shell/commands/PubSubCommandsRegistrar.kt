@@ -1,5 +1,6 @@
 package com.demo.chat.shell.commands
 
+import com.demo.chat.shell.cli.StreamInput
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
@@ -43,6 +44,29 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
             )
         .execute(Function<CommandContext, String> { ctx ->
             commands.send(ctx.optionValue("topic"), ctx.optionValue("userName"), ctx.mainValue("messageText"), ctx.optionValue("requestId"))
+        })
+
+    /**
+     * `post` takes the entry text from the command input, so its newlines need
+     * no quotes. Only the shell modes give such an input. The interactive
+     * shell does not, and it refuses the command.
+     */
+    @Bean
+    fun postCommand(): Command = Command.builder()
+        .name("post")
+        .description("Post the text of standard input to a topic")
+        .group("PubSub")
+        .arguments(positional("topic"))
+            .options(
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
+                CommandOption.with().longName("requestId").required(false).defaultValue("_").type(String::class.java).build(),
+            )
+        .execute(Function<CommandContext, String> { ctx ->
+            val input = ctx.inputReader() as? StreamInput
+                ?: throw IllegalArgumentException("post reads its text from standard input. Use it in one-shot or resident mode.")
+            val text = input.readAll()
+            if (text.isEmpty()) throw IllegalArgumentException("post needs the entry text on standard input.")
+            commands.post(ctx.mainValue("topic"), text, ctx.optionValue("requestId"))
         })
 
     /** `command-status` reads the backends of a command that the login owns. */
