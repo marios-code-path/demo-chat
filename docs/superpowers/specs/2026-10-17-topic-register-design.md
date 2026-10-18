@@ -84,6 +84,9 @@ The owner made these decisions on 2026-10-17.
 13. A register entry is a hand-off-ready body. fp comments stay the log.
 14. Each agent has its own user. The users are `Sigma`, `Theta`, `Phi`, and
     `Mario`, the owner.
+15. Every agent reads `AGENTS.md` by default. Each harness has its own
+    instruction file, and that file gives the agent its name. So general
+    rules, the session-start step too, go in `AGENTS.md`.
 
 ## Node 9
 
@@ -244,6 +247,8 @@ also writes an fp comment with the topic name.
 
 `AGENTS.md` replaces `@forward-register.md` with one instruction: run
 `node-9/bin/register read` and treat the output as part of `AGENTS.md`.
+Every agent reads `AGENTS.md`, so the one instruction reaches Sigma, Theta,
+and Phi. No harness file changes.
 
 The command prints:
 
@@ -267,8 +272,9 @@ the same way:
 - `register post <fp-id>` reads an entry from standard input and posts it to
   the topic of that fp ID.
 
-Each write names its user with `--as <name>`. An agent uses its own name:
-`Sigma`, `Theta`, or `Phi`. The owner uses `Mario`. The command reads the
+Each write names its user with `--as <name>`. An agent uses the name that
+its harness instruction file gives it: `Sigma`, `Theta`, or `Phi`. `AGENTS.md`
+tells each agent to do this. The owner uses `Mario`. The command reads the
 password of that user from `node-9/secrets.env`. It must not prompt. A read
 needs no `--as`, and it uses the `Mario` account. This is the designer's call.
 
