@@ -22,7 +22,7 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-18 at 11:22 PDT.
+Measured on 2026-10-18 at 12:02 PDT.
 
 | | |
 |---|---|
@@ -36,14 +36,14 @@ Measured on 2026-10-18 at 11:22 PDT.
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. PR #257 (the design, the stage 0 proof, and the stage 1 plan) and PR #258 (the hand-off) are merged. Draft PR #259 holds stage 1, and it is not merged. Sigma's findings on it are fixed. Following the owner's choice of 2026-10-18, the session-start read is one command, `register-read`, in one JVM process. It takes 4,476 ms from launch to exit on representative data, under the 10 s target of decision 20, and it enforces the 30 s limit with status 124. So resident mode (task 9) is not built. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
+| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. PR #257 (the design, the stage 0 proof, and the stage 1 plan) and PR #258 (the hand-off) are merged. Draft PR #259 holds stage 1, and it is not merged. Sigma's reviews found the `!` status, the `read.sh` checks, the UUID byte length, and the launch deadline of `register-read`. The branch carries fixes for all of them at `e1ce5481`, and Sigma has not reviewed the last one yet. The session-start read is one command, `register-read`, in one JVM process. It takes about 4.5 s from launch to exit on representative data, under the 10 s target of decision 20. Sigma recommended that command, and **Mario has not confirmed it as a design decision**. It enforces the 30 s limit from launch with status 124. So resident mode (task 9) is not built for this workload. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
 | `CHAT-siaetqtr` | `chat-jmnjvupr-topic-register` | A child of `CHAT-jmnjvupr`. `add-topic` failed on a `uuid` core with `A key id cannot be a byte[]`. The cause was CBOR, which writes a UUID as 16 bytes. The fix is in draft PR #259 and it is not merged. Live cases A8 to A10 pass with it. |
 
 **The next Theta session starts here.**
 
 1. Run `fp context CHAT-jmnjvupr`, and read the newest comments. Run `gh pr view 259`.
-2. Do not merge PR #259 without the owner's explicit authorization and the named `--admin` bypass.
-3. Stage 3 builds `register read` on `register-read`. It still needs the later duplicate pointers of one fp ID, with a warning line, and a measurement on the real register.
+2. Do not merge PR #259 or PR #260 without Mario's explicit merge authorization and the named `--admin` bypass. A review comment is not that authorization.
+3. Ask Mario to confirm or change the choice of `register-read` as the session-start read. Stage 3 then builds `register read` on it. It still needs the later duplicate pointers of one fp ID, with a warning line, and a measurement on the real register.
 4. Every live run uses the stage 0 sandbox and a disposable core on 6990 and 6991. Never use `chat-deploy core` near node 16.
 
 Five more issues are `in-progress` in fp, with no update in the last 24 hours:
