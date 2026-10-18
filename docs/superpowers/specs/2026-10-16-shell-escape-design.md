@@ -2,7 +2,9 @@
 
 Issue: `CHAT-jrlctimq`. Parent: `CHAT-aqpcacwv`. Status: approved by the owner on
 2026-10-17, and implemented in the pull request of `CHAT-jrlctimq`.
-Revision 2, on 2026-10-17, answers the review of `2368e546`.
+Revision 2, on 2026-10-17, answers the review of `2368e546`. Revision 3, on
+2026-10-17, adds two owner decisions after the first pull request. See
+`Revision 3` at the end.
 
 ## Goal
 
@@ -235,7 +237,7 @@ Each test fails before its change. No test reaches the owner's deployment.
 ## Out of scope
 
 - Interactive programs, and any terminal handover.
-- A way to stop a running host command. Ctrl-C behavior is not designed here.
+- A way to stop a running host command. Revision 3 adds Ctrl-C.
 - Shell selection other than `bash`.
 - Any change to a core image.
 
@@ -247,3 +249,25 @@ Each test fails before its change. No test reaches the owner's deployment.
 - The `CommandHighlighter` can mark `!jq` as an unknown command, because the
   first word is not a registered name. This is display only, and the design
   does not change it.
+
+## Revision 3 (2026-10-17)
+
+Two owner decisions after PR #255 opened.
+
+1. **The `!` command is a build option, and a shell build includes it by
+   default.** Some shell builds must not hold a `!` command. The code moves to
+   a new module, `chat-shell-host`. The `shell-host` profile of `chat-deploy`
+   adds the module and the bash run image of unit 4. `chat-build` adds the
+   profile to every `shell` build, and `chat-build shell --no-host-command`
+   leaves it out. A build without the module holds no `!` code and keeps the
+   tiny run image. `CHAT-bgbyqvgd`.
+2. **Ctrl-C stops a running `!` command, and the shell continues.** The owner
+   reported that a command that does not end, such as `tail -f`, holds the
+   shell. A pty probe measured more: one Ctrl-C ended the whole shell. JLine
+   handles INT only while it reads a line, and the JVM keeps its default
+   handler while a command runs. `TerminalInterrupts` holds the INT handler of
+   the terminal for one command. The handler kills bash and its descendants.
+   The command prints `! interrupted` and the exit status. `CHAT-wdokzwnj`.
+
+Ctrl-C at the prompt still ends the shell. Spring Shell stops its loop on any
+input error. This revision does not change that.

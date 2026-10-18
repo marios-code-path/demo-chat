@@ -309,6 +309,12 @@ and memory pub/sub. Other backend flags do not accept these overrides.
 | Flag | Maven profile | Effect |
 |---|---|---|
 | `--e2ee` | `e2ee` | E2EE substrate: sets `app.service.e2ee.enabled`, `app.service.crypto.backend`, `app.service.presence.backend`. |
+| `--host-command` | `shell-host` | The `!` command of `shell`, in `chat-shell-host`. The profile also sets the bash run image. Default for `shell`. |
+
+`shell` includes `--host-command` by default. Use `--no-host-command` to build
+a shell without the `!` command. That build holds no `!` code, and its image
+keeps the tiny run image, which holds no shell. `--host-command` together
+with `--no-host-command` is refused.
 
 `--e2ee` pulls modules that are not yet published to the local repository
 (`chat-deploy-e2ee`, `chat-crypto`, `chat-presence`), as does `--kafka`
@@ -555,6 +561,9 @@ the `available_features` of every service that should accept it:
     conflicts=["other"],
 ),
 ```
+
+Set `removable=True` on a feature in the `default_features` of a service to
+give that service a `--no-<name>` flag. `host-command` is the example.
 
 If the feature needs code on the classpath, it also needs a matching profile in
 `chat-deploy/pom.xml` that declares the dependency — see `kafka-backend` and

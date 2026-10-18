@@ -129,8 +129,10 @@ of `launch-shell` is `chat-deploy`, so a repository file needs `../`:
 chat-shell:anonymous :> !jq -r '.[] | .uuid' ../conversations.json
 ```
 
-The command prints `exit status <n>` after its output. `!!` history events do
-not work. See `The ! escape` in `docs/SHELL-COMMAND-CONTRACT.md`.
+The command prints `exit status <n>` after its output. Ctrl-C stops a running
+`!` command, and the shell continues. `!!` history events do not work. Add
+`--no-host-command` to build a shell without the `!` command. See
+`The ! escape` in `docs/SHELL-COMMAND-CONTRACT.md`.
 
 Print a launch command without execution:
 
