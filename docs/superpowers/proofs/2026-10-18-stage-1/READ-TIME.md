@@ -83,6 +83,19 @@ a success. The limit now has three parts, and `LaunchDeadline` holds them.
   it prints nothing and gives 124. If the output is printed, the watchdog does
   not halt the process afterwards.
 
+Sigma found two more gaps on the second review. The first was that the launcher
+script can stall before Java starts, where no JVM watchdog exists. `chat-shell-cli`
+now supervises `register-read` from its own start: it runs itself as a child in its
+own process group, ends the whole group at the limit, and exits with 124. It holds
+the standard error of the child, so a timeout leaves one line. The second was that
+the output was printed under a lock, so a blocked write kept the watchdog from
+halting the process. The lock is gone. The watchdog now halts the process with 124
+at the limit even while the output is blocked, and the line is written by a helper
+thread, so a blocked standard error cannot stop the halt. In that one case the
+standard output can hold part of the text, and the contract says to discard it.
+`shell-scripts/test-chat-shell-cli-deadline.sh` covers the launcher, and
+`LaunchDeadlineTests` covers the blocked output and the blocked standard error.
+
 The launch time is the earlier of the stamp `CHAT_SHELL_LAUNCH_EPOCH_MS`, which
 `chat-shell-cli` sets, and the JVM start. A missing or broken stamp falls back to
 the JVM start, and never to the current time.

@@ -1,5 +1,6 @@
 package com.demo.chat.test.cli
 
+import com.demo.chat.shell.cli.HardLimits
 import com.demo.chat.shell.cli.LaunchDeadline
 import com.demo.chat.shell.cli.ShellExit
 import com.demo.chat.shell.cli.ShellExitStatus
@@ -123,5 +124,49 @@ class LaunchDeadlineTests {
         Thread.sleep(700)
 
         assertThat(halts.get()).isZero()
+    }
+
+    /**
+     * The output can block: a reader that does not read, or a full pipe. The
+     * first version held a lock while it printed, so the watchdog waited for
+     * that lock and never halted the process. Sigma found this on PR #259.
+     */
+    @Test
+    fun `the watchdog halts the process even when the output is blocked`() {
+        val halted = CountDownLatch(1)
+        val status = AtomicInteger()
+        val neverReleased = CountDownLatch(1)
+        val watched = LaunchDeadline("register-read", Instant.now().minusMillis(1_800), Duration.ofSeconds(2))
+        watched.startWatchdog(PrintWriter(StringWriter())) { code -> status.set(code); halted.countDown() }
+
+        val printing = Thread({ runCatching { watched.finish { neverReleased.await() } } }, "blocked-output").apply { isDaemon = true }
+        printing.start()
+
+        assertThat(halted.await(5, TimeUnit.SECONDS)).describedAs("the process halted").isTrue()
+        assertThat(status.get()).isEqualTo(124)
+    }
+
+    @Test
+    fun `the watchdog halts the process even when standard error is blocked`() {
+        val halted = CountDownLatch(1)
+        val neverReleased = CountDownLatch(1)
+        val blockedErr = object : java.io.Writer() {
+            override fun write(cbuf: CharArray, off: Int, len: Int) { neverReleased.await() }
+            override fun flush() {}
+            override fun close() {}
+        }
+        val watched = LaunchDeadline("register-read", Instant.now().minusMillis(1_900), Duration.ofSeconds(2))
+
+        watched.startWatchdog(PrintWriter(blockedErr)) { halted.countDown() }
+
+        assertThat(halted.await(5, TimeUnit.SECONDS)).describedAs("the process halted").isTrue()
+    }
+
+    /** `chat-shell-cli` repeats the limit, because its own watchdog covers the time before Java starts. */
+    @Test
+    fun `the launcher script uses the same limit as the command`() {
+        val script = java.nio.file.Files.readString(java.nio.file.Paths.get("../shell-scripts/chat-shell-cli"))
+
+        assertThat(script).contains("register-read) limit_ms=${HardLimits.REGISTER_READ_LIMIT.toMillis()} ;;")
     }
 }

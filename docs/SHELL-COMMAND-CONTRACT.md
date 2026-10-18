@@ -89,9 +89,16 @@ does not follow the form fails the read. **The command prints nothing until ever
 read has succeeded**, so a failure never leaves a partial register. An empty
 index prints nothing. The hard limit is 30 seconds. In the shell modes it runs
 from the launch of the process, so the JVM start counts. `main` arms a watchdog
-before the application starts, so a startup that stalls ends with status 124 too.
-A budget that startup spent refuses the read. A budget that runs out during the
-read refuses the output. Standard output is empty on 124. The launch time is the
+before the application starts, so a startup that stalls in Java ends with status
+124 too. **`chat-shell-cli` supervises the command from its own start**, so a stall
+before Java starts, such as a stuck `chat-build`, ends with 124 as well. The
+supervisor ends the whole process group, owns standard error, and leaves one
+`chat-shell: register-read passed its 30000 ms limit` line. A budget that startup
+spent refuses the read. A budget that runs out during the read refuses the output.
+Standard output is empty on 124. **One case differs:** if the limit passes while a
+blocked reader holds up the write of the output, the watchdog halts the process
+with 124, and standard output can hold part of the text. A caller must discard the
+output of a command that does not exit with 0. The launch time is the
 earlier of `CHAT_SHELL_LAUNCH_EPOCH_MS`, which `chat-shell-cli` sets, and the JVM
 start. In the interactive shell the limit runs from the command.
 

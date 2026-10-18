@@ -24,6 +24,55 @@ set -euo pipefail
 : "${CHAT_SHELL_LAUNCH_EPOCH_MS:=$(perl -MTime::HiRes=time -e 'printf "%d", time * 1000')}"
 export CHAT_SHELL_LAUNCH_EPOCH_MS
 
+# A command with a hard limit runs under a supervisor from the launch of the script. The JVM has a
+# watchdog too, but it cannot stop a stall before Java starts, such as a stuck chat-build. The
+# supervisor runs this script again as a child in its own process group. At the limit it ends the
+# whole group, writes one line on standard error, and exits with 124. The limits repeat HardLimits
+# in Kotlin, and LaunchDeadlineTests checks that they agree. The code stays valid for bash 3.2.
+limit_ms=
+case "${1:-}" in
+    register-read) limit_ms=30000 ;;
+esac
+if [[ -n "$limit_ms" && -z "${CHAT_SHELL_SUPERVISED:-}" ]]; then
+    limit_line="chat-shell: $1 passed its ${limit_ms} ms limit"
+    remaining="$(perl -MTime::HiRes=time -e 'printf "%.3f", ($ARGV[0] - (time * 1000 - $ARGV[1])) / 1000' \
+        "$limit_ms" "$CHAT_SHELL_LAUNCH_EPOCH_MS")"
+    if [[ "$remaining" == -* || "$remaining" == 0.000 ]]; then
+        echo "$limit_line" >&2
+        exit 124
+    fi
+    expired="$(mktemp -t chat-shell-cli)"
+    rm -f "$expired"
+    child_err="$(mktemp -t chat-shell-cli-err)"
+    # The supervisor owns standard error. The child can write its own limit line at the same moment as
+    # the timer, and a timeout must leave exactly one line. So the child writes to a file. At the end
+    # the supervisor prints its line alone after a timeout, and it passes the file on after any other end.
+    # perl makes each process its own group leader, so one kill ends the child and all it started.
+    # The explicit input redirection keeps standard input, which a background job would lose.
+    perl -e 'setpgrp(0, 0); exec @ARGV' env CHAT_SHELL_SUPERVISED=1 "${BASH_SOURCE[0]}" "$@" <&0 2> "$child_err" &
+    child=$!
+    perl -e 'setpgrp(0, 0); exec @ARGV' bash -c '
+        sleep "$1"
+        : > "$2"
+        kill -TERM -- "-$3" 2>/dev/null
+        sleep 1
+        kill -KILL -- "-$3" 2>/dev/null' timer "$remaining" "$expired" "$child" > /dev/null 2>&1 &
+    timer=$!
+    status=0
+    wait "$child" || status=$?
+    # The timer ends by a signal, so its wait returns non-zero, and set -e must not stop the script here.
+    kill -TERM -- "-$timer" 2>/dev/null || true
+    wait "$timer" 2>/dev/null || true
+    if [[ -e "$expired" ]]; then
+        rm -f "$expired" "$child_err"
+        echo "$limit_line" >&2
+        exit 124
+    fi
+    cat "$child_err" >&2
+    rm -f "$child_err"
+    exit "$status"
+fi
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
 node_id="${CHAT_SHELL_NODE_ID:-1}"
