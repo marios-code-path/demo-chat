@@ -44,6 +44,7 @@ class ShellCommandContractTests {
         Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false)), positional = "username"),
         Expected("send", "Send a Message", listOf(Opt("topic", "_"), Opt("userName", "_"), Opt("messageText", null), Opt("requestId", "_")), positional = "messageText"),
         Expected("command-status", "Show the status of a message command", listOf(Opt("commandId", null))),
+        Expected("register-read", "Read the register: its index and the newest recent entry of each topic", listOf(Opt("index", "register-index"), Opt("maxAgeHours", "24"))),
         Expected("post", "Post the text of standard input to a topic", listOf(Opt("topic", null), Opt("requestId", "_")), positional = "topic"),
         Expected("import-claude", "Import one Claude conversation", listOf(
             Opt("file", null), Opt("conversation", null), Opt("topic", null),
@@ -162,12 +163,13 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty nine commands and forty five options`() {
+    fun `the contract holds thirty commands and forty seven options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         // command-status and send --requestId raised them from 27 and 33.
         // post raised them from 28 and 41. The messages format and since options raised the options to 45.
-        assertThat(registered()).hasSize(29)
-        assertThat(registered().sumOf { it.options.size }).isEqualTo(45)
+        // register-read raised them to 30 and 47.
+        assertThat(registered()).hasSize(30)
+        assertThat(registered().sumOf { it.options.size }).isEqualTo(47)
     }
 }

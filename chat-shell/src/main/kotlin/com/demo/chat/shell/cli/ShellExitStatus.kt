@@ -37,6 +37,7 @@ enum class ShellExitStatus(val code: Int) {
                     is ShellExit -> return cause.status
                     is CoreAuthenticationRefusal -> return LOGIN
                     is ConnectException, is WebClientRequestException -> return UNAVAILABLE
+                    is java.util.concurrent.TimeoutException -> return TIMEOUT
                     is IllegalArgumentException, is CommandNotFoundException -> return USAGE
                 }
             }

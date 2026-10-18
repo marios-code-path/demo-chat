@@ -9,6 +9,7 @@ import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.fasterxml.jackson.databind.ObjectMapper
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
@@ -16,6 +17,9 @@ import java.time.format.DateTimeFormatter
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
+import com.demo.chat.shell.cli.ShellExit
+import com.demo.chat.shell.cli.ShellExitStatus
 
 @Profile("shell")
 @Component
@@ -144,34 +148,89 @@ class PubSubCommands<T : Any>(
         require(limit == null || limit > 0) { "messages needs a positive --limit." }
         require(format == "human" || format == "records") { "messages needs --format human or records." }
         val room = rooms.room(topic)
-        val stored = messageService.listMessages(ByIdRequest(room.key.id))
-            .collectList().block().orEmpty()
-            .sortedBy { it.key.timestamp }
+        val stored = storedMessages(room)
             .filter { since == null || !it.key.timestamp.isBefore(since) }
         if (stored.isEmpty()) return if (format == "records") "" else "No messages in ${room.data}."
 
         val selected = if (limit == null) stored else stored.takeLast(limit)
-        val handles = selected.map { it.key.from }.distinct().associateWith { sender ->
-            userService.findByUserId(ByIdRequest(sender))
-                .map { it.handle }
-                .onErrorResume(CoreNotFound::class.java) { Mono.empty() }
-                .block() ?: typeUtil.toString(sender)
-        }
-        if (format == "records") return selected.joinToString("\n") { message ->
-            mapper.writeValueAsString(linkedMapOf(
-                "id" to typeUtil.toString(message.key.id),
-                "topic" to room.data,
-                "sender" to handles.getValue(message.key.from),
-                "timestamp" to message.key.timestamp.toString(),
-                "text" to body(message),
-            ))
-        }
+        val handles = selected.map { it.key.from }.distinct().associateWith(::handleOf)
+        if (format == "records") return selected.joinToString("\n") { record(room, it, handles.getValue(it.key.from)) }
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
             .withZone(ZoneId.systemDefault())
         return selected.joinToString("\n") { message ->
             val prefix = "${formatter.format(message.key.timestamp)} | ${handles.getValue(message.key.from)} | "
             prefix + body(message).lines().joinToString("\n" + " ".repeat(prefix.length))
         }
+    }
+
+    /** The handle of a sender, or its key id when the user is missing. */
+    private fun handleOf(sender: T): String =
+        userService.findByUserId(ByIdRequest(sender))
+            .map { it.handle }
+            .onErrorResume(CoreNotFound::class.java) { Mono.empty() }
+            .block() ?: typeUtil.toString(sender)
+
+    /** One message as one JSON line: `id`, `topic`, `sender`, `timestamp`, and `text`. */
+    private fun record(room: MessageTopic<T>, message: Message<T, String>, handle: String): String =
+        mapper.writeValueAsString(linkedMapOf(
+            "id" to typeUtil.toString(message.key.id),
+            "topic" to room.data,
+            "sender" to handle,
+            "timestamp" to message.key.timestamp.toString(),
+            "text" to body(message),
+        ))
+
+    /** The stored messages of a room, oldest first. */
+    private fun storedMessages(room: MessageTopic<T>): List<Message<T, String>> =
+        messageService.listMessages(ByIdRequest(room.key.id)).collectList().block().orEmpty()
+            .sortedBy { it.key.timestamp }
+
+    /**
+     * The session-start read of the topic register, as record lines.
+     *
+     * It prints every pointer of [index], oldest first. It then prints the
+     * newest entry of each topic that a pointer names, if that entry is younger
+     * than [maxAge]. A pointer reads `<fp-id> | <topic-name> | <kind> | <title>`.
+     * A topic that two pointers name is read once. A pointer that does not
+     * follow the form fails the read, and so does any read that fails. **The
+     * read prints nothing until every read succeeded**, so a failure never
+     * leaves a partial register for an agent to take as the whole.
+     *
+     * **[limit] is the hard limit of owner decision 20.** At the limit the
+     * read ends with a [ShellExit] of status [ShellExitStatus.TIMEOUT]. The
+     * worker thread can go on after that, so the caller must end the process.
+     * An empty index answers an empty text.
+     *
+     * Later duplicate pointers of one fp ID, and a warning line for them, are
+     * stage 3 work. See the design, section "Concurrent writes".
+     */
+    fun registerRead(index: String, maxAge: Duration, limit: Duration, now: Instant = Instant.now()): String =
+        Mono.fromCallable { readRegister(index, maxAge, now) }
+            .subscribeOn(Schedulers.boundedElastic())
+            .timeout(limit, Mono.error(ShellExit(ShellExitStatus.TIMEOUT, "register-read passed its ${limit.toMillis()} ms limit")))
+            .block().orEmpty()
+
+    private fun readRegister(index: String, maxAge: Duration, now: Instant): String {
+        val indexRoom = rooms.room(index)
+        val pointers = storedMessages(indexRoom)
+        val topicNames = pointers.map { pointer ->
+            val fields = pointer.data.split(" | ", limit = 4)
+            check(fields.size == 4 && fields[1].isNotBlank()) {
+                "The pointer '${pointer.data.lineSequence().first()}' in $index is not '<fp-id> | <topic-name> | <kind> | <title>'."
+            }
+            fields[1].trim()
+        }.distinct()
+
+        val cutoff = now.minus(maxAge)
+        val entries = topicNames.mapNotNull { name ->
+            val room = rooms.room(name)
+            storedMessages(room).lastOrNull()?.takeIf { it.key.timestamp.isAfter(cutoff) }?.let { room to it }
+        }
+
+        val handles = HashMap<T, String>()
+        fun handle(sender: T) = handles.getOrPut(sender) { handleOf(sender) }
+        return (pointers.map { record(indexRoom, it, handle(it.key.from)) } +
+            entries.map { (room, entry) -> record(room, entry, handle(entry.key.from)) }).joinToString("\n")
     }
 
     private companion object {

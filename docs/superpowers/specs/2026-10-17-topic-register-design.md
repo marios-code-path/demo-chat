@@ -597,10 +597,16 @@ holds the cases. These facts are measured.
   A12, with the core stopped, gave 69. The statuses 75, 76, and 124 have no
   producer yet.
 - **A one-shot process takes 3.1 to 4.0 s** on the direct JVM launch, in cases
-  A1 to A13. A complete register read, with 1 index read and 3 topic reads on
-  representative data, takes 14,935 ms in the median of five runs. That is over
-  the 10-second target of decision 20 and under the 30-second hard limit. The
-  time is the JVM start, so four starts cost about 15 s. See `READ-TIME.md`.
+  A1 to A13. Four processes in a row, one for each read, take 14,935 ms in the
+  median of five runs. That is over the 10-second target of decision 20, because
+  it pays four JVM starts. See `READ-TIME.md`.
+- **The session-start read in one process meets the target.** The command
+  `register-read` reads the index and the newest recent entry of each topic in
+  one JVM. On representative data (20 pointers, 3 topics with 5 entries of about 2
+  KB each) it takes 4,476 ms in the median of five runs, from the launch to the
+  exit. The owner chose this command on 2026-10-18 and said to build resident mode
+  only if it missed 10 seconds. It did not, so task 9 is not built. The command
+  enforces the 30-second limit, counted from the launch, with status 124.
 - **The native one-shot image builds and does not start a context.** The first
   failure is a missing `config/client-rsocket-local.yml`. See
   `docs/NATIVE-IMAGE.md`, section "Shell one-shot".

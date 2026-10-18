@@ -149,6 +149,17 @@ class CommandLineExecutionTests {
     }
 
     @Test
+    fun `a TimeoutException anywhere in the causes gives TIMEOUT`() {
+        val outcome = run(
+            execution(command("slow") { throw RuntimeException("wrapped", java.util.concurrent.TimeoutException("took too long")) }),
+            "slow",
+        )
+
+        assertThat(outcome.status).isEqualTo(ShellExitStatus.TIMEOUT)
+        assertThat(outcome.err).isEqualTo("chat-shell: took too long" + System.lineSeparator())
+    }
+
+    @Test
     fun `any other error gives FAILED`() {
         val outcome = run(execution(command("boom") { throw IllegalStateException("no such room") }), "boom")
 

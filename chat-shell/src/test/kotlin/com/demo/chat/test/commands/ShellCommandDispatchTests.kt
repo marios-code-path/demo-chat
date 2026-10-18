@@ -196,6 +196,7 @@ class ShellCommandDispatchTests {
         val user = mock(UserCommands::class.java) as UserCommands<Any>
         val importer = mock(ClaudeImportCommands::class.java) as ClaudeImportCommands<Any>
         // messages answers text, and a mock answers null for a text.
+        given(pubsub.registerRead(anyString(), com.demo.chat.test.anyObject(), com.demo.chat.test.anyObject(), com.demo.chat.test.anyObject())).willReturn("")
         given(pubsub.messages(anyString(), org.mockito.ArgumentMatchers.any<Int>(), anyString(), org.mockito.ArgumentMatchers.any<java.time.Instant>())).willReturn("")
 
         val registrars = listOf<Any>(
@@ -212,7 +213,7 @@ class ShellCommandDispatchTests {
                 .map { it.invoke(registrar) as Command }
         }
 
-        assertThat(beans).hasSize(29)
+        assertThat(beans).hasSize(30)
         // post is the one command that needs a StreamInput. A mock reader is refused before any option is read.
         beans.filter { it.name != "post" }.forEach { command -> run(command) }
         assertThatThrownBy { run(beans.first { it.name == "post" }) }

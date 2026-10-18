@@ -43,12 +43,40 @@ solved.
   (`docs/NATIVE-IMAGE.md`, section "Shell one-shot").
 - Resident mode pays the start once. It is not built, so it has no row.
 
-## What the owner decides
+## The session-start command in one process
 
-No one-shot launcher meets the target. Under the plan, task 9 (resident mode)
-then runs. The owner chooses one of these:
+The owner decided on 2026-10-18: keep the index read and the three topic reads,
+and run them in one JVM process. Measure from the launch to the last output
+line. Build resident mode only if that command misses 10 seconds. Enforce the
+30-second limit.
 
-- Build resident mode (task 9).
-- Reduce the number of reads in a session-start read, for example one process
-  that reads the index and the topics. The design allows one command.
-- Name another choice, or another basis.
+The command is `register-read`. `read.sh register` ran it 5 times on the same
+kind of data (20 pointers in the form `<fp-id> | <topic-name> | <kind> |
+<title>`, and 5 entries of about 2 KB in each of 3 topics). It checked every run:
+exit status 0, empty standard error, 20 index records, and the newest entry of
+each of the 3 topics. No check failed. The output was 11,714 bytes.
+
+| Launcher | Command | Run 1 | Run 2 | Run 3 | Run 4 | Run 5 | Median | Against 10 s | Against 30 s |
+|----------|---------|-------|-------|-------|-------|-------|--------|--------------|--------------|
+| `chat-shell-cli` (JVM) | `register-read` | 4,649 ms | 4,476 ms | 4,465 ms | 4,471 ms | 4,497 ms | **4,476 ms** | **under** | under |
+
+**The time is from the launch to the exit of the process.** The last output line
+comes a few milliseconds before the exit. One start (about 3.7 s) plus the reads
+(about 0.8 s) gives 4.5 s.
+
+**The command meets the 10-second target, so resident mode (task 9) is not
+built.** The four-process version above took 14,935 ms, because it paid four
+JVM starts.
+
+**The 30-second limit is enforced** in the command, and a unit test shows
+status 124 for a read that never ends (`PubSubRegisterReadTests`). In the shell
+modes the limit counts the JVM start. No live run reached the limit.
+
+## What this does not show
+
+- The data has 3 recent topics. A register with more recent topics reads more
+  topics in the same process. The reads run one after another, so the time grows
+  by the read time of a topic. Stage 3 measures the real register.
+- The later duplicate pointers of one fp ID, and a warning line for them, are
+  stage 3 work.
+- A cold JVM on another host can start slower. The measurement is one host.

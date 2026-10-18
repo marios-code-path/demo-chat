@@ -63,6 +63,7 @@ See `Positional input` below.
 | `command-status` | `commandStatus` | Show the status of a message command | `--commandId` `String` required | none |
 | `listen` | `listen` | Listen to a topic | `--topic` `String` required | `--topic` |
 | `hangup` | `hangup` | Stop listening to a topic | `--topic` `String` required | `--topic` |
+| `register-read` | `registerRead` | Read the register: its index and the newest recent entry of each topic | `--index` `String` default `register-index`<br>`--maxAgeHours` `String` default `24` | none |
 | `post` | `post` | Post the text of standard input to a topic | `--topic` `String` required<br>`--requestId` `String` default `_` | `--topic` |
 | `messages` | `messages` | List the messages of a topic | `--topic` `String` required<br>`--limit` `Integer` optional<br>`--format` `String` default `human`<br>`--since` `String` optional | `--topic` |
 
@@ -78,6 +79,17 @@ line with `messageId`, `commandId`, `requestId`, and `outcome`. The text arrives
 byte for byte: a missing final newline, a `\r\n` line end, and non-ASCII text
 stay as sent. Empty input is refused. Only the shell modes give a command input,
 so `post` in the interactive shell is refused. See `The shell modes` below.
+
+`register-read` is the session-start read of the topic register, in one
+process. It prints every pointer of the index, oldest first, as record lines.
+It then prints the newest entry of each topic that a pointer names, if that
+entry is younger than `--maxAgeHours`. A pointer reads `<fp-id> | <topic-name> |
+<kind> | <title>`. A topic that two pointers name is read once. A pointer that
+does not follow the form fails the read. **The command prints nothing until every
+read has succeeded**, so a failure never leaves a partial register. An empty
+index prints nothing. The hard limit is 30 seconds. In the shell modes it runs
+from the launch of the process, so the JVM start counts, and a read past it gives
+status 124. In the interactive shell it runs from the command.
 
 ### ClaudeImportCommands
 
@@ -143,14 +155,14 @@ out.
 
 See `The ! escape` below.
 
-**29 commands and 45 options in `chat-shell`, and 30 commands in a default
+**30 commands and 47 options in `chat-shell`, and 31 commands in a default
 build.** `ShellCommandContractTests` pins every command, option, and
 positional argument of `chat-shell`. `HostCommandTests` pins the `!` command.
 The migration table held 26 commands. `messages` and `command-status` raised
 the count to 28. `CHAT-ybmlcdiw` removed `bye`. `CHAT-emwhnlay` adds
 `import-claude`. `CHAT-jrlctimq` adds `!` in `chat-shell-host`, with no
 option. `CHAT-jmnjvupr` adds `post` with two options, and it adds `--format`
-and `--since` to `messages`.
+and `--since` to `messages`. It also adds `register-read` with two options.
 
 ## Availability is not used, and the dead check is gone
 
@@ -471,7 +483,7 @@ the console, and an empty standard error after a success.
 | 75 | A post was sent, but no read showed it in time. Nothing returns it yet. |
 | 76 | A resident request or response broke the protocol. Nothing returns it yet. |
 | 77 | The login failed. |
-| 124 | The command passed its time limit. Nothing returns it yet. |
+| 124 | The command passed its time limit. `register-read` returns it. |
 
 A failure writes one line on standard error: `chat-shell: <message>`.
 

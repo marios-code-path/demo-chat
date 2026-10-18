@@ -6,6 +6,7 @@
 #
 #   read.sh seed <scratch-dir>
 #   read.sh measure <scratch-dir> cli|native
+#   read.sh register <scratch-dir> cli|native
 #
 # seed     Creates the representative data: 4 topics, 20 pointer lines in
 #          register-index, and 5 entries of about 2 KB in each of 3 topics. It
@@ -13,6 +14,12 @@
 #          that check does it write the marker <scratch-dir>/seeded. It needs
 #          add-topic. While CHAT-siaetqtr is open, add-topic fails, seed ends
 #          with status 3, and measure runs the exploratory stand-in.
+# register Runs the register-read command 5 times. It is the session-start read in
+#          ONE process: the index and the newest entry of each recent topic. It
+#          needs the marker. It measures from the launch to the exit, which
+#          follows the last output line. It checks the exit status, empty
+#          standard error, 20 index records, and one entry of each of the 3
+#          topics. Any failed check ends it with status 1 and no median.
 # measure  Runs the 4 reads 5 times, and prints each total in milliseconds and
 #          the median. A representative measure needs the marker. It checks
 #          every response: exit status 0, empty standard error, and the expected
@@ -75,7 +82,7 @@ seed)
         fi
     done
     for i in $(seq 20); do
-        printf 'pointer %s to register-topic-%s' "$i" "$(( (i - 1) % 3 + 1 ))" \
+        printf 'CHAT-reg%s | register-topic-%s | task | Pointer %s of the representative index' "$i" "$(( (i - 1) % 3 + 1 ))" "$i" \
             | one_shot cli post register-index > /dev/null 2>> "$S/seed.err" || { echo "seed: post $i failed" >&2; exit 1; }
     done
     entry="$(perl -e 'print "entry line " . ("x" x 60) . "\n" for 1 .. 32')"
@@ -141,5 +148,32 @@ measure)
     median="$(printf '%s\n' "${totals[@]}" | sort -n | sed -n 3p)"
     echo "median: $median ms"
     ;;
-*) echo "usage: read.sh seed|measure <scratch-dir> [cli|native]" >&2; exit 2 ;;
+register)
+    launcher="${3:?usage: read.sh register <scratch-dir> cli|native}"
+    [[ -f "$S/seeded" ]] || { echo "register: no seed marker. Run read.sh seed first." >&2; exit 2; }
+    totals=()
+    failed=0
+    for run in 1 2 3 4 5; do
+        start="$(now_ms)"
+        one_shot "$launcher" register-read < /dev/null > "$S/register-$run.out" 2> "$S/register-$run.err" \
+            || { echo "register: run $run exited non-zero" >&2; failed=1; }
+        total=$(( $(now_ms) - start ))
+        totals+=("$total")
+        echo "run $run: $total ms"
+        [[ -s "$S/register-$run.err" ]] && { echo "register: run $run wrote standard error" >&2; failed=1; }
+        jq -e -s '
+            length == 23
+            and (.[0:20] | all(.[]; .topic == "register-index" and (.text | startswith("CHAT-reg"))))
+            and ([.[20:][] | .topic] == ["register-topic-1", "register-topic-2", "register-topic-3"])
+            and (.[20:] | all(.[]; (.text | length) > 0))' "$S/register-$run.out" > /dev/null 2>&1 \
+            || { echo "register: run $run did not answer 20 index records and one entry of each of the 3 topics" >&2; failed=1; }
+    done
+    if (( failed != 0 )); then
+        echo "register: FAILED. The times above decide nothing." >&2
+        exit 1
+    fi
+    median="$(printf '%s\n' "${totals[@]}" | sort -n | sed -n 3p)"
+    echo "median: $median ms"
+    ;;
+*) echo "usage: read.sh seed|measure|register <scratch-dir> [cli|native]" >&2; exit 2 ;;
 esac

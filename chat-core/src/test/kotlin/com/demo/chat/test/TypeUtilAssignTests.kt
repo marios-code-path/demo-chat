@@ -36,6 +36,17 @@ class TypeUtilAssignTests {
         assertThat(UUIDUtil().assignFrom(bytes)).isEqualTo(id)
     }
 
+    /** The zero UUID is a real id. Bytes of the wrong length must fail, not become it. Sigma found this on PR #259. */
+    @Test
+    fun `a UUID refuses bytes of any other length`() {
+        for (length in listOf(0, 8, 15, 17)) {
+            assertThatThrownBy { UUIDUtil().assignFrom(ByteArray(length)) }
+                .describedAs("%s bytes", length)
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("A key id of $length bytes is not a UUID.")
+        }
+    }
+
     @Test
     fun `malformed text fails, so a route can answer an unknown id`() {
         assertThatThrownBy { LongUtil().assignFrom("abc") }.isInstanceOf(IllegalArgumentException::class.java)

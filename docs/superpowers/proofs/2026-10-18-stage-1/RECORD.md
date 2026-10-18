@@ -48,6 +48,10 @@ N2, N5, and N10 did not run. The native image does not start a context
   this. See `UUIDRootOfTransportTests` and the commit message.
 - **The topic-read time of A10 is 3,968 ms.** One JVM process takes 3.1 to 4.0 s.
   See `READ-TIME.md` for a complete register read.
+- **`register-read` meets the 10-second target.** It reads the index and the
+  newest entry of 3 topics in one process, in 4,476 ms in the median of five runs,
+  from the launch to the exit (`read.sh register`, see `READ-TIME.md`). It is not
+  one of the numbered cases. Its checks are in `read.sh`.
 - **The end state is clean.** No listener on 6990, 6991, or 9101. The core group
   is empty. `docker ps` is the same before and after.
 

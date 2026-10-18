@@ -88,7 +88,9 @@ class UUIDUtil : TypeUtil<UUID> {
             is UUID -> t
             is String -> fromString(t)
             // CBOR writes a UUID as 16 bytes, and an untyped read decodes them as a byte array. See CHAT-siaetqtr.
-            is ByteArray -> if (t.size == 16) java.nio.ByteBuffer.wrap(t).let { UUID(it.long, it.long) } else UUID(0, 0)
+            // The zero UUID is a real id, so bytes of any other length fail and do not become it.
+            is ByteArray -> if (t.size == 16) java.nio.ByteBuffer.wrap(t).let { UUID(it.long, it.long) }
+            else throw IllegalArgumentException("A key id of ${t.size} bytes is not a UUID.")
             is Number -> UUID(t.toLong(), 0)
             else -> UUID(0, 0)
         }

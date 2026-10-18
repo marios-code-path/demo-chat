@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.shell.core.command.Command
 import org.springframework.shell.core.command.CommandContext
 import org.springframework.shell.core.command.CommandOption
+import java.time.Duration
 import java.time.Instant
 import java.time.format.DateTimeParseException
 import java.util.function.Consumer
@@ -72,6 +73,36 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
             commands.post(ctx.mainValue("topic"), text, ctx.optionValue("requestId"))
         })
 
+    /**
+     * `register-read` is the session-start read of the topic register, in one
+     * process. See `PubSubCommands.registerRead`.
+     *
+     * **The 30-second limit runs from the launch of the process in the shell
+     * modes**, as owner decision 20 says, so the JVM start counts. In the
+     * interactive shell the process is old, so the limit runs from the command.
+     * An empty register prints nothing, and not even a blank line.
+     */
+    @Bean
+    fun registerReadCommand(): Command = Command.builder()
+        .name("register-read")
+        .description("Read the register: its index and the newest recent entry of each topic")
+        .group("PubSub")
+        .options(
+            CommandOption.with().longName("index").required(false).defaultValue("register-index").type(String::class.java).build(),
+            CommandOption.with().longName("maxAgeHours").required(false).defaultValue("24").type(String::class.java).build(),
+        )
+        .execute(Consumer<CommandContext> { ctx ->
+            val hours = ctx.optionValue("maxAgeHours").toLongOrNull()?.takeIf { it > 0 }
+                ?: throw IllegalArgumentException("register-read needs a positive --maxAgeHours.")
+            val sinceLaunch = ctx.inputReader() is StreamInput
+            val used = if (sinceLaunch) ProcessHandle.current().info().startInstant()
+                .map { Duration.between(it, Instant.now()) }.orElse(Duration.ZERO) else Duration.ZERO
+            val limit = REGISTER_READ_LIMIT.minus(used).coerceAtLeast(Duration.ofMillis(1))
+            val text = commands.registerRead(ctx.optionValue("index"), Duration.ofHours(hours), limit)
+            if (text.isNotEmpty()) ctx.outputWriter().println(text)
+            ctx.outputWriter().flush()
+        })
+
     /** `command-status` reads the backends of a command that the login owns. */
     @Bean
     fun commandStatusCommand(): Command = Command.builder()
@@ -135,4 +166,8 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
             ctx.outputWriter().flush()
         })
 
+    private companion object {
+        /** The hard limit of a complete session-start read. Owner decision 20. */
+        val REGISTER_READ_LIMIT: Duration = Duration.ofSeconds(30)
+    }
 }
