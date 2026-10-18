@@ -42,7 +42,7 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
                 CommandOption.with().longName("requestId").required(false).defaultValue("_").type(String::class.java).build(),
             )
         .execute(Function<CommandContext, String> { ctx ->
-            commands.send(ctx.optionValue("topic"), ctx.optionValue("userName"), ctx.mainValue("messageText"), ctx.optionValue("requestId")).let { "" }
+            commands.send(ctx.optionValue("topic"), ctx.optionValue("userName"), ctx.mainValue("messageText"), ctx.optionValue("requestId"))
         })
 
     /** `command-status` reads the backends of a command that the login owns. */
@@ -52,7 +52,7 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
         .description("Show the status of a message command")
         .group("PubSub")
         .options(CommandOption.with().longName("commandId").required(true).type(String::class.java).build())
-        .execute(Function<CommandContext, String> { ctx -> commands.commandStatus(ctx.optionValue("commandId")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.commandStatus(ctx.optionValue("commandId")) })
 
     @Bean
     fun listenCommand(): Command = Command.builder()

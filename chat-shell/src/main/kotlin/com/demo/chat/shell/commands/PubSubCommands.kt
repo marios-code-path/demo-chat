@@ -32,8 +32,11 @@ class PubSubCommands<T : Any>(
      * creates a new ID. Repeat a send with the printed request ID to recover
      * its receipt. The server binds the sender to the login, so the shell
      * sends none.
+     *
+     * The answer is the request ID, the message ID, the command ID, and the
+     * outcome, one on each line.
      */
-    fun send(topic: String, userName: String, messageText: String, requestId: String) {
+    fun send(topic: String, userName: String, messageText: String, requestId: String): String {
         val id = if (requestId == "_") UUID.randomUUID().toString() else requestId
         val dest: Mono<T> = when {
             topic != "_" -> Mono.just(rooms.idOf(topic))
@@ -43,25 +46,26 @@ class PubSubCommands<T : Any>(
             }
             else -> throw IllegalArgumentException("send needs --topic or --userName.")
         }
-        dest.flatMap { messageService.submit(MessageSubmitRequest(messageText, it, id)) }
-            .doOnNext { result ->
-                println("Request Id: $id")
-                println("Message Id: ${result.receipt.messageKey.id}")
-                println("Command Id: ${result.receipt.commandId}")
-                println("Outcome: ${result.outcome}")
+        return dest.flatMap { messageService.submit(MessageSubmitRequest(messageText, it, id)) }
+            .map { result ->
+                listOf(
+                    "Request Id: $id",
+                    "Message Id: ${result.receipt.messageKey.id}",
+                    "Command Id: ${result.receipt.commandId}",
+                    "Outcome: ${result.outcome}",
+                ).joinToString("\n")
             }
-            .block()
+            .block().orEmpty()
     }
 
-    /** Prints the state of each backend of a command that the login owns. */
-    fun commandStatus(commandId: String) {
+    /** Answers the state of each backend of a command that the login owns. */
+    fun commandStatus(commandId: String): String =
         messageService.commandStatus(CommandStatusRequest(commandId))
-            .doOnNext { status ->
-                println("Command Id: ${status.commandId}")
-                status.backends.forEach { (backend, state) -> println("$backend: ${state.state}") }
+            .map { status ->
+                (listOf("Command Id: ${status.commandId}") +
+                    status.backends.map { (backend, state) -> "$backend: ${state.state}" }).joinToString("\n")
             }
-            .block()
-    }
+            .block().orEmpty()
 
     /**
      * Listens to the room that [topic] names, and answers its id.

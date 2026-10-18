@@ -56,11 +56,10 @@ class LoginCommands<T>(
             loggedInUser = Optional.of(user.key.id as Any)
             // load authentication into clients
         } catch (e: Exception) {
-            println("Authentication failed :" + e.message)
-
             ShellStateConfiguration.clearLogin()
 
-            throw e
+            // The cause stays, so the exit status of a mode can read it.
+            throw IllegalStateException("Authentication failed: ${e.message}", e)
         }
     }
 }
