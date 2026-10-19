@@ -22,28 +22,28 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-18 at 00:35 PDT.
+Measured on 2026-10-18 at 19:26 PDT.
 
 | | |
 |---|---|
 | Checkout | `master` at `be71cd44`, the merge commit of PR #255, in sync with `origin`. PR #256 merged after it as `e1070ff4`. That was a register change, so this row does not move. Untracked owner files stay in the main checkout. |
-| Last merged PR | #256, merged on 2026-10-18 at 04:05 UTC, which is 2026-10-17 in PDT. |
+| Last merged PR | #258, merged on 2026-10-18 at 08:01 UTC, after #257 at 08:01 UTC. |
 | Merge strategy | Merge commits only. Every merge needs the owner's named `--admin` bypass. |
-| Open PRs | #257, a draft, and the PR of this change. |
+| Open PRs | #259, a draft, and the PR of this change. |
 | Branches and worktrees | Two local branches hold commits that master lacks, and the archive of 2026-10-17 names them. Every branch ref is kept. |
 
 ## In flight
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. Draft PR #257 at `e3e0216a` holds the design, the stage 0 proof, and the stage 1 plan. Stage 1 has not started, and it waits for the owner's approval. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
-| `CHAT-siaetqtr` | none | A child of `CHAT-jmnjvupr`. `add-topic` fails on a `uuid` memory core with `A key id cannot be a byte[]`. It blocks task 8 of stage 1 and all of stage 3. |
+| `CHAT-jmnjvupr` | `chat-jmnjvupr-topic-register` | The topic register on node 9. PR #257 (the design, the stage 0 proof, and the stage 1 plan) and PR #258 (the hand-off) are merged. PR #259 holds stage 1. It is out of draft for owner review, and it is not merged. Sigma's reviews found the `!` status, the `read.sh` checks, and the UUID byte length. They also found six deadline paths for the `register-read` limit: a launcher stall before Java starts, blocked output that stopped the watchdog, a child that ignores TERM, a stalled `perl` before the timer, a late output that could report success, and an output that ends after the 30 s mark and before the watchdog runs. The branch carries fixes for all six at `5f8c8498`. Sigma reviewed that commit and found no remaining blocker. That review is not a merge authorization. The session-start read is one command, `register-read`, in one JVM process. It takes about 4.5 s from launch to exit on representative data, under the 10 s target of decision 20. Sigma recommended that command. Mario confirmed on 2026-10-18 that `AGENTS.md` will direct agents to run it in stage 3. This decision does not authorize a merge. The 30 s limit counts from the launch and gives status 124: the launcher starts its timer first, ends every job group with TERM and then KILL, and uses no `perl`. A watchdog in the JVM covers the rest. Neither waits for a blocked write, and a late output is never a success. Live cases A14 and A15 show it. So resident mode (task 9) is not built for this workload. The hand-off is the newest comment on the issue. Read it with `fp context CHAT-jmnjvupr`. |
+| `CHAT-siaetqtr` | `chat-jmnjvupr-topic-register` | A child of `CHAT-jmnjvupr`. `add-topic` failed on a `uuid` core with `A key id cannot be a byte[]`. The cause was CBOR, which writes a UUID as 16 bytes. The fix is in draft PR #259 and it is not merged. Live cases A8 to A10 pass with it. |
 
 **The next Theta session starts here.**
 
-1. Run `fp context CHAT-jmnjvupr`, and read the hand-off comment.
-2. Ask the owner whether stage 1 runs.
-3. Run stage 1 in `.worktrees/chat-jmnjvupr-topic-register` with `superpowers:executing-plans`. Tasks 1 to 7 and 10 can run. Tasks 8 and 9 wait for `CHAT-siaetqtr`.
+1. Run `fp context CHAT-jmnjvupr`, and read the newest comments. Run `gh pr view 259`.
+2. Do not merge PR #259 or PR #260 without Mario's explicit merge authorization and the named `--admin` bypass. A review comment is not that authorization. The merge order is #259, then #260. After #259 merges, update this register to show the merged state before #260 merges.
+3. Stage 3 builds `node-9/bin/register read --as <name>` on `register-read`. It then changes `AGENTS.md`. It still needs the later duplicate pointers of one fp ID, with a warning line, and a measurement on the real register.
 4. Every live run uses the stage 0 sandbox and a disposable core on 6990 and 6991. Never use `chat-deploy core` near node 16.
 
 Five more issues are `in-progress` in fp, with no update in the last 24 hours:
@@ -57,6 +57,8 @@ Five more issues are `in-progress` in fp, with no update in the last 24 hours:
 | #254 | `CHAT-ynkmugeb` | The README states that vector indexing is opt-in |
 | #255 | `CHAT-jrlctimq` | The `!` command runs a host command from chat-shell |
 | #256 | `CHAT-exkzongc` | The register became this 24-hour tip, and its earlier text moved to `forward-register-archive-2026-10-17.md` |
+| #257 | `CHAT-jmnjvupr` | The design of the topic register, the stage 0 proof, and the stage 1 plan |
+| #258 | `CHAT-jmnjvupr` | The hand-off of the topic register work in this register |
 
 ## The archive
 
