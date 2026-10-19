@@ -84,6 +84,70 @@ else
     bad 'toggle_rejects_other_values' "$toggle_case"
 fi
 
+# -- Isolation values ---------------------------------------------------
+
+stub_dir="$work/stub"
+mkdir -p "$stub_dir"
+cat > "$stub_dir/docker" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$DOCKER_CALLS"
+exit 0
+EOF
+chmod +x "$stub_dir/docker"
+
+calls="$work/project-calls"
+out="$( cd "$repo_root" \
+    && NODE9_PROJECT=chat-deploy-core NODE9_SECRETS_FILE="$fixture" \
+       DOCKER_CALLS="$calls" PATH="$stub_dir:$PATH" \
+       bash -c 'source node-9/bin/lib.sh && node9_load_env && node9_compose config' 2>&1 )"
+status=$?
+if [[ $status -eq 2 && "$out" == *"got 'chat-deploy-core'"* && ! -e "$calls" ]]; then
+    ok 'project_override_is_rejected'
+else
+    bad 'project_override_is_rejected' "exit $status, output: $out"
+fi
+
+out="$( cd "$repo_root" \
+    && NODE9_DIR=/tmp/not-node-9 \
+       bash -c 'source node-9/bin/lib.sh; printf "%s\n" "$NODE9_DIR"' )"
+if [[ "$out" == "$node9_root" ]]; then
+    ok 'dir_override_is_ignored'
+else
+    bad 'dir_override_is_ignored' "dir: $out"
+fi
+
+ports_case='ok'
+for assignment in NODE9_RSOCKET_PORT=6790 NODE9_MGMT_PORT=6791; do
+    name="${assignment%%=*}"
+    value="${assignment#*=}"
+    out="$( cd "$repo_root" \
+        && env "$assignment" \
+           bash -c 'source node-9/bin/lib.sh && node9_load_env' 2>&1 )"
+    status=$?
+    if [[ $status -ne 2 || "$out" != *"$name"* || "$out" != *"got '$value'"* ]]; then
+        ports_case="$assignment: exit $status, output: $out"
+    fi
+done
+if [[ "$ports_case" == 'ok' ]]; then
+    ok 'fixed_ports_are_rejected'
+else
+    bad 'fixed_ports_are_rejected' "$ports_case"
+fi
+
+calls="$work/image-calls"
+out="$( cd "$repo_root" \
+    && CORE_IMAGE=docker.io/library/cassandra-core-service-rsocket:0.0.1 \
+       NODE9_SECRETS_FILE="$fixture" DOCKER_CALLS="$calls" \
+       PATH="$stub_dir:$PATH" \
+       bash -c 'source node-9/bin/lib.sh && node9_load_env && node9_compose config' 2>&1 )"
+status=$?
+if [[ $status -eq 2 && "$out" == *CORE_IMAGE* \
+      && "$out" == *docker.io/library* && ! -e "$calls" ]]; then
+    ok 'image_override_is_rejected'
+else
+    bad 'image_override_is_rejected' "exit $status, output: $out"
+fi
+
 # -- The Compose model --------------------------------------------------
 
 on_text="$(node9_config on "$fixture" 2>&1)"

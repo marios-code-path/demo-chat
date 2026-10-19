@@ -1,10 +1,9 @@
 # Shared helpers for node-9. Source this file. See CHAT-hcfgkbuz.
 #
 # NODE9_DIR comes from this file, not from the working directory.
-
-if [[ -z "${NODE9_DIR:-}" ]]; then
-    NODE9_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-fi
+# A caller cannot override it. The directory fixes the Compose files and
+# the mounts, so an override could redirect node 9 at another project.
+NODE9_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # node9_check_toggle VALUE
 # Status 0 for on or off. Otherwise print the value and return 2.
@@ -20,9 +19,35 @@ node9_check_toggle() {
     esac
 }
 
+# node9_check_isolation
+# Reject a caller override of a fixed isolation value. Node 9 must never
+# reach the node-16 Compose project, image, or host ports.
+node9_check_isolation() {
+    if [[ "${NODE9_PROJECT:-}" != 'chat-node-9' ]]; then
+        printf "node-9: NODE9_PROJECT must be chat-node-9, got '%s'\n" "${NODE9_PROJECT:-}" >&2
+        return 2
+    fi
+    if [[ "${NODE9_RSOCKET_PORT:-}" != '6890' ]]; then
+        printf "node-9: NODE9_RSOCKET_PORT must be 6890, got '%s'\n" "${NODE9_RSOCKET_PORT:-}" >&2
+        return 2
+    fi
+    if [[ "${NODE9_MGMT_PORT:-}" != '6891' ]]; then
+        printf "node-9: NODE9_MGMT_PORT must be 6891, got '%s'\n" "${NODE9_MGMT_PORT:-}" >&2
+        return 2
+    fi
+    case "${CORE_IMAGE:-}" in
+        node-9/cassandra-core-service-rsocket:*)
+            ;;
+        *)
+            printf "node-9: CORE_IMAGE must be node-9/cassandra-core-service-rsocket:<version>, got '%s'\n" "${CORE_IMAGE:-}" >&2
+            return 2
+            ;;
+    esac
+}
+
 # node9_load_env
 # Set the variables of node-9.env that the caller does not set. Then check
-# the toggle.
+# the toggle and the fixed isolation values.
 node9_load_env() {
     local file="$NODE9_DIR/node-9.env"
     if [[ ! -f "$file" ]]; then
@@ -38,7 +63,8 @@ node9_load_env() {
             export "$key=$value"
         fi
     done < "$file"
-    node9_check_toggle "${NODE9_VECTOR_PERSIST:-}"
+    node9_check_toggle "${NODE9_VECTOR_PERSIST:-}" || return 2
+    node9_check_isolation
 }
 
 # node9_compose_args
@@ -62,6 +88,7 @@ node9_compose() {
         return 2
     fi
     node9_check_toggle "${NODE9_VECTOR_PERSIST:-}" || return 2
+    node9_check_isolation || return 2
     local -a args=()
     local line
     while IFS= read -r line; do
