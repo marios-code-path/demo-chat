@@ -62,8 +62,11 @@ node9_compose() {
         return 2
     fi
     node9_check_toggle "${NODE9_VECTOR_PERSIST:-}" || return 2
-    local -a args
-    mapfile -t args < <(node9_compose_args)
+    local -a args=()
+    local line
+    while IFS= read -r line; do
+        args+=("$line")
+    done < <(node9_compose_args)
     (
         cd "$NODE9_DIR" || exit 1
         docker compose -p "${NODE9_PROJECT:-chat-node-9}" \
