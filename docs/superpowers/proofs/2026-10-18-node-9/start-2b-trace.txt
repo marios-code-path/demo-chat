@@ -249,12 +249,12 @@ node-9: /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/n
 + read -r line
 + cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9
 + docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml up -d cassandra redis consul
- Container chat-node-9-consul-1 Starting 
- Container chat-node-9-cassandra-1 Starting 
- Container chat-node-9-redis-1 Starting 
- Container chat-node-9-redis-1 Started 
- Container chat-node-9-consul-1 Started 
- Container chat-node-9-cassandra-1 Started 
+ Container chat-node-9-consul-1 Starting
+ Container chat-node-9-cassandra-1 Starting
+ Container chat-node-9-redis-1 Starting
+ Container chat-node-9-redis-1 Started
+ Container chat-node-9-consul-1 Started
+ Container chat-node-9-cassandra-1 Started
 + node9_apply_schema
 + local attempt
 + local ready=false
@@ -349,19 +349,19 @@ node-9: /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/n
 + read -r line
 + cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9
 + docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml up -d core-service-rsocket
- Container chat-node-9-redis-1 Running 
- Container chat-node-9-consul-1 Running 
- Container chat-node-9-cassandra-1 Running 
- Container chat-node-9-lucene-volume-init-1 Starting 
- Container chat-node-9-vector-volume-init-1 Starting 
- Container chat-node-9-lucene-volume-init-1 Started 
- Container chat-node-9-vector-volume-init-1 Started 
- Container chat-node-9-lucene-volume-init-1 Waiting 
- Container chat-node-9-vector-volume-init-1 Waiting 
- Container chat-node-9-vector-volume-init-1 Exited 
- Container chat-node-9-lucene-volume-init-1 Exited 
- Container chat-node-9-core-service-rsocket-1 Starting 
- Container chat-node-9-core-service-rsocket-1 Started 
+ Container chat-node-9-redis-1 Running
+ Container chat-node-9-consul-1 Running
+ Container chat-node-9-cassandra-1 Running
+ Container chat-node-9-lucene-volume-init-1 Starting
+ Container chat-node-9-vector-volume-init-1 Starting
+ Container chat-node-9-lucene-volume-init-1 Started
+ Container chat-node-9-vector-volume-init-1 Started
+ Container chat-node-9-lucene-volume-init-1 Waiting
+ Container chat-node-9-vector-volume-init-1 Waiting
+ Container chat-node-9-vector-volume-init-1 Exited
+ Container chat-node-9-lucene-volume-init-1 Exited
+ Container chat-node-9-core-service-rsocket-1 Starting
+ Container chat-node-9-core-service-rsocket-1 Started
 + (( attempt = 1 ))
 + (( attempt <= 180 ))
 + curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
