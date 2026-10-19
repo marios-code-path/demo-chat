@@ -1,0 +1,396 @@
++ set -uo pipefail
++++ dirname node-9/bin/start
+++ cd node-9/bin
+++ pwd
++ script_dir=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/bin
++ source /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/bin/lib.sh
+++++ dirname /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/bin/lib.sh
++++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/bin/..
++++ pwd
+++ NODE9_DIR=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9
++ dry_run=false
++ node9_load_env
++ local file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env
++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env ]]
++ local line key value
++ IFS=
++ read -r line
++ [[ -z # Launch values for node 9. This file holds no secret. ]]
++ [[ # Launch values for node 9. This file holds no secret. == \#* ]]
++ continue
++ IFS=
++ read -r line
++ [[ -z # A value already in the caller's environment wins. See CHAT-hcfgkbuz. ]]
++ [[ # A value already in the caller's environment wins. See CHAT-hcfgkbuz. == \#* ]]
++ continue
++ IFS=
++ read -r line
++ [[ -z # Exception: NODE9_PROJECT, NODE9_RSOCKET_PORT, NODE9_MGMT_PORT, and ]]
++ [[ # Exception: NODE9_PROJECT, NODE9_RSOCKET_PORT, NODE9_MGMT_PORT, and == \#* ]]
++ continue
++ IFS=
++ read -r line
++ [[ -z # CORE_IMAGE are fixed isolation values. lib.sh rejects a changed value. ]]
++ [[ # CORE_IMAGE are fixed isolation values. lib.sh rejects a changed value. == \#* ]]
++ continue
++ IFS=
++ read -r line
++ [[ -z NODE9_PROJECT=chat-node-9 ]]
++ [[ NODE9_PROJECT=chat-node-9 == \#* ]]
++ key=NODE9_PROJECT
++ value=chat-node-9
++ printenv NODE9_PROJECT
++ export NODE9_PROJECT=chat-node-9
++ NODE9_PROJECT=chat-node-9
++ IFS=
++ read -r line
++ [[ -z NODE9_VECTOR_PERSIST=on ]]
++ [[ NODE9_VECTOR_PERSIST=on == \#* ]]
++ key=NODE9_VECTOR_PERSIST
++ value=on
++ printenv NODE9_VECTOR_PERSIST
++ export NODE9_VECTOR_PERSIST=on
++ NODE9_VECTOR_PERSIST=on
++ IFS=
++ read -r line
++ [[ -z NODE9_RSOCKET_PORT=6890 ]]
++ [[ NODE9_RSOCKET_PORT=6890 == \#* ]]
++ key=NODE9_RSOCKET_PORT
++ value=6890
++ printenv NODE9_RSOCKET_PORT
++ export NODE9_RSOCKET_PORT=6890
++ NODE9_RSOCKET_PORT=6890
++ IFS=
++ read -r line
++ [[ -z NODE9_MGMT_PORT=6891 ]]
++ [[ NODE9_MGMT_PORT=6891 == \#* ]]
++ key=NODE9_MGMT_PORT
++ value=6891
++ printenv NODE9_MGMT_PORT
++ export NODE9_MGMT_PORT=6891
++ NODE9_MGMT_PORT=6891
++ IFS=
++ read -r line
++ [[ -z NODE9_IMAGE_REPO=node-9 ]]
++ [[ NODE9_IMAGE_REPO=node-9 == \#* ]]
++ key=NODE9_IMAGE_REPO
++ value=node-9
++ printenv NODE9_IMAGE_REPO
++ export NODE9_IMAGE_REPO=node-9
++ NODE9_IMAGE_REPO=node-9
++ IFS=
++ read -r line
++ [[ -z CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1 ]]
++ [[ CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1 == \#* ]]
++ key=CORE_IMAGE
++ value=node-9/cassandra-core-service-rsocket:0.0.1
++ printenv CORE_IMAGE
++ export CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1
++ CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1
++ IFS=
++ read -r line
++ [[ -z CASSANDRA_VERSION=4.1.3 ]]
++ [[ CASSANDRA_VERSION=4.1.3 == \#* ]]
++ key=CASSANDRA_VERSION
++ value=4.1.3
++ printenv CASSANDRA_VERSION
++ export CASSANDRA_VERSION=4.1.3
++ CASSANDRA_VERSION=4.1.3
++ IFS=
++ read -r line
++ [[ -z REDIS_VERSION=7 ]]
++ [[ REDIS_VERSION=7 == \#* ]]
++ key=REDIS_VERSION
++ value=7
++ printenv REDIS_VERSION
++ export REDIS_VERSION=7
++ REDIS_VERSION=7
++ IFS=
++ read -r line
++ [[ -z CONSUL_VERSION=2.0.4 ]]
++ [[ CONSUL_VERSION=2.0.4 == \#* ]]
++ key=CONSUL_VERSION
++ value=2.0.4
++ printenv CONSUL_VERSION
++ export CONSUL_VERSION=2.0.4
++ CONSUL_VERSION=2.0.4
++ IFS=
++ read -r line
++ [[ -z CHAT_EMBEDDING_OPENAI_BASE_URL=http://node2.lan:6090/v1 ]]
++ [[ CHAT_EMBEDDING_OPENAI_BASE_URL=http://node2.lan:6090/v1 == \#* ]]
++ key=CHAT_EMBEDDING_OPENAI_BASE_URL
++ value=http://node2.lan:6090/v1
++ printenv CHAT_EMBEDDING_OPENAI_BASE_URL
++ export CHAT_EMBEDDING_OPENAI_BASE_URL=http://node2.lan:6090/v1
++ CHAT_EMBEDDING_OPENAI_BASE_URL=http://node2.lan:6090/v1
++ IFS=
++ read -r line
++ [[ -z CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf ]]
++ [[ CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf == \#* ]]
++ key=CHAT_EMBEDDING_OPENAI_MODEL
++ value=nomic-embed-text-v1.5.Q8_0.gguf
++ printenv CHAT_EMBEDDING_OPENAI_MODEL
++ export CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf
++ CHAT_EMBEDDING_OPENAI_MODEL=nomic-embed-text-v1.5.Q8_0.gguf
++ IFS=
++ read -r line
++ [[ -z CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768 ]]
++ [[ CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768 == \#* ]]
++ key=CHAT_EMBEDDING_IDENTITY
++ value=nomic-embed-text-v1-5-768
++ printenv CHAT_EMBEDDING_IDENTITY
++ export CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768
++ CHAT_EMBEDDING_IDENTITY=nomic-embed-text-v1-5-768
++ IFS=
++ read -r line
++ [[ -z VECTOR_OWNER=1002:1001 ]]
++ [[ VECTOR_OWNER=1002:1001 == \#* ]]
++ key=VECTOR_OWNER
++ value=1002:1001
++ printenv VECTOR_OWNER
++ export VECTOR_OWNER=1002:1001
++ VECTOR_OWNER=1002:1001
++ IFS=
++ read -r line
++ [[ -n '' ]]
++ node9_check_toggle on
++ case "${1:-}" in
++ return 0
++ node9_check_isolation
++ [[ chat-node-9 != chat\-node\-9 ]]
++ [[ 6890 != 6890 ]]
++ [[ 6891 != 6891 ]]
++ case "${CORE_IMAGE:-}" in
++ repo_root=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/..
++ [[ false == false ]]
++ /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/bin/setup-secrets
+node-9: /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env exists. It is not replaced.
++ nc -z 127.0.0.1 6890
++ nc -z 127.0.0.1 6891
++ for dir in cassandra lucene redis consul
++ mkdir -p /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/data/cassandra
++ for dir in cassandra lucene redis consul
++ mkdir -p /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/data/lucene
++ for dir in cassandra lucene redis consul
++ mkdir -p /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/data/redis
++ for dir in cassandra lucene redis consul
++ mkdir -p /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/data/consul
++ [[ on == on ]]
++ mkdir -p /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/data/vector
+++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/..
+++ IMAGE_REPO_PREFIX=node-9
+++ mvn -q -f pom.xml -pl chat-deploy-cassandra help:evaluate -Dexpression=appImageName -DimageName=cassandra-core-service-rsocket -DforceStdout
++ image_ref=node-9/cassandra-core-service-rsocket:0.0.1
++ [[ node-9/cassandra-core-service-rsocket:0.0.1 != node-9/* ]]
++ [[ node-9/cassandra-core-service-rsocket:0.0.1 == *${* ]]
++ export CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1
++ CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1
++ compose_line='docker compose -p chat-node-9'
++ compose_line+=' --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env'
++ compose_line+=' --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env'
++ IFS=
++ read -r arg
+++ node9_compose_args
+++ node9_check_toggle on
+++ case "${1:-}" in
+++ return 0
+++ printf '%s\n' -f compose.yaml
+++ [[ on == on ]]
+++ printf '%s\n' -f compose.vector-disk.yaml
++ compose_line+=' -f'
++ IFS=
++ read -r arg
++ compose_line+=' compose.yaml'
++ IFS=
++ read -r arg
++ compose_line+=' -f'
++ IFS=
++ read -r arg
++ compose_line+=' compose.vector-disk.yaml'
++ IFS=
++ read -r arg
++ build_line='env IMAGE_REPO_PREFIX=node-9 CONSUL_HOST=consul CONSUL_PORT=8500 CASSANDRA_CONTACT_POINTS=cassandra /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/../shell-scripts/chat-build core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id 9 --key-type uuid --vector embedded --embedding openai --init users,rootkeys --consul --build'
++ [[ false == true ]]
++ docker image inspect node-9/cassandra-core-service-rsocket:0.0.1
++ node9_compose up -d cassandra redis consul
++ local secrets_file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env
++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env ]]
++ node9_check_toggle on
++ case "${1:-}" in
++ return 0
++ node9_check_isolation
++ [[ chat-node-9 != chat\-node\-9 ]]
++ [[ 6890 != 6890 ]]
++ [[ 6891 != 6891 ]]
++ case "${CORE_IMAGE:-}" in
++ args=()
++ local -a args
++ local line
++ IFS=
++ read -r line
+++ node9_compose_args
+++ node9_check_toggle on
+++ case "${1:-}" in
+++ return 0
+++ printf '%s\n' -f compose.yaml
+++ [[ on == on ]]
++ args+=("$line")
+++ printf '%s\n' -f compose.vector-disk.yaml
++ IFS=
++ read -r line
++ args+=("$line")
++ IFS=
++ read -r line
++ args+=("$line")
++ IFS=
++ read -r line
++ args+=("$line")
++ IFS=
++ read -r line
++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9
++ docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml up -d cassandra redis consul
+ Container chat-node-9-consul-1 Starting 
+ Container chat-node-9-cassandra-1 Starting 
+ Container chat-node-9-redis-1 Starting 
+ Container chat-node-9-redis-1 Started 
+ Container chat-node-9-consul-1 Started 
+ Container chat-node-9-cassandra-1 Started 
++ node9_apply_schema
++ local attempt
++ local ready=false
++ (( attempt = 1 ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ node9_cqlsh -e 'DESCRIBE KEYSPACES'
++ ready=true
++ break
++ [[ true != true ]]
++ local query rows out
++ query='SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '\''chat_uuid'\'''
+++ node9_cqlsh -e 'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = '\''chat_uuid'\'''
++ out=$'++ node9_compose exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n++ local secrets_file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env\n++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env ]]\n++ node9_check_toggle on\n++ case "${1:-}" in\n++ return 0\n++ node9_check_isolation\n++ [[ chat-node-9 != chat\\-node\\-9 ]]\n++ [[ 6890 != 6890 ]]\n++ [[ 6891 != 6891 ]]\n++ case "${CORE_IMAGE:-}" in\n++ args=()\n++ local -a args\n++ local line\n++ IFS=\n++ read -r line\n+++ node9_compose_args\n+++ node9_check_toggle on\n+++ case "${1:-}" in\n+++ return 0\n+++ printf \'%s\\n\' -f compose.yaml\n+++ [[ on == on ]]\n++ args+=("$line")\n+++ printf \'%s\\n\' -f compose.vector-disk.yaml\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9\n++ docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n\n keyspace_name\n---------------\n     chat_uuid\n\n(1 rows)'
+++ node9_row_line $'++ node9_compose exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n++ local secrets_file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env\n++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env ]]\n++ node9_check_toggle on\n++ case "${1:-}" in\n++ return 0\n++ node9_check_isolation\n++ [[ chat-node-9 != chat\\-node\\-9 ]]\n++ [[ 6890 != 6890 ]]\n++ [[ 6891 != 6891 ]]\n++ case "${CORE_IMAGE:-}" in\n++ args=()\n++ local -a args\n++ local line\n++ IFS=\n++ read -r line\n+++ node9_compose_args\n+++ node9_check_toggle on\n+++ case "${1:-}" in\n+++ return 0\n+++ printf \'%s\\n\' -f compose.yaml\n+++ [[ on == on ]]\n++ args+=("$line")\n+++ printf \'%s\\n\' -f compose.vector-disk.yaml\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9\n++ docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n\n keyspace_name\n---------------\n     chat_uuid\n\n(1 rows)'
+++ local matches
++++ printf '%s\n' $'++ node9_compose exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n++ local secrets_file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env\n++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env ]]\n++ node9_check_toggle on\n++ case "${1:-}" in\n++ return 0\n++ node9_check_isolation\n++ [[ chat-node-9 != chat\\-node\\-9 ]]\n++ [[ 6890 != 6890 ]]\n++ [[ 6891 != 6891 ]]\n++ case "${CORE_IMAGE:-}" in\n++ args=()\n++ local -a args\n++ local line\n++ IFS=\n++ read -r line\n+++ node9_compose_args\n+++ node9_check_toggle on\n+++ case "${1:-}" in\n+++ return 0\n+++ printf \'%s\\n\' -f compose.yaml\n+++ [[ on == on ]]\n++ args+=("$line")\n+++ printf \'%s\\n\' -f compose.vector-disk.yaml\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9\n++ docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n\n keyspace_name\n---------------\n     chat_uuid\n\n(1 rows)'
++++ grep -cE '^\((0|1) rows\)$'
+++ matches=1
+++ [[ 1 != 1 ]]
+++ printf '%s\n' $'++ node9_compose exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n++ local secrets_file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env\n++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env ]]\n++ node9_check_toggle on\n++ case "${1:-}" in\n++ return 0\n++ node9_check_isolation\n++ [[ chat-node-9 != chat\\-node\\-9 ]]\n++ [[ 6890 != 6890 ]]\n++ [[ 6891 != 6891 ]]\n++ case "${CORE_IMAGE:-}" in\n++ args=()\n++ local -a args\n++ local line\n++ IFS=\n++ read -r line\n+++ node9_compose_args\n+++ node9_check_toggle on\n+++ case "${1:-}" in\n+++ return 0\n+++ printf \'%s\\n\' -f compose.yaml\n+++ [[ on == on ]]\n++ args+=("$line")\n+++ printf \'%s\\n\' -f compose.vector-disk.yaml\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ args+=("$line")\n++ IFS=\n++ read -r line\n++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9\n++ docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml exec -T cassandra cqlsh -e \'SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = \'\\\'\'chat_uuid\'\\\'\'\'\n\n keyspace_name\n---------------\n     chat_uuid\n\n(1 rows)'
+++ grep -qxF '(1 rows)'
+++ printf '1\n'
++ rows=1
++ [[ 1 == 1 ]]
++ return 0
++ node9_compose up -d core-service-rsocket
++ local secrets_file=/Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env
++ [[ ! -f /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env ]]
++ node9_check_toggle on
++ case "${1:-}" in
++ return 0
++ node9_check_isolation
++ [[ chat-node-9 != chat\-node\-9 ]]
++ [[ 6890 != 6890 ]]
++ [[ 6891 != 6891 ]]
++ case "${CORE_IMAGE:-}" in
++ args=()
++ local -a args
++ local line
++ IFS=
++ read -r line
+++ node9_compose_args
+++ node9_check_toggle on
+++ case "${1:-}" in
+++ return 0
+++ printf '%s\n' -f compose.yaml
++ args+=("$line")
+++ [[ on == on ]]
+++ printf '%s\n' -f compose.vector-disk.yaml
++ IFS=
++ read -r line
++ args+=("$line")
++ IFS=
++ read -r line
++ args+=("$line")
++ IFS=
++ read -r line
++ args+=("$line")
++ IFS=
++ read -r line
++ cd /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9
++ docker compose -p chat-node-9 --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/node-9.env --env-file /Users/darkbit1001/workspace/demo-chat/.worktrees/chat-hcfgkbuz-node-9/node-9/secrets.env -f compose.yaml -f compose.vector-disk.yaml up -d core-service-rsocket
+ Container chat-node-9-redis-1 Running 
+ Container chat-node-9-consul-1 Running 
+ Container chat-node-9-cassandra-1 Running 
+ Container chat-node-9-lucene-volume-init-1 Starting 
+ Container chat-node-9-vector-volume-init-1 Starting 
+ Container chat-node-9-lucene-volume-init-1 Started 
+ Container chat-node-9-vector-volume-init-1 Started 
+ Container chat-node-9-lucene-volume-init-1 Waiting 
+ Container chat-node-9-vector-volume-init-1 Waiting 
+ Container chat-node-9-vector-volume-init-1 Exited 
+ Container chat-node-9-lucene-volume-init-1 Exited 
+ Container chat-node-9-core-service-rsocket-1 Starting 
+ Container chat-node-9-core-service-rsocket-1 Started 
++ (( attempt = 1 ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ sleep 1
++ (( attempt++ ))
++ (( attempt <= 180 ))
++ curl --connect-timeout 2 --max-time 3 --fail --silent --output /dev/null http://127.0.0.1:6891/actuator/health
++ exit 0
