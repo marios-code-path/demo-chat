@@ -1,0 +1,23 @@
+# Overlay for NODE9_VECTOR_PERSIST=on.
+# It adds the vector path, the bind mount, and the ownership step alone.
+# The embedding settings stay in compose.yaml. See CHAT-hcfgkbuz.
+services:
+  vector-volume-init:
+    image: busybox:1.36
+    user: root
+    command: chown -R ${VECTOR_OWNER:-1002:1001} /var/lib/chat/vector
+    volumes:
+      - type: bind
+        source: ./data/vector
+        target: /var/lib/chat/vector
+
+  core-service-rsocket:
+    depends_on:
+      vector-volume-init:
+        condition: service_completed_successfully
+    environment:
+      APP_SERVICE_CORE_VECTOR_EMBEDDED_PATH: /var/lib/chat/vector
+    volumes:
+      - type: bind
+        source: ./data/vector
+        target: /var/lib/chat/vector
