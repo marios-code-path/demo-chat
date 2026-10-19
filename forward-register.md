@@ -22,27 +22,34 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-19 at 13:20 PDT.
+Measured on 2026-10-19 at 15:10 PDT.
 
 | | |
 |---|---|
 | Checkout | `master` at `d8f9713a`, the merge commit of PR #259. PR #260 merged as `95799ce5` and PR #261 as `43bb46bd`. Both were register changes, so this row does not move. The stage 2 branch starts at `43bb46bd`. |
 | Last merged PR | #261, the register change for stage 2. #260 merged before it. |
 | Merge strategy | Merge commits only. Every merge needs Mario's explicit authorization and the owner's named `--admin` bypass. A review comment is not that authorization. |
-| Open PRs | #262, draft. It holds the stage 2 plan and tasks 1 to 5. Task 6 adds the documents, the gates, and this register change. |
+| Open PRs | #262, ready for review. It holds the stage 2 plan, tasks 1 to 6, and the fixes of one review. The review found a secret in a proof file, a Maven call in `start`, and this register row. All three are fixed. |
 | Branches and worktrees | `chat-hcfgkbuz-node-9` holds the stage 2 work. Its worktree is `.worktrees/chat-hcfgkbuz-node-9`. Every branch ref is kept. |
 
 ## In flight
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `chat-hcfgkbuz-node-9` | The topic register on node 9. Stage 1 is merged as PR #259. Stage 2 is in PR #262. Tasks 1 to 5 are complete and committed. Task 1 is the toggle and the Compose files. Task 2 is secrets, the Admin password file, and the schema step. Task 3 is the image, start, and stop. Task 4 is image save and load. Task 5 is the live proof. |
+| `CHAT-jmnjvupr` | `chat-hcfgkbuz-node-9` | The topic register on node 9. Stage 1 is merged as PR #259. Stage 2 is in PR #262, ready for review. Tasks 1 to 6 are complete. Task 1 is the toggle and the Compose files. Task 2 is secrets, the Admin password file, and the schema step. Task 3 is the image, start, and stop. Task 4 is image save and load. Task 5 is the live proof. Task 6 is the documents, the gates, and this register. |
 | `CHAT-hcfgkbuz` | `chat-hcfgkbuz-node-9` | Stage 2 of the topic register. The plan is `docs/superpowers/plans/2026-10-18-topic-register-stage-2-node-9.md`. The live proof is `docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`. |
 
 **Measured in stage 2, live.** Node 9 started beside node 16 and reported
 health on 6891. The Admin password came from `node-9/userinit.yml`. A second
 start applied no schema. A post wrote a vector without a rebuild. A restart
 reused the vector files. Toggle off kept the files. Node 16 stayed unchanged.
+
+**Fixed after review, on 2026-10-19.** The proof held the live Admin password.
+The value is `<redacted>` now. The password is rotated. The new value logs
+in with exit 0. The old value is refused with status 77. `node-9/bin/start` reads `CORE_IMAGE` from
+`node-9.env` and calls Maven only when the image is absent. A host with the
+loaded image needs Docker, `curl`, `nc`, and `openssl` alone. A live start
+proved it and built nothing.
 
 **Open:** the move is unverified. The owner named no destination host. A
 Docker-in-Docker daemon needs `--privileged` and the owner's approval. Design
@@ -56,8 +63,7 @@ shell against the old failure were not run.
 
 **The next Theta session starts here.**
 
-1. Push `chat-hcfgkbuz-node-9`, then request review of PR #262. Mark the
-   draft ready.
+1. Read the review of PR #262, then answer it on the PR.
 2. Do not merge. A merge needs Mario's explicit authorization and the
    owner's named `--admin` bypass.
 3. Stage 3 builds `node-9/bin/register read --as <name>` on `register-read`.
