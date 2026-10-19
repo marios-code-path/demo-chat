@@ -15,6 +15,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.util.MimeType
+import com.demo.chat.client.rsocket.RSocketAuthenticationEncoder
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
@@ -186,6 +190,38 @@ class UUIDRootOfTransportTests : RSocketTestBase() {
     @Test
     fun `an unknown id answers empty`() {
         StepVerifier.create(client().rootOf(UUID.randomUUID())).verifyComplete()
+    }
+
+    @Autowired
+    private lateinit var builder: RSocketRequester.Builder
+
+    @Value("\${local.rsocket.server.port}")
+    private var port: Int = 0
+
+    /**
+     * The shell connects with CBOR. CBOR writes a UUID as 16 bytes, and the
+     * route decodes an untyped payload, so the id arrives as a byte array. The
+     * JSON requester of the other tests sends text and hides this. Found by
+     * `add-topic` in the one-shot proof (`CHAT-siaetqtr`).
+     */
+    private fun cborClient(): KeyClient<UUID> {
+        val cbor = builder
+            .dataMimeType(MimeType("application", "cbor"))
+            .rsocketStrategies { it.encoders { encoders -> encoders.add(0, RSocketAuthenticationEncoder()) } }
+            .tcp("localhost", port)
+        return KeyClient("key.", cbor, UUIDUtil())
+    }
+
+    @Test
+    fun `a minted key resolves to its root over CBOR`() {
+        val minted = client().key(ChatDomain.USER).block()!!
+
+        StepVerifier.create(cborClient().rootOf(minted.id)).expectNext(minted.root).verifyComplete()
+    }
+
+    @Test
+    fun `an unknown id answers empty over CBOR`() {
+        StepVerifier.create(cborClient().rootOf(UUID.randomUUID())).verifyComplete()
     }
 
     @TestConfiguration

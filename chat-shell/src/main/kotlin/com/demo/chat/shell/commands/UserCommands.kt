@@ -99,9 +99,6 @@ class UserCommands<T : Any>(
         .block()
     fun getUser(handle: String): String? = userService
         .findByUsername(ByStringRequest(handle))
-        .doOnNext {
-            println("KEY = ${it}")
-        }
         .map(::userToString)
         .reduce { t, u -> t + u }
         .block()

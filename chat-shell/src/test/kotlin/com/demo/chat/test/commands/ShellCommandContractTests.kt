@@ -44,12 +44,14 @@ class ShellCommandContractTests {
         Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false)), positional = "username"),
         Expected("send", "Send a Message", listOf(Opt("topic", "_"), Opt("userName", "_"), Opt("messageText", null), Opt("requestId", "_")), positional = "messageText"),
         Expected("command-status", "Show the status of a message command", listOf(Opt("commandId", null))),
+        Expected("register-read", "Read the register: its index and the newest recent entry of each topic", listOf(Opt("index", "register-index"), Opt("maxAgeHours", "24"))),
+        Expected("post", "Post the text of standard input to a topic", listOf(Opt("topic", null), Opt("requestId", "_")), positional = "topic"),
         Expected("import-claude", "Import one Claude conversation", listOf(
             Opt("file", null), Opt("conversation", null), Opt("topic", null),
             Opt("generation", null), Opt("human", null), Opt("assistant", null))),
         Expected("listen", "Listen to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("hangup", "Stop listening to a topic", listOf(Opt("topic", null)), positional = "topic"),
-        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false)), positional = "topic"),
+        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false), Opt("format", "human"), Opt("since", null, required = false)), positional = "topic"),
         Expected("show-topics", "show topics", listOf()),
         Expected("add-topic", "Create a topic", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
         Expected("topic-by-name", "Topic by Name", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
@@ -135,7 +137,7 @@ class ShellCommandContractTests {
     fun `every room command takes the room through one option`() {
         val byName = registered().associateBy { it.name }
 
-        listOf("join", "leave", "list-members", "listen", "hangup", "messages", "send").forEach { name ->
+        listOf("join", "leave", "list-members", "listen", "hangup", "messages", "send", "post").forEach { name ->
             assertThat(byName.getValue(name).options.map { it.longName() })
                 .describedAs("the options of %s", name)
                 .contains("topic")
@@ -161,11 +163,13 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty eight commands and forty one options`() {
+    fun `the contract holds thirty commands and forty seven options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         // command-status and send --requestId raised them from 27 and 33.
-        assertThat(registered()).hasSize(28)
-        assertThat(registered().sumOf { it.options.size }).isEqualTo(41)
+        // post raised them from 28 and 41. The messages format and since options raised the options to 45.
+        // register-read raised them to 30 and 47.
+        assertThat(registered()).hasSize(30)
+        assertThat(registered().sumOf { it.options.size }).isEqualTo(47)
     }
 }

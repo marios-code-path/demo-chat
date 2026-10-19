@@ -9,7 +9,9 @@ import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.shell.commands.PubSubCommands
+import com.demo.chat.shell.commands.PubSubCommandsRegistrar
 import com.demo.chat.shell.commands.ShellRooms
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.exceptions.CustomRSocketException
 import org.assertj.core.api.Assertions.assertThat
@@ -18,7 +20,13 @@ import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.*
 import reactor.core.publisher.Flux
+import org.springframework.shell.core.InputReader
+import org.springframework.shell.core.command.CommandContext
+import org.springframework.shell.core.command.CommandRegistry
+import org.springframework.shell.core.command.DefaultCommandParser
 import reactor.core.publisher.Mono
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -111,6 +119,86 @@ class PubSubMessagesTests {
         }
         verifyNoInteractions(messages, users)
         verify(topics, never()).getRoomByName(ByStringRequest("lobby"))
+    }
+
+    @Test
+    fun `records print one JSON line per message with an exact UTC timestamp`() {
+        val stored = Instant.parse("2026-10-17T23:21:19.123456789Z")
+        given(messages.listMessages(ByIdRequest(5L))).willReturn(Flux.just(
+            Message.create(SimpleMessageKey(1L, 7L, 11L, 5L, stored), "hello", true)))
+        given(users.findByUserId(ByIdRequest(11L)))
+            .willReturn(Mono.just(User.create(Key.of(11L, 8L), "Alice", "alice", "")))
+
+        val lines = commands().messages("lobby", format = "records").lines()
+
+        assertThat(lines).hasSize(1)
+        val json = ObjectMapper().readTree(lines.single())
+        assertThat(json.fieldNames().asSequence().toList()).containsExactly("id", "topic", "sender", "timestamp", "text")
+        assertThat(json["id"].asText()).isEqualTo("1")
+        assertThat(json["topic"].asText()).isEqualTo("lobby")
+        assertThat(json["sender"].asText()).isEqualTo("alice")
+        assertThat(json["timestamp"].asText()).isEqualTo("2026-10-17T23:21:19.123456789Z")
+        assertThat(json["text"].asText()).isEqualTo("hello")
+    }
+
+    @Test
+    fun `records keep a multi-line body unchanged`() {
+        given(messages.listMessages(ByIdRequest(5L))).willReturn(Flux.just(message(1, 99, 0, "a\nb")))
+        given(users.findByUserId(ByIdRequest(99L))).willReturn(Mono.empty())
+
+        val answer = commands().messages("lobby", format = "records")
+
+        assertThat(answer.lines()).hasSize(1)
+        val json = ObjectMapper().readTree(answer)
+        assertThat(json["text"].asText()).isEqualTo("a\nb")
+        assertThat(json["sender"].asText()).isEqualTo("99")
+    }
+
+    @Test
+    fun `since keeps messages at or after the instant, then limit keeps the newest`() {
+        given(messages.listMessages(ByIdRequest(5L))).willReturn(Flux.just(
+            message(1, 11, 0, "old"), message(2, 11, 60, "at"), message(3, 11, 120, "mid"), message(4, 11, 180, "new")))
+        given(users.findByUserId(ByIdRequest(11L))).willReturn(Mono.empty())
+        val command = commands()
+
+        val since = time.plusSeconds(60)
+        fun texts(limit: Int?) = command.messages("lobby", limit, "records", since).lines()
+            .map { ObjectMapper().readTree(it)["text"].asText() }
+
+        assertThat(texts(null)).containsExactly("at", "mid", "new")
+        assertThat(texts(2)).containsExactly("mid", "new")
+    }
+
+    @Test
+    fun `records print nothing for an empty topic`() {
+        given(messages.listMessages(ByIdRequest(5L))).willReturn(Flux.empty())
+
+        val command = commands()
+        assertThat(command.messages("lobby", format = "records")).isEmpty()
+
+        // The command itself writes nothing, not even a blank line.
+        val registered = PubSubCommandsRegistrar(command).messagesCommand()
+        val registry = CommandRegistry(setOf(registered))
+        val out = StringWriter()
+        registered.execute(CommandContext(DefaultCommandParser(registry).parse("messages lobby --format records"),
+            registry, PrintWriter(out), mock(InputReader::class.java)))
+        assertThat(out.toString()).isEmpty()
+    }
+
+    @Test
+    fun `an unknown format and a bad since are refused`() {
+        val command = commands()
+        assertThatThrownBy { command.messages("lobby", format = "xml") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("messages needs --format human or records.")
+
+        val registered = PubSubCommandsRegistrar(command).messagesCommand()
+        val registry = CommandRegistry(setOf(registered))
+        val context = CommandContext(DefaultCommandParser(registry).parse("messages lobby --since yesterday"),
+            registry, PrintWriter(StringWriter()), mock(InputReader::class.java))
+        assertThatThrownBy { registered.execute(context) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("messages needs --since as an ISO-8601 instant, such as 2026-10-17T23:21:19Z.")
     }
 
 }

@@ -27,6 +27,26 @@ class TypeUtilAssignTests {
         assertThat(UUIDUtil().assignFrom(id.toString())).isEqualTo(id)
     }
 
+    /** A CBOR answer for an untyped read is 16 bytes. It was the zero UUID before. See `CHAT-siaetqtr`. */
+    @Test
+    fun `a UUID accepts the 16 bytes that CBOR writes`() {
+        val id = UUID.randomUUID()
+        val bytes = java.nio.ByteBuffer.allocate(16).putLong(id.mostSignificantBits).putLong(id.leastSignificantBits).array()
+
+        assertThat(UUIDUtil().assignFrom(bytes)).isEqualTo(id)
+    }
+
+    /** The zero UUID is a real id. Bytes of the wrong length must fail, not become it. Sigma found this on PR #259. */
+    @Test
+    fun `a UUID refuses bytes of any other length`() {
+        for (length in listOf(0, 8, 15, 17)) {
+            assertThatThrownBy { UUIDUtil().assignFrom(ByteArray(length)) }
+                .describedAs("%s bytes", length)
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("A key id of $length bytes is not a UUID.")
+        }
+    }
+
     @Test
     fun `malformed text fails, so a route can answer an unknown id`() {
         assertThatThrownBy { LongUtil().assignFrom("abc") }.isInstanceOf(IllegalArgumentException::class.java)

@@ -181,7 +181,7 @@ class ShellParsedInputTests {
     @Test
     fun `every pubsub command takes its main option by position`() {
         val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
-        given(commands.messages(anyString(), isNull())).willReturn("")
+        given(commands.messages(anyString(), isNull(), anyString(), isNull())).willReturn("")
         val beans = commandsOf(PubSubCommandsRegistrar(commands))
 
         execute(beans, "send --topic lobby \"hello there\"")
@@ -192,7 +192,7 @@ class ShellParsedInputTests {
         verify(commands).send("lobby", "_", "hello there", "_")
         verify(commands).listen("lobby")
         verify(commands).hangup("lobby")
-        verify(commands).messages("lobby")
+        verify(commands).messages("lobby", null, "human", null)
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -305,13 +305,26 @@ class ShellParsedInputTests {
     @Test
     fun `messages passes its optional limit through the real parser`() {
         val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+        given(commands.messages(anyString(), org.mockito.ArgumentMatchers.any<Int>(), anyString(), isNull())).willReturn("")
         val beans = commandsOf(PubSubCommandsRegistrar(commands))
 
         execute(beans, "messages lobby --limit 2")
         execute(beans, "messages --topic lobby --limit 3")
 
-        verify(commands).messages("lobby", 2)
-        verify(commands).messages("lobby", 3)
+        verify(commands).messages("lobby", 2, "human", null)
+        verify(commands).messages("lobby", 3, "human", null)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `messages passes its format and since through the real parser`() {
+        val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+        given(commands.messages(anyString(), isNull(), anyString(), org.mockito.ArgumentMatchers.any<java.time.Instant>())).willReturn("")
+        val beans = commandsOf(PubSubCommandsRegistrar(commands))
+
+        execute(beans, "messages lobby --format records --since 2026-10-17T23:21:19.123456789Z")
+
+        verify(commands).messages("lobby", null, "records", java.time.Instant.parse("2026-10-17T23:21:19.123456789Z"))
     }
 
     @Suppress("UNCHECKED_CAST")

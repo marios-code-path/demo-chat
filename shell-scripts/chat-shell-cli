@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# Runs one chat-shell command in a new JVM and exits with its status.
+#
+#   CHAT_SHELL_KEY_TYPE=uuid shell-scripts/chat-shell-cli messages lobby --format records
+#
+# The words are the command line. Text for a command, such as the entry for
+# post, goes on standard input. Run just build-shell-cli first.
+#
+# Settings, all from the environment:
+#   CHAT_SHELL_KEY_TYPE      required, long or uuid, and it must match the core
+#   CHAT_SHELL_NODE_ID       default 1
+#   CORE_PORT, CORE_MGMT_PORT  the core, as chat-build reads them
+#   CHAT_SHELL_USER, CHAT_SHELL_PASSWORD_FILE  the login, both or neither
+#   CHAT_SHELL_LOG           a file for the log, which is off otherwise
+#   CHAT_SHELL_CLI_PRINT_OPTIONS=1  print the JVM options and end
+#   CHAT_SHELL_LAUNCH_EPOCH_MS  the launch time for a hard limit. The script sets it when it is absent.
+#
+# The exit status is 0 for success. The other statuses are in the design of
+# the topic register, section "chat-shell as a command tool", part 2.
+set -euo pipefail
+
+# A command with a hard limit runs under a supervisor from the first line of this script. The JVM has
+# a watchdog too, but it cannot stop a stall before Java starts, such as a stuck chat-build. The
+# limits repeat HardLimits in Kotlin, and LaunchDeadlineTests checks that they agree. The code stays
+# valid for bash 3.2.
+#
+# **The supervisor uses no external command that can block, except in a job that the timer can end.**
+# Every external command runs as a background job in its own process group (set -m makes a job a group
+# leader, with no perl). A timer starts before the first job. At the limit the timer ends every job
+# group: TERM, then KILL after 0.2 s. The supervisor also sends KILL to the group of the child when the
+# child ends, so a leftover process, or a process that ignores TERM, cannot outlive the command.
+# The supervisor owns standard error. Bash notices of ended jobs go to /dev/null. The child writes to a
+# file, and a timeout leaves exactly one line, which the supervisor writes.
+limit_ms=
+case "${1:-}" in
+    register-read) limit_ms=30000 ;;
+esac
+if [[ -n "$limit_ms" && -z "${CHAT_SHELL_SUPERVISED:-}" ]]; then
+    limit_line="chat-shell: $1 passed its ${limit_ms} ms limit"
+    limit_s=$(( limit_ms / 1000 ))
+    exec 3>&2 2>/dev/null
+    umask 077
+    base="${TMPDIR:-/tmp}/chat-shell-cli.$$"
+    expired="$base.expired"
+    groups="$base.groups"
+    child_err="$base.err"
+    : > "$groups"
+    : > "$child_err"
+    set -m
+
+    # end_groups SIGNAL  Sends the signal to every job group that the supervisor recorded.
+    end_groups() {
+        local group
+        while read -r group; do
+            kill "-$1" -- "-$group" 2>/dev/null || true
+        done < "$groups"
+    }
+    # timer SECONDS  Marks the command as expired, and ends every job group.
+    timer() {
+        sleep "$1"
+        : > "$expired"
+        end_groups TERM
+        sleep 0.2
+        end_groups KILL
+    }
+    # expire_now  The same, at once, for a budget that is already spent.
+    expire_now() {
+        : > "$expired"
+        end_groups TERM
+        end_groups KILL
+    }
+    # finish_expired  Ends the timers, reports the one line, and cleans up.
+    finish_expired() {
+        local t
+        for t in $timer_a $timer_b $timer_c; do
+            kill -TERM -- "-$t" 2>/dev/null || true
+        done
+        rm -f "$expired" "$groups" "$child_err"
+        echo "$limit_line" >&3
+        exit 124
+    }
+
+    # 1. The timer comes first. It bounds the whole run, whatever stalls after it.
+    ( timer "$limit_s" ) < /dev/null > /dev/null 2>&1 3>&- &
+    timer_a=$!
+    timer_b=
+
+    # 2. A caller can set the launch stamp. Reading the clock is an external command, so it is a job.
+    # Its answer is in whole seconds, and the age rounds up, so the limit is never later than it says.
+    # A clock that does not answer in 2 s counts as a spent budget: the command fails closed with 124.
+    timer_c=
+    if [[ "${CHAT_SHELL_LAUNCH_EPOCH_MS:-}" =~ ^[0-9]+$ ]]; then
+        ( timer 2 ) < /dev/null > /dev/null 2>&1 3>&- &
+        timer_c=$!
+        ( date +%s ) < /dev/null > "$base.clock" 2> /dev/null 3>&- &
+        clock=$!
+        echo "$clock" >> "$groups"
+        status=0
+        wait "$clock" || status=$?
+        kill -TERM -- "-$timer_c" 2>/dev/null || true
+        now_s="$(< "$base.clock")"
+        rm -f "$base.clock"
+        if [[ -e "$expired" ]]; then finish_expired; fi
+        if [[ "$status" == 0 && "$now_s" =~ ^[0-9]+$ ]]; then
+            age_s=$(( now_s - CHAT_SHELL_LAUNCH_EPOCH_MS / 1000 ))
+            if (( age_s >= limit_s )); then
+                expire_now
+                finish_expired
+            elif (( age_s > 0 )); then
+                ( timer $(( limit_s - age_s )) ) < /dev/null > /dev/null 2>&1 3>&- &
+                timer_b=$!
+            fi
+        fi
+    fi
+
+    # 3. The child does the work in its own group. The explicit input redirection keeps standard input.
+    CHAT_SHELL_SUPERVISED=1 "${BASH_SOURCE[0]}" "$@" <&0 2> "$child_err" 3>&- &
+    child=$!
+    echo "$child" >> "$groups"
+    status=0
+    wait "$child" || status=$?
+
+    # 4. Whatever the child left behind dies, and so do the timers.
+    kill -KILL -- "-$child" 2>/dev/null || true
+    for t in $timer_a $timer_b $timer_c; do
+        kill -TERM -- "-$t" 2>/dev/null || true
+    done
+    if [[ -e "$expired" ]]; then finish_expired; fi
+    cat "$child_err" >&3
+    rm -f "$groups" "$child_err"
+    exit "$status"
+fi
+
+# The launch time counts toward the hard limit of register-read, so the JVM start and this script
+# count too. A caller can set the stamp, in epoch milliseconds. The default comes from date, in whole
+# seconds, which can only make the launch look earlier, so the limit is never later than it says.
+: "${CHAT_SHELL_LAUNCH_EPOCH_MS:=$(date +%s)000}"
+export CHAT_SHELL_LAUNCH_EPOCH_MS
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
+node_id="${CHAT_SHELL_NODE_ID:-1}"
+classpath="$root/chat-deploy/target/shell-cli.classpath"
+
+# The options of the shell launch plan, as chat-build prints them for the
+# interactive shell. They go on the java command line, not in
+# JAVA_TOOL_OPTIONS, because the JVM prints a line on standard error for that
+# variable.
+plan="$("$root/shell-scripts/chat-build" shell --run --notls --node-id "$node_id" \
+    --key-type "$key_type" --dry-run)"
+opts=()
+while IFS= read -r line; do
+    case "$line" in
+        # The vector module makes the JVM print a warning on standard error, and a shell client needs no vectors.
+        --add-modules=jdk.incubator.vector) ;;
+        -Dspring.shell.interactive.enabled=*|-Dspring-boot.run.*) ;;
+        *) opts+=("$line") ;;
+    esac
+done < <(sed -nE 's/^  +((-D|--)[^ ].*)$/\1/p' <<< "$plan")
+
+# These come last, so they win over the plan.
+opts+=(
+    -Dchat.shell.mode=one-shot
+    -Dspring.shell.interactive.enabled=false
+    -Dspring.main.banner-mode=off
+    -Dlogging.threshold.console=OFF
+    -Dspring.main.web-application-type=none
+    --sun-misc-unsafe-memory-access=allow
+)
+if [[ -n "${CHAT_SHELL_LOG:-}" ]]; then
+    opts+=("-Dlogging.file.name=$CHAT_SHELL_LOG")
+fi
+
+# CHAT_SHELL_CLI_PRINT_OPTIONS=1 prints the JVM options, one on each line, and ends.
+# The native proof reads them to set the AOT properties of its build.
+if [[ "${CHAT_SHELL_CLI_PRINT_OPTIONS:-}" == 1 ]]; then
+    printf '%s\n' "${opts[@]}"
+    exit 0
+fi
+if [[ ! -s "$classpath" ]]; then
+    echo "chat-shell-cli: no classpath file. Run just build-shell-cli first." >&2
+    exit 1
+fi
+
+exec java "${opts[@]}" -cp "$root/chat-deploy/target/classes:$(cat "$classpath")" \
+    com.demo.chat.ShellCliKt "$@"

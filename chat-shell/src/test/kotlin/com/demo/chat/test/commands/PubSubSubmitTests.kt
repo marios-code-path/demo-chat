@@ -28,7 +28,7 @@ import org.mockito.Mockito.mock
 import reactor.core.publisher.Mono
 import java.util.concurrent.atomic.AtomicReference
 
-/** The shell `send` submits a command with a request ID, and `command-status` reads it back. */
+/** The shell `send` submits a command with a request ID, and `command-status` reads it back. Both answer text. */
 @Suppress("UNCHECKED_CAST")
 class PubSubSubmitTests {
     private val messages = mock(ChatMessageService::class.java) as ChatMessageService<Long, String>
@@ -50,7 +50,7 @@ class PubSubSubmitTests {
         Receipt(commandId, SimpleMessageKey(messageId, 7L, 10L, ROOM))
 
     @Test
-    fun `send keeps a supplied request ID and prints the outcome`() {
+    fun `send keeps a supplied request ID and answers the outcome`() {
         // ArgumentCaptor.capture() answers null, and Kotlin refuses null for this parameter. The answer records the request.
         val seen = AtomicReference<MessageSubmitRequest<Long, String>>()
         given(messages.submit(anyObject())).willAnswer {
@@ -58,39 +58,32 @@ class PubSubSubmitTests {
             Mono.just(MessageSendResult(receipt("c-shell", 5L), CallerOutcome.COMPLETED, emptyMap()))
         }
 
-        val printed = captureOut { commands.send("lobby", "_", "hello", "shell-1") }
+        val answer = commands.send("lobby", "_", "hello", "shell-1")
 
         assertThat(seen.get().requestId).isEqualTo("shell-1")
         assertThat(seen.get().dest).isEqualTo(ROOM)
-        assertThat(printed).contains("Request Id: shell-1", "Message Id: 5", "Outcome: COMPLETED")
+        assertThat(answer.lines()).containsExactly(
+            "Request Id: shell-1", "Message Id: 5", "Command Id: c-shell", "Outcome: COMPLETED")
     }
 
     @Test
     fun `send creates a request ID when none is supplied`() {
         given(messages.submit(anyObject()))
             .willReturn(Mono.just(MessageSendResult(receipt("c-shell-2", 6L), CallerOutcome.PENDING, emptyMap())))
-        val printed = captureOut { commands.send("lobby", "_", "hello", "_") }
-        assertThat(printed).containsPattern("Request Id: [0-9a-f-]{36}").contains("Outcome: PENDING")
+        val answer = commands.send("lobby", "_", "hello", "_")
+        assertThat(answer).containsPattern("Request Id: [0-9a-f-]{36}").contains("Outcome: PENDING")
     }
 
     @Test
-    fun `command status prints each backend`() {
+    fun `command status answers each backend`() {
         val status = CommandStatus(
             "c-shell-3", 10L, "shell-3", receipt("c-shell-3", 7L),
             mapOf(BackendId.PERSISTENCE to BackendStatus(BackendState.SUCCEEDED, 1)),
             2L,
         )
         given(messages.commandStatus(anyObject())).willReturn(Mono.just(status))
-        val printed = captureOut { commands.commandStatus("c-shell-3") }
-        assertThat(printed).contains("PERSISTENCE: SUCCEEDED")
-    }
-
-    private fun captureOut(block: () -> Unit): String {
-        val original = System.out
-        val buffer = java.io.ByteArrayOutputStream()
-        System.setOut(java.io.PrintStream(buffer))
-        try { block() } finally { System.setOut(original) }
-        return buffer.toString()
+        assertThat(commands.commandStatus("c-shell-3").lines())
+            .containsExactly("Command Id: c-shell-3", "PERSISTENCE: SUCCEEDED")
     }
 
     companion object {

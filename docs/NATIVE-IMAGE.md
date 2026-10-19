@@ -160,3 +160,61 @@ comment beside the element that repairs it.
 - **The sandbox self-attach trap of PR #52 was not exercised.** A native build
   skips the tests, so the Byte Buddy agent never loads. `CHAT-bojgvcba` closed
   that risk for the two test modes on Java 25.
+
+## Shell one-shot (stage 1 proof, 2026-10-18)
+
+`CHAT-jmnjvupr` asked for a native one-shot shell as an option. This section
+records a bounded proof. It is not a native delivery. The script is
+`docs/superpowers/proofs/2026-10-18-stage-1/native.sh`.
+
+**The command.** The shell profile makes `chat-deploy` depend on `chat-shell`,
+and `chat-shell` depends on `chat-deploy`. Any reactor that holds both refuses
+that cycle. So the build runs from the `chat-deploy` pom alone, with no `-pl`
+and no `-am`. It loads the shell jars from `~/.m2`. Run `just build-shell-cli`
+first.
+
+```bash
+mvn -B -ntp -f chat-deploy/pom.xml -Pnative,deploy,shell,shell-host,client-backend package \
+    -Dmaven.test.skip=true -DappMainClass=com.demo.chat.ShellCliKt \
+    "-Dspring-boot.aot.jvmArguments=<the options of chat-shell-cli>"
+```
+
+**The AOT properties.** They are the JVM options of `chat-shell-cli` for key
+type `uuid`. That is the profile `shell`, the `app.*` and `spring.*`
+properties of the shell plan, and `chat.shell.mode=one-shot`. AOT fixes the
+mode at build time. `CHAT_SHELL_CLI_PRINT_OPTIONS=1 shell-scripts/chat-shell-cli`
+prints them.
+
+**Attempt 1 failed.** `process-aot` ended with `chat-shell:
+AbandonedRunException`. The AOT processor of Spring Boot ends `main` on
+purpose with that exception. The `main` of `ShellCliKt` took it for an error
+and exited. The fix passes the exception through. `ShellCliTests` covers it.
+
+**Attempt 2 built an image.** The entry point is right. The build log names
+`ShellCliKt` and never `ChatAppKt`. The image logs `Starting AOT-processed
+ShellCliKt`.
+
+| | |
+|---|---|
+| Image time | 1 min 58 s |
+| Total | 2 min 9 s |
+| Size | 153.9 MiB (161,337,016 bytes) |
+
+**The run result: the context does not start.** The runs used the stage 0
+sandbox and the disposable core on 6990 and 6991. `whoami` was the command.
+
+| Launch properties | First failure |
+|-------------------|---------------|
+| none | `Could not resolve placeholder 'app.key.type'` |
+| `APP_KEY_TYPE`, `APP_NODEID` | `Could not resolve placeholder 'app.rsocket.transport.security.type'` |
+| all 38 `-D` options of the plan, as upper case environment variables | `Config data resource 'class path resource [config/client-rsocket-local.yml]' ... cannot be found` |
+
+Two causes show here. First, the image reads no `-D` option at run time, so
+every `@Value` placeholder needs an environment variable. Second, the image
+holds none of the `config/*.yml` files of `shared-deploy-configuration`. The
+native build needs resource hints for them. That is a build change outside
+the three allowed attempt changes, so the proof ends here.
+
+**Result.** The native image does not run a command. The JVM launcher
+`chat-shell-cli` is the one-shot path of stage 1. A later native attempt starts
+with the resource hints for `config/*.yml`.

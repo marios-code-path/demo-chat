@@ -112,6 +112,9 @@ commit `985abf39`:
     output, login, exit status, or command input. The current native image
     does not start a full context, so a shell image needs a fixed build-time
     composition and its own start proof. The owner set this on 2026-10-18.
+22. `AGENTS.md` will direct each agent to run `register-read` at session start.
+    The stage 3 command `node-9/bin/register read --as <name>` will invoke it.
+    Mario confirmed this choice on 2026-10-18.
 
 ## Node 9
 
@@ -307,10 +310,10 @@ on node 9 is an attribution label, not a verified author.
 
 ### The session-start command
 
-`AGENTS.md` replaces `@forward-register.md` with one instruction: run
-`node-9/bin/register read --as <name>` and read the output as described in
-the trust rules above. Every agent reads `AGENTS.md`, so the one instruction
-reaches Sigma, Theta, and Phi. No harness file changes.
+In stage 3, `AGENTS.md` replaces `@forward-register.md` with one instruction.
+Run `node-9/bin/register read --as <name>`. That command invokes `register-read`.
+Read its output under the trust rules above. Every agent reads `AGENTS.md`,
+so the instruction reaches Sigma, Theta, and Phi. No harness file changes.
 
 The command prints:
 
@@ -583,6 +586,50 @@ their numbers, because the stage 0 plan names them.
    every shell connection went to those two ports. Record Q6. Node 9 uses
    6890 and 6891, and no run has used those ports. Item 10 below covers it.
 
+## Measured in stage 1
+
+Stage 1 ran on 2026-10-18 against the disposable memory core on 6990 and 6991,
+inside the stage 0 sandbox. `docs/superpowers/proofs/2026-10-18-stage-1/RECORD.md`
+holds the cases. These facts are measured.
+
+- **One-shot mode works with a login from a password file.** Case A2 logged
+  in as Admin from `CHAT_SHELL_PASSWORD_FILE` and ran `whoami` with exit 0 and an
+  empty standard error. Case A3, with a wrong password, gave 77. Case A4, with
+  one variable alone, gave 2. This measures item 9 below.
+- **The exit statuses 0, 2, 69, and 77 are measured.** A5, A6, and A7 gave 2.
+  A12, with the core stopped, gave 69. The statuses 75, 76, and 124 have no
+  producer yet.
+- **A one-shot process takes 3.1 to 4.0 s** on the direct JVM launch, in cases
+  A1 to A13. Four processes in a row, one for each read, take 14,935 ms in the
+  median of five runs. That is over the 10-second target of decision 20, because
+  it pays four JVM starts. See `READ-TIME.md`.
+- **The session-start read in one process meets the target.** The command
+  `register-read` reads the index and the newest recent entry of each topic in
+  one JVM. On representative data (20 pointers, 3 topics with 5 entries of about 2
+  KB each) it takes 4,476 ms in the median of five runs, from the launch to the
+  exit. Sigma recommended this command on 2026-10-18, and said to build resident
+  mode only if it missed 10 seconds. Mario confirmed the session-start choice
+  on 2026-10-18. It did not miss, so task 9 is not built for this workload.
+  The command enforces the 30-second limit from the launch, with status 124.
+  A supervisor in `chat-shell-cli` covers the time before Java starts. A
+  watchdog in `main` covers the JVM, and it takes no lock, so a blocked write
+  cannot stop it. A spent budget refuses the read, and a budget that runs out
+  during the read refuses the output. Live cases A14 and A15 and
+  `shell-scripts/test-chat-shell-cli-deadline.sh` show it. When a blocked reader
+  holds up the output at the limit, standard output can hold part of the text,
+  and a caller discards the output of a command that does not exit with 0.
+- **The native one-shot image builds and does not start a context.** The first
+  failure is a missing `config/client-rsocket-local.yml`. See
+  `docs/NATIVE-IMAGE.md`, section "Shell one-shot".
+- **`add-topic` works on a `uuid` core** after the fix of `CHAT-siaetqtr`. The
+  shell sends CBOR, which writes a UUID as 16 bytes, and the key routes now read
+  16 bytes as a UUID.
+- **`post` reads standard input unchanged.** Cases A9 and A10 posted a 3-line
+  UTF-8 entry with no final newline and read it back through `messages --format
+  records` with the same text. This measures item 6 below.
+- **The modes refuse `!`.** The host escape returns no status to Spring Shell,
+  so a mode would end with 0 after a failed host command. Case A13 gave 2.
+
 ## Unverified
 
 Each item below is believed from reading code or config. No run has shown it.
@@ -592,20 +639,15 @@ Each item below is believed from reading code or config. No run has shown it.
    archive section must pass the import check.
 5. **Live follow.** A `listen` on the owner's shell should show an entry that
    an agent posts, through Redis. No run has shown it.
-6. **Command input.** An entry travels as command input. The stage 0 proof
-   tested the current password prompt alone. In one-shot mode,
-   `login --username Admin` failed with `readPassword with prompt not
-   implemented` (record Q7). So the `InputReader` of a one-shot command gives
-   no input. No run has tested a command that reads `System.in` directly.
-   Stage 1 must prove that `post` reads multi-line input unchanged.
+6. **Command input.** Measured in stage 1, cases A9 and A10. See "Measured in
+   stage 1". The number stays so that earlier references hold.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
    from the agent's own shell.
 8. **The message text in the store.** The import check assumes that the
    store keeps text byte for byte. No run has shown it for a large section.
-9. **The login from the environment.** `CHAT_SHELL_USER` and
-   `CHAT_SHELL_PASSWORD_FILE` do not exist yet. No run has tested a login
-   from a password file. Stage 0 tested `login` with `--password` alone.
+9. **The login from the environment.** Measured in stage 1, cases A2 and A3.
+   See "Measured in stage 1". The number stays so that earlier references hold.
 10. **The node-9 address.** No shell has connected to 6890 and 6891. Item 3
     shows the mechanism with other ports.
 

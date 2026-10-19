@@ -106,6 +106,16 @@ build-shell *flags:
 	"${cmd[@]}"
 	echo "[build-shell] Done in $SECONDS s. Start the shell with just launch-shell."
 
+# Build the shell jars and the runtime classpath file for shell-scripts/chat-shell-cli. Run it after a pull.
+build-shell-cli:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	just --justfile {{quote(justfile())}} build-shell
+	mvn -B -ntp -f chat-deploy/pom.xml -Pdeploy,shell,shell-host,client-backend \
+	    -Dmaven.test.skip=true compile dependency:build-classpath \
+	    -DincludeScope=runtime -Dmdep.outputFile="$PWD/chat-deploy/target/shell-cli.classpath"
+	echo "[build-shell-cli] Done in $SECONDS s. Run shell-scripts/chat-shell-cli."
+
 # Flags go to chat-build. The shell key type must match the core: use --key-type uuid for a uuid core.
 # --build runs build-shell first. The recipe keeps it, because chat-build --build builds an image.
 # Start the interactive shell client. Start a core service first. Add --build after a pull.
