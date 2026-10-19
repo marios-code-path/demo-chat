@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Start node 9. See CHAT-hcfgkbuz.
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$script_dir/lib.sh"
+
+dry_run=false
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run)
+            dry_run=true
+            ;;
+        *)
+            printf 'node-9: unknown argument: %s\n' "$arg" >&2
+            exit 2
+            ;;
+    esac
+done
+
+node9_load_env || exit 2
+repo_root="$NODE9_DIR/.."
+
+# A dry run writes no secret. It creates the data directories alone.
+if [[ "$dry_run" == 'false' ]]; then
+    "$NODE9_DIR/bin/setup-secrets" || exit 2
+fi
+
+if nc -z 127.0.0.1 "$NODE9_RSOCKET_PORT" >/dev/null 2>&1 \
+   || nc -z 127.0.0.1 "$NODE9_MGMT_PORT" >/dev/null 2>&1; then
+    printf 'node-9: port %s or %s is in use\n' \
+        "$NODE9_RSOCKET_PORT" "$NODE9_MGMT_PORT" >&2
+    exit 3
+fi
+
+for dir in cassandra lucene redis consul; do
+    mkdir -p "$NODE9_DIR/data/$dir"
+done
+if [[ "$NODE9_VECTOR_PERSIST" == 'on' ]]; then
+    mkdir -p "$NODE9_DIR/data/vector"
+fi
+
+image_ref="$( cd "$repo_root" || exit 1
+    IMAGE_REPO_PREFIX=node-9 mvn -q -f pom.xml \
+        -pl chat-deploy-cassandra help:evaluate \
+        -Dexpression=appImageName \
+        -DimageName=cassandra-core-service-rsocket \
+        -DforceStdout 2>/dev/null )"
+if [[ "$image_ref" != node-9/* || "$image_ref" == *'${'* ]]; then
+    printf 'node-9: the image reference is not a node-9 reference: %s\n' \
+        "$image_ref" >&2
+    exit 4
+fi
+export CORE_IMAGE="$image_ref"
+
+compose_line="docker compose -p ${NODE9_PROJECT}"
+compose_line+=" --env-file ${NODE9_DIR}/node-9.env"
+compose_line+=" --env-file ${NODE9_DIR}/secrets.env"
+while IFS= read -r arg; do
+    compose_line+=" $arg"
+done < <(node9_compose_args)
+
+build_line="env IMAGE_REPO_PREFIX=node-9 CONSUL_HOST=consul CONSUL_PORT=8500 CASSANDRA_CONTACT_POINTS=cassandra ${repo_root}/shell-scripts/chat-build core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id 9 --key-type uuid --vector embedded --embedding openai --init users,rootkeys --consul --build"
+
+if [[ "$dry_run" == 'true' ]]; then
+    printf '%s\n' "$compose_line"
+    printf '%s\n' "$build_line"
+    printf 'image: %s\n' "$image_ref"
+    exit 0
+fi
+
+if ! docker image inspect "$image_ref" >/dev/null 2>&1; then
+    if ! ( cd "$repo_root" || exit 1
+        mvn -f pom.xml -pl chat-deploy-cassandra -am \
+            -Pregister-consul -Dmaven.test.skip=true install ); then
+        printf 'node-9: the module install failed\n' >&2
+        exit 5
+    fi
+    docker_config="$(mktemp -d)"
+    printf '{}\n' > "$docker_config/config.json"
+    if ! env DOCKER_CONFIG="$docker_config" IMAGE_REPO_PREFIX=node-9 \
+        CONSUL_HOST=consul CONSUL_PORT=8500 \
+        CASSANDRA_CONTACT_POINTS=cassandra \
+        "$repo_root/shell-scripts/chat-build" core --cassandra --index lucene \
+            --pubsub redis-pubsub --notls --node-id 9 --key-type uuid \
+            --vector embedded --embedding openai --init users,rootkeys \
+            --consul --build; then
+        rm -rf "$docker_config"
+        printf 'node-9: the image build failed\n' >&2
+        exit 5
+    fi
+    rm -rf "$docker_config"
+fi
+
+node9_compose up -d cassandra redis consul || exit 5
+node9_apply_schema || exit 5
+node9_compose up -d core-service-rsocket || exit 5
+
+for ((attempt = 1; attempt <= 180; attempt++)); do
+    if curl --connect-timeout 2 --max-time 3 --fail --silent \
+        --output /dev/null \
+        "http://127.0.0.1:${NODE9_MGMT_PORT}/actuator/health"; then
+        exit 0
+    fi
+    sleep 1
+done
+printf 'node-9: the core did not become healthy\n' >&2
+exit 5

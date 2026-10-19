@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Stop node 9 with its own Compose project and file set. See CHAT-hcfgkbuz.
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$script_dir/lib.sh"
+
+node9_load_env || exit 2
+node9_compose stop

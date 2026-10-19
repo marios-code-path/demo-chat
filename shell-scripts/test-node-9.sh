@@ -469,6 +469,197 @@ else
     bad 'schema_gives_up' "exit $status, describes $(describe_calls), applies $(apply_calls)"
 fi
 
+# -- Start and stop -----------------------------------------------------
+
+sandbox="$work/node-9-sandbox"
+mkdir -p "$sandbox/bin"
+cp node-9/node-9.env node-9/compose.yaml node-9/compose.vector-disk.yaml \
+    node-9/userinit.yml "$sandbox/" 2>/dev/null
+cp -R node-9/schema "$sandbox/" 2>/dev/null
+cp node-9/bin/lib.sh node-9/bin/setup-secrets node-9/bin/start \
+    node-9/bin/stop "$sandbox/bin/" 2>/dev/null
+
+cat > "$work/bin/docker" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$DOCKER_CALLS"
+case "$*" in
+    'image inspect '*)
+        if [[ "${IMAGE_ABSENT:-0}" == '1' ]]; then exit 1; fi
+        exit 0
+        ;;
+    *'exec -T cassandra cqlsh -e DESCRIBE KEYSPACES'*)
+        exit 0
+        ;;
+    *'exec -T cassandra cqlsh -f /schema/keyspace-uuid.cql'*)
+        if [[ -n "${SCHEMA_STATE:-}" ]]; then printf 'present' > "$SCHEMA_STATE"; fi
+        exit 0
+        ;;
+    *'exec -T cassandra cqlsh -e SELECT'*)
+        if [[ "${KEYS_PRESENT:-0}" == '1' \
+              || ( -n "${SCHEMA_STATE:-}" && -f "$SCHEMA_STATE" ) ]]; then
+            printf '(1 rows)\n'
+        else
+            printf '(0 rows)\n'
+        fi
+        exit 0
+        ;;
+esac
+exit 0
+STUB
+
+cat > "$work/bin/mvn" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$MVN_CALLS"
+case "$*" in
+    *'help:evaluate'*)
+        printf '%s\n' "${MVN_IMAGE:-node-9/cassandra-core-service-rsocket:0.0.1}"
+        ;;
+esac
+exit 0
+STUB
+
+printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/curl"
+chmod +x "$work/bin/docker" "$work/bin/mvn" "$work/bin/curl"
+
+stub_env=(PATH="$work/bin:$PATH" DOCKER_CALLS="$work/start-calls"
+    MVN_CALLS="$work/start-mvn" SCHEMA_STATE="$work/start-state")
+
+reset_start() {
+    rm -f "$work/start-calls" "$work/start-mvn" "$work/start-state"
+}
+
+reset_start
+out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
+status=$?
+names_case='ok'
+for pattern in '-p chat-node-9' '--node-id 9' 'IMAGE_REPO_PREFIX=node-9'; do
+    if [[ "$out" != *"$pattern"* ]]; then
+        names_case="missing: $pattern"
+    fi
+done
+if [[ "$out" == *'chat-deploy-core'* ]]; then
+    names_case='the output names chat-deploy-core'
+fi
+if [[ $status -eq 0 && "$names_case" == 'ok' ]]; then
+    ok 'start_dry_run_uses_node9_names'
+else
+    bad 'start_dry_run_uses_node9_names' "exit $status, ${names_case}"
+fi
+
+build_case='ok'
+for pattern in '--notls' 'CONSUL_HOST=consul' 'CONSUL_PORT=8500' \
+    'CASSANDRA_CONTACT_POINTS=cassandra'; do
+    if [[ "$out" != *"$pattern"* ]]; then
+        build_case="missing: $pattern"
+    fi
+done
+if [[ "$build_case" == 'ok' ]]; then
+    ok 'build_command_is_explicit'
+else
+    bad 'build_command_is_explicit' "$build_case"
+fi
+
+reset_start
+rm -rf "$sandbox/data"
+env "${stub_env[@]}" KEYS_PRESENT=0 bash "$sandbox/bin/start" >/dev/null 2>&1
+cassandra_line="$(grep -n 'up -d cassandra redis consul' "$work/start-calls" 2>/dev/null | head -n 1 | cut -d: -f1)"
+schema_line="$(grep -n -- '-f /schema/keyspace-uuid.cql' "$work/start-calls" 2>/dev/null | head -n 1 | cut -d: -f1)"
+core_line="$(grep -n 'up -d core-service-rsocket' "$work/start-calls" 2>/dev/null | head -n 1 | cut -d: -f1)"
+if [[ -n "$cassandra_line" && -n "$schema_line" && -n "$core_line" \
+      && "$cassandra_line" -lt "$schema_line" && "$schema_line" -lt "$core_line" ]]; then
+    ok 'start_order'
+else
+    bad 'start_order' "cassandra=$cassandra_line schema=$schema_line core=$core_line"
+fi
+
+reset_start
+env "${stub_env[@]}" KEYS_PRESENT=1 bash "$sandbox/bin/start" >/dev/null 2>&1
+reset_start
+env "${stub_env[@]}" KEYS_PRESENT=1 bash "$sandbox/bin/start" >/dev/null 2>&1
+if [[ "$(grep -c -- '-f /schema/keyspace-uuid.cql' "$work/start-calls" 2>/dev/null)" == '0' ]]; then
+    ok 'second_start_keeps_data'
+else
+    bad 'second_start_keeps_data' 'the second start applied the schema'
+fi
+
+printf 'CHAT_SERVICE_PASSWORD=dry-service-secret\nCHAT_ADMIN_PASSWORD=dry-admin-secret\nCHAT_EMBEDDING_OPENAI_API_KEY=dry-embed-secret\n' \
+    > "$sandbox/secrets.env"
+reset_start
+out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$out" != *'dry-service-secret'* \
+      && "$out" != *'dry-admin-secret'* && "$out" != *'dry-embed-secret'* ]]; then
+    ok 'dry_run_prints_no_secret'
+else
+    bad 'dry_run_prints_no_secret' "exit $status, the output holds a secret value"
+fi
+
+before_ps="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}' 2>/dev/null | sort)"
+before_images="$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null | sort)"
+reset_start
+env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run >/dev/null 2>&1
+after_ps="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}' 2>/dev/null | sort)"
+after_images="$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null | sort)"
+if [[ "$before_ps" == "$after_ps" && "$before_images" == "$after_images" ]]; then
+    ok 'start_dry_run_changes_nothing'
+else
+    bad 'start_dry_run_changes_nothing' 'the Docker listings changed'
+fi
+
+rm -rf "$sandbox/data"
+reset_start
+env "${stub_env[@]}" NODE9_VECTOR_PERSIST=off \
+    bash "$sandbox/bin/start" --dry-run >/dev/null 2>&1
+if [[ ! -d "$sandbox/data/vector" && -d "$sandbox/data/cassandra" ]]; then
+    ok 'start_dry_run_off_has_no_vector_dir'
+else
+    bad 'start_dry_run_off_has_no_vector_dir' 'the vector directory state is wrong'
+fi
+
+# GNU netcat exits after one connection, so do not probe the listener.
+nc -l -p 6890 >/dev/null 2>&1 &
+listener=$!
+/bin/sleep 0.5
+reset_start
+env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run >/dev/null 2>&1
+status=$?
+kill "$listener" >/dev/null 2>&1
+wait "$listener" 2>/dev/null
+if [[ $status -eq 3 && ! -e "$work/start-calls" ]]; then
+    ok 'start_refuses_busy_port'
+else
+    bad 'start_refuses_busy_port' "exit $status, docker calls $([ -e "$work/start-calls" ] && echo yes || echo no)"
+fi
+
+printf 'CHAT_SERVICE_PASSWORD=x\nCHAT_ADMIN_PASSWORD=y\nCHAT_EMBEDDING_OPENAI_API_KEY=z\n' \
+    > "$sandbox/secrets.env"
+reset_start
+env "${stub_env[@]}" bash "$sandbox/bin/stop" >/dev/null 2>&1
+status=$?
+if [[ $status -eq 0 && -s "$work/start-calls" \
+      && "$(grep -vc -- '-p chat-node-9' "$work/start-calls")" == '0' ]]; then
+    ok 'stop_names_only_project_node9'
+else
+    bad 'stop_names_only_project_node9' "exit $status"
+fi
+
+reset_start
+out="$(env "${stub_env[@]}" MVN_IMAGE='node-9/cassandra-core-service-rsocket:0.0.1' \
+    bash "$sandbox/bin/start" --dry-run 2>&1)"
+good_status=$?
+good_output="$out"
+reset_start
+out="$(env "${stub_env[@]}" MVN_IMAGE='docker.io/library/cassandra-core-service-rsocket:0.0.1' \
+    bash "$sandbox/bin/start" --dry-run 2>&1)"
+bad_status=$?
+if [[ $good_status -eq 0 \
+      && "$good_output" == *'image: node-9/cassandra-core-service-rsocket:0.0.1'* \
+      && $bad_status -eq 4 && "$out" != *'shell-scripts/chat-build'* ]]; then
+    ok 'image_reference_differs_from_node16'
+else
+    bad 'image_reference_differs_from_node16' "good=$good_status bad=$bad_status"
+fi
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1
