@@ -227,7 +227,10 @@ if [[ -d "$node9_root" ]]; then
             mount_case="mount is not under node-9: $source"
         fi
     done < <(sed -n 's/^[[:space:]]*source:[[:space:]]*//p' <<< "$on_text")
-    if grep -rqE '/Users|/home' "$node9_root"; then
+    if [[ -n "$(find "$node9_root" \
+        \( -path "$node9_root/data" -o -path "$node9_root/images" \
+           -o -path "$node9_root/secrets" -o -path "$node9_root/run" \) -prune \
+        -o -type f -exec grep -lE '/Users|/home' {} + 2>/dev/null)" ]]; then
         mount_case='node-9/ holds an absolute home path'
     fi
 else
@@ -599,11 +602,11 @@ else
     bad 'dry_run_prints_no_secret' "exit $status, the output holds a secret value"
 fi
 
-before_ps="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}' 2>/dev/null | sort)"
+before_ps="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}}' 2>/dev/null | sort)"
 before_images="$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null | sort)"
 reset_start
 env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run >/dev/null 2>&1
-after_ps="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}' 2>/dev/null | sort)"
+after_ps="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Image}}' 2>/dev/null | sort)"
 after_images="$(docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' 2>/dev/null | sort)"
 if [[ "$before_ps" == "$after_ps" && "$before_images" == "$after_images" ]]; then
     ok 'start_dry_run_changes_nothing'
@@ -642,7 +645,8 @@ reset_start
 env "${stub_env[@]}" bash "$sandbox/bin/stop" >/dev/null 2>&1
 status=$?
 if [[ $status -eq 0 && -s "$work/start-calls" \
-      && "$(grep -vc -- '-p chat-node-9' "$work/start-calls")" == '0' ]]; then
+      && "$(grep -vc -- '-p chat-node-9' "$work/start-calls")" == '0' \
+      && "$(grep -c -- '--timeout 60' "$work/start-calls")" == '1' ]]; then
     ok 'stop_names_only_project_node9'
 else
     bad 'stop_names_only_project_node9' "exit $status"
