@@ -83,6 +83,14 @@ password. The mechanism of task 2 step 0 works.
 - The launcher requires a stop before a toggle change. The port guard
   caused the refusal. This is not a defect.
 
+## Redaction, 2026-10-19
+
+Review of PR #262 found two secret values in `config-off.yaml`, the
+Compose output. Both are now `<redacted>`. The Admin value matched the live
+`node-9/secrets.env`. That password is rotated on 2026-10-19. The
+service value was older than the current `secrets.env`. The redaction
+changes those two lines alone. The rest of the output is as measured.
+
 ## Step 7: node 16 is unchanged
 
 - The diff of `node16-before-ps.txt` and `node16-after-ps.txt` holds only
