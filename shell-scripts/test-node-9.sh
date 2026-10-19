@@ -477,11 +477,16 @@ cp node-9/node-9.env node-9/compose.yaml node-9/compose.vector-disk.yaml \
     node-9/userinit.yml "$sandbox/" 2>/dev/null
 cp -R node-9/schema "$sandbox/" 2>/dev/null
 cp node-9/bin/lib.sh node-9/bin/setup-secrets node-9/bin/start \
-    node-9/bin/stop "$sandbox/bin/" 2>/dev/null
+    node-9/bin/stop node-9/bin/save-images node-9/bin/load-images \
+    "$sandbox/bin/" 2>/dev/null
 
 cat > "$work/bin/docker" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$DOCKER_CALLS"
+if [[ "$1" == 'save' && "$2" == '--output' ]]; then
+    : > "$3"
+    exit 0
+fi
 case "$*" in
     'image inspect '*)
         if [[ "${IMAGE_ABSENT:-0}" == '1' ]]; then exit 1; fi
@@ -658,6 +663,44 @@ if [[ $good_status -eq 0 \
     ok 'image_reference_differs_from_node16'
 else
     bad 'image_reference_differs_from_node16' "good=$good_status bad=$bad_status"
+fi
+
+# -- Save and load images ----------------------------------------------
+
+save_calls="$work/save-calls"
+rm -rf "$sandbox/images"
+rm -f "$save_calls"
+env PATH="$work/bin:$PATH" DOCKER_CALLS="$save_calls" \
+    bash "$sandbox/bin/save-images" >/dev/null 2>&1
+save_status=$?
+save_count="$(grep -c '^save --output ' "$save_calls" 2>/dev/null)"
+tar_count="$(ls "$sandbox/images"/*.tar 2>/dev/null | wc -l | tr -d ' ')"
+if [[ $save_status -eq 0 && "$save_count" == '5' && "$tar_count" == '5' ]]; then
+    ok 'save_images_names_five_images'
+else
+    bad 'save_images_names_five_images' \
+        "exit $save_status, saves $save_count, tars $tar_count"
+fi
+
+image_list="$( cd "$repo_root" \
+    && bash -c 'source node-9/bin/lib.sh; node9_load_env; node9_images' 2>&1 )"
+list_status=$?
+if [[ $list_status -eq 0 && "$(grep -c ':latest' <<< "$image_list")" == '0' \
+      && "$(sort -u <<< "$image_list" | wc -l | tr -d ' ')" == '5' ]]; then
+    ok 'image_list_has_no_latest_tag'
+else
+    bad 'image_list_has_no_latest_tag' "exit $list_status, list: $image_list"
+fi
+
+rm -f "$sandbox/images/redis-7.tar"
+rm -f "$save_calls"
+out="$(env PATH="$work/bin:$PATH" DOCKER_CALLS="$save_calls" \
+    bash "$sandbox/bin/load-images" 2>&1)"
+load_status=$?
+if [[ $load_status -ne 0 && "$out" == *'redis-7.tar'* ]]; then
+    ok 'load_images_fails_on_missing_tar'
+else
+    bad 'load_images_fails_on_missing_tar' "exit $load_status, output: $out"
 fi
 
 if ((failures > 0)); then

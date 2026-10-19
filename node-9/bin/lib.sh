@@ -103,6 +103,23 @@ node9_compose() {
     )
 }
 
+# node9_images
+# Print the five node-9 images, one per line. Run node9_load_env first.
+node9_images() {
+    printf '%s\n' \
+        "${CORE_IMAGE:?Set CORE_IMAGE}" \
+        "cassandra:${CASSANDRA_VERSION:?Set CASSANDRA_VERSION}" \
+        "redis:${REDIS_VERSION:?Set REDIS_VERSION}" \
+        "hashicorp/consul:${CONSUL_VERSION:?Set CONSUL_VERSION}" \
+        "busybox:1.36"
+}
+
+# node9_image_file IMAGE
+# Print the tar file name for IMAGE.
+node9_image_file() {
+    printf '%s.tar\n' "$(printf '%s' "$1" | tr '/:' '--')"
+}
+
 # node9_cqlsh ARGS...
 # Run cqlsh in the node-9 Cassandra container.
 node9_cqlsh() {

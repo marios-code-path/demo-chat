@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Save the node-9 images to node-9/images. See CHAT-hcfgkbuz.
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$script_dir/lib.sh"
+
+node9_load_env || exit 2
+mkdir -p "$NODE9_DIR/images"
+for image in $(node9_images); do
+    file="$NODE9_DIR/images/$(node9_image_file "$image")"
+    printf 'node-9: saving %s\n' "$image"
+    if ! docker save --output "$file" "$image"; then
+        printf 'node-9: the save of %s failed\n' "$image" >&2
+        exit 5
+    fi
+done
