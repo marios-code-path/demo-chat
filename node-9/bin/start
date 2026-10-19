@@ -41,16 +41,25 @@ if [[ "$NODE9_VECTOR_PERSIST" == 'on' ]]; then
     mkdir -p "$NODE9_DIR/data/vector"
 fi
 
-image_ref="$( cd "$repo_root" || exit 1
-    IMAGE_REPO_PREFIX=node-9 mvn -q -f pom.xml \
-        -pl chat-deploy-cassandra help:evaluate \
-        -Dexpression=appImageName \
-        -DimageName=cassandra-core-service-rsocket \
-        -DforceStdout 2>/dev/null )"
-if [[ "$image_ref" != node-9/* || "$image_ref" == *'${'* ]]; then
-    printf 'node-9: the image reference is not a node-9 reference: %s\n' \
-        "$image_ref" >&2
-    exit 4
+# The image reference comes from node-9.env, and lib.sh validates it.
+# An image that a load created needs no Maven and no repository. Maven
+# resolves the reference only when the image is absent and a build is due.
+image_ref="$CORE_IMAGE"
+image_present=false
+if docker image inspect "$image_ref" >/dev/null 2>&1; then
+    image_present=true
+else
+    image_ref="$( cd "$repo_root" || exit 1
+        IMAGE_REPO_PREFIX=node-9 mvn -q -f pom.xml \
+            -pl chat-deploy-cassandra help:evaluate \
+            -Dexpression=appImageName \
+            -DimageName=cassandra-core-service-rsocket \
+            -DforceStdout 2>/dev/null )"
+    if [[ "$image_ref" != node-9/* || "$image_ref" == *'${'* ]]; then
+        printf 'node-9: the image reference is not a node-9 reference: %s\n' \
+            "$image_ref" >&2
+        exit 4
+    fi
 fi
 export CORE_IMAGE="$image_ref"
 
@@ -70,7 +79,7 @@ if [[ "$dry_run" == 'true' ]]; then
     exit 0
 fi
 
-if ! docker image inspect "$image_ref" >/dev/null 2>&1; then
+if [[ "$image_present" != 'true' ]]; then
     if ! ( cd "$repo_root" || exit 1
         mvn -f pom.xml -pl chat-deploy-cassandra -am \
             -Pregister-consul -Dmaven.test.skip=true install ); then

@@ -656,6 +656,10 @@ measured.
   Cassandra (exit 137). A 60 s timeout let it end on SIGTERM (exit 143).
 - **The move is not measured.** No destination host was named. A
   Docker-in-Docker daemon needs `--privileged` and the owner's approval.
+- **A start with the image present calls no Maven.** `start` reads
+  `CORE_IMAGE` from `node-9.env`. It calls Maven only when the image is
+  absent and a build is due. A live start on 2026-10-19 built nothing, so a
+  host with the loaded image needs Docker, `curl`, `nc`, and `openssl`.
 
 ## Unverified
 

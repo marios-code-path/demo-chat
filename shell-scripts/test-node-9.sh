@@ -653,12 +653,14 @@ else
 fi
 
 reset_start
-out="$(env "${stub_env[@]}" MVN_IMAGE='node-9/cassandra-core-service-rsocket:0.0.1' \
+out="$(env "${stub_env[@]}" IMAGE_ABSENT=1 \
+    MVN_IMAGE='node-9/cassandra-core-service-rsocket:0.0.1' \
     bash "$sandbox/bin/start" --dry-run 2>&1)"
 good_status=$?
 good_output="$out"
 reset_start
-out="$(env "${stub_env[@]}" MVN_IMAGE='docker.io/library/cassandra-core-service-rsocket:0.0.1' \
+out="$(env "${stub_env[@]}" IMAGE_ABSENT=1 \
+    MVN_IMAGE='docker.io/library/cassandra-core-service-rsocket:0.0.1' \
     bash "$sandbox/bin/start" --dry-run 2>&1)"
 bad_status=$?
 if [[ $good_status -eq 0 \
@@ -667,6 +669,18 @@ if [[ $good_status -eq 0 \
     ok 'image_reference_differs_from_node16'
 else
     bad 'image_reference_differs_from_node16' "good=$good_status bad=$bad_status"
+fi
+
+# A loaded image makes Maven unnecessary. The destination needs Docker alone.
+reset_start
+out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
+status=$?
+if [[ $status -eq 0 && ! -e "$work/start-mvn" \
+      && "$out" == *'image: node-9/cassandra-core-service-rsocket:0.0.1'* ]]; then
+    ok 'start_with_a_loaded_image_calls_no_maven'
+else
+    bad 'start_with_a_loaded_image_calls_no_maven' \
+        "exit $status, maven calls $([ -e "$work/start-mvn" ] && echo yes || echo no)"
 fi
 
 # -- Save and load images ----------------------------------------------

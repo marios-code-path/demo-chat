@@ -12,9 +12,11 @@ The design is in
 ## Prerequisites
 
 - Docker with Compose v2.
+- `curl`, `nc`, and `openssl`.
 - A route to `node2.lan:6090` for embeddings.
 - Free loopback ports 6890 and 6891.
-- Maven and a JDK for the first build.
+- Maven and a JDK, for a build only. `start` calls no Maven when the image is
+  present, so a host that loads the image needs no Maven and no repository.
 
 ## Ports
 
@@ -100,6 +102,11 @@ are fixed. `lib.sh` rejects a changed value. `NODE9_DIR` comes from
 
 The core image is in no registry. `save-images` writes five tar files under
 `node-9/images/`. The move was not verified in stage 2.
+
+The destination needs Docker with Compose v2, `curl`, `nc`, and `openssl`.
+It needs no Maven, no JDK, and no repository copy. `start` reads
+`CORE_IMAGE` from `node-9.env` and finds the loaded image. It calls Maven
+only when the image is absent.
 
 ## The embedding route
 
