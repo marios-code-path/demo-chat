@@ -102,3 +102,71 @@ node9_compose() {
             "${args[@]}" "$@"
     )
 }
+
+# node9_cqlsh ARGS...
+# Run cqlsh in the node-9 Cassandra container.
+node9_cqlsh() {
+    node9_compose exec -T cassandra cqlsh "$@"
+}
+
+# node9_row_line TEXT
+# Print the row count when TEXT holds exactly one row-count line.
+# Return 1 for any other text.
+node9_row_line() {
+    local matches
+    matches="$(printf '%s\n' "$1" | grep -cE '^\((0|1) rows\)$')"
+    if [[ "$matches" != '1' ]]; then
+        return 1
+    fi
+    if printf '%s\n' "$1" | grep -qxF '(1 rows)'; then
+        printf '1\n'
+    else
+        printf '0\n'
+    fi
+}
+
+# node9_apply_schema
+# Apply the uuid schema only when the keyspace is absent. A failed or
+# unclear query applies nothing. See CHAT-hcfgkbuz.
+node9_apply_schema() {
+    local attempt
+    local ready=false
+    for ((attempt = 1; attempt <= 180; attempt++)); do
+        if node9_cqlsh -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1; then
+            ready=true
+            break
+        fi
+        sleep 1
+    done
+    if [[ "$ready" != 'true' ]]; then
+        printf 'node-9: Cassandra did not answer after 180 attempts\n' >&2
+        return 1
+    fi
+
+    local query rows out
+    query="SELECT keyspace_name FROM system_schema.keyspaces WHERE keyspace_name = 'chat_uuid'"
+    if ! out="$(node9_cqlsh -e "$query" 2>&1)"; then
+        printf 'node-9: the keyspace query failed\n' >&2
+        return 1
+    fi
+    if ! rows="$(node9_row_line "$out")"; then
+        printf 'node-9: the keyspace query gave no single row count\n' >&2
+        return 1
+    fi
+    if [[ "$rows" == '1' ]]; then
+        return 0
+    fi
+
+    if ! node9_cqlsh -f /schema/keyspace-uuid.cql; then
+        printf 'node-9: the schema apply failed\n' >&2
+        return 1
+    fi
+    if ! out="$(node9_cqlsh -e "$query" 2>&1)"; then
+        printf 'node-9: the keyspace query failed after the apply\n' >&2
+        return 1
+    fi
+    if ! rows="$(node9_row_line "$out")" || [[ "$rows" != '1' ]]; then
+        printf 'node-9: the keyspace is absent after the apply\n' >&2
+        return 1
+    fi
+}

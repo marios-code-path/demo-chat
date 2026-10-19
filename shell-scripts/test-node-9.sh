@@ -202,6 +202,12 @@ else
     bad 'config_off_keeps_embedding_settings' "${embedding_case} ${difference}"
 fi
 
+if grep -q 'CHAT_ADMIN_PASSWORD: fixture-admin-password' <<< "$off_text"; then
+    ok 'compose_passes_admin_password'
+else
+    bad 'compose_passes_admin_password' 'the core environment lacks the Admin password'
+fi
+
 no_key="$work/secrets-no-key.env"
 grep -v '^CHAT_EMBEDDING_OPENAI_API_KEY=' "$fixture" > "$no_key"
 missing_text="$(node9_config off "$no_key" 2>&1)"
@@ -261,6 +267,206 @@ if [[ "$port_case" == 'ok' ]]; then
     ok 'ports_are_loopback_only'
 else
     bad 'ports_are_loopback_only' "$port_case"
+fi
+
+# -- Secrets ------------------------------------------------------------
+
+generated="$work/generated-secrets.env"
+secrets_out="$( cd "$repo_root" \
+    && NODE9_SECRETS_FILE="$generated" \
+       bash node-9/bin/setup-secrets 2>&1 )"
+secrets_status=$?
+secrets_mode="$(stat -c '%a' "$generated" 2>/dev/null \
+    || stat -f '%Lp' "$generated" 2>/dev/null)"
+if [[ $secrets_status -eq 0 && "$secrets_mode" == '600' ]]; then
+    ok 'secrets_created_with_mode_0600'
+else
+    bad 'secrets_created_with_mode_0600' "exit $secrets_status, mode $secrets_mode"
+fi
+
+service_pw="$(sed -n 's/^CHAT_SERVICE_PASSWORD=//p' "$generated" 2>/dev/null)"
+admin_pw="$(sed -n 's/^CHAT_ADMIN_PASSWORD=//p' "$generated" 2>/dev/null)"
+if [[ "$service_pw" =~ ^[0-9a-f]{32}$ && "$admin_pw" =~ ^[0-9a-f]{32}$ \
+      && "$service_pw" != "$admin_pw" ]]; then
+    ok 'secrets_values_are_random_and_distinct'
+else
+    bad 'secrets_values_are_random_and_distinct' 'the password values are not distinct hex values'
+fi
+
+before="$(cksum < "$generated" 2>/dev/null)"
+( cd "$repo_root" && NODE9_SECRETS_FILE="$generated" \
+    bash node-9/bin/setup-secrets ) >/dev/null 2>&1
+after="$(cksum < "$generated" 2>/dev/null)"
+if [[ -n "$before" && "$before" == "$after" ]]; then
+    ok 'secrets_not_replaced'
+else
+    bad 'secrets_not_replaced' 'the second run changed the file'
+fi
+
+if [[ -n "$service_pw" && -n "$admin_pw" \
+      && "$secrets_out" != *"$service_pw"* && "$secrets_out" != *"$admin_pw"* ]]; then
+    ok 'secrets_never_printed'
+else
+    bad 'secrets_never_printed' 'the output holds a password'
+fi
+
+userinit="$node9_root/userinit.yml"
+userinit_case='ok'
+if [[ ! -f "$userinit" ]]; then
+    userinit_case='userinit.yml is missing'
+elif [[ "$(grep -c 'password:' "$userinit")" != '1' ]]; then
+    userinit_case='userinit.yml holds more than one password key'
+elif ! grep -qF 'password: ${CHAT_ADMIN_PASSWORD}' "$userinit"; then
+    userinit_case='the Admin password is not the placeholder'
+elif grep -qi 'changeme' "$userinit"; then
+    userinit_case='userinit.yml holds the literal changeme'
+fi
+if [[ "$userinit_case" == 'ok' ]]; then
+    ok 'userinit_overrides_only_admin_password'
+else
+    bad 'userinit_overrides_only_admin_password' "$userinit_case"
+fi
+
+# -- The schema step ----------------------------------------------------
+
+mkdir -p "$work/bin"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/sleep"
+chmod +x "$work/bin/sleep"
+
+cat > "$work/cqlsh" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$CQLSH_CALLS"
+case "$*" in
+    *'DESCRIBE KEYSPACES'*)
+        n="$(cat "$DESCRIBE_COUNT" 2>/dev/null || printf '0')"
+        n=$((n + 1))
+        printf '%s' "$n" > "$DESCRIBE_COUNT"
+        if ((n <= ${DESCRIBE_FAILS:-0})); then
+            printf 'Connection error: could not connect\n' >&2
+            exit 1
+        fi
+        exit 0
+        ;;
+    *'-f /schema/keyspace-uuid.cql'*)
+        if [[ -n "${APPLY_STATE:-}" ]]; then
+            printf 'present' > "$APPLY_STATE"
+        fi
+        exit 0
+        ;;
+    *system_schema.keyspaces*)
+        if [[ "${QUERY_FAILS:-0}" == '1' ]]; then
+            printf 'Connection error: could not connect\n' >&2
+            exit 1
+        fi
+        if [[ "${QUERY_UNEXPECTED:-0}" == '1' ]]; then
+            printf 'unexpected output\n'
+            exit 0
+        fi
+        if [[ -n "${APPLY_STATE:-}" && -f "$APPLY_STATE" \
+              && "${VERIFY_STAYS_ABSENT:-0}" != '1' ]]; then
+            printf '(1 rows)\n'
+        else
+            printf '(0 rows)\n'
+        fi
+        exit 0
+        ;;
+esac
+exit 0
+STUB
+chmod +x "$work/cqlsh"
+
+reset_schema() {
+    rm -f "$work/calls" "$work/describe-count"
+}
+
+run_schema() {
+    local state="$1"
+    shift
+    ( cd "$repo_root" \
+      && env PATH="$work/bin:$PATH" \
+             CQLSH_STUB="$work/cqlsh" \
+             CQLSH_CALLS="$work/calls" \
+             DESCRIBE_COUNT="$work/describe-count" \
+             APPLY_STATE="$state" \
+             "$@" \
+             bash -c 'source node-9/bin/lib.sh
+                 node9_cqlsh() { "$CQLSH_STUB" "$@"; }
+                 node9_apply_schema' )
+}
+
+apply_calls() {
+    grep -c -- '-f /schema/keyspace-uuid.cql' "$work/calls" 2>/dev/null || true
+}
+
+describe_calls() {
+    grep -c 'DESCRIBE KEYSPACES' "$work/calls" 2>/dev/null || true
+}
+
+rm -f "$work/state-applied"
+reset_schema
+out="$(run_schema "$work/state-applied" 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$(apply_calls)" == '1' && -f "$work/state-applied" ]]; then
+    ok 'schema_applied_when_absent'
+else
+    bad 'schema_applied_when_absent' "exit $status, applies $(apply_calls)"
+fi
+
+printf 'present' > "$work/state-present"
+reset_schema
+out="$(run_schema "$work/state-present" 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$(apply_calls)" == '0' ]]; then
+    ok 'schema_not_applied_when_present'
+else
+    bad 'schema_not_applied_when_present' "exit $status, applies $(apply_calls)"
+fi
+
+reset_schema
+out="$(run_schema "$work/state-error" QUERY_FAILS=1 2>&1)"
+status=$?
+if [[ $status -ne 0 && "$(apply_calls)" == '0' ]]; then
+    ok 'schema_not_applied_on_connection_error'
+else
+    bad 'schema_not_applied_on_connection_error' "exit $status, applies $(apply_calls)"
+fi
+
+reset_schema
+out="$(run_schema "$work/state-odd" QUERY_UNEXPECTED=1 2>&1)"
+status=$?
+if [[ $status -ne 0 && "$(apply_calls)" == '0' ]]; then
+    ok 'schema_not_applied_on_unexpected_output'
+else
+    bad 'schema_not_applied_on_unexpected_output' "exit $status, applies $(apply_calls)"
+fi
+
+rm -f "$work/state-verify"
+reset_schema
+out="$(run_schema "$work/state-verify" VERIFY_STAYS_ABSENT=1 2>&1)"
+status=$?
+if [[ $status -ne 0 && "$(apply_calls)" == '1' ]]; then
+    ok 'schema_fails_when_verify_fails'
+else
+    bad 'schema_fails_when_verify_fails' "exit $status, applies $(apply_calls)"
+fi
+
+rm -f "$work/state-waits"
+reset_schema
+out="$(run_schema "$work/state-waits" DESCRIBE_FAILS=3 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$(describe_calls)" == '4' && "$(apply_calls)" == '1' ]]; then
+    ok 'schema_waits_for_cassandra'
+else
+    bad 'schema_waits_for_cassandra' "exit $status, describes $(describe_calls), applies $(apply_calls)"
+fi
+
+reset_schema
+out="$(run_schema "$work/state-gives-up" DESCRIBE_FAILS=999 2>&1)"
+status=$?
+if [[ $status -ne 0 && "$(describe_calls)" == '180' && "$(apply_calls)" == '0' ]]; then
+    ok 'schema_gives_up'
+else
+    bad 'schema_gives_up' "exit $status, describes $(describe_calls), applies $(apply_calls)"
 fi
 
 if ((failures > 0)); then
