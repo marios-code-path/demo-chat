@@ -60,9 +60,14 @@ class PubSubRegisterReadTests {
         given(topics.getRoomByName(ByStringRequest(name))).willReturn(Mono.just(MessageTopic.create(Key.of(id, 6L), name)))
     }
 
-    private fun stored(room: Long, vararg entries: Triple<Long, Duration, String>) {
+    /**
+     * A read through the command takes the real clock, because the command
+     * passes no [now]. A case that runs through the command sets [base] to
+     * the real clock, or its entries age out of the 24 hour window.
+     */
+    private fun stored(room: Long, vararg entries: Triple<Long, Duration, String>, base: Instant = now) {
         given(messages.listMessages(ByIdRequest(room))).willReturn(Flux.fromIterable(entries.map { (id, age, text) ->
-            Message.create(SimpleMessageKey(id, 7L, 11L, room, now.minus(age)), text, true) as Message<Long, String>
+            Message.create(SimpleMessageKey(id, 7L, 11L, room, base.minus(age)), text, true) as Message<Long, String>
         }))
     }
 
@@ -219,7 +224,7 @@ class PubSubRegisterReadTests {
         room("register-index", 100)
         stored(100, Triple(1, hours(1), "CHAT-1 | topic-a | task | A"))
         room("topic-a", 101)
-        stored(101, Triple(10, hours(1), "a new"))
+        stored(101, Triple(10, hours(1), "a new"), base = Instant.now())
         LaunchDeadline.active = LaunchDeadline("register-read", Instant.now().minusSeconds(4), Duration.ofSeconds(30))
 
         val (failure, printed) = runInMode()

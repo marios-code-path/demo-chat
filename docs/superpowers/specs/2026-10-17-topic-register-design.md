@@ -630,6 +630,33 @@ holds the cases. These facts are measured.
 - **The modes refuse `!`.** The host escape returns no status to Spring Shell,
   so a mode would end with 0 after a failed host command. Case A13 gave 2.
 
+## Measured in stage 2
+
+Stage 2 ran on 2026-10-19 on this host. Node 16 stayed up. The full record
+is `docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`. These facts are
+measured.
+
+- **The launcher starts node 9 beside node 16.** `node-9/bin/start`
+  returned 0. Health on 6891 was `UP`. The image was
+  `node-9/cassandra-core-service-rsocket:0.0.1`. No node-16 container,
+  image tag, or port changed.
+- **The Admin password comes from the environment.** A login as `Admin`
+  with the generated password succeeded. A login with `changeme` gave 77.
+  `users` showed one `Admin` and no lowercase `admin`. The mechanism is the
+  mounted `userinit.yml` and the required `SPRING_CONFIG_IMPORT`.
+- **The schema step never drops a live keyspace.** A second start with the
+  keyspace present ran no `cqlsh -f`. The posted message was unchanged.
+- **A post writes a vector without a rebuild trigger.** A second post
+  created a new generation within 10 s.
+- **The vector files reload.** A stop and start left every file and mtime
+  unchanged. The core reused them.
+- **The toggle off keeps the files.** The core started, and the vector
+  directory gained no file. A later on found the files.
+- **The stop needs a 60 s timeout.** The Compose default sent SIGKILL to
+  Cassandra (exit 137). A 60 s timeout let it end on SIGTERM (exit 143).
+- **The move is not measured.** No destination host was named. A
+  Docker-in-Docker daemon needs `--privileged` and the owner's approval.
+
 ## Unverified
 
 Each item below is believed from reading code or config. No run has shown it.
@@ -638,28 +665,34 @@ Each item below is believed from reading code or config. No run has shown it.
    application. Cassandra and RSocket frames may still set one. The largest
    archive section must pass the import check.
 5. **Live follow.** A `listen` on the owner's shell should show an entry that
-   an agent posts, through Redis. No run has shown it.
+   an agent posts, through Redis. No run has shown it. Stage 2 used
+   one-shot commands alone.
 6. **Command input.** Measured in stage 1, cases A9 and A10. See "Measured in
    stage 1". The number stays so that earlier references hold.
 7. **The agent sandbox.** An agent may run in a sandbox that blocks a
    connection to `127.0.0.1:6890` or a call to Docker. The read must work
-   from the agent's own shell.
+   from the agent's own shell. Stage 2 ran no sandboxed agent.
 8. **The message text in the store.** The import check assumes that the
    store keeps text byte for byte. No run has shown it for a large section.
 9. **The login from the environment.** Measured in stage 1, cases A2 and A3.
    See "Measured in stage 1". The number stays so that earlier references hold.
-10. **The node-9 address.** No shell has connected to 6890 and 6891. Item 3
+10. **The node-9 address.** Measured in stage 2. `chat-shell` connected to
+    6890 and 6891 for `whoami`, `add-topic`, `post`, and `messages`. Item 3
     shows the mechanism with other ports.
 
 ## Left to the builder
 
-- The exact image name of the node-9 core, and how the build tags it.
-- The pinned versions of the Cassandra, Redis, and Consul images. Consul is
-  `latest` today, and a move needs a fixed version.
-- The script language inside `node-9/bin/`.
-- The volume ownership step for Lucene and the vector store. The shipped
-  overlays use a `busybox` init container that runs `chown`.
-- The keyspace setup on the new Cassandra.
+Stage 2 answers each item.
+
+- The image is `node-9/cassandra-core-service-rsocket:<project version>`.
+  `IMAGE_REPO_PREFIX=node-9` and the Maven `appImageName` produce it.
+- The pinned versions are Cassandra 4.1.3, Redis 7, Consul 2.0.4, and
+  busybox 1.36. Consul 2.0.4 is the version the shipped container reports.
+- The scripts in `node-9/bin/` are bash.
+- The ownership step is `busybox:1.36` with `chown`. Lucene and the vector
+  store have one step each.
+- `node9_apply_schema` applies the schema only when the keyspace query
+  returns one `(0 rows)` line. A failed or unclear query applies nothing.
 
 ## Designer's calls
 

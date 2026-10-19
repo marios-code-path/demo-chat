@@ -67,7 +67,7 @@ diagram.
 | Server transport | `chat-service-controller`, `chat-webflux`, `chat-web`, `chat-gateway` |
 | Clients | `chat-client-rsocket`, `chat-client-consul`, `chat-shell`, `chat-mcp` |
 | Backend adapters | `chat-persistence-*`, `chat-index-*`, `chat-messaging-*`, `chat-vector-*`, `chat-embedding-*` |
-| Deployment | `chat-deploy*`, `shared-*`, `devops/`, `shell-scripts/` |
+| Deployment | `chat-deploy*`, `shared-*`, `devops/`, `shell-scripts/`, `node-9/` |
 
 ### Capability selectors
 
