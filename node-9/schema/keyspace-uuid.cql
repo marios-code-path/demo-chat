@@ -1,0 +1,227 @@
+DROP KEYSPACE IF EXISTS chat_uuid;
+CREATE KEYSPACE IF NOT EXISTS chat_uuid WITH replication={'class' : 'SimpleStrategy', 'replication_factor':'1'};
+
+-- The root key of each domain. See CHAT-avduuqwp.
+-- The key service writes each row once with IF NOT EXISTS, and reads it back
+-- on every start. This table is absent from truncate-uuid.cql on purpose. A
+-- root must survive a test cleanup and a restart.
+CREATE TABLE chat_uuid.root_keys(
+    domain varchar,
+    id uuid,
+    PRIMARY KEY (domain)
+);
+
+-- The key registry. Each minted id records the root of its domain.
+-- See CHAT-avduuqwp.
+CREATE TABLE chat_uuid.keys(
+                          id UUID,
+                          root UUID,
+                          PRIMARY KEY(id) );
+
+-- Holds the app.nodeid lease. One row per claimed node id.
+-- The row carries a TTL, so a crashed deployment releases its own id.
+-- The columns do not change with the key type. A claim holds a node id,
+-- not a domain key.
+-- This table is deliberately absent from truncate-uuid.cql. A live lease
+-- must expire. A test cleanup script must not delete it.
+CREATE TABLE chat_uuid.node_claim(
+    node_id  int,
+    owner_id text,
+    PRIMARY KEY(node_id)
+);
+
+-- Holds the store service leases, such as index:user. One row per claimed
+-- service. The row carries a TTL, so a crashed deployment releases its
+-- services. This table is deliberately absent from truncate-uuid.cql. A live
+-- lease must expire. A test cleanup script must not delete it. See
+-- docs/SERVICE-LEASE.md and CHAT-lswjobhz.
+CREATE TABLE chat_uuid.service_lease(
+    name     text,
+    owner_id text,
+    PRIMARY KEY(name)
+);
+
+CREATE TABLE chat_uuid.kv_pair(
+                                  id UUID,
+                                  vdata text,
+                                  PRIMARY KEY(id)
+);
+
+-- Inverted index over kv_pair values. One row per indexed field of one
+-- value. The read side partitions on the field and the value, so a query
+-- reads one partition.
+CREATE TABLE chat_uuid.kv_pair_index(
+    field text,
+    value text,
+    id UUID,
+    PRIMARY KEY((field, value), id)
+);
+
+-- The same rows keyed by the entity id. rem() receives only the entity key,
+-- so it needs this table to find the partitions it must delete.
+CREATE TABLE chat_uuid.kv_pair_index_by_id(
+    id UUID,
+    field text,
+    value text,
+    PRIMARY KEY(id, field, value)
+);
+
+
+CREATE TABLE chat_uuid.topic_membership
+(
+    id       UUID,
+    member   UUID,
+    member_of UUID,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE chat_uuid.topic_membership_by_member
+(
+    id       UUID,
+    member   UUID,
+    member_of UUID,
+    PRIMARY KEY (member)
+);
+
+CREATE TABLE chat_uuid.topic_membership_by_member_of
+(
+    id       UUID,
+    member   UUID,
+    member_of UUID,
+    PRIMARY KEY (member_of)
+);
+
+CREATE TABLE chat_uuid.chat_secret (
+                                       id UUID,
+                                       data varchar,
+                                       PRIMARY KEY (id)
+);
+
+
+CREATE TABLE chat_uuid.chat_message_id (
+                                      msg_id UUID,
+                                      user_id UUID,
+                                      topic_id UUID,
+                                      text    varchar,
+                                      msg_time timestamp,
+                                      visible Boolean,
+                                      kind text,
+                                      PRIMARY KEY (msg_id, msg_time))
+    WITH CLUSTERING ORDER BY (msg_time DESC);
+
+CREATE TABLE chat_uuid.chat_message_user (
+                                        msg_id UUID,
+                                        user_id UUID,
+                                        topic_id UUID,
+                                        text    varchar,
+                                        msg_time timestamp,
+                                        visible Boolean,
+                                        PRIMARY KEY (user_id, msg_time, msg_id))
+    WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
+
+CREATE TABLE chat_uuid.chat_message_topic (
+                                         msg_id UUID,
+                                         user_id UUID,
+                                         topic_id UUID,
+                                         text    varchar,
+                                         msg_time timestamp,
+                                         visible Boolean,
+                                         PRIMARY KEY (topic_id, msg_time, msg_id))
+    WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
+
+-- The message index rows keyed by the message id. rem() receives the message
+-- key alone, so it reads this table to name the rows to delete. See CHAT-xcmpudyb.
+CREATE TABLE chat_uuid.chat_message_index_by_id (
+    msg_id UUID,
+    user_id UUID,
+    topic_id UUID,
+    msg_time timestamp,
+    PRIMARY KEY (msg_id));
+
+
+CREATE TABLE chat_uuid.chat_room(
+                               room_id UUID,
+                               name varchar,
+                               active Boolean,
+                               PRIMARY KEY(room_id)
+);
+
+CREATE TABLE chat_uuid.chat_room_name(
+                                    room_id UUID,
+                                    name varchar,
+                                    active Boolean,
+                                    PRIMARY KEY(name, room_id))
+    WITH CLUSTERING ORDER BY (room_id DESC);
+
+
+CREATE TABLE chat_uuid.chat_user
+(
+    user_id   UUID,
+    handle    varchar,
+    name      varchar,
+    image_uri varchar,
+    timestamp timestamp,
+    PRIMARY KEY (user_id)
+);
+
+CREATE TABLE chat_uuid.chat_user_handle
+(
+    user_id   UUID,
+    handle    varchar,
+    name      varchar,
+    image_uri varchar,
+    timestamp timestamp,
+    PRIMARY KEY (handle)
+);
+
+CREATE TABLE chat_uuid.auth_metadata
+(
+    id  UUID,
+    principal   UUID,
+    target      UUID,
+    principal_root UUID,
+    target_root UUID,
+    permission  varchar,
+    mute        Boolean,
+    expires bigint,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE chat_uuid.auth_metadata_principal
+(
+    id  UUID,
+    principal   UUID,
+    target      UUID,
+    principal_root UUID,
+    target_root UUID,
+    permission  varchar,
+    mute        Boolean,
+    expires bigint,
+    PRIMARY KEY ((principal), id)
+);
+
+CREATE TABLE chat_uuid.auth_metadata_target
+(
+    id  UUID,
+    principal   UUID,
+    target      UUID,
+    principal_root UUID,
+    target_root UUID,
+    permission  varchar,
+    mute        Boolean,
+    expires bigint,
+    PRIMARY KEY ((target), id)
+);
+
+-- The same rows keyed by the grant id. rem() receives only the grant key, so
+-- it needs this table to name the target and principal partitions it must
+-- delete. See CHAT-rmxxtwtu.
+CREATE TABLE chat_uuid.auth_metadata_by_id
+(
+    id             UUID,
+    target         UUID,
+    principal      UUID,
+    target_root    UUID,
+    principal_root UUID,
+    PRIMARY KEY (id)
+);

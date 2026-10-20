@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Stop node 9 with its own Compose project and file set. See CHAT-hcfgkbuz.
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$script_dir/lib.sh"
+
+node9_load_env || exit 2
+# The default 10 s timeout sends SIGKILL to Cassandra. Measured on
+# 2026-10-19. 60 s lets it end on SIGTERM. See the live proof.
+node9_compose stop --timeout 60

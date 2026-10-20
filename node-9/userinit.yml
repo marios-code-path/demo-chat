@@ -1,0 +1,8 @@
+# Override the shipped Admin password at the core start.
+# The core imports this file from /etc/node-9/userinit.yml.
+# Task 3 adds the agent users here. See CHAT-hcfgkbuz.
+app:
+  init:
+    initialUsers:
+      Admin:
+        password: ${CHAT_ADMIN_PASSWORD}

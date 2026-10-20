@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Load the node-9 images from node-9/images. See CHAT-hcfgkbuz.
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$script_dir/lib.sh"
+
+node9_load_env || exit 2
+for image in $(node9_images); do
+    file="$NODE9_DIR/images/$(node9_image_file "$image")"
+    if [[ ! -f "$file" ]]; then
+        printf 'node-9: missing %s\n' "$file" >&2
+        exit 5
+    fi
+    printf 'node-9: loading %s\n' "$file"
+    if ! docker load --input "$file"; then
+        printf 'node-9: the load of %s failed\n' "$file" >&2
+        exit 5
+    fi
+done

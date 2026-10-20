@@ -1,0 +1,9 @@
+1792440177 0 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000000/vectors.bin
+1792440177 16 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000000/idmap.bin
+1792440177 16 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000000/metadata.bin
+1792440177 164 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000000/manifest.bin
+1792440320 164 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000001/manifest.bin
+1792440320 273 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000001/metadata.bin
+1792440320 3072 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000001/vectors.bin
+1792440320 74 node-9/data/vector/nomic-embed-text-v1-5-768/gen-0000000000000001/idmap.bin
+1792440320 8 node-9/data/vector/nomic-embed-text-v1-5-768/CURRENT

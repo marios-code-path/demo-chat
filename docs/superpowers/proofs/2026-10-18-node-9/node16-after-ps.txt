@@ -1,0 +1,9 @@
+69e80bc384ea chat-node-9-core-service-rsocket-1 node-9/cassandra-core-service-rsocket:0.0.1 Up 15 seconds
+b827066a6562 chat-node-9-consul-1 hashicorp/consul:2.0.4 Up 28 seconds
+d9060b891c2f chat-node-9-redis-1 redis:7 Up 28 seconds
+c70e72d2636f chat-node-9-cassandra-1 cassandra:4.1.3 Up 28 seconds
+08e2edb424bf docker-cassandra-1 cassandra:4.1.3 Up 2 days
+1dbbb77afb5f chat-authorization-server-authserv-1 chat-authserv:0.0.1 Up 6 days
+08bf946e75e9 chat-authorization-server-postgres-1 postgres:15.2 Up 6 days
+f0daa99eabce docker-redis-1 redis:7 Up 2 days
+2e232c5ce445 docker-consul-1 hashicorp/consul:latest Up 2 days
