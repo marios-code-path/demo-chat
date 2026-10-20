@@ -29,7 +29,7 @@ Measured on 2026-10-19 at 15:10 PDT.
 | Checkout | `master` at `d8f9713a`, the merge commit of PR #259. PR #260 merged as `95799ce5` and PR #261 as `43bb46bd`. Both were register changes, so this row does not move. The stage 2 branch starts at `43bb46bd`. |
 | Last merged PR | #261, the register change for stage 2. #260 merged before it. |
 | Merge strategy | Merge commits only. Every merge needs Mario's explicit authorization and the owner's named `--admin` bypass. A review comment is not that authorization. |
-| Open PRs | #262, ready for review. It holds the stage 2 plan, tasks 1 to 6, and the fixes of one review. The review found a secret in a proof file, a Maven call in `start`, and this register row. All three are fixed. |
+| Open PRs | #262, ready for Mario's acceptance test at `45ed70ef`. It holds the stage 2 plan, tasks 1 to 6, and the fixes of one review. The review found a secret in a proof file, a Maven call in `start`, a stale register row, and a stale plan step. All four are fixed. The review holds no blocker. The three GitHub checks pass: agent-http, build, and integration. |
 | Branches and worktrees | `chat-hcfgkbuz-node-9` holds the stage 2 work. Its worktree is `.worktrees/chat-hcfgkbuz-node-9`. Every branch ref is kept. |
 
 ## In flight
@@ -63,9 +63,10 @@ shell against the old failure were not run.
 
 **The next Theta session starts here.**
 
-1. Read the review of PR #262, then answer it on the PR.
+1. Mario runs the acceptance test on PR #262 at `45ed70ef`.
 2. Do not merge. A merge needs Mario's explicit authorization and the
-   owner's named `--admin` bypass.
+   owner's named `--admin` bypass. Review acceptance is not that
+   authorization.
 3. Stage 3 builds `node-9/bin/register read --as <name>` on `register-read`.
    It then changes `AGENTS.md`.
 4. Read `fp context CHAT-jmnjvupr` and the newest comments first.
