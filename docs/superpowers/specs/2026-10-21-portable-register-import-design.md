@@ -8,7 +8,7 @@ One bundle restores an active topic register from one reviewed Markdown snapshot
 The bundle holds the source bytes, an explicit topic mapping, and stable request IDs.
 It holds no password or host-specific receipt.
 
-This is the bootstrap delivery before stage 4 removes the tracked register files.
+This is stage 4A, the bootstrap delivery before stage 4B removes the tracked register files.
 The later archive import can use the same transport and byte checks.
 This delivery does not import the six historical archive files.
 
@@ -21,9 +21,22 @@ The source is a reviewed UTF-8 `forward-register.md` snapshot.
 The caller records its source date and evidence before `pack` runs.
 Commit `2d75f0cdd09115da422cdc0a693f0227f31a6ef5` (H) is historical input only.
 It predates later stage 3 register entries and cannot be the current active source.
-The current host needs a new snapshot from the stage 3 proof and later FP records.
+Sigma drafts a new snapshot from the stage 3 proof and later FP records.
 Mario reviews that snapshot before the active import.
 The `pack` command accepts a file, so a destination host needs no Git checkout.
+
+The snapshot review checks these facts against their named sources:
+
+1. It lists every issue that FP currently marks in progress. It names each issue's latest state and next action.
+2. It names the current checkout, open PRs, branch locations, and last merged PR from Git and GitHub.
+3. It states the merge authorization rule and the register trust rule from `AGENTS.md`.
+4. It carries the stage 3 decisions and live results from `COVERAGE.md` and `RECORD.md`.
+5. It records the lost Cassandra history as a gap. It does not claim that the proof contains every old entry.
+6. Each material claim names an FP issue, commit, PR, or proof file. The file holds no password.
+
+Sigma records the reviewed source SHA-256 and mapping SHA-256.
+Mario confirms both hashes before `pack` produces the active bundle.
+One missing issue, unsupported claim, or stale status stops this review.
 
 The caller supplies `mapping.json` with this shape:
 
@@ -64,7 +77,7 @@ It does not infer a key or topic from a Markdown table.
 `pack` copies the exact source into a new private bundle directory.
 It splits the source at `## ` headings, with the preamble as part zero.
 It refuses a source without a preamble, invalid UTF-8, or a NUL byte.
-It refuses a section above 16,384 bytes.
+It refuses a section above 16,384 bytes and names its heading, index, and byte count.
 It records each part's byte count, SHA-256, and order.
 It records the mapping and the source SHA-256 in a canonical content manifest.
 It records the computed byte offsets and hashes for every mapped range.
@@ -86,26 +99,42 @@ The bundle is task data and may contain private project text.
 `node-9/bin/register-import pack --source FILE --mapping FILE --bundle DIR` makes no network call.
 It refuses an existing bundle directory.
 It prints the source hash, bundle hash, topic names, and byte counts for review.
+It needs no installed node-9 home and does not create host receipt state.
 
 The owner copies the bundle to the destination host.
-The destination stores receipts under `node-9/data/register-import/<bundle-hash>`.
+The destination stores receipts under `/opt/demo-chat/node-9/data/register-import/<bundle-hash>`.
 It does not copy receipts from another host.
 
-`node-9/bin/register-import apply --bundle DIR --as Mario` imports one bundle.
+`/opt/demo-chat/node-9/bin/register-import apply --bundle DIR --as Mario` imports one bundle.
 It accepts no other import user for the first delivery.
+It sources the installed `bin/lib.sh` and calls `node9_require_installed` before it creates state.
+The `verify` command uses the same guard. The `pack` command does not call it.
+Offline tests may set `NODE9_ALLOW_SOURCE_TREE=1` for an isolated fixture.
 It checks the bundle before any shell call.
 It checks the installed shell CLI, all four credentials, and health on port `6891`.
 It fixes core ports `6890` and `6891`, node ID `9`, and UUID keys.
 It refuses a caller override of those values.
 It sends no password in an argument or the bundle.
 
+The installer issue `CHAT-mvvvnujw` owns the shell CLI runtime prerequisite.
+Its implementer builds `chat-shell-cli` from current source and installs its launcher and complete runtime classpath.
+The installed runtime must work without a Git checkout, Maven, or jars in `~/.m2`.
+The installer must prove `whoami` through `/opt/demo-chat/node-9/bin/register` before live import.
+An explicit `CHAT_SHELL_CLI` may select another complete runtime outside a Git worktree.
+That runtime must pass the same smoke test without Maven or `~/.m2`.
+The import plan begins with a rebase after `CHAT-mvvvnujw` lands.
+That rebase resolves changes in `lib.sh`, `README.md`, and the node-9 scripts before importer code changes.
+
 The first import runs on a fresh host before agents use its register.
-The first live step checks that `register-index` and every target topic are absent.
+On a fresh import, the first live step checks that `register-index` and every target topic are absent.
 Mario then creates `register-index`.
 The importer saves the new index ID and Mario ownership proof in private host state.
 The proof checks the Cassandra `*` permission row and resolves its principal to `Mario`.
 A retry accepts an existing index only when that saved proof matches the live index.
-An existing index without that proof stops the import before another write.
+If a crash precedes the saved proof, the importer checks the live index again.
+It rebuilds the proof only when the index holds zero messages and Mario owns its `*` permission row.
+It saves that proof before any topic or pointer post.
+An index with messages and no saved proof stops the import before another write.
 A denied or failed read stops the import.
 The importer checks every target name before its first write.
 An existing name with unrelated content stops the import.
@@ -125,9 +154,12 @@ It verifies that the entry is the newest message.
 It joins Sigma, Theta, Phi, and Mario before it posts the key pointer.
 The pointer has four fields: key, topic, metadata, and title.
 The metadata names the bundle hash and has no interpretation in `register-read`.
-After every topic passes, the importer posts the snapshot pointer and each key pointer.
+The implementation updates the `register` header comment and `docs/SHELL-COMMAND-CONTRACT.md` for this metadata use.
+After every topic passes, the importer posts each key pointer and the snapshot pointer last.
 It reads the index and verifies each new pointer ID.
-Agents cannot use the new host until `verify` passes.
+Mario does not direct agents to the new host until `verify` passes.
+Mario keeps agents off that host during import and verification.
+The importer does not enforce that operational rule.
 
 The importer records a receipt after each successful post.
 A retry uses the same request ID and the same input bytes.
@@ -136,7 +168,7 @@ The importer refuses a changed receipt ID for the same request ID.
 It never treats an existing unrelated topic or pointer as a completed import.
 It does not overwrite a newer entry in a topic that already contains this bundle.
 
-`node-9/bin/register-import verify --bundle DIR --as Mario` reads the destination.
+`/opt/demo-chat/node-9/bin/register-import verify --bundle DIR --as Mario` reads the destination.
 It reconstructs the source from the ordered snapshot parts.
 It compares the result with the bundled source by `cmp` and SHA-256.
 It verifies each mapped entry against its source range.
@@ -144,19 +176,32 @@ It verifies the pointers and reads the register as all four users.
 It treats a denied warning as a failure, even when the read returns status `0`.
 It measures five complete session reads from command start to the last byte.
 The median must meet the existing 10-second target.
-A read at the 30-second limit must return status `124`.
+The offline shell stub stalls a read with a shortened wrapper budget and checks status `124`.
+The stage 3 proof already records the live 30-second boundary.
+The import does not pause a live core to test the limit.
 
 ## Failure rules
 
 An invalid bundle or missing credential stops before a live write.
 A failed topic check stops before its pointer post.
-A failed byte comparison leaves the source file in the repository.
-A failed time gate leaves the source file in the repository.
 The importer never removes a source file itself.
 
 The receipt directory is private and belongs to one host.
 The bundle contains no receipt, password, or destination message ID.
 The importer prints one error line without secret text and returns a nonzero status.
+
+| Status | Import result |
+|---|---|
+| `0` | The command completed and passed its checks. |
+| `1` | A conflict, malformed receipt, failed readback, or byte difference stopped it. |
+| `2` | The arguments, bundle, path, installed-home guard, or shell CLI are invalid. |
+| `69` | The node-9 core is unavailable. |
+| `75` | A post outcome or readback remains uncertain. Retry with the same bundle. |
+| `77` | A required credential is absent or login fails. |
+| `124` | A bounded read passed its time limit. |
+
+The importer returns a shell status from this table when that status identifies the cause.
+It never reports a partial import as success.
 
 ## Boundaries and acceptance
 
@@ -164,8 +209,12 @@ The first delivery imports one current Markdown file and its active mapping.
 The frozen file at H remains available for the separate historical import.
 The existing stage 4 archive plan follows this delivery.
 It must use the bundle transport before it removes the seven tracked files.
+Stage 4B keeps every source file when a byte comparison or time gate fails.
 The paused `import-register` prototype is tied to H and seven fixed files.
 Its uncommitted apply path has not passed its offline suite.
+The implementation keeps `register-split` as the raw-byte helper.
+It removes the old `import-register` entry point after it moves useful tests into the new suite.
+It does not delete the ignored local preparation state without Mario's direction.
 
 Offline tests use a shell stub and two separate destination states.
 They prove equal bundle IDs, equal request IDs, byte recovery, and safe retries.
