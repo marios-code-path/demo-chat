@@ -5,6 +5,7 @@ set -uo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
+node9_require_installed || exit 2
 
 node9_load_env || exit 2
 mkdir -p "$NODE9_DIR/images"

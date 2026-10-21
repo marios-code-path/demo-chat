@@ -5,6 +5,7 @@ set -uo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
+node9_require_installed || exit 2
 
 dry_run=false
 for arg in "$@"; do
@@ -50,6 +51,11 @@ image_present=false
 if docker image inspect "$image_ref" >/dev/null 2>&1; then
     image_present=true
 else
+    if node9_installed; then
+        printf 'node-9: image %s is absent. Run node-9/bin/load-images.\n' \
+            "$image_ref" >&2
+        exit 4
+    fi
     image_ref="$( cd "$repo_root" || exit 1
         IMAGE_REPO_PREFIX=node-9 mvn -q -f pom.xml \
             -pl chat-deploy-cassandra help:evaluate \

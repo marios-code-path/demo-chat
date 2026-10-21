@@ -5,6 +5,31 @@
 # the mounts, so an override could redirect node 9 at another project.
 NODE9_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# node9_installed
+# Status 0 in an installed copy. The installer writes the .installed marker.
+# An installed copy has no repository. It builds nothing and finds no repo
+# root. See CHAT-mvvvnujw.
+node9_installed() {
+    [[ -f "$NODE9_DIR/.installed" ]]
+}
+
+# node9_require_installed
+# Refuse to run from a source tree. A work tree makes its own secrets.env,
+# secrets/, data/, and images/, and they vanish with the work tree. Set
+# NODE9_ALLOW_SOURCE_TREE=1 to run from a source tree on purpose. See
+# CHAT-mvvvnujw.
+node9_require_installed() {
+    if node9_installed || [[ "${NODE9_ALLOW_SOURCE_TREE:-}" == '1' ]]; then
+        return 0
+    fi
+    printf 'node-9: %s is a source tree. Its state vanishes with the work tree.\n' \
+        "$NODE9_DIR" >&2
+    printf 'node-9: run the installed copy, /opt/demo-chat/node-9/bin/%s.\n' \
+        "$(basename "$0")" >&2
+    printf 'node-9: install it with node-9/install, or set NODE9_ALLOW_SOURCE_TREE=1.\n' >&2
+    return 2
+}
+
 # node9_check_toggle VALUE
 # Status 0 for on or off. Otherwise print the value and return 2.
 node9_check_toggle() {

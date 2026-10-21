@@ -47,7 +47,8 @@ Exit status:
 
 - 2: an unknown argument, a bad toggle, or a failed environment load.
 - 3: port 6890 or 6891 is in use.
-- 4: the image reference is not a node-9 reference.
+- 4: the image reference is not a node-9 reference, or an installed copy
+  has no image.
 - 5: a build, schema, start, or health step failed.
 
 ## Stop
@@ -120,6 +121,43 @@ overrides the shipped `Admin` password. The core imports it from
 `NODE9_PROJECT`, `NODE9_RSOCKET_PORT`, `NODE9_MGMT_PORT`, and `CORE_IMAGE`
 are fixed. `lib.sh` rejects a changed value. `NODE9_DIR` comes from
 `lib.sh`, not from the caller.
+
+## Install outside the source tree
+
+Run `node-9/install --prefix /opt/demo-chat/node-9`. The prefix defaults to
+that path. Run node 9 from the installed copy, not from a work tree. A work
+tree holds its own `data/`, `secrets/` and `secrets.env`, so removing it
+removes node 9's state.
+
+The installer copies the code files, writes the `.installed` marker, and
+creates `data/`, `secrets/` (mode 0700) and `images/` when they are missing.
+A re-run replaces code files alone. It never reads, writes, or deletes
+`data/`, `secrets/`, `secrets.env`, or `images/`.
+
+A source tree refuses to run. `start`, `stop`, `setup-secrets`, `register`,
+`load-images` and `save-images` stop with status 2 unless the `.installed`
+marker is present. `NODE9_ALLOW_SOURCE_TREE=1` overrides the stop. Use it to
+stop containers that started from a work tree. Use it in the offline tests.
+
+The installer refuses a prefix inside a git work tree. It refuses a
+non-empty prefix that has no marker.
+
+`--import-state DIR` copies `secrets.env` and `secrets/` from the node-9
+directory `DIR`. It never overwrites a file. It skips the import and names the
+gap when the set is incomplete. It never copies Cassandra data. `--dry-run`
+changes nothing.
+
+The marker changes three scripts. An installed `start` never calls Maven. A
+missing image stops it with status 4. Run `load-images` first. An installed
+`register` takes the CLI from `CHAT_SHELL_CLI`, or from `bin/chat-shell-cli`.
+An installed `setup-secrets` skips its repository check.
+
+The owner Vault stays at `<parent of the prefix>/vault/owner.yml`. The
+installer links it into `ansible/vault/owner.yml`. The Vault password stays
+at `~/.config/chat-node-9/vault-pass`.
+
+Containers that started from a work tree keep the old mounts. Run `stop`
+there, then run `start` from the installed copy.
 
 ## Move to another host
 
