@@ -209,10 +209,10 @@ has 26 rows and 0 failures. The four agents read identical output. The read
 median is 5089 ms for 7 topics and 15 messages. One `duplicate-pointer`
 warning comes from the `CHAT-live6` test pointers. No denied warning
 appeared.
-- [ ] Stop the change when one coverage row has no message ID or no matching check string.
-- [ ] Commit the final `forward-register.md` as H. Make no further edit to that file.
+- [x] Stop the change when one coverage row has no message ID or no matching check string. The refreshed table has 30 rows, one message ID, and 0 failures against both the frozen file and the stored entry.
+- [x] Commit the final `forward-register.md` as H. Make no further edit to that file. H is `2d75f0cdd09115da422cdc0a693f0227f31a6ef5`, and the file's SHA-256 is `2a256ab9756a803c0cf9ea8b2a7a39ec4f9501b116dfd3377620746f59e55677`.
 - [ ] Put the freeze notice and the hash H in the register entry and in `AGENTS.md`.
-- [ ] Prove one sandboxed read before the switch. The profile allows `remote ip "*:6890"` and `*:6891`. A failed read stops the switch.
+- [x] Prove one sandboxed read before the switch. The profile allows `remote ip "*:6890"` and `*:6891`. A failed read stops the switch. Measured on 2026-10-21: 7 denied ports, 6890 connected, and the read gave status `0` with 15 records and no denied warning. See `sandbox-read.sh` in the proof directory.
 - [ ] Replace `@forward-register.md` in `AGENTS.md` with `node-9/bin/register read --as <name>`.
 - [ ] Put the trust rules beside the session-start instruction.
 - [ ] Run `bash shell-scripts/test-node-9.sh` and the new register suite.

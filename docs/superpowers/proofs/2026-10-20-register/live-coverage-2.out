@@ -1,0 +1,32 @@
+ok   checkout               master at bb0796d3
+ok   last-merged-pr         #262, stage 2
+ok   merge-strategy         Every merge needs Mario's explicit authorization
+ok   open-prs               It is not pushed
+ok   branches               chat-hcfgkbuz-node-9 is kept at 1ad85a5e
+ok   stage-3-tasks          Stage 3 tasks 1 to 6 are committed
+ok   task-7-items           Task 7 items 1 to 11 are done
+ok   read-median            The read median is 5089 ms
+ok   decision-39            Decision 39 makes a pointer name a key
+ok   backslash-rule         A key holds no backslash
+ok   commits                Commits f24358c0 and 83b9b6c3 carry
+ok   plan-path              docs/superpowers/plans/2026-10-19-topic-register-stage-3.md
+ok   switch                 Mario reviews that switch first
+ok   decisions-range        The design records decisions 1 to 39
+ok   live-run-safety        Node 9 runs on 6890 and 6891
+ok   lease-trap             Never pause the core to stall a read
+ok   boundary-stalled       A stalled shell gave status 124 at 30032 ms
+ok   boundary-paused        A paused core gave status 124 at 29716 ms
+ok   stage-2-vector         A post wrote a vector without a rebuild
+ok   stage-2-no-maven       node-9/bin/start calls no Maven when the image is present
+ok   open-host-move         move to another host is unverified
+ok   open-case-a11          Case A11 is not run
+ok   open-owner-vault       node-9/ansible/vault/owner.yml is absent
+ok   open-second-denial     The second-denial branch of decision 38 has offline tests only
+ok   landed-262             image save and load, and the live proof
+ok   archive-list           forward-register-archive-2026-10-19.md
+ok   in-progress-list       CHAT-pphwooqm
+ok   open-design-items      Design items 5 (live follow) and 7 (agent sandbox)
+ok   open-native-image      The native one-shot image builds and its context does not start
+ok   open-shared-vault      did not verify the content of the shared vault
+
+30 rows, 0 failures
