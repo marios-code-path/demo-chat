@@ -83,8 +83,9 @@ so `post` in the interactive shell is refused. See `The shell modes` below.
 `register-read` is the session-start read of the topic register, in one
 process. It prints every pointer of the index, oldest first, as record lines.
 It then prints the newest entry of each topic that a pointer names, if that
-entry is younger than `--maxAgeHours`. A pointer reads `<fp-id> | <topic-name> |
-<kind> | <title>`. A topic that two pointers name is read once. A pointer that
+entry is younger than `--maxAgeHours`. A pointer reads `<key> | <topic-name> |
+<metadata> | <title>`. A key is opaque text that names one topic. This tool does
+not know where a key comes from. A topic that two pointers name is read once. A pointer that
 does not follow the form fails the read, and so does any read that fails with
 an error other than a denial. **A denied topic prints one warning line and the
 read continues**, because an agent is not a member of every topic that the
@@ -538,7 +539,7 @@ fixed:
 
 ```
 {"type":"record","id":"...","topic":"...","sender":"...","timestamp":"...","text":"..."}
-{"type":"warning","kind":"duplicate-pointer","fp_id":"...","kept":{"topic":"...","id":"..."},"ignored":{"topic":"...","id":"..."}}
+{"type":"warning","kind":"duplicate-pointer","key":"...","kept":{"topic":"...","id":"..."},"ignored":{"topic":"...","id":"..."}}
 {"type":"warning","kind":"denied-topic","topic":"...","reason":"Access Denied"}
 ```
 
@@ -547,10 +548,10 @@ fixed:
   ignored.
 - No line leaves out `type`. A reader selects records with
   `jq -c 'select(.type=="record")'`.
-- **A duplicate pointer.** The earliest pointer for one fp ID wins, by stored
+- **A duplicate pointer.** The earliest pointer for one key wins, by stored
   time and then by message id. The read prints every pointer, reads the topic
   of the earliest pointer alone, and prints one warning for each later
-  pointer. An archive pointer uses `-` as its fp ID, and it is never a
+  pointer. An archive pointer uses `-` as its key, and it is never a
   duplicate.
 - **A denied topic.** The read prints one warning with `kind` set to
   `denied-topic`, and it keeps every topic that the caller can read. A denied
@@ -578,26 +579,26 @@ A caller discards all output when the status is nonzero.
 An `open` runs several shell calls, and each call gets the budget that
 remains.
 
-**A post keeps its input bytes.** `register post <fp-id> --as <name>` reads
+**A post keeps its input bytes.** `register post <key> --as <name>` reads
 one entry from standard input. It sends the bytes unchanged, including a
 missing final newline, CRLF line ends, and several lines. An input that holds
 only whitespace returns `2`, and no shell call happens.
 
 ## The register open
 
-`register open <fp-id> <short-name> <title> --as <name>` writes one line:
+`register open <key> <short-name> <title> --as <name>` writes one line:
 
 ```
-{"type":"open","state":"exists","fp_id":"...","topic":"...","pointer_id":"..."}
+{"type":"open","state":"exists","key":"...","topic":"...","pointer_id":"..."}
 ```
 
 `state` is `exists` or `created`.
 
-**An existing fp ID returns its earliest pointer.** The command reads the
+**An existing key returns its earliest pointer.** The command reads the
 index once and writes nothing. It returns the earliest pointer by stored
 time, and then by message id.
 
-**A new fp ID creates its topic.** The command creates
+**A new key creates its topic.** The command creates
 `forward-register-<short-name>`. It joins that topic. It posts one pointer to
 `register-index`.
 
@@ -612,7 +613,7 @@ returns `created` only when that read shows the new message id. A readback
 without the id returns `75` and writes no output.
 
 **A name clash fails and names its owner.** If the new topic name belongs
-to another fp ID, the command returns `1` and names that ID.
+to another key, the command returns `1` and names that key.
 
 **A race returns the earliest pointer.** When another open adds an earlier
 pointer, the command returns it with state `exists`. It names the selected
@@ -621,22 +622,27 @@ topic and pointer.
 **The command checks its arguments before any shell call.** Each bad value
 returns `2`:
 
-- An fp ID outside `CHAT-` and lowercase letters or digits.
+- A key that is empty, that passes 64 characters, or that is `-`.
+- A key with the `|` delimiter or a control character.
+- A key with a space at its start or at its end.
 - A short name that does not start with a letter or digit.
 - A short name with a character outside letters, digits, dot, dash, and underscore.
 - An empty title.
 - A title with the `|` delimiter.
 - A title with a control character.
 
-The title keeps its spaces. A pointer is `<fp-id> | <topic-name> | task | <title>`.
+The title keeps its spaces. A pointer is `<key> | <topic-name> | <metadata> | <title>`.
+The command writes an empty metadata field. No command reads that field. The
+command applies no `CHAT-` shape check to a key. This project passes an fp
+issue ID as the key.
 
 ## The register post
 
-`register post <fp-id> [--requestId <id>] --as <name>` reads one entry from
+`register post <key> [--requestId <id>] --as <name>` reads one entry from
 standard input. It writes one line:
 
 ```
-{"type":"post","fp_id":"...","topic":"...","message_id":"...","command_id":"...","request_id":"..."}
+{"type":"post","key":"...","topic":"...","message_id":"...","command_id":"...","request_id":"..."}
 ```
 
 **The entry bytes are unchanged.** A missing final newline, CRLF line ends,

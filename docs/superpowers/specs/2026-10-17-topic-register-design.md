@@ -169,6 +169,16 @@ The owner made two more decisions on 2026-10-20:
     this on 2026-10-20, after the stage 3 hand-off found that `open` read a
     denied index as an empty index. `register-read` keeps the rule of
     decision 36.
+39. A pointer names a key, not an fp issue. A key is opaque text that names
+    one topic. `open` and `post` accept any key that can stand in a pointer
+    line: 1 to 64 characters, no `|`, no control character, and no space at
+    either end. The key `-` is reserved for archive pointers. The commands
+    check no `CHAT-` shape. The JSON field is `key`. This project passes an
+    fp issue ID as the key. That value is a project convention, and the tool
+    does not know it. One split rule serves both decoders, and
+    `chat-shell/src/test/resources/register/pointer-lines.tsv` holds its
+    cases. The owner chose this on 2026-10-21, so that another project can
+    use the register.
 
 ## Node 9
 
@@ -349,13 +359,24 @@ with the same name.
 One message per topic, in this plain-text form:
 
 ```
-<fp-id> | <topic-name> | <task or archive> | <one-line title>
+<key> | <topic-name> | <metadata> | <title>
 ```
 
-An archive pointer that spans many issues writes `-` as its fp ID.
+A key is opaque text that names one topic. The tool does not know where a key
+comes from. This project passes an fp issue ID, such as `CHAT-jmnjvupr`. That
+is a convention of this project and its instructions. A different project
+passes a different key.
 
-The fp ID makes the owner's rule 4 an exact match. An agent searches the index
-for its fp ID. A match means that the topic exists, and the agent uses it.
+The metadata field is reserved and empty. The tool writes none and reads
+none. The title is free text for a human reader. No command reads it.
+
+An archive pointer that spans many issues writes `-` as its key.
+
+A read splits a pointer on `|`, trims each field, and needs exactly four
+fields. A blank key or a blank topic fails the read. Both decoders apply this
+one rule: `PubSubCommands` and `node-9/bin/register`. The file
+`chat-shell/src/test/resources/register/pointer-lines.tsv` holds the cases for
+both.
 
 ### A register entry
 
@@ -461,7 +482,7 @@ per line. The shapes are fixed:
 
 ```
 {"type":"record","id":"...","topic":"...","sender":"...","timestamp":"...","text":"..."}
-{"type":"warning","kind":"duplicate-pointer","fp_id":"...","kept":{"topic":"...","id":"..."},"ignored":{"topic":"...","id":"..."}}
+{"type":"warning","kind":"duplicate-pointer","key":"...","kept":{"topic":"...","id":"..."},"ignored":{"topic":"...","id":"..."}}
 ```
 
 No line leaves out `type`. The wrapper owns this shape. The output of
@@ -487,11 +508,10 @@ because JSON conversion and final output follow it.
 `node-9/bin/register` also holds the write steps, so that every agent writes
 the same way:
 
-- `register open <fp-id> <short-name> <title>` finds the pointer for the fp
-  ID, or creates the topic and adds its pointer.
-- `register post <fp-id> [--requestId <id>]` reads an entry from standard
-  input and posts it to
-  the topic of that fp ID.
+- `register open <key> <short-name> <title>` finds the pointer for the key,
+  or creates the topic and adds its pointer.
+- `register post <key> [--requestId <id>]` reads an entry from standard
+  input and posts it to the topic of that key.
 
 Each command names its user with `--as <name>`. An agent uses the name that
 its harness instruction file gives it: `Sigma`, `Theta`, or `Phi`. `AGENTS.md`
@@ -503,24 +523,24 @@ wrapper writes it to a private file for the shell call and removes that file
 when the command ends.
 
 A denied index stops both write commands. The read of a denied index holds no
-pointer, so the command cannot answer "does this fp ID exist". The wrapper
+pointer, so the command cannot answer "does this key exist". The wrapper
 joins `register-index` once after a `denied-index` warning, and it reads once
 more. A second denial is status `1` with one line, and the command creates no
 topic and posts no entry. A readable index joins nothing. See decision 38.
 
 ### Concurrent writes
 
-- **Two `register open` calls for one fp ID.** The topic create refuses an
+- **Two `register open` calls for one key.** The topic create refuses an
   existing name with `DuplicateException` (PR #61). The second call then
-  reads the index. If the earliest pointer for its fp ID names that topic, it
-  uses the topic. If the name belongs to another fp ID, it fails and names
-  that fp ID.
-- **Two pointers for one fp ID.** The earliest pointer is the valid one, by
+  reads the index. If the earliest pointer for its key names that topic, it
+  uses the topic. If the name belongs to another key, it fails and names
+  that key.
+- **Two pointers for one key.** The earliest pointer is the valid one, by
   stored time and then by message id. After `register open` posts a pointer,
-  it reads the index again. If an earlier pointer for the same fp ID names
+  it reads the index again. If an earlier pointer for the same key names
   another topic, it uses that topic and says so. `register read` ignores a
   later duplicate pointer and prints a warning line for it. An archive
-  pointer uses `-` as its fp ID, so it is never a duplicate.
+  pointer uses `-` as its key, so it is never a duplicate.
 - **A post is done when a read shows it.** `register post` takes the message
   ID from the `send` result. It then reads the topic until that ID appears,
   for at most 10 seconds. If the ID does not appear, it exits with status 75
@@ -851,7 +871,7 @@ The owner did not decide these. Each one can change.
   project and image name.
 - Host ports 6890 and 6891 on `127.0.0.1`. No other host port.
 - Key type `uuid`. Embeddings from the node-16 endpoint.
-- The index pointer form, with the fp ID as the match key.
+- The index pointer form, with the key as the match.
 - The entry fields, and the 24-hour rule of the session-start output.
 - Hand-off points as the times to write.
 - `--as <name>` on every command. No agent holds the `Mario` password.
@@ -859,7 +879,7 @@ The owner did not decide these. Each one can change.
 - A setup step that creates missing secret files with random passwords.
 - `messages --format records`, with the bound in the shell, not the store.
 - The exit status table, the socket framing, and the time limits.
-- The earliest index pointer for an fp ID is the valid one.
+- The earliest index pointer for a key is the valid one.
 - A post is done when a read shows it.
 - A proof run before the plan of stage 1.
 - One message per `##` section in the import.

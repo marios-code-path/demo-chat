@@ -3,8 +3,13 @@
 #
 #   register read --as <name>              The session-start read.
 #   register read <topic> --as <name>      One topic, oldest first.
-#   register open <fp-id> <short> <title> --as <name>   Stage 3, task 4.
-#   register post <fp-id> [--requestId <id>] --as <name>   Stage 3, task 5.
+#   register open <key> <short> <title> --as <name>   Stage 3, task 4.
+#   register post <key> [--requestId <id>] --as <name>   Stage 3, task 5.
+#
+# A key is opaque text that names one topic. This project passes an fp issue
+# ID. The tool does not know where a key comes from. A pointer line holds
+# <key> | <topic> | <metadata> | <title>. The tool writes an empty metadata
+# field and never reads it.
 #
 # Every output line is one JSON object with a `type`. A failure writes one
 # line on standard error and returns a nonzero status. The whole command has
@@ -53,13 +58,29 @@ secrets_file="${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}"
 
 usage() {
     printf 'usage: register read [<topic>] --as <name>\n' >&2
-    printf '       register open <fp-id> <short-name> <title> --as <name>\n' >&2
-    printf '       register post <fp-id> [--requestId <id>] --as <name>\n' >&2
+    printf '       register open <key> <short-name> <title> --as <name>\n' >&2
+    printf '       register post <key> [--requestId <id>] --as <name>\n' >&2
 }
 
 fail() {
     printf 'register: %s\n' "$1" >&2
     exit "${2:-1}"
+}
+
+# check_key KEY  Refuse a key that cannot stand in a pointer line. A key is
+# opaque text. This tool does not know where it comes from. It holds no |
+# delimiter and no control character. It holds no space at its start or its
+# end, and at most 64 characters. The key - is reserved for archive pointers.
+check_key() {
+    local key="$1" trimmed
+    [[ -n "$key" ]] || fail 'the key is empty.' 2
+    (( ${#key} <= 64 )) || fail 'the key passes 64 characters.' 2
+    [[ "$key" != *'|'* ]] || fail 'the key holds the | delimiter.' 2
+    [[ "$key" != *[[:cntrl:]]* ]] || fail 'the key holds a control character.' 2
+    trimmed="${key#"${key%%[![:space:]]*}"}"
+    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+    [[ "$key" == "$trimmed" ]] || fail 'the key holds a space at its start or its end.' 2
+    [[ "$key" != '-' ]] || fail 'the key - is reserved for archive pointers.' 2
 }
 
 # fixed NAME WANTED  Refuse a caller override of a node-9 value.
@@ -229,7 +250,7 @@ require_ok() {
 }
 
 # index_denied  True when the last read printed a denied-index warning. A
-# denied index holds no pointer, so the read cannot answer "does FP exist".
+# denied index holds no pointer, so the read cannot answer "does KEY exist".
 index_denied() {
     jq -e 'select(.type == "warning" and .kind == "denied-index")' \
         "$work/out" > /dev/null 2>&1
@@ -261,34 +282,36 @@ read_index() {
 }
 
 # load_pointers  Fill $work/pointers from the index records in $work/out.
-# Each row is timestamp, message id, fp id, topic, kind, title.
+# Each row is timestamp, message id, key, topic, metadata, title. The tool
+# never reads the metadata or the title.
 load_pointers() {
     jq -r 'select((.type // "record") == "record" and .topic=="register-index")
            | [ .timestamp, .id ]
              + (.text // "" | split("|") | map(gsub("^\\s+|\\s+$"; "")))
            | @tsv' "$work/out" > "$work/pointers" 2> /dev/null \
         || return 1
-    awk -F'\t' 'NF != 6 { bad = 1 } END { exit bad ? 1 : 0 }' "$work/pointers"
+    awk -F'\t' 'NF != 6 || $3 == "" || $4 == "" { bad = 1 } END { exit bad ? 1 : 0 }' \
+        "$work/pointers"
 }
 
-# earliest_pointer FP  Print timestamp, id, and topic of the earliest
-# pointer for FP. Time orders first, then the message id.
+# earliest_pointer KEY  Print timestamp, id, and topic of the earliest
+# pointer for KEY. Time orders first, then the message id.
 earliest_pointer() {
     LC_ALL=C sort -t$'\t' -k1,1 -k2,2 "$work/pointers" \
-        | awk -F'\t' -v fp="$1" '$3 == fp { print $1"\t"$2"\t"$4; exit }'
+        | awk -F'\t' -v key="$1" '$3 == key { print $1"\t"$2"\t"$4; exit }'
 }
 
-# pointer_owner TOPIC  Print the fp id of the earliest pointer that names
+# pointer_owner TOPIC  Print the key of the earliest pointer that names
 # TOPIC.
 pointer_owner() {
     LC_ALL=C sort -t$'\t' -k1,1 -k2,2 "$work/pointers" \
         | awk -F'\t' -v topic="$1" '$4 == topic { print $3; exit }'
 }
 
-# pointer_shows_id FP ID  True when a pointer for FP has message ID.
+# pointer_shows_id KEY ID  True when a pointer for KEY has message ID.
 pointer_shows_id() {
-    awk -F'\t' -v fp="$1" -v id="$2" \
-        '$3 == fp && $2 == id { found = 1 } END { exit found ? 0 : 1 }' \
+    awk -F'\t' -v key="$1" -v id="$2" \
+        '$3 == key && $2 == id { found = 1 } END { exit found ? 0 : 1 }' \
         "$work/pointers"
 }
 
@@ -302,8 +325,8 @@ stop_if_late() {
 # emit_open STATE TOPIC POINTER_ID  Print the one open result line. The
 # line goes to a file first, so a late stop leaves no output.
 emit_open() {
-    jq -cn --arg state "$1" --arg topic "$2" --arg id "$3" --arg fp "$fp_id" \
-        '{type:"open",state:$state,fp_id:$fp,topic:$topic,pointer_id:$id}' \
+    jq -cn --arg state "$1" --arg topic "$2" --arg id "$3" --arg key "$key" \
+        '{type:"open",state:$state,key:$key,topic:$topic,pointer_id:$id}' \
         > "$work/typed-open" || fail 'the open result did not encode.' 1
     stop_if_late
     cat "$work/typed-open"
@@ -317,10 +340,10 @@ read_shows_id() {
 
 # emit_post  Print the one post result line.
 emit_post() {
-    jq -cn --arg fp "$fp_id" --arg topic "$selected_topic" \
+    jq -cn --arg key "$key" --arg topic "$selected_topic" \
         --arg message "$new_id" --arg command "$command_id" \
         --arg request "$receipt_request" \
-        '{type:"post",fp_id:$fp,topic:$topic,message_id:$message,
+        '{type:"post",key:$key,topic:$topic,message_id:$message,
           command_id:$command,request_id:$request}' \
         > "$work/typed-post" || fail 'the post result did not encode.' 1
     stop_if_late
@@ -374,11 +397,10 @@ case "$command_name" in
         ;;
     open)
         (( ${#args[@]} == 3 )) || { usage; exit 2; }
-        fp_id="${args[0]}"
+        key="${args[0]}"
         short="${args[1]}"
         title="${args[2]}"
-        [[ "$fp_id" =~ ^CHAT-[a-z0-9]+$ ]] \
-            || fail "the fp id $fp_id is not CHAT- and lowercase letters or digits." 2
+        check_key "$key"
         [[ "$short" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
             || fail "the short name $short is not letters, digits, dot, dash, or underscore." 2
         [[ -n "$title" ]] || fail 'the title is empty.' 2
@@ -388,9 +410,9 @@ case "$command_name" in
 
         read_index
         load_pointers \
-            || fail 'a pointer is not in the form <fp-id> | <topic> | <kind> | <title>.' 1
+            || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
 
-        selected="$(earliest_pointer "$fp_id")"
+        selected="$(earliest_pointer "$key")"
         if [[ -n "$selected" ]]; then
             split_pointer "$selected"
             emit_open exists "$selected_topic" "$selected_id"
@@ -399,8 +421,8 @@ case "$command_name" in
 
         new_topic="forward-register-$short"
         owner_id="$(pointer_owner "$new_topic")"
-        if [[ -n "$owner_id" && "$owner_id" != "$fp_id" ]]; then
-            fail "the topic $new_topic belongs to $owner_id, not $fp_id." 1
+        if [[ -n "$owner_id" && "$owner_id" != "$key" ]]; then
+            fail "the topic $new_topic belongs to $owner_id, not $key." 1
         fi
 
         run_shell add-topic --name "$new_topic"
@@ -414,8 +436,8 @@ case "$command_name" in
             [[ -n "$add_reason" ]] || add_reason="the shell returned $add_status"
             read_index
             load_pointers \
-                || fail 'a pointer is not in the form <fp-id> | <topic> | <kind> | <title>.' 1
-            selected="$(earliest_pointer "$fp_id")"
+                || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+            selected="$(earliest_pointer "$key")"
             [[ -n "$selected" ]] || fail "$add_reason" "$add_status"
             split_pointer "$selected"
             emit_open exists "$selected_topic" "$selected_id"
@@ -425,7 +447,8 @@ case "$command_name" in
         run_shell join "$new_topic"
         require_ok "the join of $new_topic"
 
-        printf '%s | %s | task | %s\n' "$fp_id" "$new_topic" "$title" > "$work/input"
+        # The metadata field stays empty. This tool writes none and reads none.
+        printf '%s | %s | | %s\n' "$key" "$new_topic" "$title" > "$work/input"
         run_shell post --topic register-index
         require_ok 'the pointer post'
         new_id="$(jq -r '.messageId // empty' "$work/out" 2> /dev/null | head -n 1)"
@@ -434,10 +457,10 @@ case "$command_name" in
         run_shell messages register-index --format records
         require_ok 'the index readback'
         load_pointers \
-            || fail 'a pointer is not in the form <fp-id> | <topic> | <kind> | <title>.' 1
-        pointer_shows_id "$fp_id" "$new_id" \
+            || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+        pointer_shows_id "$key" "$new_id" \
             || fail "the index readback does not show pointer $new_id." 75
-        selected="$(earliest_pointer "$fp_id")"
+        selected="$(earliest_pointer "$key")"
         split_pointer "$selected"
         if [[ "$selected_id" == "$new_id" ]]; then
             emit_open created "$selected_topic" "$selected_id"
@@ -447,9 +470,8 @@ case "$command_name" in
         ;;
     post)
         (( ${#args[@]} == 1 )) || { usage; exit 2; }
-        fp_id="${args[0]}"
-        [[ "$fp_id" =~ ^CHAT-[a-z0-9]+$ ]] \
-            || fail "the fp id $fp_id is not CHAT- and lowercase letters or digits." 2
+        key="${args[0]}"
+        check_key "$key"
         if [[ -n "$request_id" ]]; then
             [[ "$request_id" =~ ^[A-Za-z0-9._:-]+$ ]] \
                 || fail "the request id $request_id is not letters, digits, dot, dash, colon, or underscore." 2
@@ -476,10 +498,10 @@ case "$command_name" in
 
         read_index
         load_pointers \
-            || fail 'a pointer is not in the form <fp-id> | <topic> | <kind> | <title>.' 1
-        selected="$(earliest_pointer "$fp_id")"
+            || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+        selected="$(earliest_pointer "$key")"
         [[ -n "$selected" ]] \
-            || fail "no pointer for $fp_id. Run register open first." 1
+            || fail "no pointer for $key. Run register open first." 1
         split_pointer "$selected"
 
         run_shell join "$selected_topic"

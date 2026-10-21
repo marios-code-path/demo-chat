@@ -192,7 +192,9 @@ class PubSubCommands<T : Any>(
      *
      * It prints every pointer of [index], oldest first. It then prints the
      * newest entry of each topic that a pointer names, if that entry is younger
-     * than [maxAge]. A pointer reads `<fp-id> | <topic-name> | <kind> | <title>`.
+     * than [maxAge]. A pointer reads `<key> | <topic> | <metadata> | <title>`.
+     * A key is opaque text that names one topic. The read does not know where
+     * a key comes from. It never reads the metadata field or the title.
      * A topic that two pointers name is read once. A pointer that does not
      * follow the form fails the read, and so does any read that fails with an
      * error other than a denial. **A denied topic prints a warning line and
@@ -205,10 +207,10 @@ class PubSubCommands<T : Any>(
      * worker thread can go on after that, so the caller must end the process.
      * An empty index answers an empty text.
      *
-     * Two pointers can name one fp ID. The earliest pointer is the valid one,
+     * Two pointers can name one key. The earliest pointer is the valid one,
      * by stored time and then by message id. The read prints every pointer,
      * reads the topic of the earliest pointer alone, and prints one warning
-     * line for each later pointer. An archive pointer uses `-` as its fp ID,
+     * line for each later pointer. An archive pointer uses `-` as its key,
      * and many archive pointers are normal. See the design, "Concurrent
      * writes".
      */
@@ -218,8 +220,8 @@ class PubSubCommands<T : Any>(
             .timeout(limit, Mono.error(ShellExit(ShellExitStatus.TIMEOUT, "register-read passed its ${limit.toMillis()} ms limit")))
             .block().orEmpty()
 
-    /** One index pointer, split into its fp ID and its topic name. */
-    private class Pointer<T>(val message: Message<T, String>, val fpId: String, val topic: String)
+    /** One index pointer, split into its key and its topic name. */
+    private class Pointer<T>(val message: Message<T, String>, val key: String, val topic: String)
 
     private fun readRegister(index: String, maxAge: Duration, now: Instant): String {
         val indexRoom = try {
@@ -230,11 +232,14 @@ class PubSubCommands<T : Any>(
         }
         val pointers = try {
             storedMessages(indexRoom).map { pointer ->
-                val fields = pointer.data.split(" | ", limit = 4)
-                check(fields.size == 4 && fields[1].isNotBlank()) {
-                    "The pointer '${pointer.data.lineSequence().first()}' in $index is not '<fp-id> | <topic-name> | <kind> | <title>'."
+                // The split rule is shared with node-9/bin/register. Split on
+                // |, trim each field, and require exactly four fields. The
+                // decoder fixtures hold the cases. See the design, decision 39.
+                val fields = pointer.data.split("|").map { it.trim() }
+                check(fields.size == 4 && fields[0].isNotBlank() && fields[1].isNotBlank()) {
+                    "The pointer '${pointer.data.lineSequence().first()}' in $index is not '<key> | <topic> | <metadata> | <title>'."
                 }
-                Pointer(pointer, fields[0].trim(), fields[1].trim())
+                Pointer(pointer, fields[0], fields[1])
             }
         } catch (error: Exception) {
             if (denial(error) == null) throw error
@@ -244,11 +249,11 @@ class PubSubCommands<T : Any>(
         val kept = LinkedHashMap<String, Pointer<T>>()
         val warnings = mutableListOf<String>()
         for (pointer in pointers) {
-            if (pointer.fpId == "-") continue
-            val earliest = kept.putIfAbsent(pointer.fpId, pointer)
+            if (pointer.key == "-") continue
+            val earliest = kept.putIfAbsent(pointer.key, pointer)
             if (earliest != null) warnings += warningLine(pointer, earliest)
         }
-        val topicNames = pointers.filter { it.fpId == "-" || kept[it.fpId] === it }.map { it.topic }.distinct()
+        val topicNames = pointers.filter { it.key == "-" || kept[it.key] === it }.map { it.topic }.distinct()
 
         val cutoff = now.minus(maxAge)
         val entries = topicNames.mapNotNull { name ->
@@ -300,12 +305,12 @@ class PubSubCommands<T : Any>(
             "reason" to "Access Denied",
         ))
 
-    /** One warning for a later pointer of an fp ID that the index already holds. */
+    /** One warning for a later pointer of a key that the index already holds. */
     private fun warningLine(ignored: Pointer<T>, kept: Pointer<T>): String =
         mapper.writeValueAsString(linkedMapOf(
             "type" to "warning",
             "kind" to "duplicate-pointer",
-            "fp_id" to ignored.fpId,
+            "key" to ignored.key,
             "kept" to linkedMapOf(
                 "topic" to kept.topic,
                 "id" to typeUtil.toString(kept.message.key.id)),

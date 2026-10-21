@@ -29,14 +29,14 @@ Measured on 2026-10-20.
 | Checkout | `master` at `bb0796d3`, the merge commit of PR #262. That is the last substantive merge, and the register change follows it. |
 | Last merged PR | #262, stage 2. |
 | Merge strategy | Merge commits only. Every merge needs Mario's explicit authorization and the owner's named `--admin` bypass. A review comment is not that authorization. |
-| Open PRs | None. The stage 3 work is one local commit. It is not pushed. |
+| Open PRs | None. The stage 3 work is a local commit stack. It is not pushed. |
 | Branches and worktrees | `worktree-chat-jmnjvupr-stage-3` holds the stage 3 work in the worktree `chat-jmnjvupr-stage-3`. The base is `103e9547`. `chat-hcfgkbuz-node-9` is kept at `1ad85a5e`. Its worktree is removed. Every branch ref is kept. |
 
 ## In flight
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 items 1 to 9 are done. The six in-progress issues have topics, and every agent is a member of each. The coverage table has 26 rows and 0 failures. The read median is 5089 ms. See `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`. |
+| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 items 1 to 9 are done. The six in-progress issues have topics, and every agent is a member of each. The coverage table has 26 rows and 0 failures. The read median is 5089 ms. See `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`. Decision 39 makes a pointer name a key. A key is opaque text, and the tool checks no `CHAT-` shape. The JSON field is `key`. Both decoders share one split rule, and `chat-shell/src/test/resources/register/pointer-lines.tsv` holds its cases. |
 
 **The next Theta session starts here.**
 
@@ -52,8 +52,9 @@ Measured on 2026-10-20.
    the `CHAT-live6` test pointers.
 5. Task 7 ends with the `AGENTS.md` switch. Mario reviews that switch first.
    A denied-index or denied-topic warning is a coverage failure.
-6. The design records decisions 1 to 38. Decision 36 sets the read warning.
+6. The design records decisions 1 to 39. Decision 36 sets the read warning.
    Decision 37 sets the owner login. Decision 38 sets the denied-index guard.
+   Decision 39 sets the key model.
 7. Every live run uses a disposable core. Never use `chat-deploy core` near
    node 16. Node 9 runs on 6890 and 6891.
 

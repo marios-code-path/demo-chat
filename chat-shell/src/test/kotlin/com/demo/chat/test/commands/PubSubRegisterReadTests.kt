@@ -300,7 +300,7 @@ class PubSubRegisterReadTests {
             .lines().filter { it.isNotEmpty() }.map { mapper.readTree(it) }
 
     @Test
-    fun `a later pointer for one fp id is ignored, and one warning names both pointers`() {
+    fun `a later pointer for one key is ignored, and one warning names both pointers`() {
         room("register-index", 100)
         room("topic-a", 101)
         room("topic-b", 102)
@@ -321,7 +321,7 @@ class PubSubRegisterReadTests {
         val warnings = lines.filter { it["type"].asText() == "warning" }
         assertThat(warnings).hasSize(1)
         assertThat(warnings[0]["kind"].asText()).isEqualTo("duplicate-pointer")
-        assertThat(warnings[0]["fp_id"].asText()).isEqualTo("CHAT-1")
+        assertThat(warnings[0]["key"].asText()).isEqualTo("CHAT-1")
         assertThat(warnings[0]["kept"]["topic"].asText()).isEqualTo("topic-a")
         assertThat(warnings[0]["ignored"]["topic"].asText()).isEqualTo("topic-b")
     }
@@ -348,7 +348,7 @@ class PubSubRegisterReadTests {
     }
 
     @Test
-    fun `two archive pointers with the dash fp id are both kept`() {
+    fun `two archive pointers with the dash key are both kept`() {
         room("register-index", 100)
         room("archive-a", 101)
         room("archive-b", 102)
@@ -364,5 +364,59 @@ class PubSubRegisterReadTests {
         assertThat(lines.filter { it["type"].asText() == "record" && it["topic"].asText() != "register-index" }
             .map { it["text"].asText() })
             .containsExactly("a newest", "b newest")
+    }
+
+    /**
+     * The shared fixtures pin the split rule of both decoders. The Kotlin read
+     * and node-9/bin/register read the same file and must agree on each row.
+     * See the design, decision 39.
+     */
+    private fun fixtures(): List<Triple<String, String, String>> =
+        PubSubRegisterReadTests::class.java.getResourceAsStream("/register/pointer-lines.tsv")!!
+            .bufferedReader().readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .map { it.split("\t").let { fields -> Triple(fields[0], fields[1], fields[2]) } }
+
+    @Test
+    fun `the decoder accepts every good pointer line in the shared fixture`() {
+        fixtures().filter { it.third.startsWith("ok:") }.forEach { (name, line, expected) ->
+            val key = expected.removePrefix("ok:").substringBeforeLast(":")
+            val topic = expected.substringAfterLast(":")
+            val second = "$key | other-topic | | X"
+            room("register-index", 100)
+            room(topic, 101)
+            room("other-topic", 102)
+            stored(100, Triple(1, hours(5), line), Triple(2, hours(4), second))
+            stored(101, Triple(10, hours(1), "entry"))
+            stored(102, Triple(20, hours(1), "other entry"))
+
+            val lines = nodes(commands())
+
+            assertThat(lines.filter { it["topic"]?.asText() == "register-index" }.map { it["text"].asText() })
+                .describedAs(name).containsExactly(line, second)
+            assertThat(lines.filter { it["type"].asText() == "record" && it["topic"].asText() == topic })
+                .describedAs(name).hasSize(1)
+            val warnings = lines.filter { it["type"].asText() == "warning" }
+            if (key == "-") {
+                assertThat(warnings).describedAs(name).isEmpty()
+            } else {
+                assertThat(warnings.map { it["key"].asText() }).describedAs(name).containsExactly(key)
+                assertThat(warnings.map { it["ignored"]["topic"].asText() }).describedAs(name)
+                    .containsExactly("other-topic")
+            }
+        }
+    }
+
+    @Test
+    fun `the decoder rejects every bad pointer line in the shared fixture`() {
+        fixtures().filter { it.third == "reject" }.forEach { (name, line, _) ->
+            room("register-index", 100)
+            stored(100, Triple(1, hours(1), line))
+
+            assertThatThrownBy { commands().registerRead("register-index", hours(24), Duration.ofSeconds(30), now) }
+                .describedAs(name)
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("not '<key> | <topic> | <metadata> | <title>'")
+        }
     }
 }

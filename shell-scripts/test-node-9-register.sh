@@ -173,17 +173,17 @@ fi
 reset_stub
 run_wrapper t_dash_open open - x 'A title' --as Theta
 if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
-    ok 'open_dash_fp_id_is_status_2'
+    ok 'open_dash_key_is_status_2'
 else
-    bad 'open_dash_fp_id_is_status_2' "status=$status_of calls=$(calls)"
+    bad 'open_dash_key_is_status_2' "status=$status_of calls=$(calls)"
 fi
 
 reset_stub
 run_wrapper t_dash_post post - --as Theta
 if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
-    ok 'post_dash_fp_id_is_status_2'
+    ok 'post_dash_key_is_status_2'
 else
-    bad 'post_dash_fp_id_is_status_2' "status=$status_of calls=$(calls)"
+    bad 'post_dash_key_is_status_2' "status=$status_of calls=$(calls)"
 fi
 
 # -- Typed JSON on both read forms -------------------------------------
@@ -213,7 +213,7 @@ else
 fi
 
 reset_stub
-stub_reply '{"type":"warning","kind":"duplicate-pointer","fp_id":"CHAT-1","kept":{"topic":"a","id":"m1"},"ignored":{"topic":"b","id":"m2"}}'
+stub_reply '{"type":"warning","kind":"duplicate-pointer","key":"CHAT-1","kept":{"topic":"a","id":"m1"},"ignored":{"topic":"b","id":"m2"}}'
 run_wrapper t_warning read --as Theta
 if [[ "$status_of" -eq 0 ]] && every_line_typed "$work/t_warning.out" \
    && jq -e 'select(.type=="warning")' "$work/t_warning.out" > /dev/null 2>&1; then
@@ -665,7 +665,7 @@ run_wrapper t_open_create open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 5 ]] \
    && grep -q 'add-topic' <<< "$(stub_args 2)" \
    && grep -q 'post' <<< "$(stub_args 4)" \
-   && grep -qx 'CHAT-1 | forward-register-x | task | A title' "$stub_dir/call.4.stdin" \
+   && grep -qx 'CHAT-1 | forward-register-x | | A title' "$stub_dir/call.4.stdin" \
    && jq -e '.type=="open" and .state=="created" and .topic=="forward-register-x" and .pointer_id=="m1"' "$work/t_open_create.out" > /dev/null 2>&1; then
     ok 'open_creates_topic_and_confirms_pointer'
 else
@@ -758,15 +758,28 @@ else
     bad 'open_fails_when_the_index_read_fails' "status=$status_of"
 fi
 
-for bad in 'chat-1' 'CHAT-1|x' '' 'CHAT-'; do
+long_key="$(printf 'k%.0s' {1..65})"
+bad_keys=('A|x' '' ' padded ' '-' "$long_key")
+bad_names=(delimiter empty padded dash too_long)
+for i in "${!bad_keys[@]}"; do
     reset_stub
-    run_wrapper t_bad_id open "$bad" x 'A title' --as Theta
+    run_wrapper "t_bad_key_${bad_names[$i]}" open "${bad_keys[$i]}" x 'A title' --as Theta
     if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
-        ok "open_rejects_fp_id_${bad//[^a-zA-Z0-9]/_}"
+        ok "open_rejects_key_${bad_names[$i]}"
     else
-        bad "open_rejects_fp_id_${bad//[^a-zA-Z0-9]/_}" "status=$status_of calls=$(calls)"
+        bad "open_rejects_key_${bad_names[$i]}" "status=$status_of calls=$(calls)"
     fi
 done
+
+# A key that this project does not use is valid. The tool does not know FP.
+reset_stub
+stub_reply "$(index_record 1 2026-10-20T00:00:00Z 'PROJ-7 | topic-a | | A')"
+run_wrapper t_generic_key open PROJ-7 x 'A title' --as Theta
+if [[ "$status_of" -eq 0 ]] && [[ "$(jq -r '.key' "$work/t_generic_key.out")" == 'PROJ-7' ]]; then
+    ok 'a_key_from_another_project_is_valid'
+else
+    bad 'a_key_from_another_project_is_valid' "status=$status_of err=$(head -1 "$work/t_generic_key.err")"
+fi
 
 for title in 'A|B' $'A\tB' $'A\nB' ''; do
     reset_stub
@@ -880,6 +893,54 @@ if [[ "$status_of" -eq 124 ]] && [[ ! -s "$work/t_slow_mktemp.out" ]]; then
     ok 'deadline_covers_a_stall_before_setup'
 else
     bad 'deadline_covers_a_stall_before_setup' "status=$status_of bytes=$(wc -c 2>/dev/null < "$work/t_slow_mktemp.out")"
+fi
+
+# -- The shared decoder fixtures ---------------------------------------
+# chat-shell/src/test/resources/register/pointer-lines.tsv holds the cases.
+# The Kotlin read reads the same file. Both decoders must agree on each row.
+
+fixtures="$repo_root/chat-shell/src/test/resources/register/pointer-lines.tsv"
+if [[ -r "$fixtures" ]]; then
+    while IFS=$'\t' read -r fx_name fx_line fx_expected; do
+        [[ -n "$fx_name" && "$fx_name" != '#'* ]] || continue
+        reset_stub
+        stub_reply "$(index_record 1 2026-10-20T00:00:00Z "$fx_line")"
+        if [[ "$fx_expected" == 'reject' ]]; then
+            run_wrapper "t_fx_$fx_name" open fx-key x 'A title' --as Theta
+            if [[ "$status_of" -eq 1 ]] && [[ ! -s "$work/t_fx_$fx_name.out" ]] \
+               && grep -q 'not in the form' "$work/t_fx_$fx_name.err"; then
+                ok "fixture_rejects_$fx_name"
+            else
+                bad "fixture_rejects_$fx_name" "status=$status_of err=$(head -1 "$work/t_fx_$fx_name.err")"
+            fi
+            continue
+        fi
+        fx_key="${fx_expected#ok:}"
+        fx_key="${fx_key%:*}"
+        fx_topic="${fx_expected##*:}"
+        if [[ "$fx_key" == '-' ]]; then
+            # open and post reserve the dash key. A parsed dash pointer reads
+            # as "no pointer", never as a form error.
+            run_wrapper "t_fx_$fx_name" post fx-key --as Theta
+            if [[ "$status_of" -eq 1 ]] && grep -q 'no pointer for fx-key' "$work/t_fx_$fx_name.err"; then
+                ok "fixture_accepts_$fx_name"
+            else
+                bad "fixture_accepts_$fx_name" "status=$status_of err=$(head -1 "$work/t_fx_$fx_name.err")"
+            fi
+            continue
+        fi
+        run_wrapper "t_fx_$fx_name" open "$fx_key" x 'A title' --as Theta
+        if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 1 ]] \
+           && [[ "$(jq -r '.key' "$work/t_fx_$fx_name.out")" == "$fx_key" ]] \
+           && [[ "$(jq -r '.topic' "$work/t_fx_$fx_name.out")" == "$fx_topic" ]] \
+           && [[ "$(jq -r '.state' "$work/t_fx_$fx_name.out")" == 'exists' ]]; then
+            ok "fixture_accepts_$fx_name"
+        else
+            bad "fixture_accepts_$fx_name" "status=$status_of out=$(head -1 "$work/t_fx_$fx_name.out")"
+        fi
+    done < "$fixtures"
+else
+    bad 'fixtures_are_present' "missing $fixtures"
 fi
 
 # -- Summary ------------------------------------------------------------
