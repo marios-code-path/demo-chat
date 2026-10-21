@@ -4,7 +4,7 @@ Date: 2026-10-21. Status: proposed. Issue: `CHAT-jmnjvupr`.
 
 ## Goal and scope
 
-One bundle restores an active topic register from one frozen Markdown file on any prepared node-9 host.
+One bundle restores an active topic register from one reviewed Markdown snapshot on any prepared node-9 host.
 The bundle holds the source bytes, an explicit topic mapping, and stable request IDs.
 It holds no password or host-specific receipt.
 
@@ -17,8 +17,12 @@ A Cassandra backup is required to preserve that history.
 
 ## Inputs and bundle
 
-The source is a UTF-8 `forward-register.md` file.
-For the current source, `git show 2d75f0cdd09115da422cdc0a693f0227f31a6ef5:forward-register.md` provides the frozen bytes.
+The source is a reviewed UTF-8 `forward-register.md` snapshot.
+The caller records its source date and evidence before `pack` runs.
+Commit `2d75f0cdd09115da422cdc0a693f0227f31a6ef5` (H) is historical input only.
+It predates later stage 3 register entries and cannot be the current active source.
+The current host needs a new snapshot from the stage 3 proof and later FP records.
+Mario reviews that snapshot before the active import.
 The `pack` command accepts a file, so a destination host needs no Git checkout.
 
 The caller supplies `mapping.json` with this shape:
@@ -27,6 +31,8 @@ The caller supplies `mapping.json` with this shape:
 {
   "version": 1,
   "source_sha256": "64 lowercase hexadecimal characters",
+  "source_date": "2026-10-21",
+  "source_basis": "Owner-reviewed snapshot from the stage 3 proof and FP records",
   "session": {"first_line": 23, "after_line": 35},
   "entries": [
     {
@@ -41,10 +47,11 @@ The caller supplies `mapping.json` with this shape:
 ```
 
 Line numbers start at one. `first_line` is inclusive, and `after_line` is exclusive.
-The example numbers describe the format. They are not the lines of the frozen file.
+The example numbers describe the format. They are not line numbers from a source file.
 The session range selects the text that every session read must show.
 Each entry range selects one active message for its key.
 The caller reviews the mapping before `pack` creates the bundle.
+The source date and basis describe the reviewed snapshot, not a claim made by `pack`.
 
 `pack` requires the source hash to match `source_sha256`.
 It converts each line range to exact byte offsets without changing line endings.
@@ -154,8 +161,11 @@ The importer prints one error line without secret text and returns a nonzero sta
 ## Boundaries and acceptance
 
 The first delivery imports one current Markdown file and its active mapping.
+The frozen file at H remains available for the separate historical import.
 The existing stage 4 archive plan follows this delivery.
 It must use the bundle transport before it removes the seven tracked files.
+The paused `import-register` prototype is tied to H and seven fixed files.
+Its uncommitted apply path has not passed its offline suite.
 
 Offline tests use a shell stub and two separate destination states.
 They prove equal bundle IDs, equal request IDs, byte recovery, and safe retries.
