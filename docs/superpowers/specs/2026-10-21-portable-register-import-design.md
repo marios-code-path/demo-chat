@@ -37,6 +37,11 @@ The snapshot review checks these facts against their named sources:
 Sigma records the reviewed source SHA-256 and mapping SHA-256.
 Mario confirms both hashes before `pack` produces the active bundle.
 One missing issue, unsupported claim, or stale status stops this review.
+On each host, Mario reviews the changing facts again on the UTC import date.
+These facts include issue state, open PRs, branches, and the current checkout.
+The source date must equal that UTC date.
+If a fact changed, Sigma updates the snapshot and mapping. Mario reviews their new hashes before `pack` runs again.
+An older bundle can restore history, but it cannot become the active register without this review.
 
 The caller supplies `mapping.json` with this shape:
 
@@ -116,12 +121,18 @@ It fixes core ports `6890` and `6891`, node ID `9`, and UUID keys.
 It refuses a caller override of those values.
 It sends no password in an argument or the bundle.
 
-The installer issue `CHAT-mvvvnujw` owns the shell CLI runtime prerequisite.
-Its implementer builds `chat-shell-cli` from current source and installs its launcher and complete runtime classpath.
+The installer issue `CHAT-mvvvnujw` keeps its approved scope: it installs node-9 code and state directories.
+Create a separate child issue of `CHAT-jmnjvupr` for the shell CLI runtime prerequisite.
+That issue builds `chat-shell-cli` from current source and installs its launcher and required runtime assets.
 The installed runtime must work without a Git checkout, Maven, or jars in `~/.m2`.
-The installer must prove `whoami` through `/opt/demo-chat/node-9/bin/register` before live import.
+The child issue resolves the `AGENTS.md` GraalVM rule before it accepts a JVM runtime.
+It proves a native launcher or records Mario's explicit exception for the JVM launcher.
+That issue proves `whoami` through the installed shell CLI with Theta's password file.
+The check requires status `0`, identity `Theta`, and empty standard error.
+The register wrapper has no `whoami` command.
 An explicit `CHAT_SHELL_CLI` may select another complete runtime outside a Git worktree.
 That runtime must pass the same smoke test without Maven or `~/.m2`.
+Live import waits until the child issue passes its runtime proof.
 The import plan begins with a rebase after `CHAT-mvvvnujw` lands.
 That rebase resolves changes in `lib.sh`, `README.md`, and the node-9 scripts before importer code changes.
 
