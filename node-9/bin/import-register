@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Prepare stable requests for the frozen register import.
+set -euo pipefail
+
+source_commit=2d75f0cdd09115da422cdc0a693f0227f31a6ef5
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../.." && pwd)"
+splitter="$script_dir/register-split"
+umask 077
+
+fail() {
+    printf 'import-register: %s\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+usage() {
+    fail 'use prepare <state-directory>.' 2
+}
+
+[[ $# -eq 2 && "$1" == prepare && -n "$2" ]] || usage
+state="$2"
+[[ ! -L "$state" ]] || fail 'the state directory is a symbolic link.' 2
+command -v jq >/dev/null || fail 'jq is required.' 2
+command -v uuidgen >/dev/null || fail 'uuidgen is required.' 2
+
+sources=(
+    forward-register.md
+    forward-register-archive-2026-08.md
+    forward-register-archive-2026-09.md
+    forward-register-archive-2026-10.md
+    forward-register-archive-2026-10-17.md
+    forward-register-archive-2026-10-18.md
+    forward-register-archive-2026-10-19.md
+)
+topics=(
+    forward-register-frozen-2026-10-21
+    forward-register-archive-2026-08
+    forward-register-archive-2026-09
+    forward-register-archive-2026-10
+    forward-register-archive-2026-10-17
+    forward-register-archive-2026-10-18
+    forward-register-archive-2026-10-19
+)
+
+hash_file() {
+    shasum -a 256 "$1" | cut -d ' ' -f 1
+}
+
+mode_of() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
+verify_state() {
+    [[ -d "$state" && -f "$state/READY" && -f "$state/requests.jsonl" ]] \
+        || fail 'the existing state directory is incomplete.'
+    [[ "$(mode_of "$state")" == 700 \
+       && "$(mode_of "$state/READY")" == 600 \
+       && "$(mode_of "$state/requests.jsonl")" == 600 ]] \
+        || fail 'the state files are not private.'
+    [[ ! -L "$state/READY" && ! -L "$state/requests.jsonl" ]] \
+        || fail 'the state manifest is a symbolic link.'
+    [[ "$(cat "$state/READY")" == "$(hash_file "$state/requests.jsonl")" ]] \
+        || fail 'the state manifest changed.'
+    [[ "$(jq -s 'length' "$state/requests.jsonl")" -eq 131 ]] \
+        || fail 'the state manifest has the wrong request count.'
+    local row path expected
+    while IFS= read -r row; do
+        path="$(jq -r '.path' <<< "$row")"
+        expected="$(jq -r '.sha256' <<< "$row")"
+        case "$path" in
+            headers/*|sections/*|pointers/*) ;;
+            *) fail 'the state manifest names an unexpected path.' ;;
+        esac
+        [[ "$path" != *'..'* && -f "$state/$path" && ! -L "$state/$path" ]] \
+            || fail 'a prepared message file is missing or unsafe.'
+        [[ "$(hash_file "$state/$path")" == "$expected" ]] \
+            || fail 'a prepared message file changed.'
+    done < "$state/requests.jsonl"
+    local source
+    for source in "${sources[@]}"; do
+        [[ -f "$state/sources/$source" && ! -L "$state/sources/$source" ]] \
+            || fail 'a prepared source file is missing or unsafe.'
+        git -C "$repo_root" show "$source_commit:$source" \
+            | cmp - "$state/sources/$source" \
+            || fail 'a prepared source differs from H.'
+    done
+}
+
+if [[ -e "$state" ]]; then
+    verify_state
+    printf 'import-register: 131 stable requests verified. No shell call made.\n'
+    exit 0
+fi
+
+mkdir -m 0700 "$state" || fail 'cannot create the state directory.'
+mkdir -m 0700 "$state/sources" "$state/sections" "$state/headers" "$state/pointers" \
+    || fail 'cannot create the state subdirectories.'
+: > "$state/requests.jsonl"
+
+write_request() {
+    local source="$1" topic="$2" kind="$3" index="$4" path="$5"
+    local request_id digest
+    request_id="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+    [[ "$request_id" =~ ^[0-9a-f-]{36}$ && "$request_id" != _ ]] \
+        || fail 'uuidgen did not return a UUID.'
+    digest="$(hash_file "$state/$path")"
+    jq -cn --arg source "$source" --arg topic "$topic" \
+        --arg kind "$kind" --argjson index "$index" --arg path "$path" \
+        --arg request_id "$request_id" --arg sha256 "$digest" \
+        '{source:$source,topic:$topic,kind:$kind,index:$index,
+          path:$path,request_id:$request_id,sha256:$sha256}' \
+        >> "$state/requests.jsonl" \
+        || fail 'cannot write the request manifest.'
+}
+
+for i in "${!sources[@]}"; do
+    source="${sources[$i]}"
+    topic="${topics[$i]}"
+    git -C "$repo_root" show "$source_commit:$source" > "$state/sources/$source" \
+        || fail "cannot read $source from H."
+    "$splitter" "$state/sources/$source" "$state/sections/$source" \
+        || fail "cannot split $source."
+    section_count="$(jq -s 'length' "$state/sections/$source/sections.jsonl")"
+    source_hash="$(hash_file "$state/sources/$source")"
+    printf 'Source: %s\nCommit: %s\nSHA-256: %s\nSections: %s\n' \
+        "$source" "$source_commit" "$source_hash" "$section_count" \
+        > "$state/headers/$source.txt"
+    write_request "$source" "$topic" header null "headers/$source.txt"
+    while IFS= read -r row; do
+        index="$(jq -r '.index' <<< "$row")"
+        path="$(jq -r '.path' <<< "$row")"
+        write_request "$source" "$topic" section "$index" "sections/$source/$path"
+    done < "$state/sections/$source/sections.jsonl"
+    printf '%s | %s | | %s\n' '-' "$topic" "$source" \
+        > "$state/pointers/$source.txt"
+    write_request "$source" "$topic" pointer null "pointers/$source.txt"
+done
+
+[[ "$(jq -s 'length' "$state/requests.jsonl")" -eq 131 ]] \
+    || fail 'the prepared request count is wrong.'
+hash_file "$state/requests.jsonl" > "$state/READY"
+verify_state
+printf 'import-register: 131 stable requests prepared. No shell call made.\n'

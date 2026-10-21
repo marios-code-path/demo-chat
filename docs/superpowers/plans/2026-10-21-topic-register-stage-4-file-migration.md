@@ -59,21 +59,23 @@ The seven blobs contain 117 sections and 317,268 bytes. Each file has a preamble
 
 **Stop gate:** A byte difference or invalid source stops the task. Do not normalize text.
 
-## Task 2: Prepare stable import requests
+## Task 2: Prepare stable import requests offline
 
 **Files:** Create `node-9/bin/import-register`. Extend `shell-scripts/test-register-import.sh`.
 
-- [ ] Require H, the seven exact source names, `CHAT_SHELL_USER`, and `CHAT_SHELL_PASSWORD_FILE`.
-- [ ] Set `CORE_PORT=6890`, `CORE_MGMT_PORT=6891`, node ID `9`, and key type `uuid` for every shell call.
-- [ ] Refuse a caller value that would redirect one of those settings.
-- [ ] Build a private manifest before any live write. Save one request ID per header, section, and pointer.
-- [ ] Reuse the saved IDs on every retry. Never use `_` as a request ID.
-- [ ] Put the source name, H, source SHA-256, and section count in the header text.
-- [ ] Keep the header outside the reconstructed section bytes.
-- [ ] Test a retry after each failure point with a stub shell. Require no second message for one request ID.
-- [ ] Test missing credentials, wrong ports, topic conflicts, malformed receipts, and a denied index.
-- [ ] Require one clear error line and no success claim after a failed shell call.
-- [ ] Run the offline suite and the cheap checks. Commit the importer with the issue ID.
+- [x] Add `import-register prepare <new-state-directory>`. It makes no shell call.
+- [x] Read H and the seven exact source names. Reject a source with changed bytes.
+- [x] Copy the source blobs into a mode-0700 state directory. Split them with `register-split`.
+- [x] Save one request ID per header, section, and pointer before any live write.
+- [x] Save 131 request rows: 117 sections, seven headers, and seven pointers.
+- [x] Reuse the saved IDs when `prepare` runs again. Never use `_` as a request ID.
+- [x] Put the source name, H, source SHA-256, and section count in the header text.
+- [x] Keep the header outside the reconstructed section bytes.
+- [x] Reject an existing state directory without a complete manifest.
+- [x] Test a repeated `prepare`. Require the same manifest hash and request IDs.
+- [x] Test a changed section file. The repeated `prepare` must stop.
+- [x] Test that `prepare` calls no shell command and writes no secret.
+- [x] Run the offline suite and the cheap checks. Commit the importer with the issue ID.
 
 **Stop gate:** A retry must use the original request ID and the original section bytes.
 
@@ -94,6 +96,10 @@ The seven blobs contain 117 sections and 317,268 bytes. Each file has a preamble
 
 **Files:** Use `node-9/bin/import-register`. Save the resulting manifest in the proof directory.
 
+- [ ] Add `import-register apply <state-directory> --as <name>` and stub its shell calls first.
+- [ ] Require a readable password file. Refuse changed node-9 ports, node ID, or key type.
+- [ ] Test a retry after each failed write. Require the original request ID and bytes.
+- [ ] Test missing credentials, topic conflicts, malformed receipts, and a denied index.
 - [ ] Create one topic per source. Join it as the import user.
 - [ ] Post the header first. Post each section in file order.
 - [ ] Pass the saved request ID on every post. Save each returned message ID.

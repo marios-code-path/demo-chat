@@ -4,6 +4,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 splitter="$repo_root/node-9/bin/register-split"
+importer="$repo_root/node-9/bin/import-register"
 source_commit=2d75f0cdd09115da422cdc0a693f0227f31a6ef5
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -100,3 +101,48 @@ done
 [[ "$total_sections" -eq 117 ]]
 [[ "$total_bytes" -eq 317268 ]]
 printf 'all register split cases passed: %s sections, %s bytes\n' "$total_sections" "$total_bytes"
+
+printf '#!/usr/bin/env bash\nprintf "called\\n" >> "%s"\n' "$work/shell-called" > "$work/shell-stub"
+chmod +x "$work/shell-stub"
+printf 'stage4-secret-sentinel\n' > "$work/unused-password"
+CHAT_SHELL_CLI="$work/shell-stub" \
+    CHAT_SHELL_PASSWORD_FILE="$work/unused-password" \
+    "$importer" prepare "$work/state"
+[[ ! -e "$work/shell-called" ]]
+if rg -a -q 'stage4-secret-sentinel' "$work/state"; then
+    printf 'the prepared state holds a secret\n' >&2
+    exit 1
+fi
+[[ "$(mode "$work/state")" == 700 ]]
+[[ "$(mode "$work/state/requests.jsonl")" == 600 ]]
+[[ "$(jq -s 'length' "$work/state/requests.jsonl")" -eq 131 ]]
+[[ "$(jq -r '.request_id' "$work/state/requests.jsonl" | sort -u | wc -l | tr -d ' ')" -eq 131 ]]
+[[ "$(jq -r 'select(.kind == "section") | .request_id' "$work/state/requests.jsonl" | wc -l | tr -d ' ')" -eq 117 ]]
+[[ "$(jq -r 'select(.kind == "header") | .request_id' "$work/state/requests.jsonl" | wc -l | tr -d ' ')" -eq 7 ]]
+[[ "$(jq -r 'select(.kind == "pointer") | .request_id' "$work/state/requests.jsonl" | wc -l | tr -d ' ')" -eq 7 ]]
+rg -q "Commit: $source_commit" "$work/state/headers/forward-register.md.txt"
+manifest_hash="$(shasum -a 256 "$work/state/requests.jsonl" | cut -d ' ' -f 1)"
+CHAT_SHELL_CLI="$work/shell-stub" "$importer" prepare "$work/state"
+[[ "$(shasum -a 256 "$work/state/requests.jsonl" | cut -d ' ' -f 1)" == "$manifest_hash" ]]
+[[ ! -e "$work/shell-called" ]]
+
+chmod 0755 "$work/state"
+if "$importer" prepare "$work/state" >/dev/null 2>&1; then
+    printf 'unexpected success: public state directory\n' >&2
+    exit 1
+fi
+chmod 0700 "$work/state"
+
+mkdir "$work/incomplete"
+if "$importer" prepare "$work/incomplete" >/dev/null 2>&1; then
+    printf 'unexpected success: incomplete state\n' >&2
+    exit 1
+fi
+
+first_section="$(jq -r 'select(.kind == "section") | .path' "$work/state/requests.jsonl" | head -n 1)"
+printf 'changed' >> "$work/state/$first_section"
+if "$importer" prepare "$work/state" >/dev/null 2>&1; then
+    printf 'unexpected success: changed section\n' >&2
+    exit 1
+fi
+printf 'all register import preparation cases passed\n'
