@@ -9,7 +9,7 @@ command. Node 16 stayed untouched.
 ## Environment
 
 - `node-9/bin/start` returned `0` at 2026-10-21T01:09Z. Health on 6891 reads
-  `UP`. RSocket listens on 6890. See `start.log`.
+  `UP`. RSocket listens on 6890. See `start.out`.
 - The core image `node-9/cassandra-core-service-rsocket:0.0.1` was present.
   The start ran no Maven.
 - `just build-shell-cli` built the CLI classpath. It took 31 s.
@@ -30,15 +30,15 @@ command. Node 16 stayed untouched.
 | Named test topic, reversible data | `live-check-6`, `forward-register-livetest`. Test text only. | this record |
 | Mario creates `register-index` | Room `55db9c80-ccec-11f1-b7c1-47b553663159`, status `0` | `live-add-topic.out` |
 | Stored owner is Mario | One `*` row. Principal `1aee9eb0-...` is handle `Mario`, name `MARIO OWNER`. | `owner-grant.txt` |
-| Four users log in | `whoami` returns one distinct id for each user, status `0` | `live-users.log`, this record |
-| Four users join and post | Topic `live-check-6` holds four records from four senders, status `0` each | `live-users.log` |
+| Four users log in | `whoami` returns one distinct id for each user, status `0` | `live-users.out`, this record |
+| Four users join and post | Topic `live-check-6` holds four records from four senders, status `0` each | `live-users.out` |
 | Admin and Mario are distinct | Admin `1a9f6d40-...` reads `Admin \| SUPER USER`. Mario `1aee9eb0-...` reads `Mario \| MARIO OWNER`. | this record |
 | `register open` | Status `0`, `state: created`, topic `forward-register-livetest`, pointer `01800a80-...` | `live-open.out` |
 | `register post` | Status `0`, message `0e4e1630-...`, command id and request id present | `live-post.out` |
 | `register read` with no topic | Status `0`, one record line per message, typed | `live-read-session.out` |
 | `register read <topic>` | Status `0`, the newest entry of the topic | `live-read-topic.out` |
 | Duplicate pointer warning | Status `0`. Warning keeps `01800a80-...` and ignores `2529d510-...`. | `live-read-duplicate.out` |
-| Error statuses | `1` no pointer, `2` unknown user, `2` title delimiter, `2` empty entry. The `77` for Mario was measured before decision 37. | `live-errors.log` |
+| Error statuses | `1` no pointer, `2` unknown user, `2` title delimiter, `2` empty entry. The `77` for Mario was measured before decision 37. | `live-errors.out` |
 | Down node | Status `69`, one line `chat-shell: Connection refused` on port 6899. Node 9 stayed up. | `live-down.out` |
 | Node-16 containers after the run | The same 5 keep the same images. | `node16-ps-after.txt` |
 | Node-16 images after the run | No change. The full image list is identical. | `node16-images-after.txt` |

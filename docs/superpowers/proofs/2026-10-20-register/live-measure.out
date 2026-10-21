@@ -1,0 +1,5 @@
+run 1 status=0 ms=5065 records=15 denied=0 duplicate=1 bytes=10454 err=
+run 2 status=0 ms=5082 records=15 denied=0 duplicate=1 bytes=10454 err=
+run 3 status=0 ms=5118 records=15 denied=0 duplicate=1 bytes=10454 err=
+run 4 status=0 ms=5089 records=15 denied=0 duplicate=1 bytes=10454 err=
+run 5 status=0 ms=5185 records=15 denied=0 duplicate=1 bytes=10454 err=

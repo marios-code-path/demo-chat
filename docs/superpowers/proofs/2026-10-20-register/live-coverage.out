@@ -1,0 +1,28 @@
+ok   checkout             master at bb0796d3
+ok   last-merged-pr       PR #262, stage 2
+ok   merge-strategy       Every merge needs Mario's explicit authorization
+ok   open-prs             No PR is open
+ok   branches             chat-hcfgkbuz-node-9 is kept at 1ad85a5e
+ok   issue-state          Stage 3 tasks 1 to 6 are committed
+ok   next-task-7          the AGENTS.md switch, which Mario reviews first
+ok   decisions-range      Design decisions 1 to 38
+ok   live-run-safety      Node 9 runs on 6890 and 6891
+ok   coverage-rule        is a coverage failure
+ok   stage-2-measured     A post wrote a vector without a rebuild
+ok   open-host-move       The move to another host
+ok   open-design-items    Design items 5 and 7
+ok   open-native-image    its context does not start
+ok   open-case-a11        Case A11 is not run
+ok   open-owner-vault     owner.yml is absent
+ok   open-shared-vault    shared vault content is unverified
+ok   open-second-denial   offline tests only
+ok   landed-262           It delivered the node-9 launcher
+ok   archive-list         forward-register-archive-2026-10-19.md
+ok   in-progress-list     CHAT-pphwooqm
+ok   issue-aqpcacwv       durable deployment ran on 2026-10-16
+ok   issue-owiksxvz       Java 25, Kotlin 2.4.10
+ok   issue-ivtnvgyg       Jackson 3 codec error
+ok   issue-uxlstrdy       2026-10-07-domain-command-bus-design.md
+ok   issue-pphwooqm       Stage 1 merged in PR #201
+
+26 rows, 0 failures

@@ -190,17 +190,24 @@ live and in `chat-shell` tests. Task 7 can use the session-start read.
 
 **Files:** Modify `AGENTS.md`, `node-9/README.md`, the design, and the forward register. Record measurement data.
 
-- [ ] Copy current in-flight facts into register entries.
-- [ ] Build a coverage table. One row per source fact, with its message ID and a check string.
-- [ ] Cover the facts without an fp ID: Checkout, merge strategy, open PR, and branches.
-- [ ] Verify every check string by content. An ID match alone is not proof.
-- [ ] Read the register as each agent. Compare the result with the current forward register.
-- [ ] Measure a complete read from command start to final output line on representative data.
-- [ ] Run at least five valid reads. Report the median, topic count, message count, and data size.
-- [ ] Require status `0`, the expected record count, and the approved warning behavior on every measured read.
-- [ ] Treat a `denied-index` or `denied-topic` warning as a coverage failure. Status `0` alone is not proof of a complete register.
-- [ ] Test the 30-second boundary from wrapper start to its last output line. Require status `124` and discard any output from that run.
-- [ ] If the median exceeds 10 seconds, fix the query cost and repeat the full measurement.
+- [x] Copy current in-flight facts into register entries.
+- [x] Build a coverage table. One row per source fact, with its message ID and a check string.
+- [x] Cover the facts without an fp ID: Checkout, merge strategy, open PR, and branches.
+- [x] Verify every check string by content. An ID match alone is not proof.
+- [x] Read the register as each agent. Compare the result with the current forward register.
+- [x] Measure a complete read from command start to final output line on representative data.
+- [x] Run at least five valid reads. Report the median, topic count, message count, and data size.
+- [x] Require status `0`, the expected record count, and the approved warning behavior on every measured read.
+- [x] Treat a `denied-index` or `denied-topic` warning as a coverage failure. Status `0` alone is not proof of a complete register.
+- [ ] Test the 30-second boundary from wrapper start to its last output line. Require status `124` and discard any output from that run. The live check used a 1000 ms limit, because the core answers in about 5 s. The 30 s default is covered by the offline suite and stage 1 cases A14 and A15.
+- [x] If the median exceeds 10 seconds, fix the query cost and repeat the full measurement. The median is 5089 ms, so no fix is needed.
+
+**Measured on 2026-10-20.** The record is
+`docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`. The coverage table
+has 26 rows and 0 failures. The four agents read identical output. The read
+median is 5089 ms for 7 topics and 15 messages. One `duplicate-pointer`
+warning comes from the `CHAT-live6` test pointers. No denied warning
+appeared.
 - [ ] Stop the change when one coverage row has no message ID or no matching check string.
 - [ ] Commit the final `forward-register.md` as H. Make no further edit to that file.
 - [ ] Put the freeze notice and the hash H in the register entry and in `AGENTS.md`.

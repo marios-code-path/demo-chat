@@ -36,7 +36,7 @@ Measured on 2026-10-20.
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 is not started. |
+| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 items 1 to 9 are done. The six in-progress issues have topics, and every agent is a member of each. The coverage table has 26 rows and 0 failures. The read median is 5089 ms. See `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`. |
 
 **The next Theta session starts here.**
 
@@ -44,13 +44,17 @@ Measured on 2026-10-20.
 2. Stage 3 task 7 is the next step. The plan is
    `docs/superpowers/plans/2026-10-19-topic-register-stage-3.md`. Read its
    "Decisions" section first.
-3. Task 7 starts with items 1 to 5. Copy the in-flight facts into register
-   entries. Build the coverage table. Verify each check string by content.
-4. Task 7 ends with the `AGENTS.md` switch. Mario reviews that switch first.
+3. Task 7 items 1 to 9 are done. The six in-progress issues have topics.
+   The coverage table has 26 rows and 0 failures. See
+   `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`.
+4. The read median is 5089 ms for 7 topics and 15 messages. The stage gate
+   for stage 4 planning is met. The only warning is `duplicate-pointer` for
+   the `CHAT-live6` test pointers.
+5. Task 7 ends with the `AGENTS.md` switch. Mario reviews that switch first.
    A denied-index or denied-topic warning is a coverage failure.
-5. The design records decisions 1 to 38. Decision 36 sets the read warning.
+6. The design records decisions 1 to 38. Decision 36 sets the read warning.
    Decision 37 sets the owner login. Decision 38 sets the denied-index guard.
-6. Every live run uses a disposable core. Never use `chat-deploy core` near
+7. Every live run uses a disposable core. Never use `chat-deploy core` near
    node 16. Node 9 runs on 6890 and 6891.
 
 **Measured in stage 2, live.** Node 9 started beside node 16 and reported
