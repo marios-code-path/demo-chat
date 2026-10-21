@@ -87,7 +87,8 @@ entry is younger than `--maxAgeHours`. A pointer reads `<key> | <topic-name> |
 <metadata> | <title>`. A key is opaque text that names one topic. This tool does
 not know where a key comes from. A topic that two pointers name is read once. A pointer that
 does not follow the form fails the read, and so does any read that fails with
-an error other than a denial. **A denied topic prints one warning line and the
+an error other than a denial. A pointer whose key holds a backslash also fails
+the read. **A denied topic prints one warning line and the
 read continues**, because an agent is not a member of every topic that the
 index names. The warning holds `type`, `kind`, `topic`, and the reason. A
 denied index prints one warning line and no records. An empty
@@ -623,7 +624,7 @@ topic and pointer.
 returns `2`:
 
 - A key that is empty, that passes 64 characters, or that is `-`.
-- A key with the `|` delimiter or a control character.
+- A key with the `|` delimiter, a backslash, or a control character.
 - A key with a space at its start or at its end.
 - A short name that does not start with a letter or digit.
 - A short name with a character outside letters, digits, dot, dash, and underscore.
@@ -635,6 +636,10 @@ The title keeps its spaces. A pointer is `<key> | <topic-name> | <metadata> | <t
 The command writes an empty metadata field. No command reads that field. The
 command applies no `CHAT-` shape check to a key. This project passes an fp
 issue ID as the key.
+
+The bash tool reads pointers through a tab-separated form. That form doubles
+a backslash. So a key with a backslash cannot match after a write. The bash
+tool refuses such a key, and the Kotlin read refuses such a pointer.
 
 ## The register post
 

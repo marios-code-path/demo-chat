@@ -171,8 +171,11 @@ The owner made two more decisions on 2026-10-20:
     decision 36.
 39. A pointer names a key, not an fp issue. A key is opaque text that names
     one topic. `open` and `post` accept any key that can stand in a pointer
-    line: 1 to 64 characters, no `|`, no control character, and no space at
-    either end. The key `-` is reserved for archive pointers. The commands
+    line: 1 to 64 characters, no `|`, no backslash, no control character,
+    and no space at either end. The bash tool reads pointers through a
+    tab-separated form, and that form doubles a backslash. A doubled key
+    cannot match a written one, so both decoders refuse it. The key `-` is
+    reserved for archive pointers. The commands
     check no `CHAT-` shape. The JSON field is `key`. This project passes an
     fp issue ID as the key. That value is a project convention, and the tool
     does not know it. One split rule serves both decoders, and

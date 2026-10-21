@@ -69,13 +69,16 @@ fail() {
 
 # check_key KEY  Refuse a key that cannot stand in a pointer line. A key is
 # opaque text. This tool does not know where it comes from. It holds no |
-# delimiter and no control character. It holds no space at its start or its
-# end, and at most 64 characters. The key - is reserved for archive pointers.
+# delimiter, no backslash, and no control character. A backslash doubles in
+# the tab-separated form below, so a later read cannot match it. A key holds
+# no space at its start or its end, and at most 64 characters. The key - is
+# reserved for archive pointers.
 check_key() {
     local key="$1" trimmed
     [[ -n "$key" ]] || fail 'the key is empty.' 2
     (( ${#key} <= 64 )) || fail 'the key passes 64 characters.' 2
     [[ "$key" != *'|'* ]] || fail 'the key holds the | delimiter.' 2
+    [[ "$key" != *[\\]* ]] || fail 'the key holds a backslash.' 2
     [[ "$key" != *[[:cntrl:]]* ]] || fail 'the key holds a control character.' 2
     trimmed="${key#"${key%%[![:space:]]*}"}"
     trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
@@ -283,15 +286,17 @@ read_index() {
 
 # load_pointers  Fill $work/pointers from the index records in $work/out.
 # Each row is timestamp, message id, key, topic, metadata, title. The tool
-# never reads the metadata or the title.
+# never reads the metadata or the title. The @tsv form doubles a backslash,
+# so a key that holds one cannot match. The filter refuses it here, and
+# check_key refuses it at a write.
 load_pointers() {
     jq -r 'select((.type // "record") == "record" and .topic=="register-index")
            | [ .timestamp, .id ]
              + (.text // "" | split("|") | map(gsub("^\\s+|\\s+$"; "")))
            | @tsv' "$work/out" > "$work/pointers" 2> /dev/null \
         || return 1
-    awk -F'\t' 'NF != 6 || $3 == "" || $4 == "" { bad = 1 } END { exit bad ? 1 : 0 }' \
-        "$work/pointers"
+    awk -F'\t' 'NF != 6 || $3 == "" || $4 == "" || index($3, "\\") > 0 { bad = 1 }
+                END { exit bad ? 1 : 0 }' "$work/pointers"
 }
 
 # earliest_pointer KEY  Print timestamp, id, and topic of the earliest

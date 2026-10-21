@@ -233,10 +233,14 @@ class PubSubCommands<T : Any>(
         val pointers = try {
             storedMessages(indexRoom).map { pointer ->
                 // The split rule is shared with node-9/bin/register. Split on
-                // |, trim each field, and require exactly four fields. The
-                // decoder fixtures hold the cases. See the design, decision 39.
+                // |, trim each field, and require exactly four fields, a key
+                // with no backslash, and a non-blank key and topic. The bash
+                // tool reads through a tab-separated form that doubles a
+                // backslash, so it cannot match one. The decoder fixtures hold
+                // the cases. See the design, decision 39.
                 val fields = pointer.data.split("|").map { it.trim() }
-                check(fields.size == 4 && fields[0].isNotBlank() && fields[1].isNotBlank()) {
+                check(fields.size == 4 && fields[0].isNotBlank() && fields[1].isNotBlank() &&
+                    !fields[0].contains('\\')) {
                     "The pointer '${pointer.data.lineSequence().first()}' in $index is not '<key> | <topic> | <metadata> | <title>'."
                 }
                 Pointer(pointer, fields[0], fields[1])

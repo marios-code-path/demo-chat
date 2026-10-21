@@ -103,8 +103,8 @@ run_wrapper() {
 
 # message_record ID TOPIC TIMESTAMP TEXT  One record line.
 message_record() {
-    printf '{"id":"%s","topic":"%s","sender":"Mario","timestamp":"%s","text":"%s"}' \
-        "$1" "$2" "$3" "$4"
+    jq -cn --arg id "$1" --arg topic "$2" --arg ts "$3" --arg text "$4" \
+        '{id:$id, topic:$topic, sender:"Mario", timestamp:$ts, text:$text}'
 }
 
 # index_record ID TIMESTAMP TEXT  One register-index record line.
@@ -759,8 +759,8 @@ else
 fi
 
 long_key="$(printf 'k%.0s' {1..65})"
-bad_keys=('A|x' '' ' padded ' '-' "$long_key")
-bad_names=(delimiter empty padded dash too_long)
+bad_keys=('A|x' '' ' padded ' '-' "$long_key" 'team\ops')
+bad_names=(delimiter empty padded dash too_long backslash)
 for i in "${!bad_keys[@]}"; do
     reset_stub
     run_wrapper "t_bad_key_${bad_names[$i]}" open "${bad_keys[$i]}" x 'A title' --as Theta
