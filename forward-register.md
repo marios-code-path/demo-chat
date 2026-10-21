@@ -22,7 +22,7 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-20.
+Measured on 2026-10-21.
 
 | | |
 |---|---|
@@ -36,16 +36,16 @@ Measured on 2026-10-20.
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 items 1 to 9 are done. The six in-progress issues have topics, and every agent is a member of each. The coverage table has 26 rows and 0 failures. The read median is 5089 ms. See `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`. Decision 39 makes a pointer name a key. A key is opaque text, and the tool checks no `CHAT-` shape. A key holds no backslash, because the tab-separated read form doubles one. The JSON field is `key`. Both decoders share one split rule, and `chat-shell/src/test/resources/register/pointer-lines.tsv` holds its cases. |
+| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 items 1 to 11 are done. The six in-progress issues have topics, and every agent is a member of each. The coverage table has 30 rows and 0 failures against this file. The read median is 5089 ms. See `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`. Decision 39 makes a pointer name a key. A key is opaque text, and the tool checks no `CHAT-` shape. A key holds no backslash, because the tab-separated read form doubles one. The JSON field is `key`. Both decoders share one split rule, and `chat-shell/src/test/resources/register/pointer-lines.tsv` holds its cases. Commits `f24358c0` and `83b9b6c3` carry decision 39 and the backslash rule. |
 
 **The next Theta session starts here.**
 
 1. Read `fp context CHAT-jmnjvupr` and the newest comments first.
-2. Stage 3 task 7 is the next step. The plan is
+2. Stage 3 task 7 items 12 to 19 wait for Mario's review. The plan is
    `docs/superpowers/plans/2026-10-19-topic-register-stage-3.md`. Read its
    "Decisions" section first.
-3. Task 7 items 1 to 9 are done. The six in-progress issues have topics.
-   The coverage table has 26 rows and 0 failures. See
+3. Task 7 items 1 to 11 are done. The six in-progress issues have topics.
+   The coverage table has 30 rows and 0 failures against this file. See
    `docs/superpowers/proofs/2026-10-20-register/COVERAGE.md`.
 4. The read median is 5089 ms for 7 topics and 15 messages. The stage gate
    for stage 4 planning is met. The only warning is `duplicate-pointer` for
@@ -57,6 +57,16 @@ Measured on 2026-10-20.
    Decision 39 sets the key model.
 7. Every live run uses a disposable core. Never use `chat-deploy core` near
    node 16. Node 9 runs on 6890 and 6891.
+8. Never pause the core to stall a read. The core renews two leases every
+   few seconds. A pause of 25 seconds closes its context. `node-9/bin/start`
+   restores it.
+
+**Measured on 2026-10-21, live.** The 30-second default limit works from
+wrapper start. A stalled shell gave status `124` at 30032 ms, no output, and
+one line on standard error. A paused core gave status `124` at 29716 ms, no
+output, and one line. The pause also stopped the core through its lease, as
+item 8 records. See `live-deadline-30s-stall.*` and `live-deadline-30s.*` in
+the proof directory.
 
 **Measured in stage 2, live.** Node 9 started beside node 16 and reported
 health on 6891. A second start applied no schema. A post wrote a vector
