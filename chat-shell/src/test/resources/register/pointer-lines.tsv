@@ -1,0 +1,17 @@
+# Shared pointer decoder fixtures. Two decoders read this file: the Kotlin
+# register read and the bash wrapper. They must agree on every row.
+# Columns: case, pointer line, expected. Expected is ok:<key>:<topic> or
+# reject. A key with a backslash is a reject row, because the bash tool
+# reads through a tab-separated form that doubles a backslash.
+# See the design, decision 39.
+plain	CHAT-1 | topic-a | task | A	ok:CHAT-1:topic-a
+no-spaces	PROJ-7|topic-b||B	ok:PROJ-7:topic-b
+padded	  key 1  |  topic-c  |  |  C  	ok:key 1:topic-c
+empty-metadata	KEY-2 | topic-d | | D	ok:KEY-2:topic-d
+archive-dash	- | archive-a | archive | A	ok:-:archive-a
+non-ascii	ключ | topic-h | | Заголовок	ok:ключ:topic-h
+title-with-bar	KEY-3 | topic-e | | A | B	reject
+three-fields	KEY-4 | topic-f | only three	reject
+blank-key	 | topic-g | | G	reject
+blank-topic	KEY-5 |  | | T	reject
+backslash-key	team\ops | topic-i | | I	reject

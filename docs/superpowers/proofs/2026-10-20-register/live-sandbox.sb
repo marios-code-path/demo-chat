@@ -1,0 +1,3 @@
+(version 1)
+(allow default)
+(deny network-outbound (remote ip "*:5432") (remote ip "*:6379") (remote ip "*:8500") (remote ip "*:8600") (remote ip "*:9000") (remote ip "*:9001") (remote ip "*:9042"))

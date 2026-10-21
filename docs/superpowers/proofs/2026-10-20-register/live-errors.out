@@ -1,0 +1,20 @@
+== post-orphan
+status=1
+stdout-bytes=0
+register: no pointer for CHAT-zzz. Run register open first.
+== read-as-mario
+status=77
+stdout-bytes=0
+register: the Mario client password is an owner decision. See the design.
+== read-as-nobody
+status=2
+stdout-bytes=0
+register: unknown user Nobody. The users are Sigma, Theta, Phi, and Mario.
+== open-bad-title
+status=2
+stdout-bytes=0
+register: the title holds the | delimiter.
+== post-empty
+status=2
+stdout-bytes=0
+register: the entry is empty or whitespace only.

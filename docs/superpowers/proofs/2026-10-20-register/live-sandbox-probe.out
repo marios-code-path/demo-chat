@@ -1,0 +1,8 @@
+5432 denied: java.net.SocketException: Operation not permitted
+6379 denied: java.net.SocketException: Operation not permitted
+8500 denied: java.net.SocketException: Operation not permitted
+8600 denied: java.net.SocketException: Operation not permitted
+9000 denied: java.net.SocketException: Operation not permitted
+9001 denied: java.net.SocketException: Operation not permitted
+9042 denied: java.net.SocketException: Operation not permitted
+6890 connected

@@ -7,6 +7,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.time.Duration
@@ -16,6 +17,7 @@ import java.util.UUID
 import java.time.format.DateTimeFormatter
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
+import reactor.core.Exceptions
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import com.demo.chat.shell.cli.ShellExit
@@ -180,29 +182,37 @@ class PubSubCommands<T : Any>(
             "text" to body(message),
         ))
 
-    /** The stored messages of a room, oldest first. */
+    /** The stored messages of a room, oldest first. Equal times order by message id. */
     private fun storedMessages(room: MessageTopic<T>): List<Message<T, String>> =
         messageService.listMessages(ByIdRequest(room.key.id)).collectList().block().orEmpty()
-            .sortedBy { it.key.timestamp }
+            .sortedWith(compareBy<Message<T, String>> { it.key.timestamp }.thenBy { typeUtil.toString(it.key.id) })
 
     /**
      * The session-start read of the topic register, as record lines.
      *
      * It prints every pointer of [index], oldest first. It then prints the
      * newest entry of each topic that a pointer names, if that entry is younger
-     * than [maxAge]. A pointer reads `<fp-id> | <topic-name> | <kind> | <title>`.
+     * than [maxAge]. A pointer reads `<key> | <topic> | <metadata> | <title>`.
+     * A key is opaque text that names one topic. The read does not know where
+     * a key comes from. It never reads the metadata field or the title.
      * A topic that two pointers name is read once. A pointer that does not
-     * follow the form fails the read, and so does any read that fails. **The
-     * read prints nothing until every read succeeded**, so a failure never
-     * leaves a partial register for an agent to take as the whole.
+     * follow the form fails the read, and so does any read that fails with an
+     * error other than a denial. **A denied topic prints a warning line and
+     * the read continues**, because an agent is not a member of every topic
+     * that the index names. A denied index prints one warning line and no
+     * records.
      *
      * **[limit] is the hard limit of owner decision 20.** At the limit the
      * read ends with a [ShellExit] of status [ShellExitStatus.TIMEOUT]. The
      * worker thread can go on after that, so the caller must end the process.
      * An empty index answers an empty text.
      *
-     * Later duplicate pointers of one fp ID, and a warning line for them, are
-     * stage 3 work. See the design, section "Concurrent writes".
+     * Two pointers can name one key. The earliest pointer is the valid one,
+     * by stored time and then by message id. The read prints every pointer,
+     * reads the topic of the earliest pointer alone, and prints one warning
+     * line for each later pointer. An archive pointer uses `-` as its key,
+     * and many archive pointers are normal. See the design, "Concurrent
+     * writes".
      */
     fun registerRead(index: String, maxAge: Duration, limit: Duration, now: Instant = Instant.now()): String =
         Mono.fromCallable { readRegister(index, maxAge, now) }
@@ -210,28 +220,108 @@ class PubSubCommands<T : Any>(
             .timeout(limit, Mono.error(ShellExit(ShellExitStatus.TIMEOUT, "register-read passed its ${limit.toMillis()} ms limit")))
             .block().orEmpty()
 
+    /** One index pointer, split into its key and its topic name. */
+    private class Pointer<T>(val message: Message<T, String>, val key: String, val topic: String)
+
     private fun readRegister(index: String, maxAge: Duration, now: Instant): String {
-        val indexRoom = rooms.room(index)
-        val pointers = storedMessages(indexRoom)
-        val topicNames = pointers.map { pointer ->
-            val fields = pointer.data.split(" | ", limit = 4)
-            check(fields.size == 4 && fields[1].isNotBlank()) {
-                "The pointer '${pointer.data.lineSequence().first()}' in $index is not '<fp-id> | <topic-name> | <kind> | <title>'."
+        val indexRoom = try {
+            rooms.room(index)
+        } catch (error: Exception) {
+            if (denial(error) == null) throw error
+            return deniedLine("denied-index", index)
+        }
+        val pointers = try {
+            storedMessages(indexRoom).map { pointer ->
+                // The split rule is shared with node-9/bin/register. Split on
+                // |, trim each field, and require exactly four fields, a key
+                // with no backslash, and a non-blank key and topic. The bash
+                // tool reads through a tab-separated form that doubles a
+                // backslash, so it cannot match one. The decoder fixtures hold
+                // the cases. See the design, decision 39.
+                val fields = pointer.data.split("|").map { it.trim() }
+                check(fields.size == 4 && fields[0].isNotBlank() && fields[1].isNotBlank() &&
+                    !fields[0].contains('\\')) {
+                    "The pointer '${pointer.data.lineSequence().first()}' in $index is not '<key> | <topic> | <metadata> | <title>'."
+                }
+                Pointer(pointer, fields[0], fields[1])
             }
-            fields[1].trim()
-        }.distinct()
+        } catch (error: Exception) {
+            if (denial(error) == null) throw error
+            return deniedLine("denied-index", index)
+        }
+
+        val kept = LinkedHashMap<String, Pointer<T>>()
+        val warnings = mutableListOf<String>()
+        for (pointer in pointers) {
+            if (pointer.key == "-") continue
+            val earliest = kept.putIfAbsent(pointer.key, pointer)
+            if (earliest != null) warnings += warningLine(pointer, earliest)
+        }
+        val topicNames = pointers.filter { it.key == "-" || kept[it.key] === it }.map { it.topic }.distinct()
 
         val cutoff = now.minus(maxAge)
         val entries = topicNames.mapNotNull { name ->
-            val room = rooms.room(name)
-            storedMessages(room).lastOrNull()?.takeIf { it.key.timestamp.isAfter(cutoff) }?.let { room to it }
+            try {
+                val room = rooms.room(name)
+                storedMessages(room).lastOrNull()?.takeIf { it.key.timestamp.isAfter(cutoff) }?.let { room to it }
+            } catch (error: Exception) {
+                if (denial(error) == null) throw error
+                warnings += deniedLine("denied-topic", name)
+                null
+            }
         }
 
         val handles = HashMap<T, String>()
         fun handle(sender: T) = handles.getOrPut(sender) { handleOf(sender) }
-        return (pointers.map { record(indexRoom, it, handle(it.key.from)) } +
-            entries.map { (room, entry) -> record(room, entry, handle(entry.key.from)) }).joinToString("\n")
+        return (pointers.map { registerRecord(indexRoom, it.message, handle(it.message.key.from)) } +
+            entries.map { (room, entry) -> registerRecord(room, entry, handle(entry.key.from)) } +
+            warnings).joinToString("\n")
     }
+
+    /**
+     * One register read line. It carries `type`, so a warning cannot hide
+     * among records. The `messages` record output keeps its five fields.
+     */
+    private fun registerRecord(room: MessageTopic<T>, message: Message<T, String>, handle: String): String =
+        mapper.writeValueAsString(linkedMapOf(
+            "type" to "record",
+            "id" to typeUtil.toString(message.key.id),
+            "topic" to room.data,
+            "sender" to handle,
+            "timestamp" to message.key.timestamp.toString(),
+            "text" to body(message),
+        ))
+
+    /**
+     * The denial inside [error], or null when [error] is another failure.
+     * The server answers [AccessDeniedException], and a client decodes the
+     * same refusal as [CoreAuthorizationRefusal].
+     */
+    private fun denial(error: Throwable): Throwable? =
+        Exceptions.unwrap(error).takeIf { it is AccessDeniedException || it is CoreAuthorizationRefusal }
+
+    /** One warning line for a denied read. The line names the topic and the reason. */
+    private fun deniedLine(kind: String, topic: String): String =
+        mapper.writeValueAsString(linkedMapOf(
+            "type" to "warning",
+            "kind" to kind,
+            "topic" to topic,
+            "reason" to "Access Denied",
+        ))
+
+    /** One warning for a later pointer of a key that the index already holds. */
+    private fun warningLine(ignored: Pointer<T>, kept: Pointer<T>): String =
+        mapper.writeValueAsString(linkedMapOf(
+            "type" to "warning",
+            "kind" to "duplicate-pointer",
+            "key" to ignored.key,
+            "kept" to linkedMapOf(
+                "topic" to kept.topic,
+                "id" to typeUtil.toString(kept.message.key.id)),
+            "ignored" to linkedMapOf(
+                "topic" to ignored.topic,
+                "id" to typeUtil.toString(ignored.message.key.id)),
+        ))
 
     private companion object {
         val mapper = ObjectMapper()

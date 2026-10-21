@@ -13,6 +13,7 @@ The design is in
 
 - Docker with Compose v2.
 - `curl`, `nc`, and `openssl`.
+- `jq` and `uuidgen` for `node-9/bin/register`.
 - A route to `node2.lan:6090` for embeddings.
 - Free loopback ports 6890 and 6891.
 - Maven and a JDK, for a build only. `start` calls no Maven when the image is
@@ -77,14 +78,41 @@ A post writes a new generation. A restart reuses the files. Measured on
 
 ## Secrets
 
-`node-9/secrets.env` has mode 0600. `node-9/bin/setup-secrets` creates it
-and never replaces it. It prints no value.
+Ansible Vault holds the stored values. `node-9/ansible/vault/shared.yml` is
+encrypted. Its password stays outside the repository, at
+`~/.config/chat-node-9/vault-pass`, with mode 0600.
 
-`CHAT_EMBEDDING_OPENAI_API_KEY` starts as `replace-me`. Replace it with the
-node-2 key.
+`node-9/bin/setup-secrets` writes the values. It runs the shared playbook by
+default. It runs the owner playbook with `--owner`, from Mario's terminal.
+The owner playbook reads `node-9/ansible/vault/owner.yml` and writes
+`CHAT_USER_MARIO_PASSWORD`. No client copy exists. Mario creates that Vault
+file once:
 
-`node-9/userinit.yml` overrides the shipped `Admin` password with
-`${CHAT_ADMIN_PASSWORD}`. The core imports it from
+```
+ansible-vault create --vault-id owner@prompt node-9/ansible/vault/owner.yml
+```
+
+The file holds one line: `mario_password: <the owner password>`.
+
+`node-9/bin/setup-secrets --local` generates random values without Ansible.
+The default run never falls back to it. A missing `ansible-playbook` or
+Vault password stops the default run with one line.
+
+A write is create-only. `secrets.env` keeps mode 0600, `node-9/secrets/`
+keeps mode 0700, and each agent password file keeps mode 0600. The written
+files hold plaintext. Vault protects the stored copy alone.
+
+The tested Ansible is ansible-core 2.21.5.
+
+`CHAT_EMBEDDING_OPENAI_API_KEY` starts as `replace-me`. Replace it in the
+Vault, then run `setup-secrets` again.
+
+`node-9/bin/register --as Mario` reads `CHAT_USER_MARIO_PASSWORD` from
+`secrets.env`, which has mode 0600. No `Mario.password` file exists. A
+missing value gives status 77.
+
+`node-9/userinit.yml` adds `Sigma`, `Theta`, `Phi`, and `Mario`, and it
+overrides the shipped `Admin` password. The core imports it from
 `/etc/node-9/userinit.yml`.
 
 ## Fixed isolation values

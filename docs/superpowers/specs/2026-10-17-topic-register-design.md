@@ -116,6 +116,73 @@ commit `985abf39`:
     The stage 3 command `node-9/bin/register read --as <name>` will invoke it.
     Mario confirmed this choice on 2026-10-18.
 
+The owner passed on five more decisions on 2026-10-20:
+
+23. Ansible Vault is the stored source of the node 9 secrets. Ansible writes
+    `secrets.env` and the agent password files.
+24. The `Mario` password lives in a separate owner vault. The agents can
+    unlock the shared vault. So the shared vault must not hold that
+    password.
+25. The vault password stays outside the repository.
+26. `node-9/bin/setup-secrets` remains, as a local fallback without Ansible.
+27. Vault does not establish authorship. All agents share one operating
+    system account.
+
+The owner confirmed four command decisions on 2026-10-20:
+
+28. `register post` preserves the input bytes. It does not check the entry
+    template. Empty or whitespace-only input is status `2`.
+29. A duplicate pointer warning is one typed JSON line on standard output.
+    Every line of a read carries `type`. Standard error stays empty on
+    status `0`.
+30. `--as <name>` is required. A missing flag or an unknown name is status
+    `2`. No fallback exists.
+31. `register open -` and `register post -` are status `2`. Only the stage 4
+    import creates archive topics.
+
+The owner made two more decisions on 2026-10-20:
+
+32. An owner run prompts for the owner vault password each time. No stored
+    owner vault password exists.
+33. Stage 3 live acceptance runs on the current host. The move to another
+    host stays unverified.
+34. The local mode of `setup-secrets` runs only with an explicit `--local`
+    flag. A missing Ansible executable or vault password stops the default
+    run. This amends decision 26.
+35. The owner accepts the label model. Agents on the shared account can read
+    the rendered `Mario` password in `node-9/secrets.env`. The owner vault
+    protects the stored copy alone.
+36. `register-read` reports a denied topic as a warning line, and it keeps
+    every readable topic. The owner chose this on 2026-10-20, after the live
+    run of task 6. An agent is not a member of every topic that the index
+    names, so a read that fails as a whole leaves no session-start read.
+37. The owner login of the wrapper reads the rendered
+    `CHAT_USER_MARIO_PASSWORD` in `node-9/secrets.env`. No `Mario.password`
+    file exists. This uses the label model of decision 35, and it settles
+    the open owner decision of "Users and passwords". A missing file or value
+    gives status `77`.
+38. A denied index stops `register open` and `register post`. On a
+    `denied-index` warning, the wrapper joins `register-index` once and reads
+    once more. A second denial is status `1` with one line and no output. The
+    command creates no topic and posts no entry. A readable index joins
+    nothing, so a member's command adds no membership row. The owner chose
+    this on 2026-10-20, after the stage 3 hand-off found that `open` read a
+    denied index as an empty index. `register-read` keeps the rule of
+    decision 36.
+39. A pointer names a key, not an fp issue. A key is opaque text that names
+    one topic. `open` and `post` accept any key that can stand in a pointer
+    line: 1 to 64 characters, no `|`, no backslash, no control character,
+    and no space at either end. The bash tool reads pointers through a
+    tab-separated form, and that form doubles a backslash. A doubled key
+    cannot match a written one, so both decoders refuse it. The key `-` is
+    reserved for archive pointers. The commands
+    check no `CHAT-` shape. The JSON field is `key`. This project passes an
+    fp issue ID as the key. That value is a project convention, and the tool
+    does not know it. One split rule serves both decoders, and
+    `chat-shell/src/test/resources/register/pointer-lines.tsv` holds its
+    cases. The owner chose this on 2026-10-21, so that another project can
+    use the register.
+
 ## Node 9
 
 ### Composition
@@ -207,14 +274,67 @@ from an environment value at the core start, in the same way the shipped
 `Service` user reads `CHAT_SERVICE_PASSWORD`. The `Admin` password also comes
 from the environment, because the shipped value is `changeme`.
 
+Ansible Vault is the stored source of every node 9 secret. Vault encrypts
+the stored copy alone. The files that Ansible writes are plaintext.
+
+- `node-9/ansible/vault/shared.yml` holds the service password, the `Admin`
+  password, the embedding key, and the three agent passwords. It is
+  encrypted at rest.
+- `node-9/ansible/vault/owner.yml` holds the `Mario` password alone. It has
+  its own vault ID and its own password.
+- The shared vault password stays outside the repository, at
+  `${XDG_CONFIG_HOME:-$HOME/.config}/chat-node-9/vault-pass`, with mode
+  `0600`.
+- The owner run prompts for the owner vault password. Ansible never stores
+  that password.
+- `node-9/ansible/secrets-shared.yml` writes the shared values.
+  `node-9/ansible/secrets-owner.yml` writes the owner values.
+- `node-9/bin/setup-secrets` runs the shared playbook. It runs the owner
+  playbook only with `--owner`, from the owner's terminal.
+- `node-9/bin/setup-secrets --local` generates random values on an explicit
+  request alone. It prompts once for the `Mario` password. The default run
+  never falls back to it.
+- The default run stops when `ansible-playbook` or the shared vault password
+  is absent. It names `--local` in one line.
 - `node-9/secrets.env` holds the values that the core needs:
-  `CHAT_SERVICE_PASSWORD`, the `Admin` password, the embedding key, and the
-  user passwords. Git ignores it.
+  `CHAT_SERVICE_PASSWORD`, `CHAT_ADMIN_PASSWORD`,
+  `CHAT_EMBEDDING_OPENAI_API_KEY`, and one `CHAT_USER_<NAME>_PASSWORD` for
+  each user. Git ignores it.
 - `node-9/secrets/<user>.password` holds one agent password per file, with
   mode `0600`, for `Sigma`, `Theta`, and `Phi`.
-- A setup step creates missing files with random passwords. It never replaces
-  an existing file. It takes the `Mario` password from the owner at the
-  prompt, and it does not write that password to `node-9/secrets/`.
+- Ansible writes each secret file with mode `0600`, and `node-9/secrets/`
+  with mode `0700`. It refuses a symbolic link at each secret path.
+- Every task that holds a secret sets `no_log: true`.
+- A write is create-only for each key and each file. An existing value stays
+  byte for byte.
+- `setup-secrets` does not create a second source of any value. Vault values
+  and generated values never mix in one file.
+- The core start fails when `CHAT_USER_MARIO_PASSWORD` is absent. A core
+  without `Mario` is not a valid node 9.
+
+**Owner decision: the `Mario` client password.** The start rule requires
+`CHAT_USER_MARIO_PASSWORD`, and Compose reads it from `secrets.env`. That
+file is plaintext on the shared account. So an agent can read the rendered
+value. The owner vault protects the stored copy alone. The owner accepted
+this limit on 2026-10-20, as decision 35.
+
+The options are:
+
+1. **Accept the label model.** The render writes the value to `secrets.env`.
+   No second copy exists. Authorship stays a label, per decision 19.
+2. **Seed the user once.** Withdrawn as a stage 3 test. Compose refuses the
+   start before the core reads the key (`node-9/compose.yaml:62`). The
+   initializer also writes the configured users during initialization
+   (`chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt:46`).
+   So a start without the key tests the guard alone. It cannot show whether a
+   saved login survives.
+3. **One operating system account per agent.** Out of scope per decision
+   19.
+
+Option 1 is chosen, as decision 35. Sigma recommended it on 2026-10-20.
+The owner accepted the limit on the same day. Task 6 and live acceptance are
+no longer blocked on this point. Task 6 still needs Mario to create
+`register-index` once.
 
 The "Authorship" section below states what these files protect.
 
@@ -242,13 +362,24 @@ with the same name.
 One message per topic, in this plain-text form:
 
 ```
-<fp-id> | <topic-name> | <task or archive> | <one-line title>
+<key> | <topic-name> | <metadata> | <title>
 ```
 
-An archive pointer that spans many issues writes `-` as its fp ID.
+A key is opaque text that names one topic. The tool does not know where a key
+comes from. This project passes an fp issue ID, such as `CHAT-jmnjvupr`. That
+is a convention of this project and its instructions. A different project
+passes a different key.
 
-The fp ID makes the owner's rule 4 an exact match. An agent searches the index
-for its fp ID. A match means that the topic exists, and the agent uses it.
+The metadata field is reserved and empty. The tool writes none and reads
+none. The title is free text for a human reader. No command reads it.
+
+An archive pointer that spans many issues writes `-` as its key.
+
+A read splits a pointer on `|`, trims each field, and needs exactly four
+fields. A blank key or a blank topic fails the read. Both decoders apply this
+one rule: `PubSubCommands` and `node-9/bin/register`. The file
+`chat-shell/src/test/resources/register/pointer-lines.tsv` holds the cases for
+both.
 
 ### A register entry
 
@@ -302,9 +433,10 @@ on node 9 is an attribution label, not a verified author.
 - Each agent has its own password file, `node-9/secrets/<user>.password`,
   with mode `0600`. This stops an accidental write under another name. It
   does not stop a deliberate one.
-- Each agent reads with its own account. No agent holds the `Mario`
-  password. The setup step does not write the `Mario` password to disk, and
-  the owner keeps it.
+- Each agent reads with its own core user. No `Mario.password` client file
+  exists. The owner vault holds the stored copy, and `node-9/secrets.env`
+  holds the rendered value. The rendered files are readable by the one
+  shared account, so this rule protects the stored copy, not authorship.
 - Verified authorship needs one operating-system account per agent. That is
   out of scope.
 
@@ -314,6 +446,10 @@ In stage 3, `AGENTS.md` replaces `@forward-register.md` with one instruction.
 Run `node-9/bin/register read --as <name>`. That command invokes `register-read`.
 Read its output under the trust rules above. Every agent reads `AGENTS.md`,
 so the instruction reaches Sigma, Theta, and Phi. No harness file changes.
+
+A `denied-index` or `denied-topic` warning means that the agent did not
+receive the whole register. The task 7 measurement treats either warning as a
+coverage failure. Status `0` alone is not proof of a complete register.
 
 The command prints:
 
@@ -343,6 +479,18 @@ the interactive shell:
 - `--since <instant>` keeps the messages at or after that instant.
 - `--limit N` keeps the newest N messages after the `--since` filter.
 
+**The register read is typed JSON in both forms.** `register read --as
+<name>` and `register read <topic> --as <name>` each write one JSON object
+per line. The shapes are fixed:
+
+```
+{"type":"record","id":"...","topic":"...","sender":"...","timestamp":"...","text":"..."}
+{"type":"warning","kind":"duplicate-pointer","key":"...","kept":{"topic":"...","id":"..."},"ignored":{"topic":"...","id":"..."}}
+```
+
+No line leaves out `type`. The wrapper owns this shape. The output of
+`messages --format records` stays as it is.
+
 **The bound is in the shell, not in the store.** `messages` loads the whole
 history of a topic, then applies `--limit`. The UUID message key gives no
 time order in the store, so a store-side "newest N" needs a new time-ordered
@@ -353,35 +501,49 @@ Owner decision 20 sets the limit. Stage 1 measures one topic read. Stage 3
 measures the complete `register read`, from the command start to the last
 output line. If representative data exceeds 10 seconds, the query cost is
 solved before stage 4 starts. A store-side bound is one possible solution.
-At 30 seconds, `register read` stops and exits with status 124.
+At 30 seconds, `register read` stops and exits with status 124. The limit
+covers the whole wrapper command. It starts at the wrapper process, and it
+ends after the last output byte. The shell timer alone is not the limit,
+because JSON conversion and final output follow it.
 
 ### The write command
 
 `node-9/bin/register` also holds the write steps, so that every agent writes
 the same way:
 
-- `register open <fp-id> <short-name> <title>` finds the pointer for the fp
-  ID, or creates the topic and adds its pointer.
-- `register post <fp-id>` reads an entry from standard input and posts it to
-  the topic of that fp ID.
+- `register open <key> <short-name> <title>` finds the pointer for the key,
+  or creates the topic and adds its pointer.
+- `register post <key> [--requestId <id>]` reads an entry from standard
+  input and posts it to the topic of that key.
 
 Each command names its user with `--as <name>`. An agent uses the name that
 its harness instruction file gives it: `Sigma`, `Theta`, or `Phi`. `AGENTS.md`
 tells each agent to do this. The owner uses `Mario`. The command reads the
-password file of that user. It never prompts.
+password file of that user. It never prompts. A missing or unreadable file
+is a login failure with status `77`. For `Mario`, the source is the rendered
+`CHAT_USER_MARIO_PASSWORD` in `node-9/secrets.env`, per decision 37. The
+wrapper writes it to a private file for the shell call and removes that file
+when the command ends.
+
+A denied index stops both write commands. The read of a denied index holds no
+pointer, so the command cannot answer "does this key exist". The wrapper
+joins `register-index` once after a `denied-index` warning, and it reads once
+more. A second denial is status `1` with one line, and the command creates no
+topic and posts no entry. A readable index joins nothing. See decision 38.
 
 ### Concurrent writes
 
-- **Two `register open` calls for one fp ID.** The topic create refuses an
+- **Two `register open` calls for one key.** The topic create refuses an
   existing name with `DuplicateException` (PR #61). The second call then
-  reads the index. If the earliest pointer for its fp ID names that topic, it
-  uses the topic. If the name belongs to another fp ID, it fails and names
-  that fp ID.
-- **Two pointers for one fp ID.** The earliest pointer is the valid one. After
-  `register open` posts a pointer, it reads the index again. If an earlier
-  pointer for the same fp ID names another topic, it uses that topic and says
-  so. `register read` ignores a later duplicate pointer and prints a warning
-  line for it.
+  reads the index. If the earliest pointer for its key names that topic, it
+  uses the topic. If the name belongs to another key, it fails and names
+  that key.
+- **Two pointers for one key.** The earliest pointer is the valid one, by
+  stored time and then by message id. After `register open` posts a pointer,
+  it reads the index again. If an earlier pointer for the same key names
+  another topic, it uses that topic and says so. `register read` ignores a
+  later duplicate pointer and prints a warning line for it. An archive
+  pointer uses `-` as its key, so it is never a duplicate.
 - **A post is done when a read shows it.** `register post` takes the message
   ID from the `send` result. It then reads the topic until that ID appears,
   for at most 10 seconds. If the ID does not appear, it exits with status 75
@@ -683,6 +845,12 @@ Each item below is believed from reading code or config. No run has shown it.
 10. **The node-9 address.** Measured in stage 2. `chat-shell` connected to
     6890 and 6891 for `whoami`, `add-topic`, `post`, and `messages`. Item 3
     shows the mechanism with other ports.
+11. **User initialization on a later start.** `RootKeyStartup` publishes the
+    root-key ready event only when a load step loads a key
+    (`chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/init/RootKeyStartup.kt:63,81`).
+    No run has shown whether a later start loads it. So no run has shown
+    whether `initialUsers` applies again. This item does not authorize a
+    test.
 
 ## Left to the builder
 
@@ -706,7 +874,7 @@ The owner did not decide these. Each one can change.
   project and image name.
 - Host ports 6890 and 6891 on `127.0.0.1`. No other host port.
 - Key type `uuid`. Embeddings from the node-16 endpoint.
-- The index pointer form, with the fp ID as the match key.
+- The index pointer form, with the key as the match.
 - The entry fields, and the 24-hour rule of the session-start output.
 - Hand-off points as the times to write.
 - `--as <name>` on every command. No agent holds the `Mario` password.
@@ -714,7 +882,7 @@ The owner did not decide these. Each one can change.
 - A setup step that creates missing secret files with random passwords.
 - `messages --format records`, with the bound in the shell, not the store.
 - The exit status table, the socket framing, and the time limits.
-- The earliest index pointer for an fp ID is the valid one.
+- The earliest index pointer for a key is the valid one.
 - A post is done when a read shows it.
 - A proof run before the plan of stage 1.
 - One message per `##` section in the import.

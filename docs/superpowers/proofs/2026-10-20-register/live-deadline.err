@@ -1,0 +1,2 @@
+register: the command passed its 1000 ms limit
+node-9/bin/register: line 193: /var/folders/kl/ykc9r7y56899ly09hphb8wf00000gn/T/tmp.sddNfzkTRO/expired: No such file or directory

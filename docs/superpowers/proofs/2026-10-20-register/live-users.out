@@ -1,0 +1,42 @@
+create live-check-6 as Mario
+Created room live-check-6 (id c5132370-ccec-11f1-b7c1-47b553663159)
+create-status=0
+
+== Sigma join ==
+Joined live-check-6
+join-status=0
+
+== Sigma post ==
+{"messageId":"c98aeff0-ccec-11f1-b7c1-47b553663159","commandId":"ec9d5f1b-d7cb-4378-889d-16c1192f9742","requestId":"10c4f349-74b6-4a71-9b74-ba7a0507c0d3","outcome":"COMPLETED"}
+post-status=0
+
+== Theta join ==
+Joined live-check-6
+join-status=0
+
+== Theta post ==
+{"messageId":"ce2d9d00-ccec-11f1-b7c1-47b553663159","commandId":"b9d96f63-df36-4b15-9038-fcc5935971ef","requestId":"953ba5e8-fe00-4734-9716-e1ca6a876f96","outcome":"COMPLETED"}
+post-status=0
+
+== Phi join ==
+Joined live-check-6
+join-status=0
+
+== Phi post ==
+{"messageId":"d2b017e0-ccec-11f1-b7c1-47b553663159","commandId":"cc4fc45a-21f9-413a-bf61-99edfdef6df0","requestId":"1c56ef6a-1355-4b4d-8e8b-fc31ab816196","outcome":"COMPLETED"}
+post-status=0
+
+== Mario join ==
+Joined live-check-6
+join-status=0
+
+== Mario post ==
+{"messageId":"d73d4120-ccec-11f1-b7c1-47b553663159","commandId":"49d4f03b-6cf4-4fc3-9a9d-69297ba8154d","requestId":"0b4fe08e-d149-4a7f-aba9-c67152aa66c5","outcome":"COMPLETED"}
+post-status=0
+
+== records ==
+{"id":"c98aeff0-ccec-11f1-b7c1-47b553663159","topic":"live-check-6","sender":"Sigma","timestamp":"2026-10-21T01:14:39.087Z","text":"Sigma says hello on node 9\n"}
+{"id":"ce2d9d00-ccec-11f1-b7c1-47b553663159","topic":"live-check-6","sender":"Theta","timestamp":"2026-10-21T01:14:46.864Z","text":"Theta says hello on node 9\n"}
+{"id":"d2b017e0-ccec-11f1-b7c1-47b553663159","topic":"live-check-6","sender":"Phi","timestamp":"2026-10-21T01:14:54.430Z","text":"Phi says hello on node 9\n"}
+{"id":"d73d4120-ccec-11f1-b7c1-47b553663159","topic":"live-check-6","sender":"Mario","timestamp":"2026-10-21T01:15:02.066Z","text":"Mario says hello on node 9\n"}
+records-status=0

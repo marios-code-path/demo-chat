@@ -3,6 +3,7 @@ package com.demo.chat.test.commands
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
@@ -13,6 +14,7 @@ import com.demo.chat.shell.cli.StreamInput
 import com.demo.chat.shell.commands.PubSubCommands
 import com.demo.chat.shell.commands.PubSubCommandsRegistrar
 import com.demo.chat.shell.commands.ShellRooms
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -36,8 +38,8 @@ import java.time.Instant
  * `register-read` is the session-start read of the topic register: the whole
  * index, then the newest entry of each topic that has one younger than 24
  * hours. It runs in one process, so one JVM start pays for every read. It
- * prints only after every read succeeds, so a failure leaves no partial
- * register. See CHAT-jmnjvupr and owner decision 20.
+ * prints a warning line for a denied topic and keeps the topics it can read.
+ * Any other failure prints nothing. See CHAT-jmnjvupr and decisions 20 and 36.
  */
 @Suppress("UNCHECKED_CAST")
 class PubSubRegisterReadTests {
@@ -139,6 +141,45 @@ class PubSubRegisterReadTests {
 
         assertThatThrownBy { commands().registerRead("register-index", hours(24), Duration.ofSeconds(30), now) }
             .hasMessageContaining("store down")
+    }
+
+    @Test
+    fun `a denied topic prints a warning and keeps the topics it can read`() {
+        room("register-index", 100)
+        room("topic-b", 102)
+        room("topic-c", 103)
+        given(topics.getRoomByName(ByStringRequest("topic-a")))
+            .willReturn(Mono.error(CoreAuthorizationRefusal(RuntimeException("Access Denied"))))
+        stored(100,
+            Triple(1, hours(1), "CHAT-1 | topic-a | task | A"),
+            Triple(2, hours(1), "CHAT-2 | topic-b | task | B"),
+            Triple(3, hours(1), "CHAT-3 | topic-c | task | C"))
+        given(messages.listMessages(ByIdRequest(103))).willReturn(Flux.error(AccessDeniedException))
+        stored(102, Triple(20, hours(2), "b entry"))
+
+        val lines = read(commands())
+
+        assertThat(lines.map { it["type"] })
+            .containsExactly("record", "record", "record", "record", "warning", "warning")
+        assertThat(lines.map { it["topic"] }).containsExactly(
+            "register-index", "register-index", "register-index", "topic-b", "topic-a", "topic-c")
+        assertThat(lines.drop(4)).allSatisfy {
+            assertThat(it).containsEntry("kind", "denied-topic").containsEntry("reason", "Access Denied")
+        }
+    }
+
+    @Test
+    fun `a denied index prints one warning and no records`() {
+        given(topics.getRoomByName(ByStringRequest("register-index")))
+            .willReturn(Mono.error(CoreAuthorizationRefusal(RuntimeException("Access Denied"))))
+
+        val lines = read(commands())
+
+        assertThat(lines).hasSize(1)
+        assertThat(lines.single())
+            .containsEntry("type", "warning")
+            .containsEntry("kind", "denied-index")
+            .containsEntry("topic", "register-index")
     }
 
     @Test
@@ -251,5 +292,131 @@ class PubSubRegisterReadTests {
         assertThat(printed).isEmpty()
         assertThat(halts.get()).isGreaterThan(0)
         assertThat(err.toString().lines().filter { it.isNotEmpty() }).hasSize(1)
+    }
+
+    /** The read lines as parsed JSON, so a warning keeps its nested fields. */
+    private fun nodes(command: PubSubCommands<Long>): List<JsonNode> =
+        command.registerRead("register-index", hours(24), Duration.ofSeconds(30), now)
+            .lines().filter { it.isNotEmpty() }.map { mapper.readTree(it) }
+
+    @Test
+    fun `a later pointer for one key is ignored, and one warning names both pointers`() {
+        room("register-index", 100)
+        room("topic-a", 101)
+        room("topic-b", 102)
+        stored(100,
+            Triple(1, hours(5), "CHAT-1 | topic-a | task | A"),
+            Triple(2, hours(4), "CHAT-1 | topic-b | task | B"))
+        stored(101, Triple(10, hours(1), "a newest"))
+        stored(102, Triple(20, hours(1), "b newest"))
+
+        val lines = nodes(commands())
+        val records = lines.filter { it["type"].asText() == "record" }
+
+        assertThat(records.filter { it["topic"].asText() == "register-index" }.map { it["text"].asText() })
+            .containsExactly("CHAT-1 | topic-a | task | A", "CHAT-1 | topic-b | task | B")
+        assertThat(records.filter { it["topic"].asText() != "register-index" }.map { it["text"].asText() })
+            .containsExactly("a newest")
+
+        val warnings = lines.filter { it["type"].asText() == "warning" }
+        assertThat(warnings).hasSize(1)
+        assertThat(warnings[0]["kind"].asText()).isEqualTo("duplicate-pointer")
+        assertThat(warnings[0]["key"].asText()).isEqualTo("CHAT-1")
+        assertThat(warnings[0]["kept"]["topic"].asText()).isEqualTo("topic-a")
+        assertThat(warnings[0]["ignored"]["topic"].asText()).isEqualTo("topic-b")
+    }
+
+    @Test
+    fun `two pointers with equal timestamps keep the lower message id in every read`() {
+        room("register-index", 100)
+        room("topic-a", 101)
+        room("topic-b", 102)
+        stored(100,
+            Triple(7, hours(1), "CHAT-1 | topic-b | task | B"),
+            Triple(5, hours(1), "CHAT-1 | topic-a | task | A"))
+        stored(101, Triple(10, hours(1), "a newest"))
+        stored(102, Triple(20, hours(1), "b newest"))
+
+        repeat(3) {
+            val lines = nodes(commands())
+            assertThat(lines.filter { it["type"].asText() == "warning" }.map { it["kept"]["topic"].asText() })
+                .containsExactly("topic-a")
+            assertThat(lines.filter { it["type"].asText() == "record" && it["topic"].asText() != "register-index" }
+                .map { it["text"].asText() })
+                .containsExactly("a newest")
+        }
+    }
+
+    @Test
+    fun `two archive pointers with the dash key are both kept`() {
+        room("register-index", 100)
+        room("archive-a", 101)
+        room("archive-b", 102)
+        stored(100,
+            Triple(1, hours(5), "- | archive-a | archive | A"),
+            Triple(2, hours(4), "- | archive-b | archive | B"))
+        stored(101, Triple(10, hours(1), "a newest"))
+        stored(102, Triple(20, hours(1), "b newest"))
+
+        val lines = nodes(commands())
+
+        assertThat(lines.filter { it["type"].asText() == "warning" }).isEmpty()
+        assertThat(lines.filter { it["type"].asText() == "record" && it["topic"].asText() != "register-index" }
+            .map { it["text"].asText() })
+            .containsExactly("a newest", "b newest")
+    }
+
+    /**
+     * The shared fixtures pin the split rule of both decoders. The Kotlin read
+     * and node-9/bin/register read the same file and must agree on each row.
+     * See the design, decision 39.
+     */
+    private fun fixtures(): List<Triple<String, String, String>> =
+        PubSubRegisterReadTests::class.java.getResourceAsStream("/register/pointer-lines.tsv")!!
+            .bufferedReader().readLines()
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+            .map { it.split("\t").let { fields -> Triple(fields[0], fields[1], fields[2]) } }
+
+    @Test
+    fun `the decoder accepts every good pointer line in the shared fixture`() {
+        fixtures().filter { it.third.startsWith("ok:") }.forEach { (name, line, expected) ->
+            val key = expected.removePrefix("ok:").substringBeforeLast(":")
+            val topic = expected.substringAfterLast(":")
+            val second = "$key | other-topic | | X"
+            room("register-index", 100)
+            room(topic, 101)
+            room("other-topic", 102)
+            stored(100, Triple(1, hours(5), line), Triple(2, hours(4), second))
+            stored(101, Triple(10, hours(1), "entry"))
+            stored(102, Triple(20, hours(1), "other entry"))
+
+            val lines = nodes(commands())
+
+            assertThat(lines.filter { it["topic"]?.asText() == "register-index" }.map { it["text"].asText() })
+                .describedAs(name).containsExactly(line, second)
+            assertThat(lines.filter { it["type"].asText() == "record" && it["topic"].asText() == topic })
+                .describedAs(name).hasSize(1)
+            val warnings = lines.filter { it["type"].asText() == "warning" }
+            if (key == "-") {
+                assertThat(warnings).describedAs(name).isEmpty()
+            } else {
+                assertThat(warnings.map { it["key"].asText() }).describedAs(name).containsExactly(key)
+                assertThat(warnings.map { it["ignored"]["topic"].asText() }).describedAs(name)
+                    .containsExactly("other-topic")
+            }
+        }
+    }
+
+    @Test
+    fun `the decoder rejects every bad pointer line in the shared fixture`() {
+        fixtures().filter { it.third == "reject" }.forEach { (name, line, _) ->
+            room("register-index", 100)
+            stored(100, Triple(1, hours(1), line))
+
+            assertThatThrownBy { commands().registerRead("register-index", hours(24), Duration.ofSeconds(30), now) }
+                .describedAs(name)
+                .isInstanceOf(IllegalStateException::class.java)
+                .hasMessageContaining("not '<key> | <topic> | <metadata> | <title>'")
+        }
     }
 }

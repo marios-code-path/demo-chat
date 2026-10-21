@@ -17,6 +17,10 @@ cat > "$fixture" <<'EOF'
 CHAT_SERVICE_PASSWORD=fixture-service-password
 CHAT_ADMIN_PASSWORD=fixture-admin-password
 CHAT_EMBEDDING_OPENAI_API_KEY=fixture-embedding-key
+CHAT_USER_SIGMA_PASSWORD=fixture-sigma-password
+CHAT_USER_THETA_PASSWORD=fixture-theta-password
+CHAT_USER_PHI_PASSWORD=fixture-phi-password
+CHAT_USER_MARIO_PASSWORD=fixture-mario-password
 EOF
 
 failures=0
@@ -208,6 +212,31 @@ else
     bad 'compose_passes_admin_password' 'the core environment lacks the Admin password'
 fi
 
+user_case='ok'
+for pair in SIGMA:fixture-sigma-password THETA:fixture-theta-password \
+            PHI:fixture-phi-password MARIO:fixture-mario-password; do
+    name="${pair%%:*}"
+    value="${pair#*:}"
+    if ! grep -q "CHAT_USER_${name}_PASSWORD: ${value}" <<< "$off_text"; then
+        user_case="the core environment lacks CHAT_USER_${name}_PASSWORD"
+    fi
+done
+if [[ "$user_case" == 'ok' ]]; then
+    ok 'compose_passes_user_passwords'
+else
+    bad 'compose_passes_user_passwords' "$user_case"
+fi
+
+no_mario="$work/secrets-no-mario.env"
+grep -v '^CHAT_USER_MARIO_PASSWORD=' "$fixture" > "$no_mario"
+mario_text="$(node9_config off "$no_mario" 2>&1)"
+mario_status=$?
+if [[ "$mario_status" -ne 0 && "$mario_text" == *'CHAT_USER_MARIO_PASSWORD'* ]]; then
+    ok 'compose_requires_mario_password'
+else
+    bad 'compose_requires_mario_password' "exit $mario_status"
+fi
+
 no_key="$work/secrets-no-key.env"
 grep -v '^CHAT_EMBEDDING_OPENAI_API_KEY=' "$fixture" > "$no_key"
 missing_text="$(node9_config off "$no_key" 2>&1)"
@@ -275,9 +304,14 @@ fi
 # -- Secrets ------------------------------------------------------------
 
 generated="$work/generated-secrets.env"
+generated_dir="$work/generated-secrets"
+generated_config="$work/generated-config"
+mkdir -p "$generated_config"
+printf 'CHAT_USER_MARIO_PASSWORD=fixture-mario-password\n' > "$generated"
 secrets_out="$( cd "$repo_root" \
-    && NODE9_SECRETS_FILE="$generated" \
-       bash node-9/bin/setup-secrets 2>&1 )"
+    && XDG_CONFIG_HOME="$generated_config" \
+       NODE9_SECRETS_FILE="$generated" NODE9_SECRETS_DIR="$generated_dir" \
+       bash node-9/bin/setup-secrets --local 2>&1 )"
 secrets_status=$?
 secrets_mode="$(stat -c '%a' "$generated" 2>/dev/null \
     || stat -f '%Lp' "$generated" 2>/dev/null)"
@@ -297,8 +331,9 @@ else
 fi
 
 before="$(cksum < "$generated" 2>/dev/null)"
-( cd "$repo_root" && NODE9_SECRETS_FILE="$generated" \
-    bash node-9/bin/setup-secrets ) >/dev/null 2>&1
+( cd "$repo_root" && XDG_CONFIG_HOME="$generated_config" \
+    NODE9_SECRETS_FILE="$generated" NODE9_SECRETS_DIR="$generated_dir" \
+    bash node-9/bin/setup-secrets --local ) >/dev/null 2>&1
 after="$(cksum < "$generated" 2>/dev/null)"
 if [[ -n "$before" && "$before" == "$after" ]]; then
     ok 'secrets_not_replaced'
@@ -317,17 +352,22 @@ userinit="$node9_root/userinit.yml"
 userinit_case='ok'
 if [[ ! -f "$userinit" ]]; then
     userinit_case='userinit.yml is missing'
-elif [[ "$(grep -c 'password:' "$userinit")" != '1' ]]; then
-    userinit_case='userinit.yml holds more than one password key'
+elif [[ "$(grep -c 'password:' "$userinit")" != '5' ]]; then
+    userinit_case='userinit.yml does not hold five password keys'
 elif ! grep -qF 'password: ${CHAT_ADMIN_PASSWORD}' "$userinit"; then
     userinit_case='the Admin password is not the placeholder'
 elif grep -qi 'changeme' "$userinit"; then
     userinit_case='userinit.yml holds the literal changeme'
 fi
+for user in SIGMA THETA PHI MARIO; do
+    if ! grep -qF "password: \${CHAT_USER_${user}_PASSWORD}" "$userinit"; then
+        userinit_case="the ${user} password is not the placeholder"
+    fi
+done
 if [[ "$userinit_case" == 'ok' ]]; then
-    ok 'userinit_overrides_only_admin_password'
+    ok 'userinit_has_four_users'
 else
-    bad 'userinit_overrides_only_admin_password' "$userinit_case"
+    bad 'userinit_has_four_users' "$userinit_case"
 fi
 
 # -- The schema step ----------------------------------------------------
@@ -567,6 +607,24 @@ else
     bad 'build_command_is_explicit' "$build_case"
 fi
 
+printf 'CHAT_SERVICE_PASSWORD=start-service\nCHAT_ADMIN_PASSWORD=start-admin\nCHAT_EMBEDDING_OPENAI_API_KEY=start-embed\nCHAT_USER_SIGMA_PASSWORD=start-sigma\nCHAT_USER_THETA_PASSWORD=start-theta\nCHAT_USER_PHI_PASSWORD=start-phi\nCHAT_USER_MARIO_PASSWORD=start-mario\n' \
+    > "$sandbox/secrets.env"
+
+# A start with no secrets file and no Vault password stops. It does not
+# generate values on its own.
+mkdir -p "$work/empty-config"
+mv "$sandbox/secrets.env" "$sandbox/secrets.env.saved"
+reset_start
+env "${stub_env[@]}" XDG_CONFIG_HOME="$work/empty-config" \
+    bash "$sandbox/bin/start" >/dev/null 2>&1
+status=$?
+if [[ $status -eq 2 && ! -e "$sandbox/secrets.env" ]]; then
+    ok 'start_without_vault_stops'
+else
+    bad 'start_without_vault_stops' "exit $status, secrets file $([ -e "$sandbox/secrets.env" ] && echo present || echo absent)"
+fi
+mv "$sandbox/secrets.env.saved" "$sandbox/secrets.env"
+
 reset_start
 rm -rf "$sandbox/data"
 env "${stub_env[@]}" KEYS_PRESENT=0 bash "$sandbox/bin/start" >/dev/null 2>&1
@@ -590,7 +648,7 @@ else
     bad 'second_start_keeps_data' 'the second start applied the schema'
 fi
 
-printf 'CHAT_SERVICE_PASSWORD=dry-service-secret\nCHAT_ADMIN_PASSWORD=dry-admin-secret\nCHAT_EMBEDDING_OPENAI_API_KEY=dry-embed-secret\n' \
+printf 'CHAT_SERVICE_PASSWORD=dry-service-secret\nCHAT_ADMIN_PASSWORD=dry-admin-secret\nCHAT_EMBEDDING_OPENAI_API_KEY=dry-embed-secret\nCHAT_USER_SIGMA_PASSWORD=dry-sigma\nCHAT_USER_THETA_PASSWORD=dry-theta\nCHAT_USER_PHI_PASSWORD=dry-phi\nCHAT_USER_MARIO_PASSWORD=dry-mario\n' \
     > "$sandbox/secrets.env"
 reset_start
 out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
@@ -639,7 +697,7 @@ else
     bad 'start_refuses_busy_port' "exit $status, docker calls $([ -e "$work/start-calls" ] && echo yes || echo no)"
 fi
 
-printf 'CHAT_SERVICE_PASSWORD=x\nCHAT_ADMIN_PASSWORD=y\nCHAT_EMBEDDING_OPENAI_API_KEY=z\n' \
+printf 'CHAT_SERVICE_PASSWORD=x\nCHAT_ADMIN_PASSWORD=y\nCHAT_EMBEDDING_OPENAI_API_KEY=z\nCHAT_USER_SIGMA_PASSWORD=a\nCHAT_USER_THETA_PASSWORD=b\nCHAT_USER_PHI_PASSWORD=c\nCHAT_USER_MARIO_PASSWORD=d\n' \
     > "$sandbox/secrets.env"
 reset_start
 env "${stub_env[@]}" bash "$sandbox/bin/stop" >/dev/null 2>&1

@@ -1,0 +1,4 @@
+{"type":"record","id":"01800a80-cced-11f1-b7c1-47b553663159","topic":"register-index","sender":"Sigma","timestamp":"2026-10-21T01:16:12.968Z","text":"CHAT-live6 | forward-register-livetest | task | Live acceptance on node 9\n"}
+{"type":"record","id":"2529d510-cced-11f1-b7c1-47b553663159","topic":"register-index","sender":"Sigma","timestamp":"2026-10-21T01:17:12.801Z","text":"CHAT-live6 | forward-register-duplicate | task | A second pointer for the live test\n"}
+{"type":"warning","kind":"duplicate-pointer","fp_id":"CHAT-live6","kept":{"topic":"forward-register-livetest","id":"01800a80-cced-11f1-b7c1-47b553663159"},"ignored":{"topic":"forward-register-duplicate","id":"2529d510-cced-11f1-b7c1-47b553663159"}}
+{"type":"warning","kind":"denied-topic","topic":"forward-register-livetest","reason":"Access Denied"}
