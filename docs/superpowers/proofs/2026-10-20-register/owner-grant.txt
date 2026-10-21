@@ -1,0 +1,15 @@
+
+ permission | principal                            | target
+------------+--------------------------------------+--------------------------------------
+    FORWARD | 1abeb510-ccec-11f1-b7c1-47b553663159 | 55db9c80-ccec-11f1-b7c1-47b553663159
+  SUBSCRIBE | 1abeb510-ccec-11f1-b7c1-47b553663159 | 55db9c80-ccec-11f1-b7c1-47b553663159
+       SEND | 1abeb510-ccec-11f1-b7c1-47b553663159 | 55db9c80-ccec-11f1-b7c1-47b553663159
+          * | 1aee9eb0-ccec-11f1-b7c1-47b553663159 | 55db9c80-ccec-11f1-b7c1-47b553663159
+
+(4 rows)
+
+ user_id                              | handle | name
+--------------------------------------+--------+-------------
+ 1aee9eb0-ccec-11f1-b7c1-47b553663159 |  Mario | MARIO OWNER
+
+(1 rows)

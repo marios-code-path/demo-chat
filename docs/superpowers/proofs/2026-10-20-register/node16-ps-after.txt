@@ -1,0 +1,9 @@
+chat-node-9-core-service-rsocket-1	node-9/cassandra-core-service-rsocket:0.0.1
+chat-node-9-cassandra-1	cassandra:4.1.3
+chat-node-9-consul-1	hashicorp/consul:2.0.4
+chat-node-9-redis-1	redis:7
+docker-cassandra-1	cassandra:4.1.3
+chat-authorization-server-authserv-1	chat-authserv:0.0.1
+chat-authorization-server-postgres-1	postgres:15.2
+docker-redis-1	redis:7
+docker-consul-1	hashicorp/consul:latest

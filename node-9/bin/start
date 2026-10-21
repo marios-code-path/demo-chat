@@ -23,7 +23,8 @@ node9_load_env || exit 2
 repo_root="$NODE9_DIR/.."
 
 # A dry run writes no secret. It creates the data directories alone.
-if [[ "$dry_run" == 'false' ]]; then
+# A start with a secrets file needs no Vault unlock, and it never prompts.
+if [[ "$dry_run" == 'false' && ! -f "${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}" ]]; then
     "$NODE9_DIR/bin/setup-secrets" || exit 2
 fi
 

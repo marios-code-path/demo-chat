@@ -22,31 +22,35 @@ owner set this rule on 2026-09-29.
 
 ## Where things stand
 
-Measured on 2026-10-19 at 21:35 PDT.
+Measured on 2026-10-20.
 
 | | |
 |---|---|
 | Checkout | `master` at `bb0796d3`, the merge commit of PR #262. That is the last substantive merge, and the register change follows it. |
 | Last merged PR | #262, stage 2. |
 | Merge strategy | Merge commits only. Every merge needs Mario's explicit authorization and the owner's named `--admin` bypass. A review comment is not that authorization. |
-| Open PRs | The PR of this register change. |
-| Branches and worktrees | `chat-hcfgkbuz-node-9` is kept at `1ad85a5e`. Its worktree is removed. Every branch ref is kept. |
+| Open PRs | None. The stage 3 work is one local commit. It is not pushed. |
+| Branches and worktrees | `worktree-chat-jmnjvupr-stage-3` holds the stage 3 work in the worktree `chat-jmnjvupr-stage-3`. The base is `103e9547`. `chat-hcfgkbuz-node-9` is kept at `1ad85a5e`. Its worktree is removed. Every branch ref is kept. |
 
 ## In flight
 
 | Issue | Branch | State |
 |-------|--------|-------|
-| `CHAT-jmnjvupr` | none | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 has no plan yet. |
+| `CHAT-jmnjvupr` | `worktree-chat-jmnjvupr-stage-3` | The topic register on node 9. Stage 1 is merged: PR #259. Stage 2 is merged: PR #262, merge commit `bb0796d3`. It delivers `node-9/`: one Compose project `chat-node-9`, its own image prefix, its own Consul, Cassandra, and Redis, `start`, `stop`, `setup-secrets`, `save-images`, `load-images`, the vector toggle, the live proof, the documents, and the gates. `CHAT-hcfgkbuz` is done. Stage 3 tasks 1 to 6 are committed on the branch. It adds `node-9/bin/register`, the Ansible secrets, the typed read records, the duplicate warning, the owner login, and the denied-index guard of decision 38. The live proof is `docs/superpowers/proofs/2026-10-20-register/RECORD.md`. Task 7 is not started. |
 
 **The next Theta session starts here.**
 
 1. Read `fp context CHAT-jmnjvupr` and the newest comments first.
-2. Ask Mario whether stage 3 starts now. Stage 3 builds
-   `node-9/bin/register read --as <name>` on `register-read`. It then changes
-   `AGENTS.md`. Read the design sections "Node 9" and "Build order" first.
-3. Stage 3 also needs the later duplicate pointers of one fp ID, with a
-   warning line, and a measurement on the real register.
-4. Every live run uses a disposable core. Never use `chat-deploy core` near
+2. Stage 3 task 7 is the next step. The plan is
+   `docs/superpowers/plans/2026-10-19-topic-register-stage-3.md`. Read its
+   "Decisions" section first.
+3. Task 7 starts with items 1 to 5. Copy the in-flight facts into register
+   entries. Build the coverage table. Verify each check string by content.
+4. Task 7 ends with the `AGENTS.md` switch. Mario reviews that switch first.
+   A denied-index or denied-topic warning is a coverage failure.
+5. The design records decisions 1 to 38. Decision 36 sets the read warning.
+   Decision 37 sets the owner login. Decision 38 sets the denied-index guard.
+6. Every live run uses a disposable core. Never use `chat-deploy core` near
    node 16. Node 9 runs on 6890 and 6891.
 
 **Measured in stage 2, live.** Node 9 started beside node 16 and reported
@@ -58,7 +62,10 @@ image is present.
 **Open:** the move to another host is unverified. The owner named no
 destination host. Design items 5 (live follow) and 7 (agent sandbox) are
 unverified. The native one-shot image builds and its context does not start.
-Case A11 is not run.
+Case A11 is not run. The owner vault file
+`node-9/ansible/vault/owner.yml` is absent. Mario creates it. This session
+did not verify the content of the shared vault. The second-denial branch of
+decision 38 has offline tests only.
 
 The in-progress issues are `CHAT-aqpcacwv`, `CHAT-owiksxvz`, `CHAT-ivtnvgyg`,
 `CHAT-uxlstrdy`, `CHAT-pphwooqm`, and `CHAT-jmnjvupr`.

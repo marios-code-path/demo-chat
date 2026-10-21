@@ -85,8 +85,11 @@ process. It prints every pointer of the index, oldest first, as record lines.
 It then prints the newest entry of each topic that a pointer names, if that
 entry is younger than `--maxAgeHours`. A pointer reads `<fp-id> | <topic-name> |
 <kind> | <title>`. A topic that two pointers name is read once. A pointer that
-does not follow the form fails the read. **The command prints nothing until every
-read has succeeded**, so a failure never leaves a partial register. An empty
+does not follow the form fails the read, and so does any read that fails with
+an error other than a denial. **A denied topic prints one warning line and the
+read continues**, because an agent is not a member of every topic that the
+index names. The warning holds `type`, `kind`, `topic`, and the reason. A
+denied index prints one warning line and no records. An empty
 index prints nothing. The hard limit is 30 seconds. In the shell modes it runs
 from the launch of the process, so the JVM start counts. `main` arms a watchdog
 before the application starts, so a startup that stalls in Java ends with status
@@ -524,3 +527,151 @@ goes in a program argument. A wrong password gives 77. A core that is down gives
 **Command output.** Every command writes through the writer of its context.
 `DirectOutputTests` fails on any direct print in the main source, except
 `PubSubCommands.listen`.
+
+## The register read
+
+`node-9/bin/register` wraps `chat-shell-cli` for the topic register. It has
+two read forms: `read --as <name>`, and `read <topic> --as <name>`.
+
+**Every output line is one JSON object with a `type`.** The two shapes are
+fixed:
+
+```
+{"type":"record","id":"...","topic":"...","sender":"...","timestamp":"...","text":"..."}
+{"type":"warning","kind":"duplicate-pointer","fp_id":"...","kept":{"topic":"...","id":"..."},"ignored":{"topic":"...","id":"..."}}
+{"type":"warning","kind":"denied-topic","topic":"...","reason":"Access Denied"}
+```
+
+- A record carries the fields of `messages --format records`, unchanged.
+- A warning names the pointer that the read kept and the pointer that it
+  ignored.
+- No line leaves out `type`. A reader selects records with
+  `jq -c 'select(.type=="record")'`.
+- **A duplicate pointer.** The earliest pointer for one fp ID wins, by stored
+  time and then by message id. The read prints every pointer, reads the topic
+  of the earliest pointer alone, and prints one warning for each later
+  pointer. An archive pointer uses `-` as its fp ID, and it is never a
+  duplicate.
+- **A denied topic.** The read prints one warning with `kind` set to
+  `denied-topic`, and it keeps every topic that the caller can read. A denied
+  index prints one warning with `kind` set to `denied-index`, and no record.
+  The status is `0`, and the read did not show the whole register. This rule
+  covers `read` alone. `open` and `post` stop on a denied index.
+- **The owner login.** `--as Mario` reads `CHAT_USER_MARIO_PASSWORD` in
+  `node-9/secrets.env`, which has mode `600`. No `Mario.password` file
+  exists. The wrapper writes the value to a private file for the shell call.
+  It removes that file when the command ends. A missing file or value gives
+  `77`.
+- Standard error is empty when the status is `0`. A failure writes one line
+  and returns a nonzero status. A caller discards all output from a failed
+  command.
+
+**The time limit covers the whole wrapper.** It starts at the wrapper
+process and ends after the last output byte. The limit is 30 seconds. At the
+limit the wrapper returns `124` and writes no output, unless the reader
+blocks. A blocked reader can hold a partial line. The timer inside
+`chat-shell-cli` covers the shell command alone, so it is not the limit.
+A watchdog starts before setup, and it stops the wrapper at the limit.
+A running external command finishes first. The stop can therefore follow the
+limit by that command's run time. A stopped command never returns `0`.
+A caller discards all output when the status is nonzero.
+An `open` runs several shell calls, and each call gets the budget that
+remains.
+
+**A post keeps its input bytes.** `register post <fp-id> --as <name>` reads
+one entry from standard input. It sends the bytes unchanged, including a
+missing final newline, CRLF line ends, and several lines. An input that holds
+only whitespace returns `2`, and no shell call happens.
+
+## The register open
+
+`register open <fp-id> <short-name> <title> --as <name>` writes one line:
+
+```
+{"type":"open","state":"exists","fp_id":"...","topic":"...","pointer_id":"..."}
+```
+
+`state` is `exists` or `created`.
+
+**An existing fp ID returns its earliest pointer.** The command reads the
+index once and writes nothing. It returns the earliest pointer by stored
+time, and then by message id.
+
+**A new fp ID creates its topic.** The command creates
+`forward-register-<short-name>`. It joins that topic. It posts one pointer to
+`register-index`.
+
+**A denied index never reads as an empty index.** A `denied-index` warning
+means that the read holds no pointer. So the command joins `register-index`
+once and reads once more. A second denial returns `1` with one line. The line
+names the denial. The command creates no topic and posts no pointer. A
+readable index joins nothing. See owner decision 38.
+
+**The readback is the stop gate.** The command reads the index again. It
+returns `created` only when that read shows the new message id. A readback
+without the id returns `75` and writes no output.
+
+**A name clash fails and names its owner.** If the new topic name belongs
+to another fp ID, the command returns `1` and names that ID.
+
+**A race returns the earliest pointer.** When another open adds an earlier
+pointer, the command returns it with state `exists`. It names the selected
+topic and pointer.
+
+**The command checks its arguments before any shell call.** Each bad value
+returns `2`:
+
+- An fp ID outside `CHAT-` and lowercase letters or digits.
+- A short name that does not start with a letter or digit.
+- A short name with a character outside letters, digits, dot, dash, and underscore.
+- An empty title.
+- A title with the `|` delimiter.
+- A title with a control character.
+
+The title keeps its spaces. A pointer is `<fp-id> | <topic-name> | task | <title>`.
+
+## The register post
+
+`register post <fp-id> [--requestId <id>] --as <name>` reads one entry from
+standard input. It writes one line:
+
+```
+{"type":"post","fp_id":"...","topic":"...","message_id":"...","command_id":"...","request_id":"..."}
+```
+
+**The entry bytes are unchanged.** A missing final newline, CRLF line ends,
+several lines, and non-ASCII text stay as sent.
+
+**The command checks the entry before any shell call.** Empty or
+whitespace-only input returns `2`. The command writes the entry to a private
+file with mode `600`. It checks that file. It sends that same file.
+
+**A denied index stops the post.** The command uses the rule of `open`. A
+`denied-index` warning joins `register-index` once and reads once more. A
+second denial returns `1` with one line and no output. The command posts no
+entry.
+
+**The command resolves the earliest pointer.** It joins that topic. It posts
+the entry once.
+
+**The readback is the stop gate.** The command polls record reads of the
+topic for the message id. The wait is 10 seconds. Each read gets only the
+time left in that wait, so a slow read stops at the wait. The pause between
+reads also stops at the wait. It returns `0` only
+when a read that ends inside the wait shows the id. A read that ends after
+the wait does not confirm the post. A failed poll read is retried.
+
+**An uncertain post returns `75`.** The line names the message id, the
+command id, and the request id. The command writes no standard output. A
+receipt without a message id returns `75` too.
+
+**The request id recovers an uncertain post.** Pass the named id with
+`--requestId` and the same entry. The shell returns the same receipt and
+admits no second entry. The wrapper passes `--requestId` to the shell `post`
+command.
+
+**The wrapper owns the request id.** It generates an id when none is given,
+and it never sends the shell's `_`. The shell reads `_` as a request for a
+new entry, so a retry with `_` can post a second entry. A shell failure
+before the receipt names the generated id. The generated id is a lowercase
+UUID from `uuidgen`.

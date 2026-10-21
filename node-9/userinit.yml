@@ -1,8 +1,28 @@
-# Override the shipped Admin password at the core start.
-# The core imports this file from /etc/node-9/userinit.yml.
-# Task 3 adds the agent users here. See CHAT-hcfgkbuz.
+# The users of node 9. The core imports this file from /etc/node-9/userinit.yml.
+# Every password is an environment value. Ansible Vault holds each stored
+# value. See CHAT-jmnjvupr and design decision 35.
 app:
   init:
     initialUsers:
       Admin:
         password: ${CHAT_ADMIN_PASSWORD}
+      Sigma:
+        handle: Sigma
+        name: "SIGMA AGENT"
+        imageUri: chatimg://sigma.png
+        password: ${CHAT_USER_SIGMA_PASSWORD}
+      Theta:
+        handle: Theta
+        name: "THETA AGENT"
+        imageUri: chatimg://theta.png
+        password: ${CHAT_USER_THETA_PASSWORD}
+      Phi:
+        handle: Phi
+        name: "PHI AGENT"
+        imageUri: chatimg://phi.png
+        password: ${CHAT_USER_PHI_PASSWORD}
+      Mario:
+        handle: Mario
+        name: "MARIO OWNER"
+        imageUri: chatimg://mario.png
+        password: ${CHAT_USER_MARIO_PASSWORD}
