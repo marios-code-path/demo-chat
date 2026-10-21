@@ -43,19 +43,19 @@ The seven blobs contain 117 sections and 317,268 bytes. Each file has a preamble
 
 **Files:** Create `node-9/bin/register-split` and `shell-scripts/test-register-import.sh`.
 
-- [ ] Use `register-split <source-file> <new-output-directory>`.
-- [ ] Refuse an existing output directory. Create the new directory with mode `0700`.
-- [ ] Write `section-000000.bin` and later numbered files with mode `0600`.
-- [ ] Write `sections.jsonl` with each section's index, path, byte count, and SHA-256.
-- [ ] Read one source blob as raw bytes. Split immediately before each line that starts with `## `.
-- [ ] Keep the preamble as section zero. Keep every line ending and the final-byte state.
-- [ ] Write each section to a separate private file. Write its index, byte count, and SHA-256 to a manifest.
-- [ ] Refuse a source with invalid UTF-8, a NUL byte, or no preamble.
-- [ ] Test LF, CRLF, UTF-8, empty sections, and a missing final newline.
-- [ ] Join the test sections by index. Require `cmp` against each test source.
-- [ ] Run the splitter on all seven H blobs. Require 117 sections and 317,268 joined bytes.
-- [ ] Run `bash shell-scripts/test-register-import.sh`, `bash -n`, `perl -c`, `drift check`, and `git diff --check`.
-- [ ] Commit the splitter and tests with `CHAT-acsvenkb` in the message.
+- [x] Use `register-split <source-file> <new-output-directory>`.
+- [x] Refuse an existing output directory. Create the new directory with mode `0700`.
+- [x] Write `section-000000.bin` and later numbered files with mode `0600`.
+- [x] Write `sections.jsonl` with each section's index, path, byte count, and SHA-256.
+- [x] Read one source blob as raw bytes. Split immediately before each line that starts with `## `.
+- [x] Keep the preamble as section zero. Keep every line ending and the final-byte state.
+- [x] Write each section to a separate private file. Write its index, byte count, and SHA-256 to a manifest.
+- [x] Refuse a source with invalid UTF-8, a NUL byte, or no preamble.
+- [x] Test LF, CRLF, UTF-8, empty sections, and a missing final newline.
+- [x] Join the test sections by index. Require `cmp` against each test source.
+- [x] Run the splitter on all seven H blobs. Require 117 sections and 317,268 joined bytes.
+- [x] Run `bash shell-scripts/test-register-import.sh`, `bash -n`, `perl -c`, `drift check`, and `git diff --check`.
+- [x] Commit the splitter and tests with `CHAT-acsvenkb` in the message.
 
 **Stop gate:** A byte difference or invalid source stops the task. Do not normalize text.
 
