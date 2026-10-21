@@ -200,7 +200,7 @@ live and in `chat-shell` tests. Task 7 can use the session-start read.
 - [x] Run at least five valid reads. Report the median, topic count, message count, and data size.
 - [x] Require status `0`, the expected record count, and the approved warning behavior on every measured read.
 - [x] Treat a `denied-index` or `denied-topic` warning as a coverage failure. Status `0` alone is not proof of a complete register.
-- [ ] Test the 30-second boundary from wrapper start to its last output line. Require status `124` and discard any output from that run. The live check used a 1000 ms limit, because the core answers in about 5 s. The 30 s default is covered by the offline suite and stage 1 cases A14 and A15.
+- [x] Test the 30-second boundary from wrapper start to its last output line. Require status `124` and discard any output from that run. Measured on 2026-10-21. A stalled shell gave status `124` at 30032 ms. A paused core gave status `124` at 29716 ms. Both runs printed no output and one line on standard error. A pause of 25 seconds also stops the core through its lease. See `live-deadline-30s-stall.*` and `live-deadline-30s.*` in the proof directory.
 - [x] If the median exceeds 10 seconds, fix the query cost and repeat the full measurement. The median is 5089 ms, so no fix is needed.
 
 **Measured on 2026-10-20.** The record is

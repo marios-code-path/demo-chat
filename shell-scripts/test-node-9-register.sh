@@ -632,6 +632,15 @@ else
     bad 'deadline_covers_the_wrapper' "status=$status_of elapsed=${elapsed}s bytes=$(wc -c < "$work/t_deadline.out")"
 fi
 
+# The contract gives one line on standard error for a timeout. A timer that
+# wakes after the work directory is gone must not add a second line.
+if [[ "$(grep -c . "$work/t_deadline.err")" -eq 1 ]] \
+   && grep -q 'passed its 1000 ms limit' "$work/t_deadline.err"; then
+    ok 'deadline_writes_one_line_on_stderr'
+else
+    bad 'deadline_writes_one_line_on_stderr' "err=$(tr '\n' '|' < "$work/t_deadline.err")"
+fi
+
 # -- Open ---------------------------------------------------------------
 
 for short in 'A|B' 'a b' '-x' 'x/../y' '.hidden'; do

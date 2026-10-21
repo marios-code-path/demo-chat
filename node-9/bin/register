@@ -214,7 +214,9 @@ run_shell() {
     local pid=$!
     (
         sleep "$(awk "BEGIN { printf \"%.3f\", $budget / 1000 }")"
-        : > "$work/expired"
+        # The global watchdog can fire first and remove the work directory.
+        # A missing directory is not an error, and it adds no stderr line.
+        [[ -d "$work" ]] && : > "$work/expired"
         kill -TERM -- "-$pid" 2> /dev/null
         sleep 0.2
         kill -KILL -- "-$pid" 2> /dev/null
