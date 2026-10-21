@@ -211,10 +211,11 @@ warning comes from the `CHAT-live6` test pointers. No denied warning
 appeared.
 - [x] Stop the change when one coverage row has no message ID or no matching check string. The refreshed table has 30 rows, one message ID, and 0 failures against both the frozen file and the stored entry.
 - [x] Commit the final `forward-register.md` as H. Make no further edit to that file. H is `2d75f0cdd09115da422cdc0a693f0227f31a6ef5`, and the file's SHA-256 is `2a256ab9756a803c0cf9ea8b2a7a39ec4f9501b116dfd3377620746f59e55677`.
-- [ ] Put the freeze notice and the hash H in the register entry and in `AGENTS.md`.
+- [x] Put the freeze notice and the hash H in the register entry and in `AGENTS.md`.
 - [x] Prove one sandboxed read before the switch. The profile allows `remote ip "*:6890"` and `*:6891`. A failed read stops the switch. Measured on 2026-10-21: 7 denied ports, 6890 connected, and the read gave status `0` with 15 records and no denied warning. See `sandbox-read.sh` in the proof directory.
-- [ ] Replace `@forward-register.md` in `AGENTS.md` with `node-9/bin/register read --as <name>`.
-- [ ] Put the trust rules beside the session-start instruction.
+- [x] Replace `@forward-register.md` in `AGENTS.md` with `node-9/bin/register read --as <name>`.
+- [x] Put the trust rules beside the session-start instruction.
+- [x] Read the register after the switch. On 2026-10-21, Sigma read 15 records and one approved duplicate warning. Status was `0`, and standard error was empty. Node 9 was restarted for session reads. A second read gave the same result.
 - [x] Run `bash shell-scripts/test-node-9.sh` and the new register suite. Both pass on 2026-10-21: the node-9 suite reports `all node-9 cases passed`, and the register suite reports 84 checks with 0 failures. The node-9 suite needs node 9 stopped. It fails 8 cases while the node runs, because `start --dry-run` refuses a port that is in use.
 - [x] Run `drift check`, `shell-scripts/build-health.sh`, and `git diff --check` against the base. All pass on 2026-10-21: drift reports 6 files ok, build health reports 2399 tests with 0 failures and 0 errors across 31 modules, and the whitespace check is clean.
 - [ ] Check the GitHub build, agent-http, and integration checks on the final PR head.
