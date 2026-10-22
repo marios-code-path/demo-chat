@@ -633,7 +633,9 @@ returns `2`:
 - A title with a control character.
 
 The title keeps its spaces. A pointer is `<key> | <topic-name> | <metadata> | <title>`.
-The command writes an empty metadata field. No command reads that field. The
+The command writes an empty metadata field. The importer
+`node-9/bin/register-import` writes the bundle hash in that field. No reader
+interprets the field. See `CHAT-jmnjvupr`. The
 command applies no `CHAT-` shape check to a key. This project passes an fp
 issue ID as the key.
 

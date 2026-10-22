@@ -8,8 +8,9 @@
 #
 # A key is opaque text that names one topic. This project passes an fp issue
 # ID. The tool does not know where a key comes from. A pointer line holds
-# <key> | <topic> | <metadata> | <title>. The tool writes an empty metadata
-# field and never reads it.
+# <key> | <topic> | <metadata> | <title>. This tool writes an empty metadata
+# field. The importer writes the bundle hash in that field. No reader
+# interprets it. See CHAT-jmnjvupr.
 #
 # Every output line is one JSON object with a `type`. A failure writes one
 # line on standard error and returns a nonzero status. The whole command has
