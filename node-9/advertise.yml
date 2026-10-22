@@ -1,0 +1,21 @@
+# The address of node 9 for a client on the host. The core imports this file
+# from /etc/node-9/advertise.yml. This file holds no secret.
+#
+# The core registers the address of its container network, such as
+# 172.26.0.5:6790. A client on the host cannot reach that address. Compose
+# publishes the core at 127.0.0.1:6890, and Consul does not know that. So the
+# core registers the published address as metadata, and the shell prefers it.
+#
+# The values are literals. A Compose environment value arrives as an
+# environment variable, and Spring makes such a map key lower case. A file
+# keeps the capital letters that the metadata keys need.
+#
+# The port must stay equal to NODE9_RSOCKET_PORT in node-9.env.
+# See CHAT-yexqiyie.
+spring:
+  cloud:
+    consul:
+      discovery:
+        metadata:
+          advertiseHost: "127.0.0.1"
+          advertisePort: "6890"

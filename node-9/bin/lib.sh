@@ -60,6 +60,10 @@ node9_check_isolation() {
         printf "node-9: NODE9_MGMT_PORT must be 6891, got '%s'\n" "${NODE9_MGMT_PORT:-}" >&2
         return 2
     fi
+    if [[ "${NODE9_REGISTRY_PORT:-}" != '6892' ]]; then
+        printf "node-9: NODE9_REGISTRY_PORT must be 6892, got '%s'\n" "${NODE9_REGISTRY_PORT:-}" >&2
+        return 2
+    fi
     case "${CORE_IMAGE:-}" in
         node-9/cassandra-core-service-rsocket:*)
             ;;

@@ -124,7 +124,7 @@ else
 fi
 
 ports_case='ok'
-for assignment in NODE9_RSOCKET_PORT=6790 NODE9_MGMT_PORT=6791; do
+for assignment in NODE9_RSOCKET_PORT=6790 NODE9_MGMT_PORT=6791 NODE9_REGISTRY_PORT=7000; do
     name="${assignment%%=*}"
     value="${assignment#*=}"
     out="$( cd "$repo_root" \
@@ -139,6 +139,13 @@ if [[ "$ports_case" == 'ok' ]]; then
     ok 'fixed_ports_are_rejected'
 else
     bad 'fixed_ports_are_rejected' "$ports_case"
+fi
+
+# The shell reads the registry of node 9 at this port. See CHAT-yexqiyie.
+if grep -q '^NODE9_REGISTRY_PORT=6892$' node-9/node-9.env; then
+    ok 'registry_port_is_declared'
+else
+    bad 'registry_port_is_declared' 'node-9.env holds no NODE9_REGISTRY_PORT=6892'
 fi
 
 calls="$work/image-calls"
@@ -293,7 +300,7 @@ fi
 published="$(sed -n 's/.*published:[[:space:]]*//p' <<< "$on_text" | tr -d '"')"
 host_ips="$(sed -n 's/.*host_ip:[[:space:]]*//p' <<< "$on_text" | tr -d '"' | sort -u)"
 port_case='ok'
-if [[ "$(sort -u <<< "$published" | tr '\n' ' ')" != '6890 6891 ' ]]; then
+if [[ "$(sort -u <<< "$published" | tr '\n' ' ')" != '6890 6891 6892 ' ]]; then
     port_case="published ports: $(tr '\n' ' ' <<< "$published")"
 elif [[ "$host_ips" != '127.0.0.1' ]]; then
     port_case="host IPs: $(tr '\n' ' ' <<< "$host_ips")"
@@ -789,6 +796,7 @@ mkdir -p "$work/opt"
 out="$(bash node-9/install --prefix "$install_home" 2>&1)"
 status=$?
 if [[ $status -eq 0 && -f "$install_home/.installed" \
+      && -f "$install_home/advertise.yml" \
       && -x "$install_home/bin/start" && -d "$install_home/data" \
       && "$(stat -f %Lp "$install_home/secrets" 2>/dev/null || stat -c %a "$install_home/secrets")" == '700' \
       && ! -e "$install_home/install" ]]; then

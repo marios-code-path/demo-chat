@@ -7,5 +7,10 @@ spring:
         metadata:
           rsocketPort: ${spring.rsocket.server.port}
           keyType: ${app.key.type}
-        instance-id: "${spring.application.name}"
+          # The shell names one core with --core-id, and keeps the instance
+          # that holds this value. See CHAT-yexqiyie.
+          nodeId: "${app.nodeid}"
+        # The node id is part of the instance id. Two cores in one registry
+        # then hold two instances. See CHAT-yexqiyie.
+        instance-id: "${spring.application.name}-${app.nodeid}"
         management-port: ${management.server.port}

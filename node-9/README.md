@@ -118,9 +118,12 @@ overrides the shipped `Admin` password. The core imports it from
 
 ## Fixed isolation values
 
-`NODE9_PROJECT`, `NODE9_RSOCKET_PORT`, `NODE9_MGMT_PORT`, and `CORE_IMAGE`
-are fixed. `lib.sh` rejects a changed value. `NODE9_DIR` comes from
-`lib.sh`, not from the caller.
+`NODE9_PROJECT`, `NODE9_RSOCKET_PORT`, `NODE9_MGMT_PORT`,
+`NODE9_REGISTRY_PORT`, and `CORE_IMAGE` are fixed. `lib.sh` rejects a
+changed value. `NODE9_DIR` comes from `lib.sh`, not from the caller.
+
+The three ports bind to `127.0.0.1` alone. 6890 is the RSocket port of the
+core. 6891 is its management port. 6892 is the Consul registry.
 
 ## Install outside the source tree
 
