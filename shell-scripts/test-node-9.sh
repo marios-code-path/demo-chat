@@ -148,6 +148,24 @@ else
     bad 'registry_port_is_declared' 'node-9.env holds no NODE9_REGISTRY_PORT=6892'
 fi
 
+# The shell connects to the advertised address. advertise.yml holds literals,
+# because Spring makes an environment map key lower case. So no variable keeps
+# the two files equal. This case keeps them equal. See CHAT-yexqiyie.
+advertise_host="$(sed -n 's/^ *advertiseHost: *"\(.*\)" *$/\1/p' node-9/advertise.yml)"
+advertise_port="$(sed -n 's/^ *advertisePort: *"\(.*\)" *$/\1/p' node-9/advertise.yml)"
+rsocket_port="$(sed -n 's/^NODE9_RSOCKET_PORT=//p' node-9/node-9.env)"
+advertise_case='ok'
+if [[ "$advertise_port" != "$rsocket_port" ]]; then
+    advertise_case="advertisePort $advertise_port, NODE9_RSOCKET_PORT $rsocket_port"
+elif [[ "$advertise_host" != '127.0.0.1' ]]; then
+    advertise_case="advertiseHost $advertise_host, not 127.0.0.1"
+fi
+if [[ "$advertise_case" == 'ok' ]]; then
+    ok 'advertise_matches_the_published_port'
+else
+    bad 'advertise_matches_the_published_port' "$advertise_case"
+fi
+
 calls="$work/image-calls"
 out="$( cd "$repo_root" \
     && CORE_IMAGE=docker.io/library/cassandra-core-service-rsocket:0.0.1 \
