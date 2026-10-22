@@ -959,15 +959,67 @@ import_credentials() {
     return 0
 }
 
+# import_preflight BUNDLE USER WORK_DIR
+# Run every check that precedes an import or a verification. The order puts
+# the offline checks first, so a caller error makes no live call. The function
+# sets import_cli_path, and it exports the login of the owner.
+import_preflight() {
+    local bundle="$1" user="$2" work_dir="$3" cli status
+
+    [[ "$user" == 'Mario' ]] \
+        || { import_error 'the first delivery accepts the import user Mario alone'; return 2; }
+
+    import_fixed CORE_PORT 6890 || return
+    import_fixed CORE_MGMT_PORT 6891 || return
+    import_fixed CHAT_SHELL_KEY_TYPE uuid || return
+    import_fixed CHAT_SHELL_NODE_ID 9 || return
+
+    check_bundle "$bundle" || return
+    node9_require_installed || return 2
+
+    cli="$(import_cli)" || return
+    import_credentials "$work_dir"
+    status=$?
+    if (( status != 0 )); then
+        return "$status"
+    fi
+
+    export CORE_PORT=6890
+    export CORE_MGMT_PORT=6891
+    export CHAT_SHELL_KEY_TYPE=uuid
+    export CHAT_SHELL_NODE_ID=9
+    export CHAT_SHELL_USER="$user"
+    export CHAT_SHELL_PASSWORD_FILE="$work_dir/Mario.password"
+
+    if ! curl --connect-timeout 2 --max-time 3 --fail --silent \
+        --output /dev/null \
+        "http://127.0.0.1:${CORE_MGMT_PORT}/actuator/health"; then
+        import_error "the core answers no health check on port $CORE_MGMT_PORT"
+        return 69
+    fi
+
+    "$cli" whoami > "$work_dir/whoami" 2> "$work_dir/whoami-err"
+    status=$?
+    if (( status != 0 )); then
+        import_error "the shell CLI returned $status for whoami"
+        if (( status == 69 || status == 75 )); then
+            return "$status"
+        fi
+        return 2
+    fi
+    if [[ "$(jq -r '.user // ""' "$work_dir/whoami" 2> /dev/null)" != "$user" ]]; then
+        import_error "the shell CLI does not report the identity $user"
+        return 2
+    fi
+
+    import_cli_path="$cli"
+    return 0
+}
+
 # apply_bundle --bundle DIR --as Mario
-# Import one bundle into the installed node 9. This task holds the preflight
-# alone. The import steps arrive in Task 5 and Task 6.
-#
-# The preflight order puts every offline check first. A caller error then
-# never makes a live call, and it never reports an absent core or an absent
-# login. The live smoke call is the last step.
+# Import one bundle into the installed node 9.
 apply_bundle() {
-    local bundle='' user='' cli work_dir status
+    local bundle='' user='' work_dir status bundle_hash receipt_dir
     while (( $# )); do
         case "$1" in
             --bundle)
@@ -986,66 +1038,23 @@ apply_bundle() {
     done
     [[ -n "$bundle" && -n "$user" ]] \
         || { import_error 'apply needs --bundle and --as'; return; }
-    [[ "$user" == 'Mario' ]] \
-        || { import_error 'the first delivery accepts the import user Mario alone'; return; }
 
-    import_fixed CORE_PORT 6890 || return
-    import_fixed CORE_MGMT_PORT 6891 || return
-    import_fixed CHAT_SHELL_KEY_TYPE uuid || return
-    import_fixed CHAT_SHELL_NODE_ID 9 || return
-
-    check_bundle "$bundle" || return
-    node9_require_installed || return 2
-
-    cli="$(import_cli)" || return
     work_dir="$(mktemp -d)" \
         || { import_error 'no temporary directory'; return; }
-    import_credentials "$work_dir"
+    import_preflight "$bundle" "$user" "$work_dir"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"
         return "$status"
     fi
 
-    export CORE_PORT=6890
-    export CORE_MGMT_PORT=6891
-    export CHAT_SHELL_KEY_TYPE=uuid
-    export CHAT_SHELL_NODE_ID=9
-    export CHAT_SHELL_USER="$user"
-    export CHAT_SHELL_PASSWORD_FILE="$work_dir/Mario.password"
-
-    if ! curl --connect-timeout 2 --max-time 3 --fail --silent \
-        --output /dev/null \
-        "http://127.0.0.1:${CORE_MGMT_PORT}/actuator/health"; then
-        rm -rf "$work_dir"
-        import_error "the core answers no health check on port $CORE_MGMT_PORT"
-        return 69
-    fi
-
-    "$cli" whoami > "$work_dir/whoami" 2> "$work_dir/whoami-err"
-    status=$?
-    if (( status != 0 )); then
-        rm -rf "$work_dir"
-        import_error "the shell CLI returned $status for whoami"
-        if (( status == 69 || status == 75 )); then
-            return "$status"
-        fi
-        return 2
-    fi
-    if [[ "$(jq -r '.user // ""' "$work_dir/whoami" 2> /dev/null)" != "$user" ]]; then
-        rm -rf "$work_dir"
-        import_error "the shell CLI does not report the identity $user"
-        return 2
-    fi
-
-    local bundle_hash receipt_dir
     bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
     receipt_dir="$NODE9_DIR/data/register-import/$bundle_hash"
     import_bundle="$bundle"
-    import_cli_path="$cli"
     import_work="$work_dir"
 
-    mkdir -p "$receipt_dir" || { rm -rf "$work_dir"; import_error 'the receipt directory fails'; return; }
+    mkdir -p "$receipt_dir" \
+        || { rm -rf "$work_dir"; import_error 'the receipt directory fails'; return; }
     chmod 700 "$receipt_dir"
     if ! load_receipts "$receipt_dir/receipts.jsonl"; then
         rm -rf "$work_dir"
@@ -1078,6 +1087,284 @@ apply_bundle() {
     return 0
 }
 
+# has_warning FILE  Status 0 when one record of FILE is a warning.
+has_warning() {
+    jq -e -s 'any(.[]; (.type // "") == "warning")' "$1" > /dev/null 2>&1
+}
+
+# read_topic TOPIC OUT_FILE
+# Read one topic into OUT_FILE. Return 1 for a failed read and for a denied
+# warning, even when the read returns status 0.
+read_topic() {
+    local topic="$1" out_file="$2"
+    "$import_cli_path" messages "$topic" --format records > "$out_file" \
+        2> /dev/null || { import_error "the read of $topic fails"; return 1; }
+    if has_warning "$out_file"; then
+        import_error "the read of $topic gives a denied warning"
+        return 1
+    fi
+    return 0
+}
+
+# message_text LIVE_FILE MESSAGE_ID OUT_FILE
+# Write the exact text of one message into OUT_FILE.
+message_text() {
+    jq -j --arg id "$2" 'select(.id == $id) | .text' "$1" > "$3" 2> /dev/null
+}
+
+# receipt_id RECEIPT_FILE KIND TOPIC [INDEX]
+# Print the message ID of one receipt.
+receipt_id() {
+    local file="$1" kind="$2" topic="$3" index="${4:-}"
+    if [[ -n "$index" ]]; then
+        jq -r --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+            'select(.kind == $kind and .topic == $topic and .index == $index)
+             | .messageId' "$file" 2> /dev/null | head -1
+    else
+        jq -r --arg kind "$kind" --arg topic "$topic" \
+            'select(.kind == $kind and .topic == $topic) | .messageId' \
+            "$file" 2> /dev/null | head -1
+    fi
+}
+
+# import_now_ms  Print the epoch in milliseconds.
+import_now_ms() {
+    local ns
+    ns="$(date +%s%N 2> /dev/null)"
+    if [[ "$ns" =~ ^[0-9]+$ ]] && (( ${#ns} >= 16 )); then
+        printf '%s\n' "$(( ns / 1000000 ))"
+    else
+        printf '%s000\n' "$(date +%s)"
+    fi
+}
+
+# verify_content RECEIPT_DIR
+# Rebuild the source from the stored parts, and check every stored range.
+verify_content() {
+    local receipt_dir="$1" manifest topic count index message_id path
+    local source_hash rebuilt_hash entry_topic
+    manifest="$import_bundle/content-manifest.json"
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    topic="$(snapshot_topic "$source_hash")"
+
+    read_topic "$topic" "$import_work/snapshot.jsonl" || return 1
+    : > "$import_work/rebuilt"
+    count="$(jq -r '.parts | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        message_id="$(receipt_id "$receipt_dir/receipts.jsonl" snapshot-part \
+            "$topic" "$index")"
+        [[ -n "$message_id" ]] \
+            || { import_error "no receipt holds part $index"; return 1; }
+        message_text "$import_work/snapshot.jsonl" "$message_id" \
+            "$import_work/part.text"
+        cat "$import_work/part.text" >> "$import_work/rebuilt"
+    done
+    if ! cmp -s "$import_bundle/source.md" "$import_work/rebuilt"; then
+        import_error 'the stored parts do not rebuild the source bytes'
+        return 1
+    fi
+    rebuilt_hash="$(hash_of "$import_work/rebuilt")"
+    if [[ "$rebuilt_hash" != "$source_hash" ]]; then
+        import_error 'the rebuilt source holds another SHA-256'
+        return 1
+    fi
+
+    message_id="$(receipt_id "$receipt_dir/receipts.jsonl" session "$topic" 0)"
+    [[ -n "$message_id" ]] \
+        || { import_error 'no receipt holds the session range'; return 1; }
+    message_text "$import_work/snapshot.jsonl" "$message_id" \
+        "$import_work/session.text"
+    path="$import_bundle/$(jq -r '.session.path' "$manifest")"
+    if ! cmp -s "$path" "$import_work/session.text"; then
+        import_error 'the stored session range holds other bytes'
+        return 1
+    fi
+
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        path="$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
+        read_topic "$entry_topic" "$import_work/entry.jsonl" || return 1
+        message_id="$(receipt_id "$receipt_dir/receipts.jsonl" entry \
+            "$entry_topic" 0)"
+        [[ -n "$message_id" ]] \
+            || { import_error "no receipt holds the entry of $entry_topic"; return 1; }
+        message_text "$import_work/entry.jsonl" "$message_id" \
+            "$import_work/entry.text"
+        if ! cmp -s "$path" "$import_work/entry.text"; then
+            import_error "the stored range of $entry_topic holds other bytes"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# verify_pointers RECEIPT_DIR
+# Check every pointer of this bundle in the index.
+verify_pointers() {
+    local receipt_dir="$1" manifest count index topic message_id text fields
+    local bundle_hash source_hash
+    manifest="$import_bundle/content-manifest.json"
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    bundle_hash="$(jq -r '.content_sha256' \
+        "$import_bundle/bundle-manifest.json")"
+    "$import_cli_path" register-read > "$import_work/index.jsonl" 2> /dev/null \
+        || { import_error 'the index read fails'; return 1; }
+    if has_warning "$import_work/index.jsonl"; then
+        import_error 'the index read gives a denied warning'
+        return 1
+    fi
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index <= count; index++ )); do
+        if (( index < count )); then
+            topic="$(jq -r ".entries[$index].topic" "$manifest")"
+            message_id="$(receipt_id "$receipt_dir/receipts.jsonl" \
+                entry-pointer "$topic" 0)"
+        else
+            topic="$(snapshot_topic "$source_hash")"
+            message_id="$(receipt_id "$receipt_dir/receipts.jsonl" \
+                snapshot-pointer "$topic" 0)"
+        fi
+        [[ -n "$message_id" ]] \
+            || { import_error "no receipt holds the pointer of $topic"; return 1; }
+        message_text "$import_work/index.jsonl" "$message_id" \
+            "$import_work/pointer.text"
+        [[ -s "$import_work/pointer.text" ]] \
+            || { import_error "the index misses the pointer of $topic"; return 1; }
+        text="$(cat "$import_work/pointer.text")"
+        fields="$(printf '%s' "$text" | awk -F'|' '{print NF}' | head -1)"
+        if [[ "$fields" != '4' ]]; then
+            import_error "the pointer of $topic holds $fields fields, not 4"
+            return 1
+        fi
+        if [[ "$text" != *"$bundle_hash"* ]]; then
+            import_error "the pointer of $topic names another bundle"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# verify_reads
+# Time five whole session reads, one for each of the four users and one
+# again. Print the median. Return 124 for a read that passes the wrapper
+# budget, and 1 for a failed read or a denied warning.
+verify_reads() {
+    local target="${REGISTER_IMPORT_READ_TARGET_MS:-10000}"
+    local attempt user start finish status median
+    : > "$import_work/times"
+    attempt=0
+    for user in Sigma Theta Phi Mario Sigma; do
+        attempt=$(( attempt + 1 ))
+        start="$(import_now_ms)"
+        "$NODE9_DIR/bin/register" read --as "$user" \
+            > "$import_work/read.jsonl" 2> "$import_work/read.err"
+        status=$?
+        finish="$(import_now_ms)"
+        if (( status == 124 )); then
+            import_error "the read of $user passed its time limit"
+            return 124
+        fi
+        if (( status != 0 )); then
+            import_error "the read of $user returned $status"
+            return 1
+        fi
+        if has_warning "$import_work/read.jsonl"; then
+            import_error "the read of $user gives a denied warning"
+            return 1
+        fi
+        printf '%s\n' "$(( finish - start ))" >> "$import_work/times"
+    done
+    median="$(sort -n "$import_work/times" | sed -n '3p')"
+    if (( median > target )); then
+        import_error "the median read takes $median ms, above the target of $target ms"
+        return 1
+    fi
+    printf '%s\n' "$median"
+    return 0
+}
+
+# verify_bundle --bundle DIR --as Mario
+# Read the destination and prove that it holds this bundle.
+verify_bundle() {
+    local bundle='' user='' work_dir status bundle_hash receipt_dir median
+    while (( $# )); do
+        case "$1" in
+            --bundle)
+                bundle="${2:-}"
+                shift 2 || true
+                ;;
+            --as)
+                user="${2:-}"
+                shift 2 || true
+                ;;
+            *)
+                import_error "verify does not take the argument $1"
+                return
+                ;;
+        esac
+    done
+    [[ -n "$bundle" && -n "$user" ]] \
+        || { import_error 'verify needs --bundle and --as'; return; }
+
+    work_dir="$(mktemp -d)" \
+        || { import_error 'no temporary directory'; return; }
+    import_preflight "$bundle" "$user" "$work_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
+    bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+    receipt_dir="$NODE9_DIR/data/register-import/$bundle_hash"
+    import_bundle="$bundle"
+    import_work="$work_dir"
+
+    if [[ ! -s "$receipt_dir/receipts.jsonl" ]]; then
+        rm -rf "$work_dir"
+        import_error "no receipt of this bundle lives in $receipt_dir"
+        return 1
+    fi
+    if ! load_receipts "$receipt_dir/receipts.jsonl"; then
+        rm -rf "$work_dir"
+        return 1
+    fi
+
+    # The timed reads run first. They pass through the register wrapper, and
+    # that wrapper holds the only time limit. A stalled read then gives 124
+    # instead of a late byte difference.
+    median="$(verify_reads)"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    verify_content "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    verify_pointers "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
+    printf 'verify: bundle %s\n' "$bundle_hash"
+    printf 'verify: source bytes %s\n' \
+        "$(jq -r '.source_bytes' "$bundle/content-manifest.json")"
+    printf 'verify: parts %s\n' \
+        "$(jq -r '.parts | length' "$bundle/content-manifest.json")"
+    printf 'verify: entries %s\n' \
+        "$(jq -r '.entries | length' "$bundle/content-manifest.json")"
+    printf 'verify: read median %s ms\n' "$median"
+    rm -rf "$work_dir"
+    return 0
+}
+
 if [[ "${REGISTER_IMPORT_LIB:-}" == '1' ]]; then
     return 0
 fi
@@ -1094,8 +1381,8 @@ case "$command" in
         exit $?
         ;;
     verify)
-        printf 'register-import: verify arrives in a later task.\n' >&2
-        exit 2
+        verify_bundle "$@"
+        exit $?
         ;;
     *)
         printf 'register-import: use pack, apply, or verify.\n' >&2

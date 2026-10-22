@@ -547,6 +547,116 @@ else
     bad 'two_hosts_get_equal_request_ids' "exit $status, output: $out"
 fi
 
+# -- verify --------------------------------------------------------------
+
+# full_verify [extra env assignments]  Run verify against the current state.
+full_verify() {
+    out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+        CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" "$@" \
+        "$install_home/bin/register-import" verify --bundle "$bundle" \
+        --as Mario 2>&1)"
+    status=$?
+}
+
+# One clean import stands behind every verify case.
+reset_stub
+rm -rf "$receipts"
+full_apply
+if [[ $status -ne 0 ]]; then
+    printf 'FAIL the suite cannot import before verify: %s\n' "$out"
+    exit 1
+fi
+cp -R "$stub_state" "$work/stub-state-good"
+
+full_verify
+verify_case='ok'
+if [[ $status -ne 0 ]]; then
+    verify_case="exit $status, output: $out"
+else
+    for pattern in 'source bytes' 'entries'; do
+        [[ "$out" == *"$pattern"* ]] || verify_case="missing: $pattern"
+    done
+fi
+if [[ "$verify_case" == 'ok' ]]; then
+    ok 'verify_rebuilds_source_bytes'
+else
+    bad 'verify_rebuilds_source_bytes' "$verify_case"
+fi
+
+# One changed entry range breaks the entry check alone.
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+entry_id="$(jq -r 'select(.kind == "entry" and .topic == "forward-register-second") | .messageId' \
+    "$receipts/receipts.jsonl" | head -1)"
+jq -c --arg id "$entry_id" \
+    'if .id == $id then .text = "other bytes\n" else . end' \
+    "$stub_state/messages/forward-register-second.jsonl" \
+    > "$stub_state/messages/forward-register-second.new"
+mv "$stub_state/messages/forward-register-second.new" \
+    "$stub_state/messages/forward-register-second.jsonl"
+full_verify
+if [[ $status -eq 1 && "$out" == *'forward-register-second'* ]]; then
+    ok 'verify_checks_each_entry_range'
+else
+    bad 'verify_checks_each_entry_range' "exit $status, output: $out"
+fi
+
+# One changed snapshot part breaks the source rebuild.
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+part_id="$(jq -r 'select(.kind == "snapshot-part" and .index == 1) | .messageId' \
+    "$receipts/receipts.jsonl" | head -1)"
+jq -c --arg id "$part_id" \
+    'if .id == $id then .text = "## Changed\n" else . end' \
+    "$stub_state/messages/$snapshot_topic_name.jsonl" \
+    > "$stub_state/messages/$snapshot_topic_name.new"
+mv "$stub_state/messages/$snapshot_topic_name.new" \
+    "$stub_state/messages/$snapshot_topic_name.jsonl"
+full_verify
+if [[ $status -eq 1 ]]; then
+    ok 'verify_fails_on_changed_message'
+else
+    bad 'verify_fails_on_changed_message' "exit $status, output: $out"
+fi
+
+# A denied warning with status 0 is a failure.
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+full_verify STUB_DENY_TOPIC=1
+if [[ $status -eq 1 && "$out" == *'denied'* ]]; then
+    ok 'verify_fails_on_denied_warning_with_status_zero'
+else
+    bad 'verify_fails_on_denied_warning_with_status_zero' \
+        "exit $status, output: $out"
+fi
+
+# The median of five session reads must meet its target.
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+full_verify STUB_READ_SLEEP=0.2 REGISTER_IMPORT_READ_TARGET_MS=50
+slow_status=$status
+slow_out="$out"
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+full_verify REGISTER_IMPORT_READ_TARGET_MS=10000
+fast_status=$status
+if [[ $slow_status -eq 1 && $fast_status -eq 0 ]]; then
+    ok 'verify_median_gate'
+else
+    bad 'verify_median_gate' \
+        "slow exit $slow_status, fast exit $fast_status, slow output: $slow_out"
+fi
+
+# A stalled read passes the wrapper budget and gives status 124.
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+full_verify STUB_STALL_READ=1 CHAT_REGISTER_DEADLINE_MS=1000
+if [[ $status -eq 124 ]]; then
+    ok 'verify_stall_returns_124'
+else
+    bad 'verify_stall_returns_124' "exit $status, output: $out"
+fi
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1

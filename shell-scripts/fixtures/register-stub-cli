@@ -20,6 +20,8 @@
 #   STUB_INDEX_PRE=<n>        The index starts with n messages.
 #   STUB_FAIL_AFTER_POST=<n>  The nth post stores its message, then exits 75.
 #   STUB_STALL_READ=1         A read sleeps past every test budget.
+#   STUB_READ_SLEEP=<seconds> Every read waits that long.
+#   STUB_DENY_TOPIC=1         A topic read gives a denied warning and exits 0.
 set -uo pipefail
 
 state="${STUB_STATE:?Set STUB_STATE}"
@@ -87,6 +89,7 @@ case "$command_name" in
             sleep 120
             exit 0
         fi
+        [[ -n "${STUB_READ_SLEEP:-}" ]] && sleep "$STUB_READ_SLEEP"
         if [[ "${STUB_DENY_INDEX:-0}" == '1' ]]; then
             jq -cS -n '{type: "warning", warning: "denied-index"}'
             exit 0
@@ -185,8 +188,14 @@ case "$command_name" in
             sleep 120
             exit 0
         fi
+        [[ -n "${STUB_READ_SLEEP:-}" ]] && sleep "$STUB_READ_SLEEP"
         if [[ "${STUB_DENY_INDEX:-0}" == '1' && "$topic" == 'register-index' ]]; then
             jq -cS -n '{type: "warning", warning: "denied-index"}'
+            exit 0
+        fi
+        if [[ "${STUB_DENY_TOPIC:-0}" == '1' ]]; then
+            jq -cS -n --arg topic "$topic" \
+                '{type: "warning", warning: "denied-topic", topic: $topic}'
             exit 0
         fi
         [[ -f "$state/messages/$topic.jsonl" ]] \
