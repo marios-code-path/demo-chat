@@ -181,6 +181,226 @@ else
     bad 'mapping_rejects_bad_input' "$mapping_case"
 fi
 
+# -- register-uuid5 ------------------------------------------------------
+
+uuid5="$repo_root/node-9/bin/register-uuid5"
+out="$("$uuid5" 6ba7b810-9dad-11d1-80b4-00c04fd430c8 python.org 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$out" == '886313e1-3b8a-5372-9b90-0c9aee199e5d' ]]; then
+    ok 'uuid5_known_vector'
+else
+    bad 'uuid5_known_vector' "exit $status, output: $out"
+fi
+
+# -- pack ----------------------------------------------------------------
+
+mode_of() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
+pack() { "$importer" pack --source "$1" --mapping "$2" --bundle "$3"; }
+
+pack_out="$(pack "$work/source.md" "$work/mapping.json" "$work/bundle-a" 2>&1)"
+pack_status=$?
+if [[ $pack_status -ne 0 ]]; then
+    bad 'pack_builds_a_bundle' "exit $pack_status, output: $pack_out"
+else
+    ok 'pack_builds_a_bundle'
+fi
+
+pack "$work/source.md" "$work/mapping.json" "$work/bundle-b" > /dev/null 2>&1
+if cmp -s "$work/bundle-a/bundle-manifest.json" \
+          "$work/bundle-b/bundle-manifest.json"; then
+    ok 'pack_is_deterministic'
+else
+    bad 'pack_is_deterministic' 'the two bundle manifests differ'
+fi
+
+# One changed source byte changes the bundle identity and every request ID.
+sed 's/body one/body ONE/' "$work/source.md" > "$work/source-2.md"
+jq --arg sha "$(sha_of "$work/source-2.md")" '.source_sha256 = $sha' \
+    "$work/mapping.json" > "$work/mapping-2.json"
+pack "$work/source-2.md" "$work/mapping-2.json" "$work/bundle-c" > /dev/null 2>&1
+hash_a="$(jq -r '.content_sha256' "$work/bundle-a/bundle-manifest.json")"
+hash_c="$(jq -r '.content_sha256' "$work/bundle-c/bundle-manifest.json")"
+ids_a="$(jq -r '[.requests[].request_id] | sort | join(",")' \
+    "$work/bundle-a/bundle-manifest.json")"
+ids_c="$(jq -r '[.requests[].request_id] | sort | join(",")' \
+    "$work/bundle-c/bundle-manifest.json")"
+if [[ -n "$hash_a" && "$hash_a" != "$hash_c" && "$ids_a" != "$ids_c" ]]; then
+    ok 'pack_changes_identity'
+else
+    bad 'pack_changes_identity' "hash_a=$hash_a hash_c=$hash_c"
+fi
+
+mode_case='ok'
+if [[ "$(mode_of "$work/bundle-a")" != '700' ]]; then
+    mode_case='the bundle directory is not 0700'
+else
+    while IFS= read -r path; do
+        [[ "$(mode_of "$path")" == '600' ]] || mode_case="$path is not 0600"
+    done < <(find "$work/bundle-a" -type f)
+fi
+if [[ "$mode_case" == 'ok' ]]; then
+    ok 'pack_modes'
+else
+    bad 'pack_modes' "$mode_case"
+fi
+
+out="$(pack "$work/source.md" "$work/mapping.json" "$work/bundle-a" 2>&1)"
+status=$?
+if [[ $status -eq 2 ]]; then
+    ok 'pack_refuses_existing_dir'
+else
+    bad 'pack_refuses_existing_dir' "exit $status, output: $out"
+fi
+
+printf '## No preamble\nbody\n' > "$work/no-preamble.md"
+jq --arg sha "$(sha_of "$work/no-preamble.md")" \
+   '.source_sha256 = $sha
+    | .session = {"first_line": 1, "after_line": 2}
+    | .entries = [.entries[0] | .first_line = 1 | .after_line = 2]' \
+   "$work/mapping.json" > "$work/no-preamble-mapping.json"
+out="$(pack "$work/no-preamble.md" "$work/no-preamble-mapping.json" \
+    "$work/bundle-no-preamble" 2>&1)"
+status=$?
+if [[ $status -eq 2 && ! -e "$work/bundle-no-preamble" ]]; then
+    ok 'pack_refuses_missing_preamble'
+else
+    bad 'pack_refuses_missing_preamble' "exit $status, output: $out"
+fi
+
+nul_case='ok'
+printf 'Preamble\n\000\n## First\nbody\n' > "$work/nul.md"
+perl -e 'binmode(STDOUT, ":raw"); print "Preamble\n\xff\xfe\n## First\nbody\n"' \
+    > "$work/bad-utf8.md"
+for name in nul bad-utf8; do
+    jq --arg sha "$(sha_of "$work/$name.md")" \
+       '.source_sha256 = $sha
+        | .session = {"first_line": 1, "after_line": 2}
+        | .entries = [.entries[0] | .first_line = 1 | .after_line = 2]' \
+       "$work/mapping.json" > "$work/$name-mapping.json"
+    out="$(pack "$work/$name.md" "$work/$name-mapping.json" \
+        "$work/bundle-$name" 2>&1)"
+    status=$?
+    if [[ $status -ne 2 ]]; then
+        nul_case="$name gave exit $status, output: $out"
+    elif [[ -e "$work/bundle-$name" ]]; then
+        nul_case="$name left a bundle directory"
+    fi
+done
+if [[ "$nul_case" == 'ok' ]]; then
+    ok 'pack_refuses_nul_and_bad_utf8'
+else
+    bad 'pack_refuses_nul_and_bad_utf8' "$nul_case"
+fi
+
+# One section above 16384 bytes stops pack. The error names the heading, the
+# index, and the byte count.
+{
+    printf 'Preamble\n## Big\n'
+    perl -e 'binmode(STDOUT, ":utf8"); print "\x{2026}" x 6000, "\n"'
+} > "$work/oversize.md"
+jq --arg sha "$(sha_of "$work/oversize.md")" \
+   '.source_sha256 = $sha
+    | .session = {"first_line": 1, "after_line": 2}
+    | .entries = [.entries[0] | .first_line = 1 | .after_line = 2]' \
+   "$work/mapping.json" > "$work/oversize-mapping.json"
+# The preamble holds 9 bytes. Section 1 holds every other byte.
+oversize_bytes=$(( $(wc -c < "$work/oversize.md" | tr -d ' ') - 9 ))
+out="$(pack "$work/oversize.md" "$work/oversize-mapping.json" \
+    "$work/bundle-oversize" 2>&1)"
+status=$?
+oversize_case='ok'
+if [[ $status -ne 2 ]]; then
+    oversize_case="exit $status, output: $out"
+else
+    for pattern in '## Big' 'index 1' "$oversize_bytes"; do
+        [[ "$out" == *"$pattern"* ]] || oversize_case="missing: $pattern"
+    done
+fi
+if [[ "$oversize_case" == 'ok' ]]; then
+    ok 'pack_names_oversize_section'
+else
+    bad 'pack_names_oversize_section' "$oversize_case"
+fi
+
+review_case='ok'
+for pattern in "$(sha_of "$work/source.md")" "$hash_a" \
+    'forward-register-first' 'forward-register-second' 'bytes'; do
+    [[ "$pack_out" == *"$pattern"* ]] || review_case="missing: $pattern"
+done
+if [[ "$pack_out" == *'body one'* ]]; then
+    review_case='the review output holds source text'
+fi
+if [[ "$review_case" == 'ok' ]]; then
+    ok 'pack_prints_review_lines'
+else
+    bad 'pack_prints_review_lines' "$review_case"
+fi
+
+# -- check_bundle --------------------------------------------------------
+
+run_check_bundle() {
+    ( REGISTER_IMPORT_LIB=1
+      export REGISTER_IMPORT_LIB
+      # shellcheck source=/dev/null
+      source "$importer" \
+          || { printf 'register-import: the library did not load\n'; exit 2; }
+      check_bundle "$1" )
+}
+
+out="$(run_check_bundle "$work/bundle-a" 2>&1)"
+status=$?
+if [[ $status -eq 0 ]]; then
+    ok 'check_bundle_accepts_a_packed_bundle'
+else
+    bad 'check_bundle_accepts_a_packed_bundle' "exit $status, output: $out"
+fi
+
+tamper_case='ok'
+# One tampered bundle for each case. Each copy starts from a clean pack.
+for name in edited-part missing-part loose-mode edited-manifest; do
+    rm -rf "$work/t-$name"
+    cp -R "$work/bundle-a" "$work/t-$name"
+    target=''
+    case "$name" in
+        edited-part)
+            target="$(find "$work/t-$name/parts" -type f | sort | head -1)"
+            printf 'x' >> "$target"
+            ;;
+        missing-part)
+            target="$(find "$work/t-$name/parts" -type f | sort | head -1)"
+            rm -f "$target"
+            ;;
+        loose-mode)
+            target="$work/t-$name/content-manifest.json"
+            chmod 644 "$target"
+            ;;
+        edited-manifest)
+            target="$work/t-$name/bundle-manifest.json"
+            jq '.requests[0].request_id = "00000000-0000-5000-8000-000000000000"' \
+                "$target" > "$target.new" && mv "$target.new" "$target"
+            chmod 600 "$target"
+            ;;
+    esac
+    out="$(run_check_bundle "$work/t-$name" 2>&1)"
+    status=$?
+    if [[ $status -ne 2 ]]; then
+        tamper_case="$name gave exit $status, output: $out"
+    elif [[ "$out" != *"$(basename "$target")"* ]]; then
+        tamper_case="$name does not name $(basename "$target"): $out"
+    fi
+done
+if [[ "$tamper_case" == 'ok' ]]; then
+    ok 'check_bundle_refuses_tampering'
+else
+    bad 'check_bundle_refuses_tampering' "$tamper_case"
+fi
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1

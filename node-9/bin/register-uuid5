@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+# Print one UUID version 5 for a namespace and a name. See CHAT-jmnjvupr.
+#
+#   register-uuid5 <namespace-uuid> <name>
+#
+# Version 5 hashes the 16 namespace bytes and the name bytes with SHA-1. RFC
+# 4122 then fixes the version bits and the variant bits. The same namespace
+# and name give the same UUID on every host, so an import keeps one request
+# ID across a retry and across hosts.
+#
+# A refusal prints one line on standard error and returns status 2.
+use strict;
+use warnings;
+use Digest::SHA qw(sha1);
+
+sub refuse {
+    print STDERR "register-uuid5: $_[0]\n";
+    exit 2;
+}
+
+@ARGV == 2 or refuse('use <namespace-uuid> <name>');
+my ($namespace, $name) = @ARGV;
+
+$namespace =~ /\A[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\z/
+    or refuse('the namespace is not one UUID');
+length($name) or refuse('the name is empty');
+
+my $hex = $namespace;
+$hex =~ s/-//g;
+my $namespace_bytes = pack 'H32', $hex;
+
+my $digest = sha1($namespace_bytes . $name);
+my @byte = unpack 'C16', $digest;
+$byte[6] = ($byte[6] & 0x0f) | 0x50;
+$byte[8] = ($byte[8] & 0x3f) | 0x80;
+
+my $flat = unpack 'H32', pack('C16', @byte);
+printf "%s-%s-%s-%s-%s\n",
+    substr($flat, 0, 8), substr($flat, 8, 4), substr($flat, 12, 4),
+    substr($flat, 16, 4), substr($flat, 20, 12);

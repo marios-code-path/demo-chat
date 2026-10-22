@@ -24,6 +24,10 @@ source "$register_import_dir/lib.sh"
 # The byte limit of one section, one session range, and one entry range.
 REGISTER_IMPORT_RANGE_LIMIT=16384
 
+# The fixed UUIDv5 namespace of every import request ID. The design file fixes
+# this value. A change of it changes every request ID.
+REGISTER_IMPORT_NAMESPACE='e9d6d78a-0020-43e3-9893-92737b9e536c'
+
 # import_error MESSAGE  Print one line on standard error and return 2.
 import_error() {
     printf 'register-import: %s\n' "$1" >&2
@@ -119,9 +123,317 @@ validate_mapping() {
     return 0
 }
 
+# file_mode PATH  Print the octal mode of one path.
+file_mode() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
+# hash_of PATH  Print the SHA-256 of one file.
+hash_of() {
+    shasum -a 256 "$1" | cut -d ' ' -f 1
+}
+
+# bytes_of PATH  Print the byte count of one file.
+bytes_of() {
+    wc -c < "$1" | tr -d ' '
+}
+
+# snapshot_topic SOURCE_SHA  Print the topic name of the snapshot.
+snapshot_topic() {
+    printf 'forward-register-snapshot-%s\n' "${1:0:12}"
+}
+
+# snapshot_key SOURCE_SHA  Print the pointer key of the snapshot.
+snapshot_key() {
+    printf 'snapshot-%s\n' "${1:0:12}"
+}
+
+# one_request HASH KIND TOPIC INDEX
+# Print one request row. The request ID comes from the fixed namespace and
+# the name <content hash>|<kind>|<topic>|<index>.
+one_request() {
+    local hash="$1" kind="$2" topic="$3" index="$4" id
+    id="$("$register_import_dir/register-uuid5" "$REGISTER_IMPORT_NAMESPACE" \
+        "$hash|$kind|$topic|$index")" || return 1
+    jq -cS -n --arg kind "$kind" --arg topic "$topic" \
+        --argjson index "$index" --arg id "$id" \
+        '{kind: $kind, topic: $topic, index: $index, request_id: $id}'
+}
+
+# build_requests CONTENT_MANIFEST CONTENT_HASH
+# Print every request row in the apply order. pack writes these rows into the
+# bundle manifest. check_bundle derives them again and compares them.
+build_requests() {
+    local manifest="$1" hash="$2"
+    local topic count index entry_topic source_hash
+    source_hash="$(jq -r '.source_sha256' "$manifest")" || return 1
+    topic="$(snapshot_topic "$source_hash")"
+    one_request "$hash" snapshot-header "$topic" 0 || return 1
+    count="$(jq -r '.parts | length' "$manifest")" || return 1
+    for (( index = 0; index < count; index++ )); do
+        one_request "$hash" snapshot-part "$topic" "$index" || return 1
+    done
+    one_request "$hash" session "$topic" 0 || return 1
+    count="$(jq -r '.entries | length' "$manifest")" || return 1
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")" || return 1
+        one_request "$hash" entry-header "$entry_topic" 0 || return 1
+        one_request "$hash" entry "$entry_topic" 0 || return 1
+    done
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")" || return 1
+        one_request "$hash" entry-pointer "$entry_topic" 0 || return 1
+    done
+    one_request "$hash" snapshot-pointer "$topic" 0 || return 1
+}
+
+# pack_bundle --source FILE --mapping FILE --bundle DIR
+# Build one private bundle. The command makes no network call, and it needs no
+# installed home. A failed pack leaves no bundle directory, because the work
+# happens in a private temporary directory beside the target.
+pack_bundle() {
+    local source_file='' mapping='' bundle=''
+    while (( $# )); do
+        case "$1" in
+            --source)
+                source_file="${2:-}"
+                shift 2 || true
+                ;;
+            --mapping)
+                mapping="${2:-}"
+                shift 2 || true
+                ;;
+            --bundle)
+                bundle="${2:-}"
+                shift 2 || true
+                ;;
+            *)
+                import_error "pack does not take the argument $1"
+                return
+                ;;
+        esac
+    done
+    [[ -n "$source_file" && -n "$mapping" && -n "$bundle" ]] \
+        || { import_error 'pack needs --source, --mapping, and --bundle'; return; }
+    [[ ! -e "$bundle" && ! -L "$bundle" ]] \
+        || { import_error "the bundle path $bundle exists"; return; }
+    validate_mapping "$mapping" "$source_file" || return
+
+    local parent tmp split_out row index path bytes heading range_out
+    local count first after key topic title source_hash source_bytes
+    local content_hash part_count session_bytes request_count
+    parent="$(dirname "$bundle")"
+    [[ -d "$parent" ]] \
+        || { import_error "the parent directory $parent is absent"; return; }
+    umask 0077
+    tmp="$(mktemp -d "$parent/.register-import-XXXXXX")" \
+        || { import_error 'no temporary directory'; return; }
+
+    if ! split_out="$("$register_import_dir/register-split" "$source_file" \
+        "$tmp/parts" 2>&1)"; then
+        rm -rf "$tmp"
+        import_error "the source does not split: ${split_out##*register-split: }"
+        return
+    fi
+
+    : > "$tmp/parts.jsonl"
+    while IFS= read -r row; do
+        index="$(jq -r '.index' <<< "$row")"
+        path="$(jq -r '.path' <<< "$row")"
+        bytes="$(jq -r '.bytes' <<< "$row")"
+        if (( bytes > REGISTER_IMPORT_RANGE_LIMIT )); then
+            if (( index == 0 )); then
+                heading='(the preamble)'
+            else
+                heading="$(head -1 "$tmp/parts/$path")"
+            fi
+            rm -rf "$tmp"
+            import_error "section $heading at index $index holds $bytes bytes, above the limit of $REGISTER_IMPORT_RANGE_LIMIT"
+            return
+        fi
+        jq -cS --arg path "parts/$path" \
+            '{index: .index, path: $path, bytes: .bytes, sha256: .sha256}' \
+            <<< "$row" >> "$tmp/parts.jsonl"
+    done < "$tmp/parts/sections.jsonl"
+    rm -f "$tmp/parts/sections.jsonl"
+
+    mkdir -p "$tmp/ranges"
+    first="$(jq -r '.session.first_line' "$mapping")"
+    after="$(jq -r '.session.after_line' "$mapping")"
+    if ! range_out="$("$register_import_dir/register-range" "$source_file" \
+        "$first" "$after" "$tmp/ranges/session.bin" 2>&1)"; then
+        rm -rf "$tmp"
+        import_error "the session range fails: ${range_out##*register-range: }"
+        return
+    fi
+    jq -cS --arg path 'ranges/session.bin' '. + {path: $path}' \
+        <<< "$range_out" > "$tmp/session.json"
+    session_bytes="$(jq -r '.bytes' "$tmp/session.json")"
+
+    : > "$tmp/entries.jsonl"
+    count="$(jq -r '.entries | length' "$mapping")"
+    for (( index = 0; index < count; index++ )); do
+        path="$(printf 'ranges/entry-%03d.bin' "$index")"
+        first="$(jq -r ".entries[$index].first_line" "$mapping")"
+        after="$(jq -r ".entries[$index].after_line" "$mapping")"
+        key="$(jq -r ".entries[$index].key" "$mapping")"
+        topic="$(jq -r ".entries[$index].topic" "$mapping")"
+        title="$(jq -r ".entries[$index].title" "$mapping")"
+        if ! range_out="$("$register_import_dir/register-range" \
+            "$source_file" "$first" "$after" "$tmp/$path" 2>&1)"; then
+            rm -rf "$tmp"
+            import_error "the range of entry $index fails: ${range_out##*register-range: }"
+            return
+        fi
+        jq -cS --arg path "$path" --arg key "$key" --arg topic "$topic" \
+            --arg title "$title" --argjson index "$index" \
+            '. + {path: $path, key: $key, topic: $topic, title: $title, index: $index}' \
+            <<< "$range_out" >> "$tmp/entries.jsonl"
+    done
+
+    source_hash="$(hash_of "$source_file")"
+    source_bytes="$(bytes_of "$source_file")"
+    cp "$source_file" "$tmp/source.md"
+    cp "$mapping" "$tmp/mapping.json"
+    jq -cS -n \
+        --argjson parts "$(jq -cS -s . "$tmp/parts.jsonl")" \
+        --argjson entries "$(jq -cS -s . "$tmp/entries.jsonl")" \
+        --argjson session "$(cat "$tmp/session.json")" \
+        --argjson mapping "$(cat "$tmp/mapping.json")" \
+        --arg sha "$source_hash" --argjson bytes "$source_bytes" \
+        '{version: 1, source_sha256: $sha, source_bytes: $bytes,
+          mapping: $mapping, parts: $parts, session: $session,
+          entries: $entries}' > "$tmp/content-manifest.json" \
+        || { rm -rf "$tmp"; import_error 'the content manifest fails'; return; }
+    content_hash="$(hash_of "$tmp/content-manifest.json")"
+
+    if ! build_requests "$tmp/content-manifest.json" "$content_hash" \
+        > "$tmp/requests.jsonl"; then
+        rm -rf "$tmp"
+        import_error 'the request IDs fail'
+        return
+    fi
+    jq -cS -n --arg hash "$content_hash" \
+        --argjson bytes "$(bytes_of "$tmp/content-manifest.json")" \
+        --argjson requests "$(jq -cS -s . "$tmp/requests.jsonl")" \
+        '{version: 1, content_sha256: $hash,
+          content_manifest: {path: "content-manifest.json", bytes: $bytes,
+                             sha256: $hash},
+          requests: $requests}' > "$tmp/bundle-manifest.json" \
+        || { rm -rf "$tmp"; import_error 'the bundle manifest fails'; return; }
+
+    rm -f "$tmp/parts.jsonl" "$tmp/entries.jsonl" "$tmp/session.json" \
+        "$tmp/requests.jsonl"
+    find "$tmp" -type d -exec chmod 700 {} + 2> /dev/null
+    find "$tmp" -type f -exec chmod 600 {} + 2> /dev/null
+    mv "$tmp" "$bundle" \
+        || { rm -rf "$tmp"; import_error "the bundle does not move to $bundle"; return; }
+
+    part_count="$(jq -r '.parts | length' "$bundle/content-manifest.json")"
+    request_count="$(jq -r '.requests | length' "$bundle/bundle-manifest.json")"
+    printf 'source: %s\n' "$source_hash"
+    printf 'source bytes: %s\n' "$source_bytes"
+    printf 'bundle: %s\n' "$content_hash"
+    printf 'parts: %s\n' "$part_count"
+    printf 'session bytes: %s\n' "$session_bytes"
+    printf 'topic: %s parts %s\n' "$(snapshot_topic "$source_hash")" "$part_count"
+    jq -r '.entries[] | "topic: \(.topic) key \(.key) bytes \(.bytes)"' \
+        "$bundle/content-manifest.json"
+    printf 'pointer key: %s\n' "$(snapshot_key "$source_hash")"
+    printf 'requests: %s\n' "$request_count"
+    return 0
+}
+
+# check_bundle DIR
+# Check one bundle before any live call. The function compares every mode,
+# every byte count, every hash, and every request ID. It prints one line that
+# names the file of the first difference and returns 2.
+check_bundle() {
+    local bundle="$1"
+    local file row path bytes sha stored_hash actual_hash tmp want got
+
+    [[ -d "$bundle" ]] \
+        || { import_error "the bundle directory $bundle is absent"; return; }
+    [[ "$(file_mode "$bundle")" == '700' ]] \
+        || { import_error "the bundle directory is not mode 0700"; return; }
+    for file in content-manifest.json bundle-manifest.json source.md \
+        mapping.json; do
+        [[ -f "$bundle/$file" ]] \
+            || { import_error "$file is absent from the bundle"; return; }
+    done
+    while IFS= read -r file; do
+        [[ "$(file_mode "$file")" == '600' ]] \
+            || { import_error "$(basename "$file") is not mode 0600"; return; }
+    done < <(find "$bundle" -type f | sort)
+
+    jq -e . "$bundle/content-manifest.json" > /dev/null 2>&1 \
+        || { import_error 'content-manifest.json is not valid JSON'; return; }
+    jq -e . "$bundle/bundle-manifest.json" > /dev/null 2>&1 \
+        || { import_error 'bundle-manifest.json is not valid JSON'; return; }
+
+    actual_hash="$(hash_of "$bundle/content-manifest.json")"
+    stored_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+    [[ "$stored_hash" == "$actual_hash" ]] \
+        || { import_error 'content-manifest.json does not match the hash in bundle-manifest.json'; return; }
+
+    [[ "$(hash_of "$bundle/source.md")" \
+       == "$(jq -r '.source_sha256' "$bundle/content-manifest.json")" ]] \
+        || { import_error 'source.md does not match the content manifest'; return; }
+
+    while IFS= read -r row; do
+        path="$(jq -r '.path' <<< "$row")"
+        bytes="$(jq -r '.bytes' <<< "$row")"
+        sha="$(jq -r '.sha256' <<< "$row")"
+        if [[ ! -f "$bundle/$path" ]]; then
+            import_error "$(basename "$path") is absent from the bundle"
+            return
+        fi
+        if [[ "$(bytes_of "$bundle/$path")" != "$bytes" ]]; then
+            import_error "$(basename "$path") holds a different byte count"
+            return
+        fi
+        if [[ "$(hash_of "$bundle/$path")" != "$sha" ]]; then
+            import_error "$(basename "$path") holds a different SHA-256"
+            return
+        fi
+    done < <(jq -c '.parts[], .session, .entries[]' \
+        "$bundle/content-manifest.json")
+
+    tmp="$(mktemp -d)" || { import_error 'no temporary directory'; return; }
+    if ! build_requests "$bundle/content-manifest.json" "$actual_hash" \
+        > "$tmp/requests.jsonl"; then
+        rm -rf "$tmp"
+        import_error 'the request IDs fail'
+        return
+    fi
+    want="$(jq -cS -s . "$tmp/requests.jsonl")"
+    got="$(jq -cS '.requests' "$bundle/bundle-manifest.json")"
+    rm -rf "$tmp"
+    [[ "$want" == "$got" ]] \
+        || { import_error 'bundle-manifest.json does not hold the derived request IDs'; return; }
+    return 0
+}
+
 if [[ "${REGISTER_IMPORT_LIB:-}" == '1' ]]; then
     return 0
 fi
 
-printf 'register-import: pack, apply, and verify are not implemented yet.\n' >&2
-exit 2
+command="${1:-}"
+shift || true
+case "$command" in
+    pack)
+        pack_bundle "$@"
+        exit $?
+        ;;
+    apply|verify)
+        printf 'register-import: %s arrives in a later task.\n' "$command" >&2
+        exit 2
+        ;;
+    *)
+        printf 'register-import: use pack, apply, or verify.\n' >&2
+        exit 2
+        ;;
+esac
