@@ -29,6 +29,9 @@ class LaunchRootKeySourceTests {
         "core-" to RootKeySource.STORE,
         "authserv-" to RootKeySource.NONE,
         "shell-consul" to RootKeySource.KV,
+        // --registry selects consul discovery, so the shell reads the root
+        // keys from the KV store. See CHAT-yexqiyie.
+        "shell-registry-core-id" to RootKeySource.KV,
         "shell-client" to RootKeySource.HTTP,
         "rest-client" to RootKeySource.HTTP,
         "gateway-client" to RootKeySource.HTTP,

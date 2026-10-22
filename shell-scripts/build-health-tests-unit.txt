@@ -1,6 +1,7 @@
 # Modules that ran tests in this mode. Written by build-health.sh --record.
 # Review the diff before you commit it. See CHAT-lantftth.
 chat-authorization-server
+chat-client-consul
 chat-client-rsocket
 chat-core
 chat-crypto
