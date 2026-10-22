@@ -28,6 +28,9 @@ CHAT_BUILD="$DIR/chat-build"
 # Pinned so goldens are reproducible on any machine. CONSUL_HOST especially:
 # chat-build otherwise shells out to `docker inspect` to find it.
 export CONSUL_HOST=10.0.0.5
+# CHAT_REGISTRY is the default of --registry. An empty value keeps every
+# golden the same on a machine that sets it. See CHAT-yexqiyie.
+export CHAT_REGISTRY=
 export KEYSTORE_PASS="golden-test-pass"
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 export CASSANDRA_CONTACT_POINTS=127.0.0.1
@@ -89,6 +92,9 @@ CASES=(
   "shell-client|shell --run --notls --long --node-id 0"                                            # [parity]
   # root key roles under consul discovery. See RootKeySource in chat-deploy.
   "shell-consul|shell --consul --run --notls --long --node-id 0"
+  # --registry names the registry, and --core-id the target core. The first
+  # node id stays the shell's own. See CHAT-yexqiyie.
+  "shell-registry-core-id|shell --run --notls --key-type uuid --node-id 1 --registry 10.0.0.9:6892 --core-id 9"
   "authserv-consul|authserv --consul --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
 )
 
@@ -122,6 +128,11 @@ REFUSALS=(
   # --key-type. See CHAT-brlctoze.
   "refuse-key-type-unknown|core --memory --run --notls --key-type bogus --node-id 0|2|invalid choice: 'bogus'"
   "refuse-key-type-conflict|core --memory --run --notls --key-type long --uuid --node-id 0|1|--long conflicts with --uuid"
+  # --registry and --core-id. See CHAT-yexqiyie.
+  "refuse-core-id-without-registry|shell --run --notls --key-type uuid --node-id 1 --core-id 9|2|--core-id needs --registry"
+  "refuse-registry-service|core --memory --run --notls --key-type uuid --node-id 0 --registry 10.0.0.9:6892|2|--registry requires the shell service"
+  "refuse-registry-shape|shell --run --notls --key-type uuid --node-id 1 --registry 10.0.0.9|2|--registry takes HOST:PORT"
+  "refuse-core-id-range|shell --run --notls --key-type uuid --node-id 1 --registry 10.0.0.9:6892 --core-id 2000|2|0..1023"
   "refuse-vector-without-embedding|core --cassandra --build --notls --key-type uuid --node-id 0 --vector embedded|2|--vector and --embedding must be set together"
   "refuse-embedding-without-vector|core --cassandra --build --notls --key-type uuid --node-id 0 --embedding openai|2|--vector and --embedding must be set together"
 )

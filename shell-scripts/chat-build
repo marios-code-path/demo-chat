@@ -830,10 +830,18 @@ class BuildContext:
             "-Dspring.security.user.roles=ACTUATOR",
         ]
         if self.discovery == "consul":
-            host = os.environ.get("CONSUL_HOST") or find_consul_host()
+            # --registry names the registry. Without it, the launch looks for a
+            # consul container. See CHAT-yexqiyie.
+            registry = getattr(self.args, "registry", "")
+            if registry:
+                host, _, port = registry.rpartition(":")
+                consul_port = int(port)
+            else:
+                host = os.environ.get("CONSUL_HOST") or find_consul_host()
+                consul_port = CONSUL_PORT
             flags = [
                 f"-Dspring.cloud.consul.host={host}",
-                f"-Dspring.cloud.consul.port={CONSUL_PORT}",
+                f"-Dspring.cloud.consul.port={consul_port}",
                 "-Dspring.cloud.consul.discovery.enabled=true",
                 "-Dspring.cloud.consul.discovery.preferIpAddress=true",
                 "-Dspring.cloud.consul.discovery.health-check-headers[0]="
@@ -841,6 +849,9 @@ class BuildContext:
             ] + actuator_user
             if self.service.client_proto:
                 flags.append("-Dapp.client.discovery=consul")
+            core_id = getattr(self.args, "core_id", None)
+            if core_id is not None:
+                flags.append(f"-Dapp.client.discovery.core-id={core_id}")
             return flags
 
         flags = [
@@ -1080,6 +1091,14 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                              "an absolute path. Without it they stay in memory")
     parser.add_argument("--agent-scope", default="chat.mcp",
                         help="scope required by every agent token")
+    # Both flags belong to the shell service. Every parser takes them, so
+    # another service refuses them by name. See CHAT-yexqiyie.
+    parser.add_argument("--registry", metavar="HOST:PORT", default="",
+                        help="shell only: the Consul registry the client reads. "
+                             "It selects consul discovery. CHAT_REGISTRY is the default")
+    parser.add_argument("--core-id", metavar="ID", type=node_id_value, default=None,
+                        help="shell only: the node id of the target core. "
+                             "It needs --registry")
     # Removed by CHAT-frcrctdp. Kept hidden so that a launch that names them
     # fails with a message that names --agent.
     parser.add_argument("--agent-client-id", default=None, help=argparse.SUPPRESS)
@@ -1141,6 +1160,32 @@ def main() -> int:
               f"{' or '.join(key_types)}. A launch and an image build have no default "
               f"key type.", file=sys.stderr)
         return 2
+
+    # The shell names its registry and its target core. Another service has
+    # no such option, and local discovery holds no node id. See CHAT-yexqiyie.
+    if args.service != "shell":
+        if args.registry:
+            print("chat-build: --registry requires the shell service", file=sys.stderr)
+            return 2
+        if args.core_id is not None:
+            print("chat-build: --core-id requires the shell service", file=sys.stderr)
+            return 2
+    else:
+        if not args.registry:
+            args.registry = os.environ.get("CHAT_REGISTRY", "")
+        if args.registry:
+            host, sep, port = args.registry.rpartition(":")
+            if not sep or not host or not port.isdigit():
+                print(f"chat-build: --registry takes HOST:PORT, got '{args.registry}'",
+                      file=sys.stderr)
+                return 2
+            # A named registry is a consul registry, so it selects that
+            # discovery mode. The caller needs no second flag.
+            args.consul = True
+        if args.core_id is not None and not args.registry:
+            print("chat-build: --core-id needs --registry. Local discovery holds no "
+                  "node id.", file=sys.stderr)
+            return 2
 
     if args.service == "core" and (args.index or args.pubsub) and not args.cassandra:
         print("chat-build: --index and --pubsub require --cassandra", file=sys.stderr)

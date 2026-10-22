@@ -1,4 +1,4 @@
-# profiles: client-backend,deploy,discovery-consul,register-consul,shell
+# profiles: client-backend,deploy,discovery-consul,register-consul,shell,shell-host
 --add-modules=jdk.incubator.vector
 --enable-native-access=ALL-UNNAMED
 -Dapp.client.discovery=consul
