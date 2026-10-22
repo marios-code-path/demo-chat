@@ -367,13 +367,28 @@ check_bundle() {
         || { import_error "the bundle directory is not mode 0700"; return; }
     for file in content-manifest.json bundle-manifest.json source.md \
         mapping.json; do
-        [[ -f "$bundle/$file" ]] \
+        [[ -f "$bundle/$file" && ! -L "$bundle/$file" ]] \
             || { import_error "$file is absent from the bundle"; return; }
     done
+    # A symlink can point at bytes that no review covered, and a loose
+    # directory lets another user read every part. Both stop the check.
+    while IFS= read -r file; do
+        import_error "$(basename "$file") is a symbolic link"
+        return
+    done < <(find "$bundle" -type l | sort)
+    while IFS= read -r file; do
+        [[ "$(file_mode "$file")" == '700' ]] \
+            || { import_error "the directory $(basename "$file") is not mode 0700"; return; }
+    done < <(find "$bundle" -type d | sort)
     while IFS= read -r file; do
         [[ "$(file_mode "$file")" == '600' ]] \
             || { import_error "$(basename "$file") is not mode 0600"; return; }
     done < <(find "$bundle" -type f | sort)
+    # Every path of the bundle is one directory or one regular file.
+    while IFS= read -r file; do
+        import_error "$(basename "$file") is not a regular file"
+        return
+    done < <(find "$bundle" ! -type d ! -type f ! -type l | sort)
 
     jq -e . "$bundle/content-manifest.json" > /dev/null 2>&1 \
         || { import_error 'content-manifest.json is not valid JSON'; return; }
@@ -393,7 +408,7 @@ check_bundle() {
         path="$(jq -r '.path' <<< "$row")"
         bytes="$(jq -r '.bytes' <<< "$row")"
         sha="$(jq -r '.sha256' <<< "$row")"
-        if [[ ! -f "$bundle/$path" ]]; then
+        if [[ ! -f "$bundle/$path" || -L "$bundle/$path" ]]; then
             import_error "$(basename "$path") is absent from the bundle"
             return
         fi
@@ -572,9 +587,98 @@ ensure_index() {
     return 0
 }
 
+# write_snapshot_header FILE  Write the provenance header of the snapshot.
+write_snapshot_header() {
+    local manifest="$import_bundle/content-manifest.json"
+    {
+        printf 'register snapshot\n'
+        printf 'bundle: %s\n' \
+            "$(jq -r '.content_sha256' "$import_bundle/bundle-manifest.json")"
+        printf 'source: %s\n' "$(jq -r '.source_sha256' "$manifest")"
+        printf 'source date: %s\n' "$(jq -r '.mapping.source_date' "$manifest")"
+        printf 'source basis: %s\n' \
+            "$(jq -r '.mapping.source_basis' "$manifest")"
+        printf 'parts: %s\n' "$(jq -r '.parts | length' "$manifest")"
+    } > "$1"
+}
+
+# write_entry_header FILE INDEX  Write the provenance header of one entry.
+write_entry_header() {
+    local file="$1" index="$2" manifest="$import_bundle/content-manifest.json"
+    {
+        printf 'register entry\n'
+        printf 'bundle: %s\n' \
+            "$(jq -r '.content_sha256' "$import_bundle/bundle-manifest.json")"
+        printf 'key: %s\n' "$(jq -r ".entries[$index].key" "$manifest")"
+        printf 'title: %s\n' "$(jq -r ".entries[$index].title" "$manifest")"
+        printf 'source: %s\n' "$(jq -r '.source_sha256' "$manifest")"
+    } > "$file"
+}
+
+# topic_candidates TOPIC
+# Print every message that this bundle plans for one topic, as
+# <kind>|<index>|<payload file>. A retry compares a stored message of no
+# receipt with these payloads.
+topic_candidates() {
+    local topic="$1" manifest="$import_bundle/content-manifest.json"
+    local source_hash count index entry_topic
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    if [[ "$topic" == "$(snapshot_topic "$source_hash")" ]]; then
+        write_snapshot_header "$import_work/candidate-header.txt"
+        printf 'snapshot-header|0|%s\n' "$import_work/candidate-header.txt"
+        count="$(jq -r '.parts | length' "$manifest")"
+        for (( index = 0; index < count; index++ )); do
+            printf 'snapshot-part|%s|%s\n' "$index" \
+                "$import_bundle/$(jq -r ".parts[$index].path" "$manifest")"
+        done
+        printf 'session|0|%s\n' \
+            "$import_bundle/$(jq -r '.session.path' "$manifest")"
+        return 0
+    fi
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        [[ "$entry_topic" == "$topic" ]] || continue
+        write_entry_header "$import_work/candidate-header.txt" "$index"
+        printf 'entry-header|0|%s\n' "$import_work/candidate-header.txt"
+        printf 'entry|0|%s\n' \
+            "$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
+        return 0
+    done
+    return 0
+}
+
+# adopt_message TOPIC MESSAGE_ID LIVE_FILE RECEIPT_FILE
+# Take a stored message of no receipt when its bytes match one payload that
+# this bundle plans for the topic. A crash between a post and its receipt
+# leaves exactly that state. The receipt then lets the retry send the same
+# request ID. Return 1 when no payload matches.
+adopt_message() {
+    local topic="$1" message_id="$2" live_file="$3" receipt_file="$4"
+    local row kind index path request_id
+    jq -j --arg id "$message_id" 'select(.id == $id) | .text' "$live_file" \
+        > "$import_work/adopt.text" 2> /dev/null
+    while IFS='|' read -r kind index path; do
+        [[ -n "$kind" ]] || continue
+        cmp -s "$path" "$import_work/adopt.text" || continue
+        request_id="$(request_id_for "$import_bundle/bundle-manifest.json" \
+            "$kind" "$topic" "$index")"
+        [[ -n "$request_id" ]] || return 1
+        ( umask 077
+          jq -cS -n --arg request "$request_id" --arg message "$message_id" \
+            --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+            '{requestId: $request, messageId: $message, kind: $kind,
+              topic: $topic, index: $index}' >> "$receipt_file" )
+        return 0
+    done < <(topic_candidates "$topic")
+    return 1
+}
+
 # check_one_target TOPIC RECEIPT_FILE
-# Check one target topic before a write. An absent topic passes. An existing
-# topic passes only when every live message carries a receipt of this bundle.
+# Check one target topic before a write. An absent topic passes. With no
+# receipt of this bundle, an existing topic stops the import, because the
+# import is a fresh one. On a retry, a stored message of no receipt passes
+# only when its bytes match one planned payload.
 check_one_target() {
     local topic="$1" receipt_file="$2" room out live
     room="$(topic_room_id "$topic")" \
@@ -586,14 +690,20 @@ check_one_target() {
     fi
     out="$("$import_cli_path" messages "$topic" --format records 2> /dev/null)" \
         || { import_error "the readback of $topic fails"; return 1; }
+    printf '%s\n' "$out" > "$import_work/target.jsonl"
     while IFS= read -r live; do
         [[ -n "$live" ]] || continue
-        if ! jq -e -s --arg id "$live" --arg topic "$topic" \
+        if jq -e -s --arg id "$live" --arg topic "$topic" \
             'any(.[]; .messageId == $id and .topic == $topic)' \
             "$receipt_file" > /dev/null 2>&1; then
-            import_error "the topic $topic holds the message $live of no receipt"
-            return 1
+            continue
         fi
+        if adopt_message "$topic" "$live" "$import_work/target.jsonl" \
+            "$receipt_file"; then
+            continue
+        fi
+        import_error "the topic $topic holds the message $live of no receipt and of other bytes"
+        return 1
     done < <(printf '%s\n' "$out" | jq -r 'select(.id) | .id' 2> /dev/null)
     return 0
 }
@@ -820,14 +930,7 @@ import_posts() {
     add_topic_once "$topic" || return 1
     : > "$import_work/posted.jsonl"
 
-    {
-        printf 'register snapshot\n'
-        printf 'bundle: %s\n' "$bundle_hash"
-        printf 'source: %s\n' "$source_hash"
-        printf 'source date: %s\n' "$source_date"
-        printf 'source basis: %s\n' "$basis"
-        printf 'parts: %s\n' "$count"
-    } > "$import_work/snapshot-header.txt"
+    write_snapshot_header "$import_work/snapshot-header.txt"
     message_id="$(post_once "$receipt_dir" snapshot-header "$topic" 0 \
         "$import_work/snapshot-header.txt")" || return $?
     jq -cS -n --arg id "$message_id" \
@@ -859,13 +962,7 @@ import_posts() {
         part_path="$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
         add_topic_once "$entry_topic" || return 1
         : > "$import_work/posted.jsonl"
-        {
-            printf 'register entry\n'
-            printf 'bundle: %s\n' "$bundle_hash"
-            printf 'key: %s\n' "$key"
-            printf 'title: %s\n' "$title"
-            printf 'source: %s\n' "$source_hash"
-        } > "$import_work/entry-header.txt"
+        write_entry_header "$import_work/entry-header.txt" "$index"
         message_id="$(post_once "$receipt_dir" entry-header "$entry_topic" 0 \
             "$import_work/entry-header.txt")" || return $?
         jq -cS -n --arg id "$message_id" \

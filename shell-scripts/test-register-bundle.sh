@@ -391,6 +391,36 @@ else
     bad 'check_bundle_accepts_a_packed_bundle' "exit $status, output: $out"
 fi
 
+# A part that is a symlink can point outside the bundle. The bytes then come
+# from a file that no review covered. See the Sigma review of 2026-10-22.
+rm -rf "$work/t-symlink" "$work/outside"
+mkdir -p "$work/outside"
+cp -R "$work/bundle-a" "$work/t-symlink"
+link_part="$(find "$work/t-symlink/parts" -type f | sort | head -1)"
+cp "$link_part" "$work/outside/$(basename "$link_part")"
+rm -f "$link_part"
+ln -s "$work/outside/$(basename "$link_part")" "$link_part"
+out="$(run_check_bundle "$work/t-symlink" 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *"$(basename "$link_part")"* ]]; then
+    ok 'check_bundle_refuses_a_part_symlink'
+else
+    bad 'check_bundle_refuses_a_part_symlink' "exit $status, output: $out"
+fi
+
+# Every directory of the bundle holds mode 0700. A loose directory lets
+# another user read every part.
+rm -rf "$work/t-loose-dir"
+cp -R "$work/bundle-a" "$work/t-loose-dir"
+chmod 755 "$work/t-loose-dir/parts"
+out="$(run_check_bundle "$work/t-loose-dir" 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'parts'* ]]; then
+    ok 'check_bundle_refuses_a_loose_directory'
+else
+    bad 'check_bundle_refuses_a_loose_directory' "exit $status, output: $out"
+fi
+
 tamper_case='ok'
 # One tampered bundle for each case. Each copy starts from a clean pack.
 for name in edited-part missing-part loose-mode edited-manifest; do
