@@ -145,6 +145,14 @@ case "$command_name" in
         done
         [[ -n "$topic" ]] || { printf 'stub: post needs --topic\n' >&2; exit 2; }
         cat > "$state/last-post"
+        # A post that once stayed uncertain stays uncertain while the switch
+        # holds. The message is stored, so a later run finds it by its
+        # request ID and makes no second message.
+        if [[ -n "$request_id" && -f "$state/uncertain/$request_id" \
+              && "${STUB_FAIL_AFTER_POST:-0}" != '0' ]]; then
+            printf 'stub: the post outcome is uncertain\n' >&2
+            exit 75
+        fi
         if [[ -n "$request_id" && -f "$state/requests/$request_id" ]]; then
             id="$(cat "$state/requests/$request_id")"
             grep -h "\"$id\"" "$state/messages/$topic.jsonl" 2> /dev/null \
@@ -159,9 +167,11 @@ case "$command_name" in
         posts="$(cat "$state/posts")"
         posts=$((posts + 1))
         printf '%s\n' "$posts" > "$state/posts"
-        if [[ "${STUB_FAIL_AFTER_POST:-0}" =~ ^[0-9]+$ ]] \
-           && (( STUB_FAIL_AFTER_POST > 0 )) \
-           && (( posts == STUB_FAIL_AFTER_POST )); then
+        fail_after="${STUB_FAIL_AFTER_POST:-0}"
+        [[ "$fail_after" =~ ^[0-9]+$ ]] || fail_after=0
+        if (( fail_after > 0 )) && (( posts == fail_after )); then
+            mkdir -p "$state/uncertain"
+            [[ -n "$request_id" ]] && : > "$state/uncertain/$request_id"
             printf 'stub: the post outcome is uncertain\n' >&2
             exit 75
         fi

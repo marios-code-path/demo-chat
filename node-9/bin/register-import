@@ -566,29 +566,342 @@ ensure_index() {
     return 0
 }
 
-# check_target_topics BUNDLE
-# Check every target name of one bundle before the first write. An existing
-# name stops the import with status 1.
+# check_one_target TOPIC RECEIPT_FILE
+# Check one target topic before a write. An absent topic passes. An existing
+# topic passes only when every live message carries a receipt of this bundle.
+check_one_target() {
+    local topic="$1" receipt_file="$2" room out live
+    room="$(topic_room_id "$topic")" \
+        || { import_error "the read of $topic fails"; return 1; }
+    [[ -n "$room" ]] || return 0
+    if [[ ! -s "$receipt_file" ]]; then
+        import_error "the target topic $topic exists already"
+        return 1
+    fi
+    out="$("$import_cli_path" messages "$topic" --format records 2> /dev/null)" \
+        || { import_error "the readback of $topic fails"; return 1; }
+    while IFS= read -r live; do
+        [[ -n "$live" ]] || continue
+        if ! jq -e -s --arg id "$live" --arg topic "$topic" \
+            'any(.[]; .messageId == $id and .topic == $topic)' \
+            "$receipt_file" > /dev/null 2>&1; then
+            import_error "the topic $topic holds the message $live of no receipt"
+            return 1
+        fi
+    done < <(printf '%s\n' "$out" | jq -r 'select(.id) | .id' 2> /dev/null)
+    return 0
+}
+
+# check_target_topics BUNDLE [RECEIPT_FILE]
+# Check every target name of one bundle before the first write.
 check_target_topics() {
-    local bundle="$1" source_hash topic room count index
+    local bundle="$1" receipt_file="${2:-}" source_hash topic count index
     source_hash="$(jq -r '.source_sha256' "$bundle/content-manifest.json" \
         2> /dev/null)"
     [[ -n "$source_hash" ]] \
         || { import_error 'the bundle holds no source hash'; return 1; }
-    topic="$(snapshot_topic "$source_hash")"
-    room="$(topic_room_id "$topic")" \
-        || { import_error "the read of $topic fails"; return 1; }
-    [[ -z "$room" ]] \
-        || { import_error "the target topic $topic exists already"; return 1; }
+    check_one_target "$(snapshot_topic "$source_hash")" "$receipt_file" \
+        || return 1
     count="$(jq -r '.entries | length' "$bundle/content-manifest.json")"
     for (( index = 0; index < count; index++ )); do
         topic="$(jq -r ".entries[$index].topic" \
             "$bundle/content-manifest.json")"
-        room="$(topic_room_id "$topic")" \
-            || { import_error "the read of $topic fails"; return 1; }
-        [[ -z "$room" ]] \
-            || { import_error "the target topic $topic exists already"; return 1; }
+        check_one_target "$topic" "$receipt_file" || return 1
     done
+    return 0
+}
+
+# load_receipts RECEIPT_FILE
+# Check every receipt line. Return 1 for a malformed file.
+load_receipts() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
+    if ! jq -e -s 'all(.[]; (.requestId | type) == "string"
+                            and (.messageId | type) == "string"
+                            and (.kind | type) == "string"
+                            and (.topic | type) == "string")' \
+        "$file" > /dev/null 2>&1; then
+        import_error 'the receipt file holds a malformed line'
+        return 1
+    fi
+    return 0
+}
+
+# receipt_message_id RECEIPT_FILE REQUEST_ID
+# Print the stored message ID of one request, or nothing.
+receipt_message_id() {
+    [[ -f "$1" ]] || return 0
+    jq -r --arg id "$2" 'select(.requestId == $id) | .messageId' "$1" \
+        2> /dev/null | head -1
+}
+
+# request_id_for MANIFEST KIND TOPIC INDEX
+# Print the request ID that pack derived for one message.
+request_id_for() {
+    jq -r --arg kind "$2" --arg topic "$3" --argjson index "$4" \
+        '[.requests[] | select(.kind == $kind and .topic == $topic
+                               and .index == $index) | .request_id][0] // ""' \
+        "$1"
+}
+
+# resolve_uncertain RECEIPT_DIR KIND REQUEST_TOPIC INDEX FILE TARGET REQUEST_ID
+# Read one topic after an uncertain post. A stored message with the posted
+# bytes and no receipt takes a receipt now. The run still stops with 75,
+# because the core reported an uncertain outcome. The receipt keeps a later
+# run from finding a message of no receipt.
+resolve_uncertain() {
+    local receipt_dir="$1" kind="$2" topic="$3" index="$4" file="$5"
+    local target="$6" request_id="$7" out live
+    out="$("$import_cli_path" messages "$target" --format records \
+        2> /dev/null)" || return 0
+    printf '%s\n' "$out" > "$import_work/uncertain.jsonl"
+    while IFS= read -r live; do
+        [[ -n "$live" ]] || continue
+        if [[ -n "$(receipt_message_id "$receipt_dir/receipts.jsonl" \
+            "$request_id")" ]]; then
+            return 0
+        fi
+        if jq -e -s --arg id "$live" 'any(.[]; .messageId == $id)' \
+            "$receipt_dir/receipts.jsonl" > /dev/null 2>&1; then
+            continue
+        fi
+        jq -j --arg id "$live" 'select(.id == $id) | .text' \
+            "$import_work/uncertain.jsonl" > "$import_work/uncertain.text" \
+            2> /dev/null
+        if cmp -s "$file" "$import_work/uncertain.text"; then
+            ( umask 077
+              jq -cS -n --arg request "$request_id" --arg message "$live" \
+                --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+                '{requestId: $request, messageId: $message, kind: $kind,
+                  topic: $topic, index: $index}' \
+                >> "$receipt_dir/receipts.jsonl" )
+            return 0
+        fi
+    done < <(printf '%s\n' "$out" | jq -r 'select(.id) | .id' 2> /dev/null)
+    return 0
+}
+
+# post_once RECEIPT_DIR KIND REQUEST_TOPIC INDEX FILE [POST_TOPIC]
+# Post one payload with its derived request ID, and keep a receipt. Print the
+# message ID. A pointer names its target topic in the request and reaches the
+# index, so POST_TOPIC can differ from REQUEST_TOPIC.
+#
+# A repeated request ID returns the first message ID, so a retry makes no
+# second message. A stored receipt with another message ID stops the import.
+post_once() {
+    local receipt_dir="$1" kind="$2" topic="$3" index="$4" file="$5"
+    local target="${6:-$3}"
+    local request_id stored out status message_id
+    request_id="$(request_id_for "$import_bundle/bundle-manifest.json" \
+        "$kind" "$topic" "$index")"
+    [[ -n "$request_id" ]] \
+        || { import_error "the bundle holds no request ID for $kind in $topic"; return 1; }
+    stored="$(receipt_message_id "$receipt_dir/receipts.jsonl" "$request_id")"
+    out="$("$import_cli_path" post --topic "$target" \
+        --requestId "$request_id" < "$file" 2> /dev/null)"
+    status=$?
+    if (( status == 75 )); then
+        out="$("$import_cli_path" post --topic "$target" \
+            --requestId "$request_id" < "$file" 2> /dev/null)"
+        status=$?
+        if (( status != 0 )); then
+            resolve_uncertain "$receipt_dir" "$kind" "$topic" "$index" \
+                "$file" "$target" "$request_id"
+            import_error "the post of $kind in $target stays uncertain"
+            return 75
+        fi
+    fi
+    if (( status != 0 )); then
+        import_error "the post of $kind in $target returned $status"
+        return 1
+    fi
+    message_id="$(printf '%s\n' "$out" | jq -r 'select(.id) | .id' \
+        2> /dev/null | head -1)"
+    if [[ -z "$message_id" ]]; then
+        import_error "the post of $kind in $target returned no message ID"
+        return 75
+    fi
+    if [[ -n "$stored" && "$stored" != "$message_id" ]]; then
+        import_error "the receipt of $kind in $target names another message ID"
+        return 1
+    fi
+    if [[ -z "$stored" ]]; then
+        ( umask 077
+          jq -cS -n --arg request "$request_id" --arg message "$message_id" \
+            --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+            '{requestId: $request, messageId: $message, kind: $kind,
+              topic: $topic, index: $index}' \
+            >> "$receipt_dir/receipts.jsonl" )
+    fi
+    printf '%s\n' "$message_id"
+}
+
+# add_topic_once TOPIC  Create one topic when it is absent.
+add_topic_once() {
+    local topic="$1" room
+    room="$(topic_room_id "$topic")" \
+        || { import_error "the read of $topic fails"; return 1; }
+    [[ -z "$room" ]] || return 0
+    "$import_cli_path" add-topic --name "$topic" > /dev/null 2>&1 \
+        || { import_error "the new topic $topic fails"; return 1; }
+    return 0
+}
+
+# verify_topic TOPIC POSTED_FILE
+# Read one topic and compare every posted message with its bytes. The last
+# line of POSTED_FILE must hold the newest message of the topic.
+verify_topic() {
+    local topic="$1" posted="$2" out row id path last_id newest
+    out="$("$import_cli_path" messages "$topic" --format records 2> /dev/null)" \
+        || { import_error "the readback of $topic fails"; return 1; }
+    printf '%s\n' "$out" > "$import_work/live.jsonl"
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        id="$(jq -r '.id' <<< "$row")"
+        path="$(jq -r '.path' <<< "$row")"
+        jq -j --arg id "$id" 'select(.id == $id) | .text' \
+            "$import_work/live.jsonl" > "$import_work/live.text" 2> /dev/null
+        if ! cmp -s "$path" "$import_work/live.text"; then
+            import_error "the readback of $topic shows other bytes for $id"
+            return 1
+        fi
+    done < "$posted"
+    last_id="$(jq -r '.id' "$posted" | tail -1)"
+    newest="$(jq -r 'select(.id) | .id' "$import_work/live.jsonl" \
+        2> /dev/null | tail -1)"
+    if [[ "$last_id" != "$newest" ]]; then
+        import_error "the newest message of $topic is $newest, not $last_id"
+        return 1
+    fi
+    return 0
+}
+
+# join_all TOPIC  Join Sigma, Theta, Phi, and Mario to one topic.
+join_all() {
+    local topic="$1" name file secrets_dir
+    secrets_dir="${NODE9_SECRETS_DIR:-$NODE9_DIR/secrets}"
+    for name in Sigma Theta Phi Mario; do
+        if [[ "$name" == 'Mario' ]]; then
+            file="$import_work/Mario.password"
+        else
+            file="$secrets_dir/$name.password"
+        fi
+        CHAT_SHELL_USER="$name" CHAT_SHELL_PASSWORD_FILE="$file" \
+            "$import_cli_path" join "$topic" > /dev/null 2>&1 \
+            || { import_error "$name does not join $topic"; return 1; }
+    done
+    return 0
+}
+
+# import_posts RECEIPT_DIR
+# Post the snapshot topic, every entry topic, and every pointer. The order
+# follows the design file. No pointer precedes the readback of its topic.
+import_posts() {
+    local receipt_dir="$1"
+    local manifest="$import_bundle/content-manifest.json"
+    local source_hash source_date basis topic count index part_path
+    local message_id entry_topic key title bundle_hash status
+
+    manifest="$import_bundle/content-manifest.json"
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    source_date="$(jq -r '.mapping.source_date' "$manifest")"
+    basis="$(jq -r '.mapping.source_basis' "$manifest")"
+    bundle_hash="$(jq -r '.content_sha256' \
+        "$import_bundle/bundle-manifest.json")"
+    topic="$(snapshot_topic "$source_hash")"
+    count="$(jq -r '.parts | length' "$manifest")"
+
+    add_topic_once "$topic" || return 1
+    : > "$import_work/posted.jsonl"
+
+    {
+        printf 'register snapshot\n'
+        printf 'bundle: %s\n' "$bundle_hash"
+        printf 'source: %s\n' "$source_hash"
+        printf 'source date: %s\n' "$source_date"
+        printf 'source basis: %s\n' "$basis"
+        printf 'parts: %s\n' "$count"
+    } > "$import_work/snapshot-header.txt"
+    message_id="$(post_once "$receipt_dir" snapshot-header "$topic" 0 \
+        "$import_work/snapshot-header.txt")" || return $?
+    jq -cS -n --arg id "$message_id" \
+        --arg path "$import_work/snapshot-header.txt" \
+        '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+
+    for (( index = 0; index < count; index++ )); do
+        part_path="$import_bundle/$(jq -r ".parts[$index].path" "$manifest")"
+        message_id="$(post_once "$receipt_dir" snapshot-part "$topic" \
+            "$index" "$part_path")" || return $?
+        jq -cS -n --arg id "$message_id" --arg path "$part_path" \
+            '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+    done
+
+    part_path="$import_bundle/$(jq -r '.session.path' "$manifest")"
+    message_id="$(post_once "$receipt_dir" session "$topic" 0 "$part_path")" \
+        || return $?
+    jq -cS -n --arg id "$message_id" --arg path "$part_path" \
+        '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+
+    verify_topic "$topic" "$import_work/posted.jsonl" || return 1
+    join_all "$topic" || return 1
+
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        key="$(jq -r ".entries[$index].key" "$manifest")"
+        title="$(jq -r ".entries[$index].title" "$manifest")"
+        part_path="$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
+        add_topic_once "$entry_topic" || return 1
+        : > "$import_work/posted.jsonl"
+        {
+            printf 'register entry\n'
+            printf 'bundle: %s\n' "$bundle_hash"
+            printf 'key: %s\n' "$key"
+            printf 'title: %s\n' "$title"
+            printf 'source: %s\n' "$source_hash"
+        } > "$import_work/entry-header.txt"
+        message_id="$(post_once "$receipt_dir" entry-header "$entry_topic" 0 \
+            "$import_work/entry-header.txt")" || return $?
+        jq -cS -n --arg id "$message_id" \
+            --arg path "$import_work/entry-header.txt" \
+            '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+        message_id="$(post_once "$receipt_dir" entry "$entry_topic" 0 \
+            "$part_path")" || return $?
+        jq -cS -n --arg id "$message_id" --arg path "$part_path" \
+            '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+        verify_topic "$entry_topic" "$import_work/posted.jsonl" || return 1
+        join_all "$entry_topic" || return 1
+    done
+
+    : > "$import_work/pointers.jsonl"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        key="$(jq -r ".entries[$index].key" "$manifest")"
+        title="$(jq -r ".entries[$index].title" "$manifest")"
+        printf '%s | %s | %s | %s\n' "$key" "$entry_topic" "$bundle_hash" \
+            "$title" > "$import_work/pointer.txt"
+        message_id="$(post_once "$receipt_dir" entry-pointer "$entry_topic" 0 \
+            "$import_work/pointer.txt" register-index)" || return $?
+        printf '%s\n' "$message_id" >> "$import_work/pointers.jsonl"
+    done
+
+    printf '%s | %s | %s | %s\n' "$(snapshot_key "$source_hash")" "$topic" \
+        "$bundle_hash" "Forward register snapshot $source_date" \
+        > "$import_work/pointer.txt"
+    message_id="$(post_once "$receipt_dir" snapshot-pointer "$topic" 0 \
+        "$import_work/pointer.txt" register-index)" || return $?
+    printf '%s\n' "$message_id" >> "$import_work/pointers.jsonl"
+
+    "$import_cli_path" register-read > "$import_work/index.jsonl" 2> /dev/null \
+        || { import_error 'the index readback fails'; return 1; }
+    while IFS= read -r message_id; do
+        [[ -n "$message_id" ]] || continue
+        if ! jq -e -s --arg id "$message_id" 'any(.[]; .id == $id)' \
+            "$import_work/index.jsonl" > /dev/null 2>&1; then
+            import_error "the index readback misses the pointer $message_id"
+            return 1
+        fi
+    done < "$import_work/pointers.jsonl"
     return 0
 }
 
@@ -728,6 +1041,16 @@ apply_bundle() {
     local bundle_hash receipt_dir
     bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
     receipt_dir="$NODE9_DIR/data/register-import/$bundle_hash"
+    import_bundle="$bundle"
+    import_cli_path="$cli"
+    import_work="$work_dir"
+
+    mkdir -p "$receipt_dir" || { rm -rf "$work_dir"; import_error 'the receipt directory fails'; return; }
+    chmod 700 "$receipt_dir"
+    if ! load_receipts "$receipt_dir/receipts.jsonl"; then
+        rm -rf "$work_dir"
+        return 1
+    fi
 
     ensure_index "$receipt_dir"
     status=$?
@@ -735,16 +1058,24 @@ apply_bundle() {
         rm -rf "$work_dir"
         return "$status"
     fi
-    check_target_topics "$bundle"
+    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"
         return "$status"
     fi
 
+    import_posts "$receipt_dir"
+    status=$?
     rm -rf "$work_dir"
-    import_error 'the post steps arrive in a later task.'
-    return
+    if (( status != 0 )); then
+        return "$status"
+    fi
+    printf 'import: bundle %s\n' "$bundle_hash"
+    printf 'import: receipts %s\n' "$receipt_dir/receipts.jsonl"
+    printf 'import: messages %s\n' \
+        "$(grep -c . "$receipt_dir/receipts.jsonl")"
+    return 0
 }
 
 if [[ "${REGISTER_IMPORT_LIB:-}" == '1' ]]; then
