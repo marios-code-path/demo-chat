@@ -120,6 +120,21 @@ File: `chat-client-consul/.../ConsulClientDiscovery.kt`. The `ClientDiscovery` i
   **Measured on 2026-10-22: it did not happen.** After the restart the catalog
   held one instance alone, `core-service-rsocket-9`. No deregister was needed.
 - A registry that does not answer gives a client error with no registry in it.
-  **Fixed after Sigma's review.** `getServiceInstance` maps such an error to a
-  `DiscoveryException` that names the registry and keeps the cause. The lookup
-  then also retries, so a shell that starts before its registry waits for it.
+  **Fixed after Sigma's review, for failures after startup alone.**
+  `getServiceInstance` maps such an error to a `DiscoveryException` that names
+  the registry and keeps the cause, and the lookup then retries.
+
+  **Measured on 2026-10-22 with node 9 stopped: a registry that is down at
+  launch never reaches the discovery code.** The launch sets
+  `app.kv.store=consul`, so Spring Cloud Consul reads the configuration first
+  and uses fail fast. The shell stops with
+  `ConsulPropertySources$PropertySourceNotFoundException`, caused by
+  `Connection refused: /127.0.0.1:6892` on
+  `GET http://127.0.0.1:6892/v1/kv/config/chat-shell,shell/`. That message
+  already names the registry, so the user sees the cause.
+
+  So the map and the retry act on one case alone: a registry that answers at
+  startup and then fails in a later lookup. Mario chose to keep them for that
+  case. An earlier version of this entry said that the shell waits for a
+  registry that is not yet up. That claim was wrong, and the live test
+  disproved it. See the proof record of 2026-10-22.

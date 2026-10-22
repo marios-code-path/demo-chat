@@ -7,7 +7,8 @@ project, network, image tag, or volume with node 16.
 The design is in
 `docs/superpowers/specs/2026-10-17-topic-register-design.md`, section
 "Node 9". The live proof is in
-`docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`.
+`docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`. The shell attach proof
+is in `docs/superpowers/proofs/2026-10-22-shell-attach/RECORD.md`.
 
 ## Prerequisites
 

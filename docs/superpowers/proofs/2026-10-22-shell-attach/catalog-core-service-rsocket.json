@@ -1,0 +1,60 @@
+[
+    {
+        "ID": "34370b2d-875b-735b-d891-571d60867c42",
+        "Node": "d45cbf39f5e8",
+        "Address": "172.26.0.2",
+        "Datacenter": "dc1",
+        "TaggedAddresses": {
+            "lan": "172.26.0.2",
+            "lan_ipv4": "172.26.0.2",
+            "wan": "172.26.0.2",
+            "wan_ipv4": "172.26.0.2"
+        },
+        "NodeMeta": {
+            "consul-network-segment": "",
+            "consul-version": "2.0.4"
+        },
+        "ServiceKind": "",
+        "ServiceID": "core-service-rsocket-9",
+        "ServiceName": "core-service-rsocket",
+        "ServiceTags": [
+            "rsocket"
+        ],
+        "ServiceAddress": "172.26.0.5",
+        "ServiceTaggedAddresses": {
+            "lan_ipv4": {
+                "Address": "172.26.0.5",
+                "Port": 6790
+            },
+            "wan_ipv4": {
+                "Address": "172.26.0.5",
+                "Port": 6790
+            }
+        },
+        "ServiceWeights": {
+            "Passing": 1,
+            "Warning": 1
+        },
+        "ServiceMeta": {
+            "advertiseHost": "127.0.0.1",
+            "advertisePort": "6890",
+            "keyType": "uuid",
+            "nodeId": "9",
+            "rsocketPort": "6790",
+            "secure": "false"
+        },
+        "ServicePort": 6790,
+        "ServicePorts": null,
+        "ServiceSocketPath": "",
+        "ServiceEnableTagOverride": false,
+        "ServiceProxy": {
+            "Mode": "",
+            "MeshGateway": {},
+            "Expose": {}
+        },
+        "ServiceConnect": {},
+        "ServiceLocality": null,
+        "CreateIndex": 19,
+        "ModifyIndex": 19
+    }
+]
