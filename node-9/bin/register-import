@@ -674,19 +674,29 @@ adopt_message() {
     return 1
 }
 
-# check_one_target TOPIC RECEIPT_FILE
-# Check one target topic before a write. An absent topic passes. With no
-# receipt of this bundle, an existing topic stops the import, because the
-# import is a fresh one. On a retry, a stored message of no receipt passes
-# only when its bytes match one planned payload.
+# check_one_target TOPIC RECEIPT_FILE RETRY
+# Check one target topic before a write. An absent topic passes.
+#
+# On a fresh import, RETRY holds no value, and an existing target topic stops
+# the import. On a retry of this bundle, an existing topic passes when every
+# stored message of no receipt matches one planned payload. An empty topic
+# also passes, because a stopped run creates a topic before its first post.
+#
+# RETRY cannot come from the receipt file alone. A run that stops after its
+# first post leaves a stored message and no receipt. The caller reads the host
+# state of this bundle before the index step and passes the answer here.
 check_one_target() {
-    local topic="$1" receipt_file="$2" room out live
+    local topic="$1" receipt_file="$2" retry="${3:-}" room out live
     room="$(topic_room_id "$topic")" \
         || { import_error "the read of $topic fails"; return 1; }
     [[ -n "$room" ]] || return 0
-    if [[ ! -s "$receipt_file" ]]; then
+    if [[ "$retry" != 'true' ]]; then
         import_error "the target topic $topic exists already"
         return 1
+    fi
+    if [[ ! -f "$receipt_file" ]]; then
+        : > "$receipt_file"
+        chmod 600 "$receipt_file"
     fi
     out="$("$import_cli_path" messages "$topic" --format records 2> /dev/null)" \
         || { import_error "the readback of $topic fails"; return 1; }
@@ -708,21 +718,22 @@ check_one_target() {
     return 0
 }
 
-# check_target_topics BUNDLE [RECEIPT_FILE]
+# check_target_topics BUNDLE [RECEIPT_FILE] [RETRY]
 # Check every target name of one bundle before the first write.
 check_target_topics() {
-    local bundle="$1" receipt_file="${2:-}" source_hash topic count index
+    local bundle="$1" receipt_file="${2:-}" retry="${3:-}"
+    local source_hash topic count index
     source_hash="$(jq -r '.source_sha256' "$bundle/content-manifest.json" \
         2> /dev/null)"
     [[ -n "$source_hash" ]] \
         || { import_error 'the bundle holds no source hash'; return 1; }
     check_one_target "$(snapshot_topic "$source_hash")" "$receipt_file" \
-        || return 1
+        "$retry" || return 1
     count="$(jq -r '.entries | length' "$bundle/content-manifest.json")"
     for (( index = 0; index < count; index++ )); do
         topic="$(jq -r ".entries[$index].topic" \
             "$bundle/content-manifest.json")"
-        check_one_target "$topic" "$receipt_file" || return 1
+        check_one_target "$topic" "$receipt_file" "$retry" || return 1
     done
     return 0
 }
@@ -1156,6 +1167,15 @@ apply_bundle() {
     import_bundle="$bundle"
     import_work="$work_dir"
 
+    # A run of this bundle started here before when the host holds its index
+    # proof or one receipt. That answer must come before the index step,
+    # because the index step writes the proof itself.
+    local retry='false'
+    if [[ -s "$receipt_dir/receipts.jsonl" || -f "$receipt_dir/index.json" ]]
+    then
+        retry='true'
+    fi
+
     mkdir -p "$receipt_dir" \
         || { rm -rf "$work_dir"; import_error 'the receipt directory fails'; return; }
     chmod 700 "$receipt_dir"
@@ -1170,7 +1190,7 @@ apply_bundle() {
         rm -rf "$work_dir"
         return "$status"
     fi
-    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl"
+    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl" "$retry"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"

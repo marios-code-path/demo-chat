@@ -513,6 +513,30 @@ else
     bad 'retry_after_lost_receipt_completes' "$lost_case"
 fi
 
+# A crash after the first post of the snapshot topic leaves a stored message
+# and no receipt at all. The next apply must adopt that message and complete.
+# See the second Sigma review of 2026-10-22.
+reset_stub
+rm -rf "$receipts"
+full_apply
+first_before="$(grep -c . "$stub_state/messages/$snapshot_topic_name.jsonl")"
+rm -f "$receipts/receipts.jsonl"
+full_apply
+first_lost_case='ok'
+if [[ $status -ne 0 ]]; then
+    first_lost_case="the retry gave exit $status, not 0: $out"
+elif [[ "$(grep -c . "$stub_state/messages/$snapshot_topic_name.jsonl")" \
+        != "$first_before" ]]; then
+    first_lost_case='the retry added one message to the snapshot topic'
+elif [[ ! -s "$receipts/receipts.jsonl" ]]; then
+    first_lost_case='the retry wrote no receipt'
+fi
+if [[ "$first_lost_case" == 'ok' ]]; then
+    ok 'retry_after_lost_first_receipt_completes'
+else
+    bad 'retry_after_lost_first_receipt_completes' "$first_lost_case"
+fi
+
 # One changed receipt stops the retry.
 reset_stub
 rm -rf "$receipts"
