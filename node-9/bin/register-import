@@ -28,6 +28,12 @@ REGISTER_IMPORT_RANGE_LIMIT=16384
 # this value. A change of it changes every request ID.
 REGISTER_IMPORT_NAMESPACE='e9d6d78a-0020-43e3-9893-92737b9e536c'
 
+# apply and verify set these three values. They start empty, because this
+# file runs with set -u, and a library caller can enter one function alone.
+import_bundle=''
+import_cli_path=''
+import_work=''
+
 # import_error MESSAGE  Print one line on standard error and return 2.
 import_error() {
     printf 'register-import: %s\n' "$1" >&2

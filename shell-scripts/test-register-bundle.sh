@@ -342,6 +342,19 @@ else
     bad 'pack_prints_review_lines' "$review_case"
 fi
 
+# One mapping range above the last line of the source stops pack. The error
+# names the entry, and pack leaves no bundle directory.
+jq '.entries[0].after_line = 99' "$work/mapping.json" \
+    > "$work/mapping-over.json"
+out="$(pack "$work/source.md" "$work/mapping-over.json" \
+    "$work/bundle-over" 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'entry 0'* && ! -e "$work/bundle-over" ]]; then
+    ok 'pack_refuses_a_range_above_the_source'
+else
+    bad 'pack_refuses_a_range_above_the_source' "exit $status, output: $out"
+fi
+
 # The bundle carries no password, no receipt, and no destination message ID.
 # The old prototype suite held this case for its prepared state.
 secret_case='ok'
