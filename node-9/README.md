@@ -125,6 +125,23 @@ changed value. `NODE9_DIR` comes from `lib.sh`, not from the caller.
 The three ports bind to `127.0.0.1` alone. 6890 is the RSocket port of the
 core. 6891 is its management port. 6892 is the Consul registry.
 
+## Attach the shell to node 9
+
+Run this from a source tree:
+
+```bash
+just launch-shell 1 --key-type uuid --registry 127.0.0.1:6892 --core-id 9
+```
+
+`--registry` names the registry of node 9. `--core-id 9` names the core. The
+first argument is the node id of the shell, not of the core. The key type
+must match the core, which is `uuid`.
+
+The core registers the instance id `core-service-rsocket-9`. Its metadata
+holds `nodeId`, `advertiseHost` and `advertisePort`. `advertise.yml` sets the
+last two, because Consul holds the address of the container network, and a
+client on the host cannot reach it. See CHAT-yexqiyie.
+
 ## Install outside the source tree
 
 Run `node-9/install --prefix /opt/demo-chat/node-9`. The prefix defaults to
