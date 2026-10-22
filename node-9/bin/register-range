@@ -1,0 +1,72 @@
+#!/usr/bin/env perl
+# Cut one line range from a source into exact bytes. See CHAT-jmnjvupr.
+#
+#   register-range <source-file> <first-line> <after-line> <new-output-file>
+#
+# Line numbers start at one. first-line is inclusive, and after-line is
+# exclusive. A line holds its bytes through its LF. The last line of a file
+# without a final LF holds its bytes to the end of the file.
+#
+# The command prints one JSON object with the byte offset, the byte count,
+# and the SHA-256 of the range. A refusal prints one line on standard error
+# and returns status 2.
+use strict;
+use warnings;
+use Digest::SHA qw(sha256_hex);
+use JSON::PP;
+
+my $limit = 16384;
+
+sub refuse {
+    print STDERR "register-range: $_[0]\n";
+    exit 2;
+}
+
+@ARGV == 4
+    or refuse('use <source-file> <first-line> <after-line> <output-file>');
+my ($source, $first_line, $after_line, $output) = @ARGV;
+
+-f $source && !-l $source or refuse('the source is not a regular file');
+$first_line =~ /\A[0-9]+\z/ or refuse('the first line is not a number');
+$after_line =~ /\A[0-9]+\z/ or refuse('the line after the range is not a number');
+-e $output || -l $output and refuse('the output path exists');
+
+open my $input, '<:raw', $source or refuse('the source does not open');
+my $data = do { local $/; <$input> };
+close $input or refuse('the source does not close');
+defined $data && length($data) or refuse('the source is empty');
+
+# One start offset for every line of the source. A final LF closes the last
+# line, and it starts no further line.
+my @line_start = (0);
+while ($data =~ /\n/g) {
+    push @line_start, pos($data);
+}
+pop @line_start if $line_start[-1] == length($data);
+my $lines = scalar @line_start;
+
+$first_line >= 1 or refuse('the first line is below 1');
+$first_line <= $lines
+    or refuse("the first line $first_line is above the last line $lines");
+$after_line > $first_line
+    or refuse('the range holds no line');
+$after_line <= $lines + 1
+    or refuse("the line after the range is above $lines plus 1");
+
+my $offset = $line_start[$first_line - 1];
+my $end = $after_line <= $lines ? $line_start[$after_line - 1] : length($data);
+my $bytes = $end - $offset;
+$bytes <= $limit
+    or refuse("the range holds $bytes bytes, above the limit of $limit");
+
+my $range = substr($data, $offset, $bytes);
+umask 0077;
+open my $out, '>:raw', $output or refuse('the output file does not open');
+print {$out} $range or refuse('the output file does not take the range');
+close $out or refuse('the output file does not close');
+
+print JSON::PP->new->canonical->encode({
+    offset => $offset,
+    bytes => $bytes,
+    sha256 => sha256_hex($range),
+}), "\n";

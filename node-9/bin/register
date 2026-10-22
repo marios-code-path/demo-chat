@@ -78,23 +78,19 @@ fail() {
     exit "${2:-1}"
 }
 
-# check_key KEY  Refuse a key that cannot stand in a pointer line. A key is
-# opaque text. This tool does not know where it comes from. It holds no |
-# delimiter, no backslash, and no control character. A backslash doubles in
-# the tab-separated form below, so a later read cannot match it. A key holds
-# no space at its start or its end, and at most 64 characters. The key - is
-# reserved for archive pointers.
+# check_key KEY  Refuse a key that cannot stand in a pointer line. The rule
+# lives in lib.sh as node9_key_error, because the importer applies the same
+# rule. See CHAT-jmnjvupr.
 check_key() {
-    local key="$1" trimmed
-    [[ -n "$key" ]] || fail 'the key is empty.' 2
-    (( ${#key} <= 64 )) || fail 'the key passes 64 characters.' 2
-    [[ "$key" != *'|'* ]] || fail 'the key holds the | delimiter.' 2
-    [[ "$key" != *[\\]* ]] || fail 'the key holds a backslash.' 2
-    [[ "$key" != *[[:cntrl:]]* ]] || fail 'the key holds a control character.' 2
-    trimmed="${key#"${key%%[![:space:]]*}"}"
-    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-    [[ "$key" == "$trimmed" ]] || fail 'the key holds a space at its start or its end.' 2
-    [[ "$key" != '-' ]] || fail 'the key - is reserved for archive pointers.' 2
+    local key_reason
+    key_reason="$(node9_key_error "$1")" || fail "$key_reason" 2
+}
+
+# check_title TITLE  Refuse a title that cannot stand in a pointer line. The
+# rule lives in lib.sh as node9_title_error.
+check_title() {
+    local title_reason
+    title_reason="$(node9_title_error "$1")" || fail "$title_reason" 2
 }
 
 # fixed NAME WANTED  Refuse a caller override of a node-9 value.
@@ -421,9 +417,7 @@ case "$command_name" in
         check_key "$key"
         [[ "$short" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
             || fail "the short name $short is not letters, digits, dot, dash, or underscore." 2
-        [[ -n "$title" ]] || fail 'the title is empty.' 2
-        [[ "$title" != *'|'* ]] || fail 'the title holds the | delimiter.' 2
-        [[ "$title" != *[[:cntrl:]]* ]] || fail 'the title holds a control character.' 2
+        check_title "$title"
         use_credentials
 
         read_index

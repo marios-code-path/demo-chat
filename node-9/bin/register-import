@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# Import one reviewed register snapshot into node 9. See CHAT-jmnjvupr and
+# docs/superpowers/specs/2026-10-21-portable-register-import-design.md.
+#
+#   register-import pack --source FILE --mapping FILE --bundle DIR
+#   register-import apply --bundle DIR --as Mario
+#   register-import verify --bundle DIR --as Mario
+#
+# pack makes no network call, and it needs no installed home. apply and
+# verify run from an installed home alone.
+#
+# A refusal prints one line on standard error and returns a nonzero status.
+# Status 2 names invalid input, an invalid bundle, or a failed guard. The
+# design file holds the complete status table.
+#
+# Set REGISTER_IMPORT_LIB=1 and source this file to get the functions alone.
+# The offline suite uses that mode. The command then runs nothing.
+set -uo pipefail
+
+register_import_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib.sh
+source "$register_import_dir/lib.sh"
+
+# The byte limit of one section, one session range, and one entry range.
+REGISTER_IMPORT_RANGE_LIMIT=16384
+
+# import_error MESSAGE  Print one line on standard error and return 2.
+import_error() {
+    printf 'register-import: %s\n' "$1" >&2
+    return 2
+}
+
+# validate_mapping MAPPING SOURCE
+# Check one mapping file against its source file. Print one reason and return
+# 2 for a mapping that cannot describe a safe import. Print nothing and return
+# 0 for a reviewed mapping.
+#
+# The structure check runs in one jq program. The key rule, the topic rule,
+# and the title rule run here, because the key and title rules live in lib.sh.
+# A caller runs this function once for one bundle.
+validate_mapping() {
+    local mapping="$1" source_file="$2"
+    local source_hash reason count index key topic title
+
+    [[ -f "$mapping" && ! -L "$mapping" ]] \
+        || { import_error 'the mapping is not a regular file'; return; }
+    [[ -f "$source_file" && ! -L "$source_file" ]] \
+        || { import_error 'the source is not a regular file'; return; }
+    jq -e . "$mapping" > /dev/null 2>&1 \
+        || { import_error 'the mapping is not valid JSON'; return; }
+
+    source_hash="$(shasum -a 256 "$source_file" | cut -d ' ' -f 1)"
+    reason="$(jq -r --arg sha "$source_hash" '
+        def whole(v): (v | type) == "number" and (v | floor) == v;
+        if (.version != 1) then
+            "the mapping version is not 1"
+        elif (((.source_sha256 // "") | type) != "string"
+              or ((.source_sha256 // "") | test("^[0-9a-f]{64}$") | not)) then
+            "the source hash is not 64 lowercase hexadecimal characters"
+        elif (.source_sha256 != $sha) then
+            "the source hash does not match the source file"
+        elif (((.source_date // "") | type) != "string"
+              or ((.source_date // "")
+                  | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$") | not)) then
+            "the source date is not one ISO date"
+        elif (((.source_basis // "") | type) != "string"
+              or ((.source_basis // "") | length) == 0) then
+            "the source basis is empty"
+        elif ((whole(.session.first_line) | not)
+              or (whole(.session.after_line) | not)) then
+            "the session range is not two whole numbers"
+        elif (.session.first_line < 1) then
+            "the session range starts below line 1"
+        elif (.session.after_line <= .session.first_line) then
+            "the session range holds no line"
+        elif ((.entries | type) != "array" or (.entries | length) == 0) then
+            "the mapping holds no entry"
+        elif ([.entries[] | select((.key | type) != "string"
+                                   or (.topic | type) != "string"
+                                   or (.title | type) != "string")]
+              | length) > 0 then
+            "an entry holds a key, a topic, or a title that is not text"
+        elif ([.entries[] | select((whole(.first_line) | not)
+                                   or (whole(.after_line) | not))]
+              | length) > 0 then
+            "an entry range is not two whole numbers"
+        elif ([.entries[] | select(.first_line < 1
+                                   or .after_line <= .first_line)]
+              | length) > 0 then
+            "an entry range holds no line"
+        elif ((.entries | map(.key) | unique | length)
+              != (.entries | length)) then
+            "a key repeats in the mapping"
+        elif ((.entries | map(.topic) | unique | length)
+              != (.entries | length)) then
+            "a topic repeats in the mapping"
+        else
+            ""
+        end' "$mapping" 2> /dev/null)"
+    if [[ -n "$reason" ]]; then
+        import_error "$reason"
+        return
+    fi
+
+    count="$(jq -r '.entries | length' "$mapping")"
+    for (( index = 0; index < count; index++ )); do
+        key="$(jq -r ".entries[$index].key" "$mapping")"
+        topic="$(jq -r ".entries[$index].topic" "$mapping")"
+        title="$(jq -r ".entries[$index].title" "$mapping")"
+        reason="$(node9_key_error "$key")" \
+            || { import_error "entry $index: $reason"; return; }
+        if [[ ! "$topic" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]]; then
+            import_error "entry $index: the topic is not lowercase letters, digits, and dashes"
+            return
+        fi
+        reason="$(node9_title_error "$title")" \
+            || { import_error "entry $index: $reason"; return; }
+    done
+    return 0
+}
+
+if [[ "${REGISTER_IMPORT_LIB:-}" == '1' ]]; then
+    return 0
+fi
+
+printf 'register-import: pack, apply, and verify are not implemented yet.\n' >&2
+exit 2
