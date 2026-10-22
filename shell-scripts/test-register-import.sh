@@ -103,4 +103,3 @@ done
 [[ "$total_sections" -eq 117 ]]
 [[ "$total_bytes" -eq 317268 ]]
 printf 'all register split cases passed: %s sections, %s bytes\n' "$total_sections" "$total_bytes"
-
