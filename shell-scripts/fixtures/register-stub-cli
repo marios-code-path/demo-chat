@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# A stub chat shell CLI for the offline import tests. See CHAT-jmnjvupr.
+#
+# The stub keeps its whole state in files under $STUB_STATE, so two states
+# stand for two hosts. It answers the calls that the importer makes:
+#
+#   whoami
+#   register-read
+#   add-topic --name <topic>
+#   join <topic>
+#   post --topic <topic> [--requestId <id>]      Text comes from standard in.
+#   messages <topic> --format records
+#
+# A repeated --requestId returns the first message ID and stores no second
+# message. That rule makes a retry safe.
+#
+# Failure switches:
+#   STUB_NO_CORE=1            Every call exits 69 and logs nothing.
+#   STUB_DENY_INDEX=1         A read of register-index gives a denied warning.
+#   STUB_INDEX_PRE=<n>        The index starts with n messages.
+#   STUB_FAIL_AFTER_POST=<n>  The nth post stores its message, then exits 75.
+#   STUB_STALL_READ=1         A read sleeps past every test budget.
+set -uo pipefail
+
+state="${STUB_STATE:?Set STUB_STATE}"
+mkdir -p "$state/messages" "$state/requests" "$state/joins"
+[[ -f "$state/count" ]] || printf '0\n' > "$state/count"
+[[ -f "$state/posts" ]] || printf '0\n' > "$state/posts"
+[[ -f "$state/owner" ]] || printf 'Mario\n' > "$state/owner"
+
+if [[ "${STUB_NO_CORE:-0}" == '1' ]]; then
+    printf 'stub: the core is not available\n' >&2
+    exit 69
+fi
+
+printf '%s\n' "$*" >> "$state/log"
+
+# next_id  Print one new message ID and keep the counter.
+next_id() {
+    local count
+    count="$(cat "$state/count")"
+    count=$((count + 1))
+    printf '%s\n' "$count" > "$state/count"
+    printf 'msg-%06d\n' "$count"
+}
+
+# record TOPIC ID TEXT_FILE  Print one record line for a message.
+record() {
+    local topic="$1" id="$2" text_file="$3" stamp
+    stamp="2026-10-22T00:00:00.${id#msg-}Z"
+    jq -cS -n --arg topic "$topic" --arg id "$id" --arg stamp "$stamp" \
+        --rawfile text "$text_file" \
+        '{type: "record", id: $id, topic: $topic, timestamp: $stamp,
+          text: $text}'
+}
+
+# seed_index  Put STUB_INDEX_PRE messages into the index on first use.
+seed_index() {
+    local want="${STUB_INDEX_PRE:-0}" index=0 id
+    [[ "$want" =~ ^[0-9]+$ ]] || want=0
+    [[ -f "$state/seeded" ]] && return 0
+    : > "$state/seeded"
+    (( want == 0 )) && return 0
+    printf 'register-index\n' >> "$state/topics"
+    for (( index = 0; index < want; index++ )); do
+        id="$(next_id)"
+        printf 'seed %s\n' "$index" > "$state/seed-text"
+        record register-index "$id" "$state/seed-text" \
+            >> "$state/messages/register-index.jsonl"
+    done
+    rm -f "$state/seed-text"
+}
+
+seed_index
+
+command_name="${1:-}"
+shift || true
+
+case "$command_name" in
+    whoami)
+        jq -cS -n --arg user "${CHAT_SHELL_USER:-}" \
+            '{type: "identity", user: $user}'
+        exit 0
+        ;;
+    register-read)
+        if [[ "${STUB_STALL_READ:-0}" == '1' ]]; then
+            sleep 120
+            exit 0
+        fi
+        if [[ "${STUB_DENY_INDEX:-0}" == '1' ]]; then
+            jq -cS -n '{type: "warning", warning: "denied-index"}'
+            exit 0
+        fi
+        [[ -f "$state/messages/register-index.jsonl" ]] \
+            && cat "$state/messages/register-index.jsonl"
+        exit 0
+        ;;
+    add-topic)
+        topic=''
+        while (( $# )); do
+            case "$1" in
+                --name)
+                    topic="${2:-}"
+                    shift 2 || true
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+        [[ -n "$topic" ]] || { printf 'stub: add-topic needs --name\n' >&2; exit 2; }
+        if [[ -f "$state/topics" ]] && grep -qx "$topic" "$state/topics"; then
+            printf 'stub: the topic %s exists\n' "$topic" >&2
+            exit 1
+        fi
+        printf '%s\n' "$topic" >> "$state/topics"
+        jq -cS -n --arg topic "$topic" '{type: "topic", name: $topic}'
+        exit 0
+        ;;
+    join)
+        topic="${1:-}"
+        [[ -n "$topic" ]] || { printf 'stub: join needs a topic\n' >&2; exit 2; }
+        printf '%s %s\n' "${CHAT_SHELL_USER:-}" "$topic" >> "$state/joins/all"
+        jq -cS -n --arg topic "$topic" --arg user "${CHAT_SHELL_USER:-}" \
+            '{type: "join", name: $topic, user: $user}'
+        exit 0
+        ;;
+    post)
+        topic=''
+        request_id=''
+        while (( $# )); do
+            case "$1" in
+                --topic)
+                    topic="${2:-}"
+                    shift 2 || true
+                    ;;
+                --requestId)
+                    request_id="${2:-}"
+                    shift 2 || true
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+        [[ -n "$topic" ]] || { printf 'stub: post needs --topic\n' >&2; exit 2; }
+        cat > "$state/last-post"
+        if [[ -n "$request_id" && -f "$state/requests/$request_id" ]]; then
+            id="$(cat "$state/requests/$request_id")"
+            grep -h "\"$id\"" "$state/messages/$topic.jsonl" 2> /dev/null \
+                | head -1
+            exit 0
+        fi
+        id="$(next_id)"
+        record "$topic" "$id" "$state/last-post" \
+            >> "$state/messages/$topic.jsonl"
+        [[ -n "$request_id" ]] && printf '%s\n' "$id" \
+            > "$state/requests/$request_id"
+        posts="$(cat "$state/posts")"
+        posts=$((posts + 1))
+        printf '%s\n' "$posts" > "$state/posts"
+        if [[ "${STUB_FAIL_AFTER_POST:-0}" =~ ^[0-9]+$ ]] \
+           && (( STUB_FAIL_AFTER_POST > 0 )) \
+           && (( posts == STUB_FAIL_AFTER_POST )); then
+            printf 'stub: the post outcome is uncertain\n' >&2
+            exit 75
+        fi
+        grep -h "\"$id\"" "$state/messages/$topic.jsonl" | head -1
+        exit 0
+        ;;
+    messages)
+        topic="${1:-}"
+        [[ -n "$topic" ]] || { printf 'stub: messages needs a topic\n' >&2; exit 2; }
+        if [[ "${STUB_STALL_READ:-0}" == '1' ]]; then
+            sleep 120
+            exit 0
+        fi
+        if [[ "${STUB_DENY_INDEX:-0}" == '1' && "$topic" == 'register-index' ]]; then
+            jq -cS -n '{type: "warning", warning: "denied-index"}'
+            exit 0
+        fi
+        [[ -f "$state/messages/$topic.jsonl" ]] \
+            && cat "$state/messages/$topic.jsonl"
+        exit 0
+        ;;
+    *)
+        printf 'stub: the command %s is unknown\n' "$command_name" >&2
+        exit 2
+        ;;
+esac
