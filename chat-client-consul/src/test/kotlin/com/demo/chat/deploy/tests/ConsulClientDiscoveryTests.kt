@@ -17,9 +17,14 @@ import reactor.test.StepVerifier
 class ConsulClientDiscoveryTests {
 
     // One fake. ReactiveDiscoveryClient is an interface, so no mock is needed.
-    private class FakeDiscovery(private val instances: List<ServiceInstance>) : ReactiveDiscoveryClient {
+    // A set failure makes the lookup fail, as an unreachable registry does.
+    private class FakeDiscovery(
+        private val instances: List<ServiceInstance>,
+        private val failure: Throwable? = null,
+    ) : ReactiveDiscoveryClient {
         override fun description() = "fake"
-        override fun getInstances(serviceId: String): Flux<ServiceInstance> = Flux.fromIterable(instances)
+        override fun getInstances(serviceId: String): Flux<ServiceInstance> =
+            failure?.let { Flux.error(it) } ?: Flux.fromIterable(instances)
         override fun getServices(): Flux<String> = Flux.just(SERVICE)
     }
 
@@ -122,6 +127,47 @@ class ConsulClientDiscoveryTests {
 
         assertEquals("172.26.0.5", found.host)
         assertEquals(6790, found.port)
+    }
+
+    // A port outside 1..65535 cannot hold a connection. See CHAT-yexqiyie.
+    @Test
+    fun anOutOfRangeAdvertisePortKeepsTheRegisteredPort() {
+        val found = discovery(
+            listOf(instance("9", advertiseHost = "127.0.0.1", advertisePort = "70000")),
+            coreId = 9,
+        ).getServiceInstance("key").block()!!
+
+        assertEquals("172.26.0.5", found.host)
+        assertEquals(6790, found.port)
+    }
+
+    @Test
+    fun aZeroAdvertisePortKeepsTheRegisteredPort() {
+        val found = discovery(
+            listOf(instance("9", advertiseHost = "127.0.0.1", advertisePort = "0")),
+            coreId = 9,
+        ).getServiceInstance("key").block()!!
+
+        assertEquals(6790, found.port)
+    }
+
+    // An unreachable registry must name the registry. Otherwise the caller
+    // sees a bare client error. See CHAT-yexqiyie.
+    @Test
+    fun anUnreachableRegistryNamesTheRegistry() {
+        val failing = ConsulClientDiscovery(
+            FakeDiscovery(emptyList(), IllegalStateException("Connection refused")),
+            props, 9, REGISTRY, retryCount = 0,
+        )
+
+        StepVerifier
+            .create(failing.getServiceInstance("key"))
+            .expectErrorMatches { error ->
+                error is DiscoveryException &&
+                    error.message!!.contains(REGISTRY) &&
+                    error.message!!.contains("Connection refused")
+            }
+            .verify()
     }
 
     companion object {

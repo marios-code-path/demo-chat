@@ -15,7 +15,7 @@ The design is in
 - `curl`, `nc`, and `openssl`.
 - `jq` and `uuidgen` for `node-9/bin/register`.
 - A route to `node2.lan:6090` for embeddings.
-- Free loopback ports 6890 and 6891.
+- Free loopback ports 6890, 6891, and 6892.
 - Maven and a JDK, for a build only. `start` calls no Maven when the image is
   present, so a host that loads the image needs no Maven and no repository.
 
@@ -25,8 +25,9 @@ The design is in
 |-----|------|-----------|
 | RSocket | `127.0.0.1:6890` | `6790` |
 | Management | `127.0.0.1:6891` | `6791` |
+| Consul registry | `127.0.0.1:6892` | `8500` |
 
-Cassandra, Redis, and Consul publish no host port.
+Cassandra and Redis publish no host port.
 
 ## Start
 
@@ -46,7 +47,7 @@ creates the data directories.
 Exit status:
 
 - 2: an unknown argument, a bad toggle, or a failed environment load.
-- 3: port 6890 or 6891 is in use.
+- 3: port 6890, 6891, or 6892 is in use.
 - 4: the image reference is not a node-9 reference, or an installed copy
   has no image.
 - 5: a build, schema, start, or health step failed.

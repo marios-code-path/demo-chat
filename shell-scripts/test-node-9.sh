@@ -725,6 +725,23 @@ else
     bad 'start_refuses_busy_port' "exit $status, docker calls $([ -e "$work/start-calls" ] && echo yes || echo no)"
 fi
 
+# The registry port needs the same check. Compose otherwise fails at the bind
+# with a message that names no node-9 value. See CHAT-yexqiyie.
+nc -l -p 6892 >/dev/null 2>&1 &
+listener=$!
+/bin/sleep 0.5
+reset_start
+out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
+status=$?
+kill "$listener" >/dev/null 2>&1
+wait "$listener" 2>/dev/null
+if [[ $status -eq 3 && ! -e "$work/start-calls" \
+      && "$out" == *'port 6892 is in use'* ]]; then
+    ok 'start_refuses_a_busy_registry_port'
+else
+    bad 'start_refuses_a_busy_registry_port' "exit $status, output: $out"
+fi
+
 printf 'CHAT_SERVICE_PASSWORD=x\nCHAT_ADMIN_PASSWORD=y\nCHAT_EMBEDDING_OPENAI_API_KEY=z\nCHAT_USER_SIGMA_PASSWORD=a\nCHAT_USER_THETA_PASSWORD=b\nCHAT_USER_PHI_PASSWORD=c\nCHAT_USER_MARIO_PASSWORD=d\n' \
     > "$sandbox/secrets.env"
 reset_start

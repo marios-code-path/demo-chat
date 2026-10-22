@@ -29,12 +29,16 @@ if [[ "$dry_run" == 'false' && ! -f "${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.en
     "$NODE9_DIR/bin/setup-secrets" || exit 2
 fi
 
-if nc -z 127.0.0.1 "$NODE9_RSOCKET_PORT" >/dev/null 2>&1 \
-   || nc -z 127.0.0.1 "$NODE9_MGMT_PORT" >/dev/null 2>&1; then
-    printf 'node-9: port %s or %s is in use\n' \
-        "$NODE9_RSOCKET_PORT" "$NODE9_MGMT_PORT" >&2
-    exit 3
-fi
+# Every published port needs the check. Compose otherwise fails at the bind
+# with a message that names no node-9 value. See CHAT-yexqiyie.
+for port in "$NODE9_RSOCKET_PORT" "$NODE9_MGMT_PORT" "$NODE9_REGISTRY_PORT"; do
+    if nc -z 127.0.0.1 "$port" >/dev/null 2>&1; then
+        printf 'node-9: port %s is in use. It needs %s, %s and %s.\n' \
+            "$port" "$NODE9_RSOCKET_PORT" "$NODE9_MGMT_PORT" \
+            "$NODE9_REGISTRY_PORT" >&2
+        exit 3
+    fi
+done
 
 for dir in cassandra lucene redis consul; do
     mkdir -p "$NODE9_DIR/data/$dir"

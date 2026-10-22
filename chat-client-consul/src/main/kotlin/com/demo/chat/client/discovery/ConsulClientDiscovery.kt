@@ -57,10 +57,19 @@ class ConsulClientDiscovery(
             .next()
             .map(::advertised)
             .switchIfEmpty(Mono.error(DiscoveryException(missed)))
+            // A registry that does not answer gives a client error. Such an
+            // error names no registry, so the caller cannot see which one
+            // failed. The wrap also makes the lookup retry. See CHAT-yexqiyie.
+            .onErrorMap({ it !is DiscoveryException }) { cause ->
+                DiscoveryException("$missed, the registry failed: ${cause.message}")
+            }
             .retryWhen(Retry.fixedDelay(retryCount, retryDelay)
                 .filter { throwable -> throwable is DiscoveryException }
+                // The last failure holds the message. A registry failure adds
+                // its cause to it, and that cause must survive the retries.
                 .onRetryExhaustedThrow { _, retrySignal ->
-                    throw DiscoveryException("$missed, after ${retrySignal.totalRetries()} tries")
+                    val last = retrySignal.failure()?.message ?: missed
+                    throw DiscoveryException("$last, after ${retrySignal.totalRetries()} tries")
                 }
             )
     }
@@ -71,13 +80,13 @@ class ConsulClientDiscovery(
      * A core in a container registers the address of its container network.
      * A client on the host cannot reach that address. Such a core registers
      * the published host and port as metadata. Without that metadata, or
-     * with a port that is not a number, the registered address stays.
+     * with a port outside 1 to 65535, the registered address stays.
      */
     private fun advertised(instance: ServiceInstance): ServiceInstance {
         val metadata = instance.metadata ?: return instance
         val host = metadata[ADVERTISE_HOST]
         if (host.isNullOrBlank()) return instance
-        val port = metadata[ADVERTISE_PORT]?.toIntOrNull()
+        val port = metadata[ADVERTISE_PORT]?.toIntOrNull()?.takeIf { it in 1..65535 }
         if (port == null) {
             logger.debug("Instance ${instance.instanceId} advertises host $host and no usable port. "
                 + "Its registered address stays.")

@@ -40,9 +40,31 @@ File: `shared-deploy-configuration/src/main/config/server-rsocket-consul.yml`.
 
 - `instance-id` becomes `${spring.application.name}-${app.nodeid}`.
 - Metadata adds `nodeId: ${app.nodeid}`.
-- Metadata adds `advertiseHost` and `advertisePort` when the properties `app.advertise.host` and `app.advertise.port` exist.
-  A core without them registers no advertise metadata.
-- `node-9/compose.yaml` sets both properties. The host is `127.0.0.1`. The port is `NODE9_RSOCKET_PORT`.
+- A core can register `advertiseHost` and `advertisePort` metadata. A core
+  without them registers no advertise metadata. The shared configuration file
+  declares neither key, so no deployment gets them by default.
+- Each deployment that needs them supplies its own file. Node 9 uses
+  `node-9/advertise.yml`, and `node-9/compose.yaml` mounts it at
+  `/etc/node-9/advertise.yml` and names it in `SPRING_CONFIG_IMPORT`. The file
+  sets `spring.cloud.consul.discovery.metadata.advertiseHost` and
+  `advertisePort` as literal values: `127.0.0.1` and `6890`.
+
+**Correction, 2026-10-22.** The approved text said that `node-9/compose.yaml`
+sets the properties `app.advertise.host` and `app.advertise.port`. The
+implementation uses a mounted file instead, and it sets the metadata keys with
+no `app.advertise.*` indirection. Two reasons:
+
+1. A Compose `environment:` value arrives as an environment variable. Spring
+   makes the key of a map property lower case. So `advertiseHost` would
+   register as `advertisehost`, and no client would find it. A file keeps the
+   capital letters.
+2. The `app.advertise.*` indirection added a second name for one value and no
+   behavior. The metadata keys alone are enough.
+
+The literal values are a cost of the file. No variable can hold
+`advertisePort` equal to `NODE9_RSOCKET_PORT`. The test case
+`advertise_matches_the_published_port` compares the two files. A node other
+than node 9 needs its own file. See CHAT-yexqiyie and Sigma's review.
 
 ### Discovery
 
@@ -87,5 +109,17 @@ File: `chat-client-consul/.../ConsulClientDiscovery.kt`. The `ClientDiscovery` i
 ## Risks
 
 - The Consul health check may fail for an advertised address that differs from the real one. Check this live.
+  **Measured on 2026-10-22: it passes.** The check keeps the registered
+  container address, `http://172.26.0.5:6791/actuator/health`, and gives 200
+  OK. Consul runs in the same network, so it reaches that address. The
+  advertise metadata changes the client address alone.
 - An old core without `nodeId` metadata never matches `--core-id`. This is correct, and the error names the cause.
+  **Measured on 2026-10-22: correct.** The test case
+  `anInstanceWithoutANodeIdDoesNotMatch` pins it.
 - The change to `instance-id` can leave an old registration in a persistent Consul. Node-9 Consul data is persistent. Deregister the old entry once.
+  **Measured on 2026-10-22: it did not happen.** After the restart the catalog
+  held one instance alone, `core-service-rsocket-9`. No deregister was needed.
+- A registry that does not answer gives a client error with no registry in it.
+  **Fixed after Sigma's review.** `getServiceInstance` maps such an error to a
+  `DiscoveryException` that names the registry and keeps the cause. The lookup
+  then also retries, so a shell that starts before its registry waits for it.
