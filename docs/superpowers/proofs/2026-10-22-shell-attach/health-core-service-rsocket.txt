@@ -1,0 +1,2 @@
+serfHealth passing Agent alive and reachable
+service:core-service-rsocket-9 passing HTTP GET http://172.26.0.5:6791/actuator/health: 200 OK Output: {"grou

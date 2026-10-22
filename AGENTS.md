@@ -4,7 +4,7 @@
 
 ## Topic register
 
-At session start, run `node-9/bin/register read --as <name>`.
+At session start, run `/opt/demo-chat/node-9/bin/register read --as <name>`.
 Use the name in your harness instructions: `Sigma`, `Theta`, or `Phi`.
 Mario uses `--as Mario`.
 Check the command status and every warning line.

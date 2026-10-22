@@ -44,6 +44,10 @@ services:
       - type: bind
         source: ./data/consul
         target: /consul/data
+    # The shell reads this registry with --registry 127.0.0.1:6892. The bind
+    # stays on the loopback address. See CHAT-yexqiyie.
+    ports:
+      - "127.0.0.1:${NODE9_REGISTRY_PORT:?Set NODE9_REGISTRY_PORT}:8500"
     networks:
       - node-9-net
 
@@ -74,7 +78,7 @@ services:
       JAVA_TOOL_OPTIONS: -XX:MaxDirectMemorySize=256M
       REDIS_TOPICS_HOST: redis
       REDIS_TOPICS_PORT: "6379"
-      SPRING_CONFIG_IMPORT: file:/etc/node-9/userinit.yml
+      SPRING_CONFIG_IMPORT: file:/etc/node-9/userinit.yml,file:/etc/node-9/advertise.yml
     ports:
       - "127.0.0.1:${NODE9_RSOCKET_PORT:?Set NODE9_RSOCKET_PORT}:6790"
       - "127.0.0.1:${NODE9_MGMT_PORT:?Set NODE9_MGMT_PORT}:6791"
@@ -85,6 +89,10 @@ services:
       - type: bind
         source: ./userinit.yml
         target: /etc/node-9/userinit.yml
+        read_only: true
+      - type: bind
+        source: ./advertise.yml
+        target: /etc/node-9/advertise.yml
         read_only: true
     networks:
       - node-9-net

@@ -50,9 +50,20 @@ trap cleanup EXIT
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "$script_dir/lib.sh"
+node9_require_installed || exit 2
 
-repo_root="$(cd "$NODE9_DIR/.." && pwd -P)"
-cli="${CHAT_SHELL_CLI:-$repo_root/shell-scripts/chat-shell-cli}"
+# An installed copy has no repository. It takes the CLI from the caller or
+# from its own bin directory.
+if node9_installed; then
+    cli="${CHAT_SHELL_CLI:-$NODE9_DIR/bin/chat-shell-cli}"
+    if [[ ! -x "$cli" ]]; then
+        printf 'register: no shell CLI at %s. Set CHAT_SHELL_CLI.\n' "$cli" >&2
+        exit 2
+    fi
+else
+    repo_root="$(cd "$NODE9_DIR/.." && pwd -P)"
+    cli="${CHAT_SHELL_CLI:-$repo_root/shell-scripts/chat-shell-cli}"
+fi
 secrets_dir="${NODE9_SECRETS_DIR:-$NODE9_DIR/secrets}"
 secrets_file="${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}"
 

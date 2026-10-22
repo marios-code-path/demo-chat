@@ -1,4 +1,4 @@
-# profiles: client-backend,deploy,shell
+# profiles: client-backend,deploy,shell,shell-host
 --add-modules=jdk.incubator.vector
 --enable-native-access=ALL-UNNAMED
 -Dapp.client.discovery=properties

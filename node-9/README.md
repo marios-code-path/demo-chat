@@ -7,7 +7,8 @@ project, network, image tag, or volume with node 16.
 The design is in
 `docs/superpowers/specs/2026-10-17-topic-register-design.md`, section
 "Node 9". The live proof is in
-`docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`.
+`docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`. The shell attach proof
+is in `docs/superpowers/proofs/2026-10-22-shell-attach/RECORD.md`.
 
 ## Prerequisites
 
@@ -15,7 +16,7 @@ The design is in
 - `curl`, `nc`, and `openssl`.
 - `jq` and `uuidgen` for `node-9/bin/register`.
 - A route to `node2.lan:6090` for embeddings.
-- Free loopback ports 6890 and 6891.
+- Free loopback ports 6890, 6891, and 6892.
 - Maven and a JDK, for a build only. `start` calls no Maven when the image is
   present, so a host that loads the image needs no Maven and no repository.
 
@@ -25,8 +26,9 @@ The design is in
 |-----|------|-----------|
 | RSocket | `127.0.0.1:6890` | `6790` |
 | Management | `127.0.0.1:6891` | `6791` |
+| Consul registry | `127.0.0.1:6892` | `8500` |
 
-Cassandra, Redis, and Consul publish no host port.
+Cassandra and Redis publish no host port.
 
 ## Start
 
@@ -46,8 +48,9 @@ creates the data directories.
 Exit status:
 
 - 2: an unknown argument, a bad toggle, or a failed environment load.
-- 3: port 6890 or 6891 is in use.
-- 4: the image reference is not a node-9 reference.
+- 3: port 6890, 6891, or 6892 is in use.
+- 4: the image reference is not a node-9 reference, or an installed copy
+  has no image.
 - 5: a build, schema, start, or health step failed.
 
 ## Stop
@@ -117,9 +120,66 @@ overrides the shipped `Admin` password. The core imports it from
 
 ## Fixed isolation values
 
-`NODE9_PROJECT`, `NODE9_RSOCKET_PORT`, `NODE9_MGMT_PORT`, and `CORE_IMAGE`
-are fixed. `lib.sh` rejects a changed value. `NODE9_DIR` comes from
-`lib.sh`, not from the caller.
+`NODE9_PROJECT`, `NODE9_RSOCKET_PORT`, `NODE9_MGMT_PORT`,
+`NODE9_REGISTRY_PORT`, and `CORE_IMAGE` are fixed. `lib.sh` rejects a
+changed value. `NODE9_DIR` comes from `lib.sh`, not from the caller.
+
+The three ports bind to `127.0.0.1` alone. 6890 is the RSocket port of the
+core. 6891 is its management port. 6892 is the Consul registry.
+
+## Attach the shell to node 9
+
+Run this from a source tree:
+
+```bash
+just launch-shell 1 --key-type uuid --registry 127.0.0.1:6892 --core-id 9
+```
+
+`--registry` names the registry of node 9. `--core-id 9` names the core. The
+first argument is the node id of the shell, not of the core. The key type
+must match the core, which is `uuid`.
+
+The core registers the instance id `core-service-rsocket-9`. Its metadata
+holds `nodeId`, `advertiseHost` and `advertisePort`. `advertise.yml` sets the
+last two, because Consul holds the address of the container network, and a
+client on the host cannot reach it. See CHAT-yexqiyie.
+
+## Install outside the source tree
+
+Run `node-9/install --prefix /opt/demo-chat/node-9`. The prefix defaults to
+that path. Run node 9 from the installed copy, not from a work tree. A work
+tree holds its own `data/`, `secrets/` and `secrets.env`, so removing it
+removes node 9's state.
+
+The installer copies the code files, writes the `.installed` marker, and
+creates `data/`, `secrets/` (mode 0700) and `images/` when they are missing.
+A re-run replaces code files alone. It never reads, writes, or deletes
+`data/`, `secrets/`, `secrets.env`, or `images/`.
+
+A source tree refuses to run. `start`, `stop`, `setup-secrets`, `register`,
+`load-images` and `save-images` stop with status 2 unless the `.installed`
+marker is present. `NODE9_ALLOW_SOURCE_TREE=1` overrides the stop. Use it to
+stop containers that started from a work tree. Use it in the offline tests.
+
+The installer refuses a prefix inside a git work tree. It refuses a
+non-empty prefix that has no marker.
+
+`--import-state DIR` copies `secrets.env` and `secrets/` from the node-9
+directory `DIR`. It never overwrites a file. It skips the import and names the
+gap when the set is incomplete. It never copies Cassandra data. `--dry-run`
+changes nothing.
+
+The marker changes three scripts. An installed `start` never calls Maven. A
+missing image stops it with status 4. Run `load-images` first. An installed
+`register` takes the CLI from `CHAT_SHELL_CLI`, or from `bin/chat-shell-cli`.
+An installed `setup-secrets` skips its repository check.
+
+The owner Vault stays at `<parent of the prefix>/vault/owner.yml`. The
+installer links it into `ansible/vault/owner.yml`. The Vault password stays
+at `~/.config/chat-node-9/vault-pass`.
+
+Containers that started from a work tree keep the old mounts. Run `stop`
+there, then run `start` from the installed copy.
 
 ## Move to another host
 

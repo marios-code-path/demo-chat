@@ -5,6 +5,9 @@
 # never run `docker compose up`, and they never touch node 16.
 set -uo pipefail
 
+# The sandbox copies are source trees. They run on purpose.
+export NODE9_ALLOW_SOURCE_TREE=1
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 node9_root="$repo_root/node-9"
@@ -121,7 +124,7 @@ else
 fi
 
 ports_case='ok'
-for assignment in NODE9_RSOCKET_PORT=6790 NODE9_MGMT_PORT=6791; do
+for assignment in NODE9_RSOCKET_PORT=6790 NODE9_MGMT_PORT=6791 NODE9_REGISTRY_PORT=7000; do
     name="${assignment%%=*}"
     value="${assignment#*=}"
     out="$( cd "$repo_root" \
@@ -136,6 +139,31 @@ if [[ "$ports_case" == 'ok' ]]; then
     ok 'fixed_ports_are_rejected'
 else
     bad 'fixed_ports_are_rejected' "$ports_case"
+fi
+
+# The shell reads the registry of node 9 at this port. See CHAT-yexqiyie.
+if grep -q '^NODE9_REGISTRY_PORT=6892$' node-9/node-9.env; then
+    ok 'registry_port_is_declared'
+else
+    bad 'registry_port_is_declared' 'node-9.env holds no NODE9_REGISTRY_PORT=6892'
+fi
+
+# The shell connects to the advertised address. advertise.yml holds literals,
+# because Spring makes an environment map key lower case. So no variable keeps
+# the two files equal. This case keeps them equal. See CHAT-yexqiyie.
+advertise_host="$(sed -n 's/^ *advertiseHost: *"\(.*\)" *$/\1/p' node-9/advertise.yml)"
+advertise_port="$(sed -n 's/^ *advertisePort: *"\(.*\)" *$/\1/p' node-9/advertise.yml)"
+rsocket_port="$(sed -n 's/^NODE9_RSOCKET_PORT=//p' node-9/node-9.env)"
+advertise_case='ok'
+if [[ "$advertise_port" != "$rsocket_port" ]]; then
+    advertise_case="advertisePort $advertise_port, NODE9_RSOCKET_PORT $rsocket_port"
+elif [[ "$advertise_host" != '127.0.0.1' ]]; then
+    advertise_case="advertiseHost $advertise_host, not 127.0.0.1"
+fi
+if [[ "$advertise_case" == 'ok' ]]; then
+    ok 'advertise_matches_the_published_port'
+else
+    bad 'advertise_matches_the_published_port' "$advertise_case"
 fi
 
 calls="$work/image-calls"
@@ -290,7 +318,7 @@ fi
 published="$(sed -n 's/.*published:[[:space:]]*//p' <<< "$on_text" | tr -d '"')"
 host_ips="$(sed -n 's/.*host_ip:[[:space:]]*//p' <<< "$on_text" | tr -d '"' | sort -u)"
 port_case='ok'
-if [[ "$(sort -u <<< "$published" | tr '\n' ' ')" != '6890 6891 ' ]]; then
+if [[ "$(sort -u <<< "$published" | tr '\n' ' ')" != '6890 6891 6892 ' ]]; then
     port_case="published ports: $(tr '\n' ' ' <<< "$published")"
 elif [[ "$host_ips" != '127.0.0.1' ]]; then
     port_case="host IPs: $(tr '\n' ' ' <<< "$host_ips")"
@@ -697,6 +725,23 @@ else
     bad 'start_refuses_busy_port' "exit $status, docker calls $([ -e "$work/start-calls" ] && echo yes || echo no)"
 fi
 
+# The registry port needs the same check. Compose otherwise fails at the bind
+# with a message that names no node-9 value. See CHAT-yexqiyie.
+nc -l -p 6892 >/dev/null 2>&1 &
+listener=$!
+/bin/sleep 0.5
+reset_start
+out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
+status=$?
+kill "$listener" >/dev/null 2>&1
+wait "$listener" 2>/dev/null
+if [[ $status -eq 3 && ! -e "$work/start-calls" \
+      && "$out" == *'port 6892 is in use'* ]]; then
+    ok 'start_refuses_a_busy_registry_port'
+else
+    bad 'start_refuses_a_busy_registry_port' "exit $status, output: $out"
+fi
+
 printf 'CHAT_SERVICE_PASSWORD=x\nCHAT_ADMIN_PASSWORD=y\nCHAT_EMBEDDING_OPENAI_API_KEY=z\nCHAT_USER_SIGMA_PASSWORD=a\nCHAT_USER_THETA_PASSWORD=b\nCHAT_USER_PHI_PASSWORD=c\nCHAT_USER_MARIO_PASSWORD=d\n' \
     > "$sandbox/secrets.env"
 reset_start
@@ -777,6 +822,134 @@ if [[ $load_status -ne 0 && "$out" == *'redis-7.tar'* ]]; then
     ok 'load_images_fails_on_missing_tar'
 else
     bad 'load_images_fails_on_missing_tar' "exit $load_status, output: $out"
+fi
+
+# -- Install outside the source tree -------------------------------------
+
+install_home="$work/opt/node-9"
+mkdir -p "$work/opt"
+out="$(bash node-9/install --prefix "$install_home" 2>&1)"
+status=$?
+if [[ $status -eq 0 && -f "$install_home/.installed" \
+      && -f "$install_home/advertise.yml" \
+      && -x "$install_home/bin/start" && -d "$install_home/data" \
+      && "$(stat -f %Lp "$install_home/secrets" 2>/dev/null || stat -c %a "$install_home/secrets")" == '700' \
+      && ! -e "$install_home/install" ]]; then
+    ok 'install_copies_code_and_creates_state_dirs'
+else
+    bad 'install_copies_code_and_creates_state_dirs' "exit $status, output: $out"
+fi
+
+printf 'keep\n' > "$install_home/secrets.env"
+printf 'keep\n' > "$install_home/data/marker"
+printf 'stale\n' > "$install_home/bin/old-script"
+out="$(bash node-9/install --prefix "$install_home" 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$(cat "$install_home/secrets.env")" == 'keep' \
+      && "$(cat "$install_home/data/marker")" == 'keep' \
+      && ! -e "$install_home/bin/old-script" ]]; then
+    ok 'install_rerun_keeps_state_and_replaces_code'
+else
+    bad 'install_rerun_keeps_state_and_replaces_code' "exit $status, output: $out"
+fi
+
+out="$(bash node-9/install --prefix "$repo_root/node-9-home-test" 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'git work tree'* \
+      && ! -e "$repo_root/node-9-home-test" ]]; then
+    ok 'install_refuses_a_prefix_inside_a_work_tree'
+else
+    bad 'install_refuses_a_prefix_inside_a_work_tree' "exit $status, output: $out"
+fi
+
+mkdir -p "$work/foreign"
+printf 'x\n' > "$work/foreign/file"
+out="$(bash node-9/install --prefix "$work/foreign" 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'no .installed marker'* ]]; then
+    ok 'install_refuses_a_foreign_directory'
+else
+    bad 'install_refuses_a_foreign_directory' "exit $status, output: $out"
+fi
+
+# Import: a complete set copies. An incomplete set is skipped. No overwrite.
+good_state="$work/good-state"
+mkdir -p "$good_state/secrets"
+cp "$fixture" "$good_state/secrets.env"
+for name in Sigma Theta Phi; do printf 'pw-%s\n' "$name" > "$good_state/secrets/$name.password"; done
+bad_state="$work/bad-state"
+mkdir -p "$bad_state/secrets"
+grep -v THETA "$fixture" > "$bad_state/secrets.env"
+
+home_a="$work/opt/import-a"
+out="$(bash node-9/install --prefix "$home_a" --import-state "$good_state" 2>&1)"
+status=$?
+if [[ $status -eq 0 && -f "$home_a/secrets/Theta.password" \
+      && "$(stat -f %Lp "$home_a/secrets.env" 2>/dev/null || stat -c %a "$home_a/secrets.env")" == '600' ]]; then
+    ok 'install_imports_a_complete_secret_set'
+else
+    bad 'install_imports_a_complete_secret_set' "exit $status, output: $out"
+fi
+
+printf 'changed\n' > "$home_a/secrets.env"
+bash node-9/install --prefix "$home_a" --import-state "$good_state" >/dev/null 2>&1
+if [[ "$(cat "$home_a/secrets.env")" == 'changed' ]]; then
+    ok 'install_import_never_overwrites'
+else
+    bad 'install_import_never_overwrites' 'secrets.env changed'
+fi
+
+home_b="$work/opt/import-b"
+out="$(bash node-9/install --prefix "$home_b" --import-state "$bad_state" 2>&1)"
+status=$?
+if [[ $status -eq 0 && ! -e "$home_b/secrets.env" && "$out" == *'import skipped'* ]]; then
+    ok 'install_skips_an_incomplete_secret_set'
+else
+    bad 'install_skips_an_incomplete_secret_set' "exit $status, output: $out"
+fi
+
+# An installed start with no image stops before Maven. A register with no
+# CLI stops with one line.
+reset_start
+rm -f "$work/start-mvn"
+out="$(env "${stub_env[@]}" IMAGE_ABSENT=1 bash "$install_home/bin/start" --dry-run 2>&1)"
+status=$?
+if [[ $status -eq 4 && "$out" == *'load-images'* && ! -e "$work/start-mvn" ]]; then
+    ok 'installed_start_without_image_calls_no_maven'
+else
+    bad 'installed_start_without_image_calls_no_maven' "exit $status, output: $out"
+fi
+
+out="$(bash "$install_home/bin/register" read --as Theta 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'Set CHAT_SHELL_CLI'* ]]; then
+    ok 'installed_register_needs_a_cli'
+else
+    bad 'installed_register_needs_a_cli' "exit $status, output: $out"
+fi
+
+# -- The source-tree guard ----------------------------------------------
+
+cp node-9/bin/register "$sandbox/bin/"
+guard_ok=true
+for script in start stop setup-secrets register load-images save-images; do
+    out="$(env -u NODE9_ALLOW_SOURCE_TREE bash "$sandbox/bin/$script" 2>&1)"
+    status=$?
+    if [[ $status -ne 2 || "$out" != *'source tree'* \
+          || "$out" != *"/opt/demo-chat/node-9/bin/$script"* ]]; then
+        guard_ok=false
+        bad "guard_refuses_$script" "exit $status, output: $out"
+    fi
+done
+if [[ "$guard_ok" == 'true' ]]; then
+    ok 'guard_refuses_every_script_in_a_source_tree'
+fi
+
+out="$(env -u NODE9_ALLOW_SOURCE_TREE bash "$install_home/bin/start" --dry-run 2>&1)"
+if [[ "$out" != *'source tree'* ]]; then
+    ok 'guard_allows_an_installed_copy'
+else
+    bad 'guard_allows_an_installed_copy' "output: $out"
 fi
 
 if ((failures > 0)); then

@@ -1,0 +1,1 @@
+DiscoveryException(errorBy=persistence via core-service-rsocket, node id 16, registry 127.0.0.1:6892, after 10 tries)

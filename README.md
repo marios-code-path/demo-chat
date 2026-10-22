@@ -51,6 +51,19 @@ just launch-shell 1 --key-type long
 Each launch needs its own node id. `chat-build --node-id` is the normal launch
 path, and the argument is required. See `Rules that matter`.
 
+The shell reaches one core. Without a registry it uses `CORE_HOST` and
+`CORE_PORT`, which default to `127.0.0.1:6790`. With a registry it names the
+registry and the target core:
+
+```bash
+just launch-shell 1 --key-type uuid --registry 127.0.0.1:6892 --core-id 9
+```
+
+`--registry HOST:PORT` selects Consul discovery, and `CHAT_REGISTRY` is its
+default. `--core-id` is the node id of the core, and the shell keeps the
+registered instance that holds it. The first argument stays the node id of the
+shell. See CHAT-yexqiyie.
+
 Use `shell-scripts/` for the implementation scripts and the advanced launch
 details. `shell-scripts/README-chat-build.md` describes `chat-build`.
 

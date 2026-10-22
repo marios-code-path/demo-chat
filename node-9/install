@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# Install node 9 outside the source tree. See CHAT-mvvvnujw.
+#
+#   install [--prefix DIR] [--import-state DIR] [--dry-run]
+#
+# DIR defaults to /opt/demo-chat/node-9. The installer copies code files and
+# writes the .installed marker. It creates data/, secrets/ and images/ when
+# they are missing. A re-run replaces code files alone. It never reads,
+# writes, or deletes data/, secrets/, secrets.env, or images/.
+#
+# The installer refuses a prefix inside a git work tree. It refuses a
+# non-empty prefix that has no marker.
+#
+# --import-state DIR copies secrets.env and secrets/ from the node-9
+# directory DIR into a new home. It never overwrites a file. It skips the
+# import and names the gap when DIR holds an incomplete set. It never copies
+# Cassandra data.
+set -uo pipefail
+
+src="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+prefix=/opt/demo-chat/node-9
+import_dir=''
+dry_run=false
+
+usage() {
+    printf 'usage: install [--prefix DIR] [--import-state DIR] [--dry-run]\n'
+}
+
+fail() {
+    printf 'node-9 install: %s\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+while (( $# )); do
+    case "$1" in
+        --prefix)
+            [[ $# -ge 2 && -n "$2" ]] || fail '--prefix needs a directory.' 2
+            prefix="$2"
+            shift
+            ;;
+        --import-state)
+            [[ $# -ge 2 && -n "$2" ]] || fail '--import-state needs a directory.' 2
+            import_dir="$2"
+            shift
+            ;;
+        --dry-run) dry_run=true ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage >&2; fail "unknown argument: $1" 2 ;;
+    esac
+    shift
+done
+
+[[ "$prefix" == /* ]] || fail "the prefix must be an absolute path, got '$prefix'." 2
+
+# The code files. The installer itself stays in the source tree.
+code_files=(node-9.env compose.yaml compose.vector-disk.yaml userinit.yml advertise.yml)
+code_dirs=(bin schema ansible)
+# The state names. A re-run never touches them.
+state_dirs=(data secrets images)
+
+# nearest_existing PATH  Print the nearest ancestor of PATH that exists.
+nearest_existing() {
+    local dir="$1"
+    while [[ ! -d "$dir" ]]; do
+        dir="$(dirname "$dir")"
+    done
+    (cd "$dir" && pwd -P)
+}
+
+# Refuse a prefix inside a git work tree.
+anchor="$(nearest_existing "$prefix")"
+if git -C "$anchor" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    fail "the prefix $prefix is inside the git work tree $(git -C "$anchor" rev-parse --show-toplevel). Node 9 must stay outside every source tree." 2
+fi
+
+# Refuse a non-empty prefix that has no marker.
+if [[ -d "$prefix" && ! -f "$prefix/.installed" ]] \
+   && [[ -n "$(ls -A "$prefix")" ]]; then
+    fail "$prefix is not empty and has no .installed marker." 2
+fi
+
+# complete_state DIR  Print the first gap in DIR, or nothing if it is complete.
+complete_state() {
+    local dir="$1" key name
+    [[ -f "$dir/secrets.env" ]] || { printf 'secrets.env is missing'; return; }
+    for key in CHAT_SERVICE_PASSWORD CHAT_ADMIN_PASSWORD \
+               CHAT_EMBEDDING_OPENAI_API_KEY CHAT_USER_SIGMA_PASSWORD \
+               CHAT_USER_THETA_PASSWORD CHAT_USER_PHI_PASSWORD; do
+        grep -q "^$key=." "$dir/secrets.env" \
+            || { printf '%s is missing from secrets.env' "$key"; return; }
+    done
+    for name in Sigma Theta Phi; do
+        [[ -s "$dir/secrets/$name.password" ]] \
+            || { printf 'secrets/%s.password is missing' "$name"; return; }
+    done
+}
+
+if [[ "$dry_run" == 'true' ]]; then
+    printf 'prefix: %s\n' "$prefix"
+    printf 'code: %s %s\n' "${code_files[*]}" "${code_dirs[*]}"
+    printf 'state kept: %s secrets.env\n' "${state_dirs[*]}"
+    if [[ -n "$import_dir" ]]; then
+        gap="$(complete_state "$import_dir")"
+        printf 'import: %s\n' "${gap:-complete}"
+    fi
+    exit 0
+fi
+
+umask 022
+mkdir -p "$prefix" || fail "cannot create $prefix." 1
+
+# Replace the code. A directory is replaced whole, so a removed file goes.
+for file in "${code_files[@]}"; do
+    cp "$src/$file" "$prefix/$file" || fail "cannot copy $file." 1
+done
+for dir in "${code_dirs[@]}"; do
+    rm -rf "${prefix:?}/$dir"
+    cp -R "$src/$dir" "$prefix/$dir" || fail "cannot copy $dir." 1
+done
+rm -f "$prefix/ansible/vault/owner.yml"
+chmod 755 "$prefix"/bin/*
+
+# The owner Vault stays beside the home, in <parent>/vault/owner.yml.
+owner_vault="$(dirname "$prefix")/vault/owner.yml"
+if [[ -f "$owner_vault" ]]; then
+    ln -s "$owner_vault" "$prefix/ansible/vault/owner.yml"
+fi
+
+# State directories. Create alone. Never change a present one.
+for dir in "${state_dirs[@]}"; do
+    [[ -d "$prefix/$dir" ]] && continue
+    mkdir -p "$prefix/$dir"
+    case "$dir" in
+        secrets) chmod 700 "$prefix/$dir" ;;
+    esac
+done
+
+# Import a complete set of secrets. Never overwrite.
+if [[ -n "$import_dir" ]]; then
+    gap="$(complete_state "$import_dir")"
+    if [[ -n "$gap" ]]; then
+        printf 'node-9 install: import skipped, %s. Start from scratch.\n' "$gap" >&2
+    else
+        if [[ ! -e "$prefix/secrets.env" ]]; then
+            cp "$import_dir/secrets.env" "$prefix/secrets.env"
+            chmod 600 "$prefix/secrets.env"
+        fi
+        for file in "$import_dir"/secrets/*; do
+            [[ -f "$file" ]] || continue
+            target="$prefix/secrets/$(basename "$file")"
+            [[ -e "$target" ]] && continue
+            cp "$file" "$target"
+            chmod 600 "$target"
+        done
+        printf 'node-9 install: imported secrets from %s\n' "$import_dir"
+    fi
+fi
+
+# The marker goes last. Its presence means the copy is complete.
+{
+    printf 'installed-at: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'source-commit: %s\n' \
+        "$(git -C "$src" rev-parse HEAD 2>/dev/null || printf unknown)"
+} > "$prefix/.installed"
+
+printf 'node-9 install: installed in %s\n' "$prefix"
