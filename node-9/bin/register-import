@@ -417,6 +417,181 @@ check_bundle() {
     return 0
 }
 
+# import_cql QUERY
+# Run one read-only CQL query. REGISTER_IMPORT_CQLSH names another command
+# for the offline tests. The default runs cqlsh in the node-9 container.
+import_cql() {
+    if [[ -n "${REGISTER_IMPORT_CQLSH:-}" ]]; then
+        "$REGISTER_IMPORT_CQLSH" -e "$1"
+    else
+        node9_cqlsh -e "$1"
+    fi
+}
+
+# cql_rows
+# Read cqlsh text on standard input. Print one line for every data row, with
+# pipe characters between trimmed fields. The first text line is the header.
+cql_rows() {
+    awk '
+        {
+            line = $0
+            gsub(/^[ \t]+|[ \t]+$/, "", line)
+            if (line == "") next
+            if (line ~ /^-+(\+-+)*$/) next
+            if (line ~ /^\([0-9]+ rows?\)$/) next
+            if (!header++) next
+            count = split(line, field, "|")
+            out = ""
+            for (i = 1; i <= count; i++) {
+                gsub(/^[ \t]+|[ \t]+$/, "", field[i])
+                out = (i == 1 ? field[i] : out "|" field[i])
+            }
+            print out
+        }'
+}
+
+# topic_room_id TOPIC
+# Print the room ID of one topic name. Print nothing for an absent topic.
+# Return 1 when the query fails.
+topic_room_id() {
+    local out
+    out="$(import_cql "SELECT room_id FROM chat_uuid.chat_room_name WHERE name = '$1';" 2> /dev/null)" \
+        || return 1
+    printf '%s\n' "$out" | cql_rows | head -1
+}
+
+# ownership_proof TOPIC
+# Print the handle that holds the * permission row of one topic. Print
+# nothing and return 1 when the proof fails. The design file holds the three
+# queries.
+ownership_proof() {
+    local topic="$1" room out principals principal handle
+    room="$(topic_room_id "$topic")" || return 1
+    [[ -n "$room" ]] || return 1
+    out="$(import_cql "SELECT principal, permission FROM chat_uuid.auth_metadata_target WHERE target = $room;" 2> /dev/null)" \
+        || return 1
+    principals="$(printf '%s\n' "$out" | cql_rows \
+        | awk -F'|' '$2 == "*" { print $1 }')"
+    [[ "$(printf '%s\n' "$principals" | grep -c .)" == '1' ]] || return 1
+    principal="$principals"
+    out="$(import_cql "SELECT handle FROM chat_uuid.chat_user WHERE user_id = $principal;" 2> /dev/null)" \
+        || return 1
+    handle="$(printf '%s\n' "$out" | cql_rows | head -1)"
+    [[ -n "$handle" ]] || return 1
+    printf '%s\n' "$handle"
+}
+
+# index_message_count CLI
+# Print the number of index records. Return 2 for a denied warning, and 1 for
+# a failed read.
+index_message_count() {
+    local cli="$1" out
+    out="$("$cli" register-read 2> /dev/null)" || return 1
+    if printf '%s\n' "$out" \
+        | jq -e -s 'any(.[]; (.type // "") == "warning")' > /dev/null 2>&1; then
+        return 2
+    fi
+    printf '%s\n' "$out" \
+        | jq -s -r '[.[] | select((.type // "record") == "record")] | length' \
+        2> /dev/null
+}
+
+# ensure_index RECEIPT_DIR
+# Make the index ready for one import, and keep the ownership proof in the
+# private host state. Return 1 for every conflict.
+#
+# A saved proof must match the live index. With no saved proof, the index may
+# hold no message, and Mario must hold its * permission row. The function
+# saves the proof before any topic or pointer post.
+ensure_index() {
+    local receipt_dir="$1" cli saved_id saved_owner room proof count status
+    cli="$(import_cli)" || return 2
+
+    if [[ -f "$receipt_dir/index.json" ]]; then
+        saved_id="$(jq -r '.id // ""' "$receipt_dir/index.json" 2> /dev/null)"
+        saved_owner="$(jq -r '.owner // ""' "$receipt_dir/index.json" 2> /dev/null)"
+        room="$(topic_room_id register-index)" \
+            || { import_error 'the index read fails'; return 1; }
+        proof="$(ownership_proof register-index)" \
+            || { import_error 'the ownership proof fails'; return 1; }
+        if [[ -z "$saved_id" || "$saved_id" != "$room" \
+              || "$saved_owner" != "$proof" || "$proof" != 'Mario' ]]; then
+            import_error 'the saved index proof does not match the live index'
+            return 1
+        fi
+        return 0
+    fi
+
+    count="$(index_message_count "$cli")"
+    status=$?
+    if (( status == 2 )); then
+        import_error 'the index read returns a denied warning'
+        return 1
+    fi
+    if (( status != 0 )); then
+        import_error 'the index read fails'
+        return 1
+    fi
+
+    room="$(topic_room_id register-index)" \
+        || { import_error 'the index read fails'; return 1; }
+    if [[ -n "$room" ]]; then
+        if (( count > 0 )); then
+            import_error "the index holds $count messages and no saved proof"
+            return 1
+        fi
+    else
+        "$cli" add-topic --name register-index > /dev/null 2>&1 \
+            || { import_error 'the new index topic fails'; return 1; }
+        room="$(topic_room_id register-index)" \
+            || { import_error 'the index read fails'; return 1; }
+        [[ -n "$room" ]] \
+            || { import_error 'the new index has no room ID'; return 1; }
+    fi
+
+    proof="$(ownership_proof register-index)" \
+        || { import_error 'the ownership proof fails'; return 1; }
+    if [[ "$proof" != 'Mario' ]]; then
+        import_error "the * permission row of the index names $proof, not Mario"
+        return 1
+    fi
+
+    mkdir -p "$receipt_dir" || { import_error 'the receipt directory fails'; return 1; }
+    chmod 700 "$receipt_dir"
+    ( umask 077
+      jq -cS -n --arg id "$room" --arg owner "$proof" \
+          '{id: $id, owner: $owner}' > "$receipt_dir/index.json" ) \
+        || { import_error 'the index proof does not reach a private file'; return 1; }
+    chmod 600 "$receipt_dir/index.json"
+    return 0
+}
+
+# check_target_topics BUNDLE
+# Check every target name of one bundle before the first write. An existing
+# name stops the import with status 1.
+check_target_topics() {
+    local bundle="$1" source_hash topic room count index
+    source_hash="$(jq -r '.source_sha256' "$bundle/content-manifest.json" \
+        2> /dev/null)"
+    [[ -n "$source_hash" ]] \
+        || { import_error 'the bundle holds no source hash'; return 1; }
+    topic="$(snapshot_topic "$source_hash")"
+    room="$(topic_room_id "$topic")" \
+        || { import_error "the read of $topic fails"; return 1; }
+    [[ -z "$room" ]] \
+        || { import_error "the target topic $topic exists already"; return 1; }
+    count="$(jq -r '.entries | length' "$bundle/content-manifest.json")"
+    for (( index = 0; index < count; index++ )); do
+        topic="$(jq -r ".entries[$index].topic" \
+            "$bundle/content-manifest.json")"
+        room="$(topic_room_id "$topic")" \
+            || { import_error "the read of $topic fails"; return 1; }
+        [[ -z "$room" ]] \
+            || { import_error "the target topic $topic exists already"; return 1; }
+    done
+    return 0
+}
+
 # import_fixed NAME WANTED
 # Refuse a caller override of one fixed node-9 value.
 import_fixed() {
@@ -550,8 +725,25 @@ apply_bundle() {
         return 2
     fi
 
+    local bundle_hash receipt_dir
+    bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+    receipt_dir="$NODE9_DIR/data/register-import/$bundle_hash"
+
+    ensure_index "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    check_target_topics "$bundle"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
     rm -rf "$work_dir"
-    import_error 'the import steps arrive in a later task.'
+    import_error 'the post steps arrive in a later task.'
     return
 }
 

@@ -20,6 +20,13 @@ bad() { printf 'FAIL %s: %s\n' "$1" "$2"; failures=$((failures + 1)); }
 
 sha_of() { shasum -a 256 "$1" | cut -d ' ' -f 1; }
 
+file_mode_of() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
 # -- One installed home, one stub CLI, one stub curl ---------------------
 
 install_home="$work/opt/node-9"
@@ -48,6 +55,65 @@ stub_bin="$work/bin"
 mkdir -p "$stub_bin"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$stub_bin/curl"
 chmod +x "$stub_bin/curl"
+
+# One cqlsh stub. It answers the three proof queries from the stub state. The
+# room id comes from the topic name, so it stays stable for one state.
+cqlsh_stub="$work/bin/cqlsh-stub"
+cat > "$cqlsh_stub" <<'STUB'
+#!/usr/bin/env bash
+set -uo pipefail
+state="${STUB_STATE:?Set STUB_STATE}"
+query=''
+while (( $# )); do
+    case "$1" in
+        -e)
+            query="${2:-}"
+            shift 2 || true
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+# room_id_of NAME  Print a stable fake UUID for one topic name.
+room_id_of() {
+    local hex
+    hex="$(printf '%s' "$1" | shasum -a 256 | cut -c 1-32)"
+    printf '%s-%s-%s-%s-%s\n' "${hex:0:8}" "${hex:8:4}" "${hex:12:4}" \
+        "${hex:16:4}" "${hex:20:12}"
+}
+owner="$(cat "$state/owner" 2> /dev/null || printf 'Mario\n')"
+case "$query" in
+    *chat_room_name*)
+        name="$(printf '%s' "$query" | sed -n "s/.*name = '\\([^']*\\)'.*/\\1/p")"
+        if [[ -f "$state/topics" ]] && grep -qx "$name" "$state/topics"; then
+            printf '\n room_id\n'
+            printf -- '--------------------------------------\n'
+            printf ' %s\n\n(1 rows)\n' "$(room_id_of "$name")"
+        else
+            printf '\n room_id\n'
+            printf -- '--------------------------------------\n'
+            printf '\n(0 rows)\n'
+        fi
+        exit 0
+        ;;
+    *auth_metadata_target*)
+        printf '\n principal                            | permission\n'
+        printf -- '--------------------------------------+------------\n'
+        printf ' %s |          *\n\n(1 rows)\n' "$(room_id_of "owner-$owner")"
+        exit 0
+        ;;
+    *chat_user*)
+        printf '\n handle\n'
+        printf -- '--------\n'
+        printf ' %s\n\n(1 rows)\n' "$owner"
+        exit 0
+        ;;
+esac
+printf 'cqlsh-stub: the query is unknown\n' >&2
+exit 1
+STUB
+chmod +x "$cqlsh_stub"
 
 # -- One packed bundle ---------------------------------------------------
 
@@ -100,7 +166,7 @@ calls() {
 run_apply() {
     reset_stub
     out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
-        CHAT_SHELL_CLI="$stub_cli" "$@" \
+        CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" "$@" \
         "$install_home/bin/register-import" apply --bundle "$bundle" \
         --as Mario 2>&1)"
     status=$?
@@ -111,6 +177,7 @@ run_apply() {
 reset_stub
 out="$(env -u NODE9_ALLOW_SOURCE_TREE PATH="$stub_bin:$PATH" \
     STUB_STATE="$stub_state" CHAT_SHELL_CLI="$stub_cli" \
+    REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
     "$importer" apply --bundle "$bundle" --as Mario 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'source tree'* ]]; then
@@ -121,7 +188,7 @@ fi
 
 reset_stub
 out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
-    CHAT_SHELL_CLI="$stub_cli" \
+    CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
     "$install_home/bin/register-import" apply --bundle "$bundle" \
     --as Sigma 2>&1)"
 status=$?
@@ -137,7 +204,7 @@ bad_part="$(find "$work/bad-bundle/parts" -type f | sort | head -1)"
 printf 'x' >> "$bad_part"
 reset_stub
 out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
-    CHAT_SHELL_CLI="$stub_cli" \
+    CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
     "$install_home/bin/register-import" apply --bundle "$work/bad-bundle" \
     --as Mario 2>&1)"
 status=$?
@@ -185,6 +252,102 @@ if [[ "$secret_case" == 'ok' ]]; then
     ok 'apply_prints_no_secret'
 else
     bad 'apply_prints_no_secret' "$secret_case"
+fi
+
+# -- The index and its ownership proof -----------------------------------
+
+
+bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+receipts="$install_home/data/register-import/$bundle_hash"
+
+# run_index [extra env] -- Call ensure_index through the library mode.
+run_index() {
+    reset_stub
+    rm -rf "$receipts"
+    mkdir -p "$receipts"
+    chmod 700 "$receipts"
+    if [[ -n "${1:-}" ]]; then
+        printf '%s\n' "$1" > "$stub_state/owner"
+    fi
+    if [[ -n "${2:-}" ]]; then
+        printf '%s\n' "$2" >> "$stub_state/topics"
+    fi
+    out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+        STUB_INDEX_PRE="${3:-0}" STUB_DENY_INDEX="${4:-0}" \
+        CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
+        NODE9_ALLOW_SOURCE_TREE=1 bash -c '
+            REGISTER_IMPORT_LIB=1
+            export REGISTER_IMPORT_LIB
+            source "$1" || exit 2
+            export CHAT_SHELL_USER=Mario
+            ensure_index "$2"' \
+        _ "$install_home/bin/register-import" "$receipts" 2>&1)"
+    status=$?
+}
+
+run_index Mario
+if [[ $status -eq 0 && -f "$receipts/index.json" \
+      && "$(jq -r '.owner' "$receipts/index.json" 2> /dev/null)" == 'Mario' \
+      && -n "$(jq -r '.id' "$receipts/index.json" 2> /dev/null)" \
+      && "$(file_mode_of "$receipts/index.json")" == '600' \
+      && "$(grep -c 'add-topic' "$stub_state/log")" -eq 1 ]]; then
+    ok 'index_fresh_creates_and_saves_proof'
+else
+    bad 'index_fresh_creates_and_saves_proof' "exit $status, output: $out"
+fi
+
+run_index Mario register-index 0
+if [[ $status -eq 0 && -f "$receipts/index.json" \
+      && "$(grep -c 'add-topic' "$stub_state/log")" -eq 0 ]]; then
+    ok 'index_present_without_proof_and_empty_rebuilds_proof'
+else
+    bad 'index_present_without_proof_and_empty_rebuilds_proof' \
+        "exit $status, output: $out"
+fi
+
+run_index Mario '' 2
+if [[ $status -eq 1 && ! -f "$receipts/index.json" \
+      && "$(grep -c 'post' "$stub_state/log")" -eq 0 ]]; then
+    ok 'index_present_with_messages_and_no_proof_stops'
+else
+    bad 'index_present_with_messages_and_no_proof_stops' \
+        "exit $status, output: $out"
+fi
+
+run_index Sigma register-index 0
+if [[ $status -eq 1 && ! -f "$receipts/index.json" ]]; then
+    ok 'index_other_owner_stops'
+else
+    bad 'index_other_owner_stops' "exit $status, output: $out"
+fi
+
+run_index Mario '' 0 1
+if [[ $status -eq 1 && ! -f "$receipts/index.json" ]]; then
+    ok 'index_denied_stops'
+else
+    bad 'index_denied_stops' "exit $status, output: $out"
+fi
+
+# One target topic of the bundle exists already. The import stops before its
+# first write.
+reset_stub
+rm -rf "$receipts"
+printf 'forward-register-first\n' >> "$stub_state/topics"
+out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+    CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
+    NODE9_ALLOW_SOURCE_TREE=1 bash -c '
+        REGISTER_IMPORT_LIB=1
+        export REGISTER_IMPORT_LIB
+        source "$1" || exit 2
+        export CHAT_SHELL_USER=Mario
+        check_target_topics "$2"' \
+    _ "$install_home/bin/register-import" "$bundle" 2>&1)"
+status=$?
+if [[ $status -eq 1 && "$out" == *'forward-register-first'* ]]; then
+    ok 'existing_target_topic_stops_before_first_write'
+else
+    bad 'existing_target_topic_stops_before_first_write' \
+        "exit $status, output: $out"
 fi
 
 if ((failures > 0)); then

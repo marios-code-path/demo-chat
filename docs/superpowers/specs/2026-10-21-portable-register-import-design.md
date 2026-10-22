@@ -141,6 +141,33 @@ On a fresh import, the first live step checks that `register-index` and every ta
 Mario then creates `register-index`.
 The importer saves the new index ID and Mario ownership proof in private host state.
 The proof checks the Cassandra `*` permission row and resolves its principal to `Mario`.
+
+The proof runs three read-only queries through `node9_cqlsh`.
+The first query finds the room of the index name:
+
+```sql
+SELECT room_id FROM chat_uuid.chat_room_name WHERE name = 'register-index';
+```
+
+An empty result means the index is absent.
+The second query reads the permission rows of that room:
+
+```sql
+SELECT principal, permission FROM chat_uuid.auth_metadata_target WHERE target = <room_id>;
+```
+
+The proof keeps the row whose permission is `*`.
+The third query resolves that principal to one handle:
+
+```sql
+SELECT handle FROM chat_uuid.chat_user WHERE user_id = <principal>;
+```
+
+The proof passes only when that handle is `Mario`.
+A failed query, an empty permission row, or a second `*` row stops the import.
+The queries write nothing, and they need no shell CLI.
+`REGISTER_IMPORT_CQLSH` names another command for the offline tests.
+That hook keeps the proof testable without Cassandra.
 A retry accepts an existing index only when that saved proof matches the live index.
 If a crash precedes the saved proof, the importer checks the live index again.
 It rebuilds the proof only when the index holds zero messages and Mario owns its `*` permission row.
