@@ -342,6 +342,23 @@ else
     bad 'pack_prints_review_lines' "$review_case"
 fi
 
+# The bundle carries no password, no receipt, and no destination message ID.
+# The old prototype suite held this case for its prepared state.
+secret_case='ok'
+printf 'CHAT_USER_MARIO_PASSWORD=bundle-secret-sentinel\n' > "$work/secrets.env"
+if grep -rq 'bundle-secret-sentinel' "$work/bundle-a" 2> /dev/null; then
+    secret_case='the bundle holds the sentinel'
+elif grep -rqi 'password' "$work/bundle-a" 2> /dev/null; then
+    secret_case='the bundle names a password'
+elif [[ -e "$work/bundle-a/receipts.jsonl" ]]; then
+    secret_case='the bundle holds a receipt file'
+fi
+if [[ "$secret_case" == 'ok' ]]; then
+    ok 'pack_holds_no_secret'
+else
+    bad 'pack_holds_no_secret' "$secret_case"
+fi
+
 # -- check_bundle --------------------------------------------------------
 
 run_check_bundle() {
