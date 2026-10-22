@@ -42,7 +42,8 @@ Run `node-9/bin/start`.
 6. It waits for health on port 6891.
 
 `--dry-run` prints the Compose command, the build command with its
-environment, and the image reference. A dry run writes no secret. It
+environment, and the image reference. An installed copy prints no build
+command, because it runs no build. A dry run writes no secret. It
 creates the data directories.
 
 Exit status:

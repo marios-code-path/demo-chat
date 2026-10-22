@@ -81,11 +81,18 @@ while IFS= read -r arg; do
     compose_line+=" $arg"
 done < <(node9_compose_args)
 
-build_line="env IMAGE_REPO_PREFIX=node-9 CONSUL_HOST=consul CONSUL_PORT=8500 CASSANDRA_CONTACT_POINTS=cassandra ${repo_root}/shell-scripts/chat-build core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id 9 --key-type uuid --vector embedded --embedding openai --init users,rootkeys --consul --build"
+# An installed copy runs no build. It holds no repository, so a build line
+# would name an absent path. See CHAT-mvvvnujw.
+build_line=''
+if ! node9_installed; then
+    build_line="env IMAGE_REPO_PREFIX=node-9 CONSUL_HOST=consul CONSUL_PORT=8500 CASSANDRA_CONTACT_POINTS=cassandra ${repo_root}/shell-scripts/chat-build core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id 9 --key-type uuid --vector embedded --embedding openai --init users,rootkeys --consul --build"
+fi
 
 if [[ "$dry_run" == 'true' ]]; then
     printf '%s\n' "$compose_line"
-    printf '%s\n' "$build_line"
+    if [[ -n "$build_line" ]]; then
+        printf '%s\n' "$build_line"
+    fi
     printf 'image: %s\n' "$image_ref"
     exit 0
 fi
