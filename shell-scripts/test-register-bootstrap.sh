@@ -481,6 +481,38 @@ else
     bad 'retry_after_crash_makes_no_duplicate' "$duplicate_case"
 fi
 
+# A crash between one post and its receipt leaves a stored message of no
+# receipt. The next apply must adopt that message and complete. See the Sigma
+# review of 2026-10-22.
+reset_stub
+rm -rf "$receipts"
+full_apply
+lost_kind='snapshot-part'
+lost_id="$(jq -r --arg kind "$lost_kind" \
+    'select(.kind == $kind and .index == 1) | .messageId' \
+    "$receipts/receipts.jsonl" | head -1)"
+jq -c --arg id "$lost_id" 'select(.messageId != $id)' \
+    "$receipts/receipts.jsonl" > "$receipts/receipts.new"
+mv "$receipts/receipts.new" "$receipts/receipts.jsonl"
+before="$(grep -c . "$stub_state/messages/$snapshot_topic_name.jsonl")"
+full_apply
+lost_case='ok'
+if [[ $status -ne 0 ]]; then
+    lost_case="the retry gave exit $status, not 0: $out"
+elif [[ "$(grep -c . "$stub_state/messages/$snapshot_topic_name.jsonl")" \
+        != "$before" ]]; then
+    lost_case='the retry added one message'
+elif [[ -z "$(jq -r --arg id "$lost_id" \
+        'select(.messageId == $id) | .messageId' \
+        "$receipts/receipts.jsonl" | head -1)" ]]; then
+    lost_case='the receipt of the stored message is still absent'
+fi
+if [[ "$lost_case" == 'ok' ]]; then
+    ok 'retry_after_lost_receipt_completes'
+else
+    bad 'retry_after_lost_receipt_completes' "$lost_case"
+fi
+
 # One changed receipt stops the retry.
 reset_stub
 rm -rf "$receipts"
