@@ -920,6 +920,27 @@ else
     bad 'installed_start_without_image_calls_no_maven' "exit $status, output: $out"
 fi
 
+# An installed dry run prints no build line. An installed copy builds
+# nothing, and it holds no repository. See CHAT-mvvvnujw.
+reset_start
+out="$(env "${stub_env[@]}" bash "$install_home/bin/start" --dry-run 2>&1)"
+status=$?
+installed_dry_case='ok'
+if [[ "$out" == *'shell-scripts/chat-build'* ]]; then
+    installed_dry_case='the output names a chat-build path'
+fi
+for pattern in '-p chat-node-9' 'image: '; do
+    if [[ "$out" != *"$pattern"* ]]; then
+        installed_dry_case="missing: $pattern"
+    fi
+done
+if [[ $status -eq 0 && "$installed_dry_case" == 'ok' ]]; then
+    ok 'installed_start_dry_run_prints_no_build_line'
+else
+    bad 'installed_start_dry_run_prints_no_build_line' \
+        "exit $status, ${installed_dry_case}, output: $out"
+fi
+
 out="$(bash "$install_home/bin/register" read --as Theta 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'Set CHAT_SHELL_CLI'* ]]; then
