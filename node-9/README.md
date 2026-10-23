@@ -199,8 +199,10 @@ full build takes minutes.
 
 `NODE9_JAVA` names the java of the version check and of the installed
 launcher. It also sets `JAVA_HOME` of the build, so Maven compiles with that
-JDK. A java with no `javac` beside it is no JDK. The build then keeps the
-`JAVA_HOME` of the caller, and it names that limit on standard error.
+JDK. The home comes from the JVM, and never from the path of the java. A java
+that reports no JDK home leaves `JAVA_HOME` as it stands, and the build names
+that limit on standard error. An install that names no java also leaves
+`JAVA_HOME` as it stands, because that value is the choice of the environment.
 `NODE9_MVN` names the mvn of the build.
 
 `shell-cli.options` holds the JVM options of the launch. The install freezes

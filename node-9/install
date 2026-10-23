@@ -102,9 +102,10 @@ complete_state() {
 
 # NODE9_JAVA names the java of the version check. The build script writes the
 # same java into the frozen options, so the installed launcher runs it.
-# NODE9_MVN names the mvn of the build. The build script also gives the named
-# java to Maven through JAVA_HOME, so one name selects the build JDK and the
-# run JDK. The offline suite points both names at an absent command.
+# NODE9_MVN names the mvn of the build. The build script gives a named java to
+# Maven through JAVA_HOME, so one name selects the build JDK and the run JDK.
+# A run that names no java keeps the JAVA_HOME of the caller. The offline suite
+# points both names at an absent command.
 java_command="${NODE9_JAVA:-java}"
 mvn_command="${NODE9_MVN:-mvn}"
 
@@ -162,7 +163,15 @@ if [[ "$skip_cli" != 'true' ]]; then
     lib_stage="$stage_parent/lib"
     # The build takes the same two names that the check read, so the check and
     # the call never name two pairs. See the branch review of 2026-10-22.
-    if ! env NODE9_JAVA="$java_command" NODE9_MVN="$mvn_command" \
+    #
+    # A name travels only when the caller set it. An earlier version passed
+    # NODE9_JAVA on every run, so a default install named the java of the path.
+    # The build script then replaced the JAVA_HOME of the caller with a derived
+    # path, and the build held one core and printed no line. See CHAT-faqxupam.
+    build_env=()
+    [[ -n "${NODE9_JAVA:-}" ]] && build_env+=("NODE9_JAVA=$java_command")
+    [[ -n "${NODE9_MVN:-}" ]] && build_env+=("NODE9_MVN=$mvn_command")
+    if ! env "${build_env[@]+"${build_env[@]}"}" \
         "$src/../shell-scripts/build-shell-cli-lib" "$lib_stage" \
         > "$stage_parent/build.log" 2>&1; then
         printf 'node-9 install: the shell CLI build failed. Its log is at %s\n' \
