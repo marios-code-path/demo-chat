@@ -182,6 +182,40 @@ at `~/.config/chat-node-9/vault-pass`.
 Containers that started from a work tree keep the old mounts. Run `stop`
 there, then run `start` from the installed copy.
 
+## The installed shell CLI
+
+An installed home runs the shell CLI from `lib/`. That directory holds every
+runtime jar and the file `shell-cli.options`. The home then needs no
+repository, no Maven, and no `~/.m2`. See `CHAT-bjqzvsoe`.
+
+The install builds the jar set on demand. It needs Java 25 or later and
+Maven. It stops with status 2 and names the missing command when either one
+is absent. The measured set holds 149 jars and about 66 MB.
+
+`--skip-cli` installs no `lib/`. The marker then records `cli: skipped`, so no
+reader takes that home for a complete one. The offline suites use that flag,
+because a full build takes minutes.
+
+`NODE9_JAVA` and `NODE9_MVN` name another java and another mvn. A host with
+several JDKs takes one of them.
+
+`shell-cli.options` holds the JVM options of the launch. The install freezes
+them, because the source-tree launcher builds that list by calling
+`shell-scripts/chat-build`, and an installed home holds no such script. The
+file serves key type `uuid` and node 9 alone. Its first two lines record that
+pair. A caller that asks for another pair gets one line and status 2. A caller
+that asks for neither takes the frozen pair.
+
+The login is no part of the installed runtime. It arrives at run time in two
+values, `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE`. No installed file
+holds a login name.
+
+```bash
+just build-shell-cli-lib /tmp/cli-lib     # stage the jar set alone
+node-9/install                            # build and install it
+node-9/install --skip-cli                 # install the scripts alone
+```
+
 ## Move to another host
 
 1. Run `node-9/bin/stop`.
