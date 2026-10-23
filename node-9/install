@@ -178,6 +178,8 @@ for dir in "${code_dirs[@]}"; do
     rm -rf "${prefix:?}/$dir"
     cp -R "$src/$dir" "$prefix/$dir" || fail "cannot copy $dir." 1
 done
+cp "$src/../shell-scripts/chat-shell-cli" "$prefix/bin/chat-shell-cli" \
+    || fail 'cannot copy the shell CLI launcher.' 1
 rm -f "$prefix/ansible/vault/owner.yml"
 chmod 755 "$prefix"/bin/*
 

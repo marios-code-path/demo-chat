@@ -163,6 +163,9 @@ options_file="$lib/shell-cli.options"
 opts=()
 
 if [[ -f "$options_file" ]]; then
+    # The installed node-9 runtime needs these ports for local RSocket discovery.
+    export CORE_PORT="${CORE_PORT:-6890}"
+    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-6891}"
     frozen_key_type="$(sed -n 's/^# key-type //p' "$options_file" | head -1)"
     frozen_node_id="$(sed -n 's/^# node-id //p' "$options_file" | head -1)"
     if [[ -z "$frozen_key_type" || -z "$frozen_node_id" ]]; then

@@ -33,6 +33,8 @@ printf '%s\n' "$@" > "${JAVA_ARGS:?Set JAVA_ARGS}"
 {
     printf 'CHAT_SHELL_USER=%s\n' "${CHAT_SHELL_USER:-}"
     printf 'CHAT_SHELL_PASSWORD_FILE=%s\n' "${CHAT_SHELL_PASSWORD_FILE:-}"
+    printf 'CORE_PORT=%s\n' "${CORE_PORT:-}"
+    printf 'CORE_MGMT_PORT=%s\n' "${CORE_MGMT_PORT:-}"
 } > "$JAVA_ARGS.env"
 if [[ -n "${JAVA_SLEEP:-}" ]]; then sleep "$JAVA_SLEEP"; fi
 exit 0
@@ -44,6 +46,8 @@ cat > "$stub_bin/chat-build" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "${CHAT_BUILD_CALLS:?Set CHAT_BUILD_CALLS}"
 printf '  -Dstub.plan=1\n'
+printf '  -Dapp.rootkeys.consume.source=http://127.0.0.1:%s\n' \
+    "${CORE_MGMT_PORT:-6791}"
 exit 0
 STUB
 chmod +x "$stub_bin/java" "$stub_bin/chat-build"
@@ -85,6 +89,13 @@ if [[ $status -eq 0 && "$cp_line" == "$lib/*" ]]; then
 else
     bad 'lib_mode_uses_the_lib_classpath' \
         "exit $status, classpath: $cp_line, output: $out"
+fi
+
+if grep -qx 'CORE_PORT=6890' "$work/java-args.env" \
+   && grep -qx 'CORE_MGMT_PORT=6891' "$work/java-args.env"; then
+    ok 'lib_mode_defaults_to_node_9_ports'
+else
+    bad 'lib_mode_defaults_to_node_9_ports' "$(cat "$work/java-args.env")"
 fi
 
 option_case='ok'
@@ -294,6 +305,9 @@ elif [[ "$(sed -n '1p' "$work/stage-one/shell-cli.options")" != '# key-type uuid
     header_case="line 1 is $(sed -n '1p' "$work/stage-one/shell-cli.options")"
 elif [[ "$(sed -n '2p' "$work/stage-one/shell-cli.options")" != '# node-id 9' ]]; then
     header_case="line 2 is $(sed -n '2p' "$work/stage-one/shell-cli.options")"
+elif ! grep -qx -- '-Dapp.rootkeys.consume.source=http://127.0.0.1:6891' \
+    "$work/stage-one/shell-cli.options"; then
+    header_case='the root key URL does not use node 9 management port'
 elif [[ ! -f "$work/stage-one/one.jar" ]]; then
     header_case='the stage holds no jar'
 fi
@@ -398,6 +412,8 @@ elif [[ ! -f "$work/home-one/lib/one.jar" ]]; then
     lib_case='the home holds no lib/one.jar'
 elif [[ ! -f "$work/home-one/lib/shell-cli.options" ]]; then
     lib_case='the home holds no frozen options'
+elif [[ ! -x "$work/home-one/bin/chat-shell-cli" ]]; then
+    lib_case='the home holds no executable shell CLI launcher'
 elif [[ ! -f "$work/home-one/.installed" ]]; then
     lib_case='the home holds no marker'
 fi

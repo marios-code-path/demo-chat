@@ -206,6 +206,9 @@ file serves key type `uuid` and node 9 alone. Its first two lines record that
 pair. A caller that asks for another pair gets one line and status 2. A caller
 that asks for neither takes the frozen pair.
 
+The installed launcher defaults to core port 6890 and management port 6891.
+The frozen root key URL uses management port 6891.
+
 The login is no part of the installed runtime. It arrives at run time in two
 values, `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE`. No installed file
 holds a login name.

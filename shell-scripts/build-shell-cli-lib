@@ -67,7 +67,8 @@ rm -f "$tmp"/*-exec.jar
 
 # The frozen options come from the launcher of this tree. The print hook ends
 # before any JVM start, so this call reaches no core.
-if ! options="$(CHAT_SHELL_KEY_TYPE="$key_type" CHAT_SHELL_NODE_ID="$node_id" \
+if ! options="$(CORE_PORT=6890 CORE_MGMT_PORT=6891 \
+    CHAT_SHELL_KEY_TYPE="$key_type" CHAT_SHELL_NODE_ID="$node_id" \
     CHAT_SHELL_CLI_PRINT_OPTIONS=1 CHAT_SHELL_LIB='' "$launcher" whoami \
     2> "$tmp.options-err")"; then
     printf 'build-shell-cli-lib: the launcher printed no options. %s\n' \
