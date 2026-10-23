@@ -164,9 +164,12 @@ asks Mario for that window once.
 - [ ] **Step 2: Prove the development gate.** Run `CHAT_SHELL_USER=Theta CHAT_SHELL_PASSWORD_FILE=/opt/demo-chat/node-9/secrets/Theta.password /opt/demo-chat/node-9/bin/chat-shell-cli whoami`.
   Expect status `0`. Expect identity `Theta`. Expect empty standard error.
   This proof does not set the production login identity.
-- [ ] **Step 3: Prove the register read.** Run `/opt/demo-chat/node-9/bin/register read --as Theta`. Expected: status `0` and no denied warning.
-- [ ] **Step 4: Prove the isolation.** Run the same read with `HOME=/nonexistent` and with no repository on the path. Expected: status `0`. That run shows that the home needs no `~/.m2`.
-- [ ] **Step 5: Write** `RECORD.md` with the commands, the verbatim output, the jar count, the byte total, and the Java version. Include no password. State that Theta is a development identity of this proof, and that no installed file holds a login name.
+- [ ] **Step 3: Prove the isolation.** Run the same `whoami` check with `HOME=/nonexistent` and no Maven on `PATH`.
+  Expect status `0`, identity `Theta`, and empty standard error.
+- [ ] **Step 4: Write** `RECORD.md` with the commands and verbatim output.
+  Record the jar count, byte total, and Java version. Include no password.
+  State that Theta is a development identity of this proof.
+- [ ] **Step 5: Defer the register read.** Stage 4A Task 10 creates `register-index` during import. It owns the later live register read. A read before import can fail because the index does not exist.
 - [ ] **Step 6: Commit.** Then set `CHAT-bjqzvsoe` to done and comment the result on `CHAT-jmnjvupr`, because Task 10 of the import plan waits for this gate.
 
 ### Task 5: Documentation

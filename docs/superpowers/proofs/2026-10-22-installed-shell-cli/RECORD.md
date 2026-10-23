@@ -55,4 +55,21 @@ $ CHAT_SHELL_USER=Theta CHAT_SHELL_PASSWORD_FILE=/opt/demo-chat/node-9/secrets/T
 
 Status: `0`. Standard error: zero bytes.
 This run proves the installed CLI can authenticate without the repository, Maven, or a usable home directory.
-The register read gate remains open until `register-index` exists and both reads return status `0` without denied warnings.
+The register read remains unproven. Stage 4A Task 10 owns the import and its live register read.
+
+## Gate ruling after review
+
+Source commit `ce80a45cffcf40803627644896c00a20b74c70d9` replaced the installed runtime.
+The install returned status `0` with 149 jars and 65,893,845 bytes.
+The installed marker names that source commit and Java 25.
+The options file records `# java /usr/bin/java`.
+
+The exact Theta `whoami` command returned status `0` and the identity shown above.
+Standard error had zero bytes.
+The isolated `whoami` command returned the same result with `HOME=/nonexistent` and `PATH=/usr/bin:/bin`.
+The launcher returned status `2` for `CHAT_SHELL_JAVA=/no/such/java` and named the missing path.
+
+`CHAT-bjqzvsoe` requires the installed `whoami` proof.
+This proof meets that requirement.
+The import creates `register-index` after this prerequisite passes.
+The failed reads above remain evidence of the pre-import host state, not a failure of the CLI acceptance gate.
