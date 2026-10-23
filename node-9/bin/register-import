@@ -1078,7 +1078,7 @@ import_credentials() {
 # the offline checks first, so a caller error makes no live call. The function
 # sets import_cli_path, and it exports the login of the owner.
 import_preflight() {
-    local bundle="$1" user="$2" work_dir="$3" cli status
+    local bundle="$1" user="$2" work_dir="$3" cli status reported_user
 
     [[ "$user" == 'Mario' ]] \
         || { import_error 'the first delivery accepts the import user Mario alone'; return 2; }
@@ -1121,7 +1121,12 @@ import_preflight() {
         fi
         return 2
     fi
-    if [[ "$(jq -r '.user // ""' "$work_dir/whoami" 2> /dev/null)" != "$user" ]]; then
+    # whoami prints one UUID, one user, one display name, and one avatar.
+    reported_user="$(sed -nE \
+        's/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} : ([^ |]+) \| .*/\1/p' \
+        "$work_dir/whoami")"
+    if [[ "$(wc -l < "$work_dir/whoami")" -ne 1 \
+          || "$reported_user" != "$user" ]]; then
         import_error "the shell CLI does not report the identity $user"
         return 2
     fi

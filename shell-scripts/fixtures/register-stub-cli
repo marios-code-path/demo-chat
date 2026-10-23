@@ -80,8 +80,8 @@ shift || true
 
 case "$command_name" in
     whoami)
-        jq -cS -n --arg user "${CHAT_SHELL_USER:-}" \
-            '{type: "identity", user: $user}'
+        printf '91da3ce0-cda6-11f1-bae2-25daa21d179d : %s | MARIO OWNER | chatimg://mario.png\n' \
+            "${CHAT_SHELL_USER:-}"
         exit 0
         ;;
     register-read)
