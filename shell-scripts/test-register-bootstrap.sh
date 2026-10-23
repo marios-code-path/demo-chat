@@ -62,6 +62,12 @@ cqlsh_stub="$work/bin/cqlsh-stub"
 cat > "$cqlsh_stub" <<'STUB'
 #!/usr/bin/env bash
 set -uo pipefail
+if [[ "${STUB_REQUIRE_NODE9_ENV:-0}" == '1' \
+      && ( "${NODE9_PROJECT:-}" != 'chat-node-9' \
+           || "${NODE9_VECTOR_PERSIST:-}" != 'on' ) ]]; then
+    printf 'cqlsh-stub: node-9 environment is absent\n' >&2
+    exit 2
+fi
 state="${STUB_STATE:?Set STUB_STATE}"
 query=''
 while (( $# )); do
@@ -84,7 +90,7 @@ room_id_of() {
 }
 owner="$(cat "$state/owner" 2> /dev/null || printf 'Mario\n')"
 case "$query" in
-    *chat_room_name*)
+    *'FROM chat_uuid.chat_room WHERE name = '*'ALLOW FILTERING;'*)
         name="$(printf '%s' "$query" | sed -n "s/.*name = '\\([^']*\\)'.*/\\1/p")"
         if [[ -f "$state/topics" ]] && grep -qx "$name" "$state/topics"; then
             printf '\n room_id\n'
@@ -97,7 +103,7 @@ case "$query" in
         fi
         exit 0
         ;;
-    *auth_metadata_target*)
+    *'FROM chat_uuid.auth_metadata WHERE target = '*'ALLOW FILTERING;'*)
         printf '\n principal                            | permission\n'
         printf -- '--------------------------------------+------------\n'
         printf ' %s |          *\n\n(1 rows)\n' "$(room_id_of "owner-$owner")"
@@ -321,7 +327,7 @@ else
     bad 'index_other_owner_stops' "exit $status, output: $out"
 fi
 
-run_index Mario '' 0 1
+run_index Mario register-index 0 1
 if [[ $status -eq 1 && ! -f "$receipts/index.json" ]]; then
     ok 'index_denied_stops'
 else
@@ -358,7 +364,8 @@ snapshot_topic_name="forward-register-snapshot-$(sha_of "$work/source.md" | cut 
 # Run one whole apply against a clean stub state and a clean receipt
 # directory. The state stays after the run, so a case can read the log.
 full_apply() {
-    out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+    out="$(env -u NODE9_PROJECT -u NODE9_VECTOR_PERSIST \
+        PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" "$@" \
         "$install_home/bin/register-import" apply --bundle "$bundle" \
         --as Mario 2>&1)"
@@ -374,6 +381,29 @@ line_of() {
 last_line_of() {
     grep -n -- "$1" "$stub_state/log" 2> /dev/null | tail -1 | cut -d : -f 1
 }
+
+reset_stub
+rm -rf "$receipts"
+printf 'forward-register-first\n' >> "$stub_state/topics"
+full_apply
+if [[ $status -eq 1 && "$out" == *'forward-register-first'* \
+      && "$(grep -c 'add-topic' "$stub_state/log" || true)" -eq 0 \
+      && ! -f "$receipts/index.json" ]]; then
+    ok 'target_conflict_stops_before_index_write'
+else
+    bad 'target_conflict_stops_before_index_write' \
+        "exit $status, output: $out"
+fi
+
+reset_stub
+rm -rf "$receipts"
+full_apply STUB_REQUIRE_NODE9_ENV=1
+if [[ $status -eq 0 ]]; then
+    ok 'apply_loads_node9_environment_for_cql'
+else
+    bad 'apply_loads_node9_environment_for_cql' \
+        "exit $status, output: $out"
+fi
 
 reset_stub
 rm -rf "$receipts"
@@ -432,6 +462,17 @@ if [[ "$join_case" == 'ok' ]]; then
     ok 'apply_joins_all_four_users'
 else
     bad 'apply_joins_all_four_users' "$join_case"
+fi
+
+index_join_case='ok'
+for user in Sigma Theta Phi Mario; do
+    grep -qx "$user register-index" "$stub_state/joins/all" 2> /dev/null \
+        || index_join_case="$user did not join register-index"
+done
+if [[ "$index_join_case" == 'ok' ]]; then
+    ok 'apply_joins_all_four_to_index'
+else
+    bad 'apply_joins_all_four_to_index' "$index_join_case"
 fi
 
 pointer_case='ok'

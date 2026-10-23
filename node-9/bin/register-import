@@ -476,7 +476,7 @@ cql_rows() {
 # Return 1 when the query fails.
 topic_room_id() {
     local out
-    out="$(import_cql "SELECT room_id FROM chat_uuid.chat_room_name WHERE name = '$1';" 2> /dev/null)" \
+    out="$(import_cql "SELECT room_id FROM chat_uuid.chat_room WHERE name = '$1' ALLOW FILTERING;" 2> /dev/null)" \
         || return 1
     printf '%s\n' "$out" | cql_rows | head -1
 }
@@ -489,7 +489,7 @@ ownership_proof() {
     local topic="$1" room out principals principal handle
     room="$(topic_room_id "$topic")" || return 1
     [[ -n "$room" ]] || return 1
-    out="$(import_cql "SELECT principal, permission FROM chat_uuid.auth_metadata_target WHERE target = $room;" 2> /dev/null)" \
+    out="$(import_cql "SELECT principal, permission FROM chat_uuid.auth_metadata WHERE target = $room ALLOW FILTERING;" 2> /dev/null)" \
         || return 1
     principals="$(printf '%s\n' "$out" | cql_rows \
         | awk -F'|' '$2 == "*" { print $1 }')"
@@ -543,20 +543,19 @@ ensure_index() {
         return 0
     fi
 
-    count="$(index_message_count "$cli")"
-    status=$?
-    if (( status == 2 )); then
-        import_error 'the index read returns a denied warning'
-        return 1
-    fi
-    if (( status != 0 )); then
-        import_error 'the index read fails'
-        return 1
-    fi
-
     room="$(topic_room_id register-index)" \
         || { import_error 'the index read fails'; return 1; }
     if [[ -n "$room" ]]; then
+        count="$(index_message_count "$cli")"
+        status=$?
+        if (( status == 2 )); then
+            import_error 'the index read returns a denied warning'
+            return 1
+        fi
+        if (( status != 0 )); then
+            import_error 'the index read fails'
+            return 1
+        fi
         if (( count > 0 )); then
             import_error "the index holds $count messages and no saved proof"
             return 1
@@ -842,7 +841,7 @@ post_once() {
         import_error "the post of $kind in $target returned $status"
         return 1
     fi
-    message_id="$(printf '%s\n' "$out" | jq -r 'select(.id) | .id' \
+    message_id="$(printf '%s\n' "$out" | jq -r 'select(.messageId) | .messageId' \
         2> /dev/null | head -1)"
     if [[ -z "$message_id" ]]; then
         import_error "the post of $kind in $target returned no message ID"
@@ -1078,7 +1077,7 @@ import_credentials() {
 # the offline checks first, so a caller error makes no live call. The function
 # sets import_cli_path, and it exports the login of the owner.
 import_preflight() {
-    local bundle="$1" user="$2" work_dir="$3" cli status
+    local bundle="$1" user="$2" work_dir="$3" cli status reported_user
 
     [[ "$user" == 'Mario' ]] \
         || { import_error 'the first delivery accepts the import user Mario alone'; return 2; }
@@ -1090,6 +1089,7 @@ import_preflight() {
 
     check_bundle "$bundle" || return
     node9_require_installed || return 2
+    node9_load_env || return 2
 
     cli="$(import_cli)" || return
     import_credentials "$work_dir"
@@ -1121,7 +1121,12 @@ import_preflight() {
         fi
         return 2
     fi
-    if [[ "$(jq -r '.user // ""' "$work_dir/whoami" 2> /dev/null)" != "$user" ]]; then
+    # whoami prints one UUID, one user, one display name, and one avatar.
+    reported_user="$(sed -nE \
+        's/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} : ([^ |]+) \| .*/\1/p' \
+        "$work_dir/whoami")"
+    if [[ "$(wc -l < "$work_dir/whoami")" -ne 1 \
+          || "$reported_user" != "$user" ]]; then
         import_error "the shell CLI does not report the identity $user"
         return 2
     fi
@@ -1184,13 +1189,19 @@ apply_bundle() {
         return 1
     fi
 
+    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl" "$retry"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
     ensure_index "$receipt_dir"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"
         return "$status"
     fi
-    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl" "$retry"
+    join_all register-index
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"
