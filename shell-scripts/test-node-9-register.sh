@@ -6,6 +6,10 @@
 # arguments, and its standard input. The tests never reach a core.
 set -uo pipefail
 
+# The suite runs the wrapper from a source tree on purpose. The installed
+# guard of CHAT-mvvvnujw otherwise stops every call with status 2.
+export NODE9_ALLOW_SOURCE_TREE=1
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 wrapper="$repo_root/node-9/bin/register"
