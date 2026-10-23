@@ -62,6 +62,12 @@ cqlsh_stub="$work/bin/cqlsh-stub"
 cat > "$cqlsh_stub" <<'STUB'
 #!/usr/bin/env bash
 set -uo pipefail
+if [[ "${STUB_REQUIRE_NODE9_ENV:-0}" == '1' \
+      && ( "${NODE9_PROJECT:-}" != 'chat-node-9' \
+           || "${NODE9_VECTOR_PERSIST:-}" != 'on' ) ]]; then
+    printf 'cqlsh-stub: node-9 environment is absent\n' >&2
+    exit 2
+fi
 state="${STUB_STATE:?Set STUB_STATE}"
 query=''
 while (( $# )); do
@@ -358,7 +364,8 @@ snapshot_topic_name="forward-register-snapshot-$(sha_of "$work/source.md" | cut 
 # Run one whole apply against a clean stub state and a clean receipt
 # directory. The state stays after the run, so a case can read the log.
 full_apply() {
-    out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+    out="$(env -u NODE9_PROJECT -u NODE9_VECTOR_PERSIST \
+        PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" "$@" \
         "$install_home/bin/register-import" apply --bundle "$bundle" \
         --as Mario 2>&1)"
@@ -385,6 +392,16 @@ if [[ $status -eq 1 && "$out" == *'forward-register-first'* \
     ok 'target_conflict_stops_before_index_write'
 else
     bad 'target_conflict_stops_before_index_write' \
+        "exit $status, output: $out"
+fi
+
+reset_stub
+rm -rf "$receipts"
+full_apply STUB_REQUIRE_NODE9_ENV=1
+if [[ $status -eq 0 ]]; then
+    ok 'apply_loads_node9_environment_for_cql'
+else
+    bad 'apply_loads_node9_environment_for_cql' \
         "exit $status, output: $out"
 fi
 

@@ -1089,6 +1089,7 @@ import_preflight() {
 
     check_bundle "$bundle" || return
     node9_require_installed || return 2
+    node9_load_env || return 2
 
     cli="$(import_cli)" || return
     import_credentials "$work_dir"
