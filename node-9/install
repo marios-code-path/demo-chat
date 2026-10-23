@@ -100,9 +100,11 @@ complete_state() {
     done
 }
 
-# NODE9_JAVA and NODE9_MVN name another java and another mvn. A host with
-# several JDKs takes one of them, and the offline suite points at an absent
-# command.
+# NODE9_JAVA names the java of the version check. The build script writes the
+# same java into the frozen options, so the installed launcher runs it.
+# NODE9_MVN names the mvn of the build. Maven selects its own JDK through
+# JAVA_HOME, so these two names do not select the build JDK. The offline suite
+# points both names at an absent command.
 java_command="${NODE9_JAVA:-java}"
 mvn_command="${NODE9_MVN:-mvn}"
 

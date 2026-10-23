@@ -196,8 +196,10 @@ is absent. The measured set holds 149 jars and about 66 MB.
 reader takes that home for a complete one. The offline suites use that flag,
 because a full build takes minutes.
 
-`NODE9_JAVA` and `NODE9_MVN` name another java and another mvn. A host with
-several JDKs takes one of them.
+`NODE9_JAVA` names the java of the version check and of the installed
+launcher. `NODE9_MVN` names the mvn of the build. Maven selects its own JDK
+through `JAVA_HOME`. So a host with several JDKs also sets `JAVA_HOME` for the
+build.
 
 `shell-cli.options` holds the JVM options of the launch. The install freezes
 them, because the source-tree launcher builds that list by calling

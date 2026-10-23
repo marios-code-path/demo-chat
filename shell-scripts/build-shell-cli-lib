@@ -37,6 +37,10 @@ launcher="$repo_root/shell-scripts/chat-shell-cli"
 # NODE9_MVN and NODE9_JAVA name another mvn and another java. node-9/install
 # checks the same two names, and it passes them here, so the check and the
 # call always name one pair. See CHAT-bjqzvsoe and the branch review of 2026-10-22.
+#
+# java_command serves the version header of the frozen options. Maven selects
+# its own JDK through JAVA_HOME. This script sets no JAVA_HOME, so a host with
+# several JDKs can compile with one JDK and run with another.
 mvn_command="${NODE9_MVN:-mvn}"
 java_command="${NODE9_JAVA:-java}"
 command -v "$mvn_command" > /dev/null 2>&1 \
