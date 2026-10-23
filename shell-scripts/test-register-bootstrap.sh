@@ -90,7 +90,7 @@ room_id_of() {
 }
 owner="$(cat "$state/owner" 2> /dev/null || printf 'Mario\n')"
 case "$query" in
-    *chat_room_name*)
+    *'FROM chat_uuid.chat_room WHERE name = '*'ALLOW FILTERING;'*)
         name="$(printf '%s' "$query" | sed -n "s/.*name = '\\([^']*\\)'.*/\\1/p")"
         if [[ -f "$state/topics" ]] && grep -qx "$name" "$state/topics"; then
             printf '\n room_id\n'
@@ -103,7 +103,7 @@ case "$query" in
         fi
         exit 0
         ;;
-    *auth_metadata_target*)
+    *'FROM chat_uuid.auth_metadata WHERE target = '*'ALLOW FILTERING;'*)
         printf '\n principal                            | permission\n'
         printf -- '--------------------------------------+------------\n'
         printf ' %s |          *\n\n(1 rows)\n' "$(room_id_of "owner-$owner")"

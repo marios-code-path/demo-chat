@@ -143,20 +143,23 @@ The importer saves the new index ID and Mario ownership proof in private host st
 The proof checks the Cassandra `*` permission row and resolves its principal to `Mario`.
 
 The proof runs three read-only queries through `node9_cqlsh`.
-The first query finds the room of the index name:
+Node 9 uses Lucene for room and grant indexes.
+Its Cassandra index tables can be empty while the persistence tables hold the room and grant.
+The first query finds the room in the persistence table:
 
 ```sql
-SELECT room_id FROM chat_uuid.chat_room_name WHERE name = 'register-index';
+SELECT room_id FROM chat_uuid.chat_room WHERE name = 'register-index' ALLOW FILTERING;
 ```
 
 An empty result means the index is absent.
-The second query reads the permission rows of that room:
+The second query reads the permission rows from the persistence table:
 
 ```sql
-SELECT principal, permission FROM chat_uuid.auth_metadata_target WHERE target = <room_id>;
+SELECT principal, permission FROM chat_uuid.auth_metadata WHERE target = <room_id> ALLOW FILTERING;
 ```
 
 The proof keeps the row whose permission is `*`.
+These two filtered queries can scan rows. The importer runs them during the one-time import and its retries.
 The third query resolves that principal to one handle:
 
 ```sql

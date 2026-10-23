@@ -476,7 +476,7 @@ cql_rows() {
 # Return 1 when the query fails.
 topic_room_id() {
     local out
-    out="$(import_cql "SELECT room_id FROM chat_uuid.chat_room_name WHERE name = '$1';" 2> /dev/null)" \
+    out="$(import_cql "SELECT room_id FROM chat_uuid.chat_room WHERE name = '$1' ALLOW FILTERING;" 2> /dev/null)" \
         || return 1
     printf '%s\n' "$out" | cql_rows | head -1
 }
@@ -489,7 +489,7 @@ ownership_proof() {
     local topic="$1" room out principals principal handle
     room="$(topic_room_id "$topic")" || return 1
     [[ -n "$room" ]] || return 1
-    out="$(import_cql "SELECT principal, permission FROM chat_uuid.auth_metadata_target WHERE target = $room;" 2> /dev/null)" \
+    out="$(import_cql "SELECT principal, permission FROM chat_uuid.auth_metadata WHERE target = $room ALLOW FILTERING;" 2> /dev/null)" \
         || return 1
     principals="$(printf '%s\n' "$out" | cql_rows \
         | awk -F'|' '$2 == "*" { print $1 }')"
