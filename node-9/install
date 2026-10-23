@@ -109,11 +109,16 @@ complete_state() {
 java_command="${NODE9_JAVA:-java}"
 mvn_command="${NODE9_MVN:-mvn}"
 
-# java_major  Print the major version of the selected java.
-java_major() {
-    "$java_command" -version 2>&1 \
-        | sed -nE 's/.*version "([0-9]+).*/\1/p' | head -1
-}
+# A java that answers nothing holds the install. The stub at /usr/bin/java does
+# that when JAVA_HOME names no JDK, so the version probe takes a time limit.
+# NODE9_JAVA_LIMIT sets the seconds, and the offline suite lowers it. The build
+# script reads the same name. See CHAT-faqxupam.
+java_limit_s="${NODE9_JAVA_LIMIT:-30}"
+probe_lib="$src/../shell-scripts/java-probe.sh"
+[[ -f "$probe_lib" ]] \
+    || fail 'no java-probe.sh script beside the node-9 directory.' 2
+# shellcheck source=../shell-scripts/java-probe.sh
+. "$probe_lib"
 
 # The shell CLI runtime needs Java. The check runs before every copy, so a
 # host without Java keeps its earlier home and takes no partial one. See
@@ -122,7 +127,12 @@ java_version='skipped'
 if [[ "$skip_cli" != 'true' ]]; then
     command -v "$java_command" > /dev/null 2>&1 \
         || fail "no java at $java_command. The shell CLI runtime needs Java $java_floor. Install Java, or pass --skip-cli." 2
-    java_version="$(java_major)"
+    java_text="$(java_probe_run "$java_limit_s" "$java_command" -version)"
+    java_probe_status=$?
+    (( java_probe_status != 124 )) \
+        || fail "the java at $java_command gave no version inside the $java_limit_s second time limit. Check JAVA_HOME." 2
+    java_version="$(printf '%s' "$java_text" \
+        | sed -nE 's/.*version "([0-9]+).*/\1/p' | head -1)"
     [[ -n "$java_version" ]] \
         || fail 'cannot read the java version. The shell CLI runtime needs a readable version.' 2
     (( java_version >= java_floor )) \

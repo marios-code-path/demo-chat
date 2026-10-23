@@ -45,6 +45,11 @@ command -v "$java_command" > /dev/null 2>&1 \
     || fail "no java at $java_command. The build needs a JDK." 2
 java_path="$(command -v "$java_command")"
 
+probe_lib="$repo_root/shell-scripts/java-probe.sh"
+[[ -f "$probe_lib" ]] || fail "no java probe library at $probe_lib" 2
+# shellcheck source=java-probe.sh
+. "$probe_lib"
+
 # Maven selects its own JDK through JAVA_HOME. So NODE9_JAVA must also set
 # that path, or the build compiles with one JDK and the launcher runs another.
 #
@@ -61,12 +66,12 @@ java_path="$(command -v "$java_command")"
 # selection of the environment. On a host with sdkman, it is the home of the
 # current candidate. See CHAT-faqxupam and CHAT-bjqzvsoe.
 if [[ -n "${NODE9_JAVA:-}" ]]; then
-    # The query starts a JVM. A stub java with no JDK can hold the shell, so
-    # the call takes a time limit where the host has one.
-    java_limit=()
-    command -v timeout > /dev/null 2>&1 && java_limit=(timeout 30)
-    java_home="$("${java_limit[@]+"${java_limit[@]}"}" "$java_command" \
-        -XshowSettings:properties -version 2>&1 \
+    # The query starts a JVM. A stub java with no JDK holds its caller, so the
+    # call takes a time limit. NODE9_JAVA_LIMIT sets the seconds, node-9/install
+    # reads the same name, and the offline suite lowers it.
+    java_limit_s="${NODE9_JAVA_LIMIT:-30}"
+    java_home="$(java_probe_run "$java_limit_s" "$java_command" \
+        -XshowSettings:properties -version \
         | sed -nE 's/^[[:space:]]*java\.home = (.*)$/\1/p' | head -1)"
     if [[ -n "$java_home" && -x "$java_home/bin/javac" \
           && -f "$java_home/release" ]]; then

@@ -422,6 +422,32 @@ else
     ok 'stage_keeps_java_home_without_a_jdk'
 fi
 
+# A java that answers nothing holds the shell. The stub of macOS does that
+# with no JDK to run. So every probe of a java takes a time limit, and
+# NODE9_JAVA_LIMIT sets the seconds. See CHAT-faqxupam.
+hang_java="$work/hang-java"
+printf '#!/usr/bin/env bash\nsleep 600\n' > "$hang_java"
+chmod +x "$hang_java"
+
+stage_start=$SECONDS
+out="$(timeout 40 env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" \
+    MVN_ENV="$work/mvn-env" NODE9_JAVA="$hang_java" NODE9_JAVA_LIMIT=2 \
+    JAVA_HOME="$work/caller-java-home" \
+    "$stager" "$work/stage-hang" 2>&1)"
+status=$?
+stage_spent=$(( SECONDS - stage_start ))
+if [[ $status -eq 124 ]]; then
+    bad 'stage_limits_the_java_probe' 'the stage script did not stop in 40 s'
+elif (( stage_spent > 15 )); then
+    bad 'stage_limits_the_java_probe' \
+        "the probe took ${stage_spent}s, and the limit was 2s"
+elif [[ "$(cat "$work/mvn-env" 2> /dev/null)" != "JAVA_HOME=$work/caller-java-home" ]]; then
+    bad 'stage_limits_the_java_probe' \
+        "maven saw $(cat "$work/mvn-env" 2> /dev/null)"
+else
+    ok 'stage_limits_the_java_probe'
+fi
+
 # A failed build leaves no stage directory.
 run_stage "$work/stage-fail" MVN_FAIL=1
 if [[ $status -ne 0 && ! -e "$work/stage-fail" ]]; then
@@ -663,6 +689,30 @@ if [[ "$alt_case" == 'ok' ]]; then
     ok 'install_uses_the_named_java_and_mvn'
 else
     bad 'install_uses_the_named_java_and_mvn' "$alt_case"
+fi
+
+# The version check of the install takes the same time limit. A java that
+# answers nothing stops the install with one line, and the earlier home stays.
+# See CHAT-faqxupam.
+install_start=$SECONDS
+out="$(timeout 40 env PATH="$install_bin:/usr/bin:/bin" \
+    MVN_CALLS="$work/mvn-calls" NODE9_JAVA="$hang_java" NODE9_JAVA_LIMIT=2 \
+    bash "$installer" --prefix "$work/home-hang-java" 2>&1)"
+status=$?
+install_spent=$(( SECONDS - install_start ))
+if [[ $status -eq 124 ]]; then
+    bad 'install_limits_the_java_probe' 'the install did not stop in 40 s'
+elif (( install_spent > 15 )); then
+    bad 'install_limits_the_java_probe' \
+        "the check took ${install_spent}s, and the limit was 2s"
+elif [[ $status -ne 2 ]]; then
+    bad 'install_limits_the_java_probe' "exit $status, output: $out"
+elif [[ "$out" != *'limit'* ]]; then
+    bad 'install_limits_the_java_probe' "the output names no limit: $out"
+elif [[ -e "$work/home-hang-java" ]]; then
+    bad 'install_limits_the_java_probe' 'the install made a home'
+else
+    ok 'install_limits_the_java_probe'
 fi
 
 # A caller that names no java keeps the JAVA_HOME of the environment. On a

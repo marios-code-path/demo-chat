@@ -205,6 +205,12 @@ that limit on standard error. An install that names no java also leaves
 `JAVA_HOME` as it stands, because that value is the choice of the environment.
 `NODE9_MVN` names the mvn of the build.
 
+Every probe of a java takes a time limit, because a java can answer nothing.
+`NODE9_JAVA_LIMIT` sets the seconds, and the default is 30. The install stops
+with status 2 and names the limit when the version probe passes it. The limit
+needs no `timeout` command. `shell-scripts/java-probe.sh` holds it, and the
+install and the build script both read that one file.
+
 `shell-cli.options` holds the JVM options of the launch. The install freezes
 them, because the source-tree launcher builds that list by calling
 `shell-scripts/chat-build`, and an installed home holds no such script. The
