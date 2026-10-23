@@ -518,6 +518,100 @@ else
     bad 'install_holds_no_development_identity' "$leak_case"
 fi
 
+# -- The Sigma review of 2026-10-22 --------------------------------------
+
+# NODE9_JAVA and NODE9_MVN must reach the build and the launcher. A check of
+# one command and a call of another proves nothing.
+mkdir -p "$work/alt-tools"
+cat > "$work/alt-tools/alt-mvn" <<'STUB'
+#!/usr/bin/env bash
+set -uo pipefail
+printf 'ALT %s\n' "$*" >> "${MVN_CALLS:?Set MVN_CALLS}"
+out=''
+for word in "$@"; do
+    case "$word" in
+        -DoutputDirectory=*) out="${word#-DoutputDirectory=}" ;;
+    esac
+done
+if [[ -n "$out" ]]; then
+    mkdir -p "$out"
+    stage_tmp="$(mktemp -d)"
+    mkdir -p "$stage_tmp/com/demo/chat"
+    : > "$stage_tmp/com/demo/chat/ShellCliKt.class"
+    ( cd "$stage_tmp" && zip -q -r "$out/chat-shell-0.0.1.jar" com )
+    rm -rf "$stage_tmp"
+    printf 'jar one\n' > "$out/one.jar"
+fi
+exit 0
+STUB
+cp "$stub_bin/java-version-stub" "$work/alt-tools/alt-java"
+chmod +x "$work/alt-tools/alt-mvn" "$work/alt-tools/alt-java"
+
+# The install runs with no mvn and no java on the path at all. Only the two
+# names point at a working pair, so a call through the path cannot succeed.
+rm -f "$work/mvn-calls"
+out="$(env PATH="/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+    NODE9_MVN="$work/alt-tools/alt-mvn" NODE9_JAVA="$work/alt-tools/alt-java" \
+    bash "$installer" --prefix "$work/home-alt-tools" 2>&1)"
+status=$?
+alt_case='ok'
+if [[ $status -ne 0 ]]; then
+    alt_case="exit $status, output: $out"
+elif [[ ! -s "$work/mvn-calls" ]]; then
+    alt_case='the named mvn made no call'
+elif ! grep -q '^ALT ' "$work/mvn-calls"; then
+    alt_case='the build called another mvn than the named one'
+elif [[ ! -f "$work/home-alt-tools/lib/shell-cli.options" ]]; then
+    alt_case='the home holds no frozen options'
+fi
+if [[ "$alt_case" == 'ok' ]]; then
+    ok 'install_uses_the_named_java_and_mvn'
+else
+    bad 'install_uses_the_named_java_and_mvn' "$alt_case"
+fi
+
+# The replacement of lib/ leaves no gap. A failed move keeps the earlier jar
+# set, so the home never stands without a runtime.
+run_install "$work/home-gap"
+printf 'old\n' > "$work/home-gap/lib/old-marker"
+out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+    NODE9_INSTALL_FAIL_LIB_MOVE=1 bash "$installer" \
+    --prefix "$work/home-gap" 2>&1)"
+status=$?
+gap_case='ok'
+if [[ $status -eq 0 ]]; then
+    gap_case='the install reported success after a failed move'
+elif [[ ! -d "$work/home-gap/lib" ]]; then
+    gap_case='the home stands without a lib directory'
+elif [[ ! -f "$work/home-gap/lib/old-marker" ]]; then
+    gap_case='the earlier jar set is gone'
+fi
+if [[ "$gap_case" == 'ok' ]]; then
+    ok 'install_keeps_a_lib_through_a_failed_move'
+else
+    bad 'install_keeps_a_lib_through_a_failed_move' "$gap_case"
+fi
+
+# --skip-cli on an existing home keeps the earlier jar set. The marker must
+# say so, because a reader of cli: skipped expects no runtime.
+run_install "$work/home-keep-lib"
+run_install "$work/home-keep-lib" -- --skip-cli
+marker_case='ok'
+if [[ $status -ne 0 ]]; then
+    marker_case="exit $status, output: $out"
+elif [[ ! -f "$work/home-keep-lib/lib/shell-cli.options" ]]; then
+    marker_case='the earlier jar set is gone'
+elif grep -q 'cli: skipped' "$work/home-keep-lib/.installed"; then
+    marker_case='the marker says skipped while the home holds a jar set'
+elif ! grep -q 'cli: lib' "$work/home-keep-lib/.installed"; then
+    marker_case="the marker records $(grep '^cli:' "$work/home-keep-lib/.installed")"
+fi
+if [[ "$marker_case" == 'ok' ]]; then
+    ok 'skip_cli_marker_tells_the_truth_about_an_existing_lib'
+else
+    bad 'skip_cli_marker_tells_the_truth_about_an_existing_lib' "$marker_case"
+fi
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1

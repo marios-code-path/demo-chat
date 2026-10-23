@@ -168,6 +168,7 @@ if [[ -f "$options_file" ]]; then
     export CORE_MGMT_PORT="${CORE_MGMT_PORT:-6891}"
     frozen_key_type="$(sed -n 's/^# key-type //p' "$options_file" | head -1)"
     frozen_node_id="$(sed -n 's/^# node-id //p' "$options_file" | head -1)"
+    frozen_java="$(sed -n 's/^# java //p' "$options_file" | head -1)"
     if [[ -z "$frozen_key_type" || -z "$frozen_node_id" ]]; then
         echo "chat-shell-cli: $options_file holds no key type and node id header." >&2
         exit 2
@@ -240,4 +241,13 @@ if [[ -z "${class_path:-}" ]]; then
     class_path="$root/chat-deploy/target/classes:$(cat "$classpath")"
 fi
 
-exec java "${opts[@]}" -cp "$class_path" com.demo.chat.ShellCliKt "$@"
+# The java of the run. An installed home records the java that its install
+# checked, so the run uses that one. CHAT_SHELL_JAVA names another. See
+# CHAT-bjqzvsoe and the branch review of 2026-10-22.
+java_bin="${CHAT_SHELL_JAVA:-${frozen_java:-java}}"
+if ! command -v "$java_bin" > /dev/null 2>&1; then
+    printf 'chat-shell-cli: no java at %s. Set CHAT_SHELL_JAVA.\n' "$java_bin" >&2
+    exit 2
+fi
+
+exec "$java_bin" "${opts[@]}" -cp "$class_path" com.demo.chat.ShellCliKt "$@"

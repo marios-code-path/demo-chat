@@ -158,7 +158,10 @@ if [[ "$skip_cli" != 'true' ]]; then
     stage_parent="$(mktemp -d "$(dirname "$prefix")/.node9-install-XXXXXX")" \
         || fail 'no temporary directory for the jar set.' 1
     lib_stage="$stage_parent/lib"
-    if ! "$src/../shell-scripts/build-shell-cli-lib" "$lib_stage" \
+    # The build takes the same two names that the check read, so the check and
+    # the call never name two pairs. See the branch review of 2026-10-22.
+    if ! env NODE9_JAVA="$java_command" NODE9_MVN="$mvn_command" \
+        "$src/../shell-scripts/build-shell-cli-lib" "$lib_stage" \
         > "$stage_parent/build.log" 2>&1; then
         printf 'node-9 install: the shell CLI build failed. Its log is at %s\n' \
             "$stage_parent/build.log" >&2
@@ -185,9 +188,30 @@ chmod 755 "$prefix"/bin/*
 
 # The jar set replaces the earlier one whole, so a dependency that left the
 # build leaves the home. lib/ is code, not state.
+#
+# The earlier set moves aside first, and it returns when the new set cannot
+# take its place. So a failed move leaves a working runtime. No rename can
+# replace a directory that holds files, so the two renames leave one short
+# window. A failure inside that window restores the earlier set.
+# NODE9_INSTALL_FAIL_LIB_MOVE is a test hook of the offline suite.
+# See the branch review of 2026-10-22.
 if [[ -n "$lib_stage" ]]; then
-    rm -rf "${prefix:?}/lib"
-    mv "$lib_stage" "$prefix/lib" || fail "cannot move the jar set to $prefix/lib." 1
+    old_lib=''
+    if [[ -d "$prefix/lib" ]]; then
+        old_lib="$stage_parent/lib.old"
+        mv "$prefix/lib" "$old_lib" \
+            || fail "cannot move the earlier jar set out of $prefix/lib." 1
+    fi
+    if [[ "${NODE9_INSTALL_FAIL_LIB_MOVE:-}" == '1' ]] \
+       || ! mv "$lib_stage" "$prefix/lib"; then
+        if [[ -n "$old_lib" ]]; then
+            mv "$old_lib" "$prefix/lib" \
+                || fail "the jar set of $prefix/lib is lost. Run the install again." 1
+            printf 'node-9 install: the new jar set did not move. The earlier set stays.\n' >&2
+        fi
+        fail "cannot move the jar set to $prefix/lib." 1
+    fi
+    rm -rf "$old_lib"
     rmdir "$stage_parent" 2> /dev/null
 fi
 
@@ -232,10 +256,15 @@ fi
     printf 'installed-at: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     printf 'source-commit: %s\n' \
         "$(git -C "$src" rev-parse HEAD 2>/dev/null || printf unknown)"
-    if [[ "$skip_cli" == 'true' ]]; then
-        printf 'cli: skipped\n'
-    else
+    # The line reports the home, not the flag. --skip-cli on a home that
+    # already holds a jar set keeps that set, and a reader of "skipped" would
+    # otherwise expect no runtime. See the branch review of 2026-10-22.
+    if [[ -n "$lib_stage" ]]; then
         printf 'cli: lib, java %s\n' "$java_version"
+    elif [[ -f "$prefix/lib/shell-cli.options" ]]; then
+        printf 'cli: lib, kept\n'
+    else
+        printf 'cli: skipped\n'
     fi
 } > "$prefix/.installed"
 
