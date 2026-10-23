@@ -18,6 +18,12 @@ native compilation. `chat-shell` has no native profile. `CHAT-ulrkvfit` tracks
 that gap. `CHAT-emwhnlay` permits the JVM importer command. See
 https://github.com/spring-projects/spring-shell/issues/1229
 
+`CHAT-bjqzvsoe` holds a second permitted JVM command. The owner recorded that
+exception on 2026-10-22, for the installed shell CLI runtime of node 9. That
+runtime ships a jar set and a launcher, and it needs a Java 25 host. The
+`AGENTS.md` GraalVM rule stands for every other tool, and `CHAT-ulrkvfit`
+keeps the native profile gap.
+
 ## How a command name is produced today
 
 **No command in this module declares its name.** Every `@ShellMethod` carries

@@ -35,6 +35,13 @@ limit_ms=
 case "${1:-}" in
     register-read) limit_ms=30000 ;;
 esac
+# CHAT_SHELL_LIMIT_MS shortens the limit of this command. The offline suite
+# sets it, as the register wrapper takes CHAT_REGISTER_DEADLINE_MS. A value
+# above the table value is ignored, so a caller cannot raise a limit.
+if [[ -n "$limit_ms" && "${CHAT_SHELL_LIMIT_MS:-}" =~ ^[0-9]+$ ]] \
+   && (( CHAT_SHELL_LIMIT_MS > 0 )) && (( CHAT_SHELL_LIMIT_MS < limit_ms )); then
+    limit_ms="$CHAT_SHELL_LIMIT_MS"
+fi
 if [[ -n "$limit_ms" && -z "${CHAT_SHELL_SUPERVISED:-}" ]]; then
     limit_line="chat-shell: $1 passed its ${limit_ms} ms limit"
     limit_s=$(( limit_ms / 1000 ))
@@ -138,35 +145,84 @@ fi
 export CHAT_SHELL_LAUNCH_EPOCH_MS
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
-node_id="${CHAT_SHELL_NODE_ID:-1}"
-classpath="$root/chat-deploy/target/shell-cli.classpath"
 
-# The options of the shell launch plan, as chat-build prints them for the
-# interactive shell. They go on the java command line, not in
-# JAVA_TOOL_OPTIONS, because the JVM prints a line on standard error for that
-# variable.
-plan="$("$root/shell-scripts/chat-build" shell --run --notls --node-id "$node_id" \
-    --key-type "$key_type" --dry-run)"
+# Two runtimes, one launcher.
+#
+# An installed home holds its jar set in lib/, beside the frozen JVM options
+# of shell-cli.options. That file exists because this script builds its
+# options by calling chat-build, and an installed home holds no chat-build and
+# no repository. The install writes the options once.
+#
+# A source tree has no lib/. It reads the classpath file of
+# `just build-shell-cli` and builds the options from chat-build.
+#
+# The login is never part of either runtime. It arrives at run time in
+# CHAT_SHELL_USER and CHAT_SHELL_PASSWORD_FILE. See CHAT-bjqzvsoe.
+lib="${CHAT_SHELL_LIB:-$root/lib}"
+options_file="$lib/shell-cli.options"
 opts=()
-while IFS= read -r line; do
-    case "$line" in
-        # The vector module makes the JVM print a warning on standard error, and a shell client needs no vectors.
-        --add-modules=jdk.incubator.vector) ;;
-        -Dspring.shell.interactive.enabled=*|-Dspring-boot.run.*) ;;
-        *) opts+=("$line") ;;
-    esac
-done < <(sed -nE 's/^  +((-D|--)[^ ].*)$/\1/p' <<< "$plan")
 
-# These come last, so they win over the plan.
-opts+=(
-    -Dchat.shell.mode=one-shot
-    -Dspring.shell.interactive.enabled=false
-    -Dspring.main.banner-mode=off
-    -Dlogging.threshold.console=OFF
-    -Dspring.main.web-application-type=none
-    --sun-misc-unsafe-memory-access=allow
-)
+if [[ -f "$options_file" ]]; then
+    # The installed node-9 runtime needs these ports for local RSocket discovery.
+    export CORE_PORT="${CORE_PORT:-6890}"
+    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-6891}"
+    frozen_key_type="$(sed -n 's/^# key-type //p' "$options_file" | head -1)"
+    frozen_node_id="$(sed -n 's/^# node-id //p' "$options_file" | head -1)"
+    frozen_java="$(sed -n 's/^# java //p' "$options_file" | head -1)"
+    if [[ -z "$frozen_key_type" || -z "$frozen_node_id" ]]; then
+        echo "chat-shell-cli: $options_file holds no key type and node id header." >&2
+        exit 2
+    fi
+    key_type="${CHAT_SHELL_KEY_TYPE:-$frozen_key_type}"
+    node_id="${CHAT_SHELL_NODE_ID:-$frozen_node_id}"
+    if [[ "$key_type" != "$frozen_key_type" ]]; then
+        printf 'chat-shell-cli: the installed options serve key type %s, and the caller asks for %s.\n' \
+            "$frozen_key_type" "$key_type" >&2
+        exit 2
+    fi
+    if [[ "$node_id" != "$frozen_node_id" ]]; then
+        printf 'chat-shell-cli: the installed options serve node %s, and the caller asks for node %s.\n' \
+            "$frozen_node_id" "$node_id" >&2
+        exit 2
+    fi
+    while IFS= read -r line; do
+        case "$line" in
+            ''|'#'*) ;;
+            *) opts+=("$line") ;;
+        esac
+    done < "$options_file"
+    class_path="$lib/*"
+else
+    key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
+    node_id="${CHAT_SHELL_NODE_ID:-1}"
+    classpath="${CHAT_SHELL_CLASSPATH_FILE:-$root/chat-deploy/target/shell-cli.classpath}"
+
+    # The options of the shell launch plan, as chat-build prints them for the
+    # interactive shell. They go on the java command line, not in
+    # JAVA_TOOL_OPTIONS, because the JVM prints a line on standard error for that
+    # variable.
+    plan="$("$root/shell-scripts/chat-build" shell --run --notls --node-id "$node_id" \
+        --key-type "$key_type" --dry-run)"
+    while IFS= read -r line; do
+        case "$line" in
+            # The vector module makes the JVM print a warning on standard error, and a shell client needs no vectors.
+            --add-modules=jdk.incubator.vector) ;;
+            -Dspring.shell.interactive.enabled=*|-Dspring-boot.run.*) ;;
+            *) opts+=("$line") ;;
+        esac
+    done < <(sed -nE 's/^  +((-D|--)[^ ].*)$/\1/p' <<< "$plan")
+
+    # These come last, so they win over the plan. The frozen options of an
+    # installed home already hold them, because the install captures this list.
+    opts+=(
+        -Dchat.shell.mode=one-shot
+        -Dspring.shell.interactive.enabled=false
+        -Dspring.main.banner-mode=off
+        -Dlogging.threshold.console=OFF
+        -Dspring.main.web-application-type=none
+        --sun-misc-unsafe-memory-access=allow
+    )
+fi
 if [[ -n "${CHAT_SHELL_LOG:-}" ]]; then
     opts+=("-Dlogging.file.name=$CHAT_SHELL_LOG")
 fi
@@ -177,10 +233,21 @@ if [[ "${CHAT_SHELL_CLI_PRINT_OPTIONS:-}" == 1 ]]; then
     printf '%s\n' "${opts[@]}"
     exit 0
 fi
-if [[ ! -s "$classpath" ]]; then
-    echo "chat-shell-cli: no classpath file. Run just build-shell-cli first." >&2
-    exit 1
+if [[ -z "${class_path:-}" ]]; then
+    if [[ ! -s "$classpath" ]]; then
+        echo "chat-shell-cli: no classpath file. Run just build-shell-cli first." >&2
+        exit 1
+    fi
+    class_path="$root/chat-deploy/target/classes:$(cat "$classpath")"
 fi
 
-exec java "${opts[@]}" -cp "$root/chat-deploy/target/classes:$(cat "$classpath")" \
-    com.demo.chat.ShellCliKt "$@"
+# The java of the run. An installed home records the java that its install
+# checked, so the run uses that one. CHAT_SHELL_JAVA names another. See
+# CHAT-bjqzvsoe and the branch review of 2026-10-22.
+java_bin="${CHAT_SHELL_JAVA:-${frozen_java:-java}}"
+if ! command -v "$java_bin" > /dev/null 2>&1; then
+    printf 'chat-shell-cli: no java at %s. Set CHAT_SHELL_JAVA.\n' "$java_bin" >&2
+    exit 2
+fi
+
+exec "$java_bin" "${opts[@]}" -cp "$class_path" com.demo.chat.ShellCliKt "$@"

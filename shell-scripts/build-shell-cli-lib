@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+# Build the shell CLI runtime and stage it in one directory. See
+# CHAT-bjqzvsoe.
+#
+#   build-shell-cli-lib <new-stage-directory>
+#
+# The stage holds every runtime jar and the file shell-cli.options. An
+# installed node-9 home takes that directory as its lib/. The launcher then
+# needs no repository, no Maven, and no ~/.m2.
+#
+# shell-cli.options holds two header lines, the key type and the node id, and
+# one JVM option on each later line. The options come from the launcher
+# itself, through CHAT_SHELL_CLI_PRINT_OPTIONS, so the installed list and the
+# source-tree list cannot differ. The file holds no login and no secret.
+#
+# A failed build leaves no stage directory. The work happens in a temporary
+# directory beside the target, and one rename completes it.
+set -uo pipefail
+
+# The node-9 values of the frozen options. See node-9/node-9.env.
+key_type=uuid
+node_id=9
+
+fail() {
+    printf 'build-shell-cli-lib: %s\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+(( $# == 1 )) || fail 'use <new-stage-directory>' 2
+stage="$1"
+[[ ! -e "$stage" && ! -L "$stage" ]] || fail "the stage path $stage exists" 2
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+launcher="$repo_root/shell-scripts/chat-shell-cli"
+[[ -x "$launcher" ]] || fail "no launcher at $launcher" 2
+
+# NODE9_MVN and NODE9_JAVA name another mvn and another java. node-9/install
+# checks the same two names, and it passes them here, so the check and the
+# call always name one pair. See CHAT-bjqzvsoe and the branch review of 2026-10-22.
+mvn_command="${NODE9_MVN:-mvn}"
+java_command="${NODE9_JAVA:-java}"
+command -v "$mvn_command" > /dev/null 2>&1 \
+    || fail "no mvn at $mvn_command. The build needs Maven." 2
+command -v "$java_command" > /dev/null 2>&1 \
+    || fail "no java at $java_command. The build needs a JDK." 2
+java_path="$(command -v "$java_command")"
+
+# Maven selects its own JDK through JAVA_HOME. So NODE9_JAVA must also set
+# that path, or the build compiles with one JDK and the launcher runs another.
+# The home of a java is the parent of its bin directory. A java with no javac
+# beside it is no JDK, and the build then keeps the JAVA_HOME of the caller.
+# NODE9_JAVA alone sets JAVA_HOME. A default java leaves it, because the
+# caller of a default build already selected its JDK.
+# See CHAT-bjqzvsoe and the branch review of 2026-10-23.
+if [[ -n "${NODE9_JAVA:-}" ]]; then
+    java_home="$(cd "$(dirname "$java_path")/.." 2> /dev/null && pwd)"
+    if [[ -n "$java_home" && -x "$java_home/bin/javac" ]]; then
+        export JAVA_HOME="$java_home"
+    else
+        printf 'build-shell-cli-lib: %s has no javac beside it, so it is no JDK. JAVA_HOME keeps its value, and Maven selects its own JDK.\n' \
+            "$java_path" >&2
+    fi
+fi
+
+parent="$(dirname "$stage")"
+[[ -d "$parent" ]] || fail "the parent directory $parent is absent" 2
+tmp="$(mktemp -d "$parent/.shell-cli-lib-XXXXXX")" \
+    || fail 'no temporary directory'
+
+if ! "$mvn_command" -B -ntp -f "$repo_root/chat-deploy/pom.xml" \
+    -Pdeploy,shell,shell-host,client-backend -Dmaven.test.skip=true \
+    package dependency:copy-dependencies -DincludeScope=runtime \
+    -DoutputDirectory="$tmp" > "$tmp.log" 2>&1; then
+    rm -rf "$tmp"
+    printf 'build-shell-cli-lib: the Maven build failed. Its log is at %s\n' \
+        "$tmp.log" >&2
+    exit 1
+fi
+rm -f "$tmp.log"
+
+# The plain module jar of chat-deploy joins the dependencies. The Spring Boot
+# repackage of that module, chat-deploy-*-exec.jar, stays out. That file holds
+# every dependency again under BOOT-INF, so it adds 63 MB and no plain
+# classpath can read it. The main class itself comes from chat-shell-*.jar,
+# which the dependency copy already staged.
+while IFS= read -r jar; do
+    cp "$jar" "$tmp/" || { rm -rf "$tmp"; fail 'cannot copy the module jar'; }
+done < <(find "$repo_root/chat-deploy/target" -maxdepth 1 -name '*.jar' \
+    -not -name '*-exec.jar' -not -name '*-sources.jar' \
+    -not -name '*-javadoc.jar' 2> /dev/null)
+rm -f "$tmp"/*-exec.jar
+
+# The frozen options come from the launcher of this tree. The print hook ends
+# before any JVM start, so this call reaches no core.
+if ! options="$(CORE_PORT=6890 CORE_MGMT_PORT=6891 \
+    CHAT_SHELL_JAVA="$java_command" \
+    CHAT_SHELL_KEY_TYPE="$key_type" CHAT_SHELL_NODE_ID="$node_id" \
+    CHAT_SHELL_CLI_PRINT_OPTIONS=1 CHAT_SHELL_LIB='' "$launcher" whoami \
+    2> "$tmp.options-err")"; then
+    printf 'build-shell-cli-lib: the launcher printed no options. %s\n' \
+        "$(head -1 "$tmp.options-err")" >&2
+    rm -rf "$tmp" "$tmp.options-err"
+    exit 1
+fi
+rm -f "$tmp.options-err"
+
+{
+    printf '# key-type %s\n' "$key_type"
+    printf '# node-id %s\n' "$node_id"
+    printf '# java %s\n' "$java_path"
+    printf '%s\n' "$options"
+} > "$tmp/shell-cli.options"
+
+chmod 644 "$tmp"/*.jar "$tmp/shell-cli.options" 2> /dev/null
+chmod 755 "$tmp"
+mv "$tmp" "$stage" || { rm -rf "$tmp"; fail "the stage does not move to $stage"; }
+
+# The main class must stand on the staged classpath. A stage without it gives
+# a ClassNotFoundError at the first run, so the check happens here.
+# grep -c counts without an early exit, so unzip takes no SIGPIPE.
+main_class_jars=0
+for jar in "$stage"/*.jar; do
+    count="$(unzip -l "$jar" 2> /dev/null | grep -c 'com/demo/chat/ShellCliKt.class')"
+    (( count > 0 )) && main_class_jars=$(( main_class_jars + 1 ))
+done
+if (( main_class_jars == 0 )); then
+    fail "no staged jar holds com/demo/chat/ShellCliKt.class. The stage at $stage is incomplete."
+fi
+
+jars="$(find "$stage" -maxdepth 1 -name '*.jar' | grep -c .)"
+bytes="$(find "$stage" -maxdepth 1 -type f -exec wc -c {} + \
+    | awk 'END { print $1 }')"
+printf 'build-shell-cli-lib: %s jars, %s bytes in %s\n' "$jars" "$bytes" \
+    "$stage"
