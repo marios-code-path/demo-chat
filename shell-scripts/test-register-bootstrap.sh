@@ -464,6 +464,17 @@ else
     bad 'apply_joins_all_four_users' "$join_case"
 fi
 
+index_join_case='ok'
+for user in Sigma Theta Phi Mario; do
+    grep -qx "$user register-index" "$stub_state/joins/all" 2> /dev/null \
+        || index_join_case="$user did not join register-index"
+done
+if [[ "$index_join_case" == 'ok' ]]; then
+    ok 'apply_joins_all_four_to_index'
+else
+    bad 'apply_joins_all_four_to_index' "$index_join_case"
+fi
+
 pointer_case='ok'
 pointer_text="$(jq -r 'select(.text | contains("CHAT-aaaaaaaa")) | .text' \
     "$stub_state/messages/register-index.jsonl" 2> /dev/null | head -1)"

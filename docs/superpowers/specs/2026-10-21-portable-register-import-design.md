@@ -175,6 +175,7 @@ A retry accepts an existing index only when that saved proof matches the live in
 If a crash precedes the saved proof, the importer checks the live index again.
 It rebuilds the proof only when the index holds zero messages and Mario owns its `*` permission row.
 It saves that proof before any topic or pointer post.
+The importer joins Sigma, Theta, Phi, and Mario to the index after the ownership proof.
 An index with messages and no saved proof stops the import before another write.
 A denied or failed read stops the import.
 The importer checks every target name before its first write.

@@ -108,6 +108,13 @@ case "$command_name" in
             printf 'stub: no room has the name register-index\n' >&2
             exit 1
         fi
+        if [[ "${CHAT_SHELL_USER:-}" != 'Mario' ]] \
+              && ! grep -qx "${CHAT_SHELL_USER:-} register-index" \
+                  "$state/joins/all" 2> /dev/null; then
+            jq -cS -n '{type: "warning", kind: "denied-index",
+                        topic: "register-index", reason: "Access Denied"}'
+            exit 0
+        fi
         [[ -f "$state/messages/register-index.jsonl" ]] \
             && cat "$state/messages/register-index.jsonl"
         exit 0
