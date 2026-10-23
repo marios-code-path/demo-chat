@@ -197,6 +197,43 @@ It needs no Maven, no JDK, and no repository copy. `start` reads
 `CORE_IMAGE` from `node-9.env` and finds the loaded image. It calls Maven
 only when the image is absent.
 
+## Import a register snapshot
+
+One bundle carries one reviewed Markdown snapshot to a prepared host. See
+`CHAT-jmnjvupr` and
+`docs/superpowers/specs/2026-10-21-portable-register-import-design.md`.
+
+```bash
+node-9/bin/register-import pack --source FILE --mapping FILE --bundle DIR
+/opt/demo-chat/node-9/bin/register-import apply --bundle DIR --as Mario
+/opt/demo-chat/node-9/bin/register-import verify --bundle DIR --as Mario
+```
+
+`pack` makes no network call, and it needs no installed home. `apply` and
+`verify` run from an installed copy alone.
+
+Exit status:
+
+- 0: the command passed every check.
+- 1: a conflict, a malformed receipt, a failed readback, or a byte difference.
+- 2: an argument, a bundle, a path, the installed guard, or the shell CLI.
+- 69: the core is not available.
+- 75: a post outcome stays uncertain. Retry with the same bundle.
+- 77: a login is absent.
+- 124: a bounded read passed its time limit.
+
+Receipts live in `$NODE9_DIR/data/register-import/<bundle-hash>/`. They belong
+to one host. Do not copy them to another host. A retry reads them and makes no
+second message.
+
+Mario keeps every agent off the host during the import. Mario directs agents
+to the new register only after `verify` returns 0.
+
+Mario reviews the changing facts again on the UTC import date. Those facts
+hold the issue state, the open pull requests, the branches, and the current
+checkout. The source date must equal that UTC date. A changed fact needs a new
+snapshot, a new mapping, and a new review of both hashes.
+
 ## The embedding route
 
 The base Compose file holds the embedding settings. The overlay never holds
@@ -209,3 +246,11 @@ measured.
 ## Tests
 
 `bash shell-scripts/test-node-9.sh` runs offline. It starts no container.
+
+`bash shell-scripts/test-register-bundle.sh` checks `register-range`,
+`register-uuid5`, and `pack`. `bash shell-scripts/test-register-bootstrap.sh`
+checks `apply` and `verify` against a stub shell CLI and a stub cqlsh. Both
+suites run offline, and they reach no core.
+
+Ten cases of `test-node-9.sh` need free ports 6890, 6891, and 6892. Stop node
+9 before that suite.

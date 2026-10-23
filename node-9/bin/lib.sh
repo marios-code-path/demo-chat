@@ -30,6 +30,72 @@ node9_require_installed() {
     return 2
 }
 
+# node9_key_error KEY
+# Print one reason and return 1 for a key that cannot stand in a pointer
+# line. Return 0 for a safe key. A key is opaque text. This project passes an
+# fp issue ID, and the rule knows nothing about that source. A key holds no |
+# delimiter, no backslash, and no control character. A backslash doubles in
+# the tab-separated read form, so a later read cannot match it. A key holds no
+# space at its start or its end, and at most 64 characters. The key - is
+# reserved for archive pointers. The register command and the importer share
+# this rule. See CHAT-jmnjvupr.
+node9_key_error() {
+    local key="${1-}" trimmed
+    if [[ -z "$key" ]]; then
+        printf 'the key is empty.\n'
+        return 1
+    fi
+    if (( ${#key} > 64 )); then
+        printf 'the key passes 64 characters.\n'
+        return 1
+    fi
+    if [[ "$key" == *'|'* ]]; then
+        printf 'the key holds the | delimiter.\n'
+        return 1
+    fi
+    if [[ "$key" == *[\\]* ]]; then
+        printf 'the key holds a backslash.\n'
+        return 1
+    fi
+    if [[ "$key" == *[[:cntrl:]]* ]]; then
+        printf 'the key holds a control character.\n'
+        return 1
+    fi
+    trimmed="${key#"${key%%[![:space:]]*}"}"
+    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+    if [[ "$key" != "$trimmed" ]]; then
+        printf 'the key holds a space at its start or its end.\n'
+        return 1
+    fi
+    if [[ "$key" == '-' ]]; then
+        printf 'the key - is reserved for archive pointers.\n'
+        return 1
+    fi
+    return 0
+}
+
+# node9_title_error TITLE
+# Print one reason and return 1 for a title that cannot stand in a pointer
+# line. Return 0 for a safe title. A title holds text, no | delimiter, and no
+# control character. The register command and the importer share this rule.
+# See CHAT-jmnjvupr.
+node9_title_error() {
+    local title="${1-}"
+    if [[ -z "$title" ]]; then
+        printf 'the title is empty.\n'
+        return 1
+    fi
+    if [[ "$title" == *'|'* ]]; then
+        printf 'the title holds the | delimiter.\n'
+        return 1
+    fi
+    if [[ "$title" == *[[:cntrl:]]* ]]; then
+        printf 'the title holds a control character.\n'
+        return 1
+    fi
+    return 0
+}
+
 # node9_check_toggle VALUE
 # Status 0 for on or off. Otherwise print the value and return 2.
 node9_check_toggle() {

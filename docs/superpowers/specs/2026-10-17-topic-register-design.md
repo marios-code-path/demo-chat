@@ -695,27 +695,31 @@ Each stage from 1 to 4 ends in its own PR.
 
 ## The migration
 
-The migration is a separate step, after the register works. It needs PR
-#256 merged, because that PR creates `forward-register-archive-2026-10-17.md`.
-Until the migration, the 24-hour `forward-register.md` of PR #256 stays the
-register.
+The migration follows stage 3. PR #264 merged the register command and the
+`AGENTS.md` session step. The file `forward-register.md` is frozen at commit
+`2d75f0cdd09115da422cdc0a693f0227f31a6ef5` (H). Stage 4 reads each
+source file from H. It does not edit the frozen file.
 
-1. Import `forward-register.md` and the four archive files:
+1. Import `forward-register.md` and the six tracked archive files:
    `forward-register-archive-2026-08.md`, `-2026-09.md`, `-2026-10.md`, and
-   `-2026-10-17.md`.
+   `-2026-10-17.md`, `-2026-10-18.md`, and `-2026-10-19.md`.
 2. Each file becomes one topic. Each `##` section becomes one message, in
    file order. The text before the first `##` heading is the first section.
    A header message, before all sections, names the source file and the
    commit. The user who runs the import is the sender.
 3. The import adds one archive pointer per file to `register-index`.
-4. A check joins the section messages of each topic in order, and compares
-   the result with the full source file, byte for byte. Any difference stops
-   the migration. If the store changes whitespace, the check finds it.
-5. Then the files leave the repo.
+4. A check joins the section messages of each topic in file order, and
+   compares the result with the full source file from H, byte for byte.
+   Any difference stops the migration. If the store changes whitespace, the
+   check finds it.
+5. Measure the complete session-start read after the archive pointers exist.
+   Solve a result above the 10-second target before removing the files.
+6. Then the seven tracked files leave the repo.
 
 Other files change with the removal:
 
-- `AGENTS.md` imports the file today.
+- `AGENTS.md` already reads the topic register. It retains H so agents can
+  locate the frozen source after the file leaves the current tree.
 - `shell-scripts/build-health.sh` fails when the file passes 65,536 bytes.
   That check goes away with the file.
 - `docs/BUILD-HEALTH.md`, `README.md`, and two test comments name the file or
