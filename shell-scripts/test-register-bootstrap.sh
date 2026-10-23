@@ -321,7 +321,7 @@ else
     bad 'index_other_owner_stops' "exit $status, output: $out"
 fi
 
-run_index Mario '' 0 1
+run_index Mario register-index 0 1
 if [[ $status -eq 1 && ! -f "$receipts/index.json" ]]; then
     ok 'index_denied_stops'
 else
@@ -374,6 +374,19 @@ line_of() {
 last_line_of() {
     grep -n -- "$1" "$stub_state/log" 2> /dev/null | tail -1 | cut -d : -f 1
 }
+
+reset_stub
+rm -rf "$receipts"
+printf 'forward-register-first\n' >> "$stub_state/topics"
+full_apply
+if [[ $status -eq 1 && "$out" == *'forward-register-first'* \
+      && "$(grep -c 'add-topic' "$stub_state/log" || true)" -eq 0 \
+      && ! -f "$receipts/index.json" ]]; then
+    ok 'target_conflict_stops_before_index_write'
+else
+    bad 'target_conflict_stops_before_index_write' \
+        "exit $status, output: $out"
+fi
 
 reset_stub
 rm -rf "$receipts"

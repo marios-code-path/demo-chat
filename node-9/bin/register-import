@@ -543,20 +543,19 @@ ensure_index() {
         return 0
     fi
 
-    count="$(index_message_count "$cli")"
-    status=$?
-    if (( status == 2 )); then
-        import_error 'the index read returns a denied warning'
-        return 1
-    fi
-    if (( status != 0 )); then
-        import_error 'the index read fails'
-        return 1
-    fi
-
     room="$(topic_room_id register-index)" \
         || { import_error 'the index read fails'; return 1; }
     if [[ -n "$room" ]]; then
+        count="$(index_message_count "$cli")"
+        status=$?
+        if (( status == 2 )); then
+            import_error 'the index read returns a denied warning'
+            return 1
+        fi
+        if (( status != 0 )); then
+            import_error 'the index read fails'
+            return 1
+        fi
         if (( count > 0 )); then
             import_error "the index holds $count messages and no saved proof"
             return 1
@@ -1189,13 +1188,13 @@ apply_bundle() {
         return 1
     fi
 
-    ensure_index "$receipt_dir"
+    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl" "$retry"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"
         return "$status"
     fi
-    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl" "$retry"
+    ensure_index "$receipt_dir"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"

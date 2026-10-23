@@ -103,6 +103,11 @@ case "$command_name" in
             jq -cS -n '{type: "warning", warning: "denied-index"}'
             exit 0
         fi
+        if [[ ! -f "$state/topics" ]] \
+              || ! grep -qx 'register-index' "$state/topics"; then
+            printf 'stub: no room has the name register-index\n' >&2
+            exit 1
+        fi
         [[ -f "$state/messages/register-index.jsonl" ]] \
             && cat "$state/messages/register-index.jsonl"
         exit 0
