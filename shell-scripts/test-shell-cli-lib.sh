@@ -256,6 +256,9 @@ if [[ -n "$out" ]]; then
     printf 'jar one\n' > "$out/one.jar"
     printf 'jar two\n' > "$out/two.jar"
 fi
+if [[ -n "${MVN_ENV:-}" ]]; then
+    printf 'JAVA_HOME=%s\n' "${JAVA_HOME:-}" > "$MVN_ENV"
+fi
 if [[ -n "${MVN_FAIL:-}" ]]; then exit 1; fi
 exit 0
 STUB
@@ -265,8 +268,9 @@ chmod +x "$stub_bin/mvn"
 run_stage() {
     local dir="$1"
     shift
-    rm -f "$work/mvn-calls"
+    rm -f "$work/mvn-calls" "$work/mvn-env"
     out="$(env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" \
+        MVN_ENV="$work/mvn-env" \
         JAVA_ARGS="$work/stage-java-args" "$@" "$stager" "$dir" 2>&1)"
     status=$?
 }
@@ -330,6 +334,48 @@ elif grep -qE "$dev_names" "$work/stage-one/shell-cli.options"; then
         "the options name $(grep -oE "$dev_names" "$work/stage-one/shell-cli.options" | sort -u | tr '\n' ' ')"
 else
     ok 'stage_writes_no_identity'
+fi
+
+# A fake JDK and a fake JRE. Neither one starts a JVM. The stage script reads
+# the path of the named java, and it never runs it. The install does run it for
+# one version line, so the java prints that line. See CHAT-bjqzvsoe.
+fake_jdk="$work/fake-jdk"
+fake_jre="$work/fake-jre"
+mkdir -p "$fake_jdk/bin" "$fake_jre/bin"
+cat > "$fake_jdk/bin/java" <<'STUB'
+#!/usr/bin/env bash
+printf 'openjdk version "25.0.1" 2026-01-01\n' >&2
+exit 0
+STUB
+cp "$fake_jdk/bin/java" "$fake_jre/bin/java"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$fake_jdk/bin/javac"
+chmod +x "$fake_jdk/bin/java" "$fake_jdk/bin/javac" "$fake_jre/bin/java"
+
+# NODE9_JAVA must select the JDK of the build. Maven reads JAVA_HOME, so the
+# stage script gives it the home of the named java.
+run_stage "$work/stage-jdk" NODE9_JAVA="$fake_jdk/bin/java"
+if [[ $status -ne 0 ]]; then
+    bad 'stage_gives_the_named_jdk_to_maven' "exit $status, output: $out"
+elif [[ "$(cat "$work/mvn-env" 2> /dev/null)" != "JAVA_HOME=$fake_jdk" ]]; then
+    bad 'stage_gives_the_named_jdk_to_maven' \
+        "maven saw $(cat "$work/mvn-env" 2> /dev/null), and the JDK is $fake_jdk"
+else
+    ok 'stage_gives_the_named_jdk_to_maven'
+fi
+
+# A java with no javac beside it is no JDK. The build keeps the JAVA_HOME of
+# the caller, and the script names the limit on standard error.
+run_stage "$work/stage-jre" NODE9_JAVA="$fake_jre/bin/java" \
+    JAVA_HOME="$work/caller-java-home"
+if [[ $status -ne 0 ]]; then
+    bad 'stage_keeps_java_home_without_a_jdk' "exit $status, output: $out"
+elif [[ "$(cat "$work/mvn-env" 2> /dev/null)" != "JAVA_HOME=$work/caller-java-home" ]]; then
+    bad 'stage_keeps_java_home_without_a_jdk' \
+        "maven saw $(cat "$work/mvn-env" 2> /dev/null)"
+elif [[ "$out" != *'javac'* ]]; then
+    bad 'stage_keeps_java_home_without_a_jdk' "the output names no limit: $out"
+else
+    ok 'stage_keeps_java_home_without_a_jdk'
 fi
 
 # A failed build leaves no stage directory.
@@ -568,6 +614,19 @@ if [[ "$alt_case" == 'ok' ]]; then
     ok 'install_uses_the_named_java_and_mvn'
 else
     bad 'install_uses_the_named_java_and_mvn' "$alt_case"
+fi
+
+# The install hands the named java to the build as well, so Maven compiles
+# with that JDK. See CHAT-bjqzvsoe.
+run_install "$work/home-jdk" NODE9_JAVA="$fake_jdk/bin/java" \
+    MVN_ENV="$work/install-mvn-env"
+if [[ $status -ne 0 ]]; then
+    bad 'install_gives_the_named_jdk_to_maven' "exit $status, output: $out"
+elif [[ "$(cat "$work/install-mvn-env" 2> /dev/null)" != "JAVA_HOME=$fake_jdk" ]]; then
+    bad 'install_gives_the_named_jdk_to_maven' \
+        "maven saw $(cat "$work/install-mvn-env" 2> /dev/null), and the JDK is $fake_jdk"
+else
+    ok 'install_gives_the_named_jdk_to_maven'
 fi
 
 # The replacement of lib/ leaves no gap. A failed move keeps the earlier jar

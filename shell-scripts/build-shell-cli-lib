@@ -37,16 +37,30 @@ launcher="$repo_root/shell-scripts/chat-shell-cli"
 # NODE9_MVN and NODE9_JAVA name another mvn and another java. node-9/install
 # checks the same two names, and it passes them here, so the check and the
 # call always name one pair. See CHAT-bjqzvsoe and the branch review of 2026-10-22.
-#
-# java_command serves the version header of the frozen options. Maven selects
-# its own JDK through JAVA_HOME. This script sets no JAVA_HOME, so a host with
-# several JDKs can compile with one JDK and run with another.
 mvn_command="${NODE9_MVN:-mvn}"
 java_command="${NODE9_JAVA:-java}"
 command -v "$mvn_command" > /dev/null 2>&1 \
     || fail "no mvn at $mvn_command. The build needs Maven." 2
 command -v "$java_command" > /dev/null 2>&1 \
     || fail "no java at $java_command. The build needs a JDK." 2
+java_path="$(command -v "$java_command")"
+
+# Maven selects its own JDK through JAVA_HOME. So NODE9_JAVA must also set
+# that path, or the build compiles with one JDK and the launcher runs another.
+# The home of a java is the parent of its bin directory. A java with no javac
+# beside it is no JDK, and the build then keeps the JAVA_HOME of the caller.
+# NODE9_JAVA alone sets JAVA_HOME. A default java leaves it, because the
+# caller of a default build already selected its JDK.
+# See CHAT-bjqzvsoe and the branch review of 2026-10-23.
+if [[ -n "${NODE9_JAVA:-}" ]]; then
+    java_home="$(cd "$(dirname "$java_path")/.." 2> /dev/null && pwd)"
+    if [[ -n "$java_home" && -x "$java_home/bin/javac" ]]; then
+        export JAVA_HOME="$java_home"
+    else
+        printf 'build-shell-cli-lib: %s has no javac beside it, so it is no JDK. JAVA_HOME keeps its value, and Maven selects its own JDK.\n' \
+            "$java_path" >&2
+    fi
+fi
 
 parent="$(dirname "$stage")"
 [[ -d "$parent" ]] || fail "the parent directory $parent is absent" 2
@@ -90,7 +104,6 @@ if ! options="$(CORE_PORT=6890 CORE_MGMT_PORT=6891 \
 fi
 rm -f "$tmp.options-err"
 
-java_path="$(command -v "$java_command")"
 {
     printf '# key-type %s\n' "$key_type"
     printf '# node-id %s\n' "$node_id"

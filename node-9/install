@@ -102,9 +102,9 @@ complete_state() {
 
 # NODE9_JAVA names the java of the version check. The build script writes the
 # same java into the frozen options, so the installed launcher runs it.
-# NODE9_MVN names the mvn of the build. Maven selects its own JDK through
-# JAVA_HOME, so these two names do not select the build JDK. The offline suite
-# points both names at an absent command.
+# NODE9_MVN names the mvn of the build. The build script also gives the named
+# java to Maven through JAVA_HOME, so one name selects the build JDK and the
+# run JDK. The offline suite points both names at an absent command.
 java_command="${NODE9_JAVA:-java}"
 mvn_command="${NODE9_MVN:-mvn}"
 
