@@ -45,19 +45,39 @@ command -v "$java_command" > /dev/null 2>&1 \
     || fail "no java at $java_command. The build needs a JDK." 2
 java_path="$(command -v "$java_command")"
 
+probe_lib="$repo_root/shell-scripts/java-probe.sh"
+[[ -f "$probe_lib" ]] || fail "no java probe library at $probe_lib" 2
+# shellcheck source=java-probe.sh
+. "$probe_lib"
+
 # Maven selects its own JDK through JAVA_HOME. So NODE9_JAVA must also set
 # that path, or the build compiles with one JDK and the launcher runs another.
-# The home of a java is the parent of its bin directory. A java with no javac
-# beside it is no JDK, and the build then keeps the JAVA_HOME of the caller.
-# NODE9_JAVA alone sets JAVA_HOME. A default java leaves it, because the
-# caller of a default build already selected its JDK.
-# See CHAT-bjqzvsoe and the branch review of 2026-10-23.
+#
+# The home comes from the JVM, and never from the path of the java. A path can
+# lie. macOS ships a stub at /usr/bin/java, and a matching stub at
+# /usr/bin/javac, so the parent of the bin directory is /usr, and no path test
+# tells that directory from a JDK home. An earlier version of this script
+# exported JAVA_HOME=/usr. Maven then started the stub with that value, and the
+# stub reached no main class. It held one core and printed no line.
+#
+# A JDK home holds bin/javac and the release file. The build keeps the
+# JAVA_HOME of the caller when the named java reports no such home. A caller
+# that names no java keeps JAVA_HOME as well, because that value is the
+# selection of the environment. On a host with sdkman, it is the home of the
+# current candidate. See CHAT-faqxupam and CHAT-bjqzvsoe.
 if [[ -n "${NODE9_JAVA:-}" ]]; then
-    java_home="$(cd "$(dirname "$java_path")/.." 2> /dev/null && pwd)"
-    if [[ -n "$java_home" && -x "$java_home/bin/javac" ]]; then
+    # The query starts a JVM. A stub java with no JDK holds its caller, so the
+    # call takes a time limit. NODE9_JAVA_LIMIT sets the seconds, node-9/install
+    # reads the same name, and the offline suite lowers it.
+    java_limit_s="${NODE9_JAVA_LIMIT:-30}"
+    java_home="$(java_probe_run "$java_limit_s" "$java_command" \
+        -XshowSettings:properties -version \
+        | sed -nE 's/^[[:space:]]*java\.home = (.*)$/\1/p' | head -1)"
+    if [[ -n "$java_home" && -x "$java_home/bin/javac" \
+          && -f "$java_home/release" ]]; then
         export JAVA_HOME="$java_home"
     else
-        printf 'build-shell-cli-lib: %s has no javac beside it, so it is no JDK. JAVA_HOME keeps its value, and Maven selects its own JDK.\n' \
+        printf 'build-shell-cli-lib: %s reports no JDK home, so JAVA_HOME keeps its value. Maven selects its own JDK.\n' \
             "$java_path" >&2
     fi
 fi

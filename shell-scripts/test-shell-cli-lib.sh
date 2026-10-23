@@ -336,20 +336,64 @@ else
     ok 'stage_writes_no_identity'
 fi
 
-# A fake JDK and a fake JRE. Neither one starts a JVM. The stage script reads
-# the path of the named java, and it never runs it. The install does run it for
-# one version line, so the java prints that line. See CHAT-bjqzvsoe.
-fake_jdk="$work/fake-jdk"
-fake_jre="$work/fake-jre"
-mkdir -p "$fake_jdk/bin" "$fake_jre/bin"
-cat > "$fake_jdk/bin/java" <<'STUB'
+# make_fake_java PATH REPORTED_HOME  Write a fake java at PATH. It answers the
+# version line, and it answers the property query with REPORTED_HOME. A real
+# java answers the same two questions. See CHAT-faqxupam.
+make_fake_java() {
+    cat > "$1" <<STUB
 #!/usr/bin/env bash
+if [[ "\$*" == *'-XshowSettings:properties'* ]]; then
+    printf '    java.home = %s\n' '$2' >&2
+fi
 printf 'openjdk version "25.0.1" 2026-01-01\n' >&2
 exit 0
 STUB
-cp "$fake_jdk/bin/java" "$fake_jre/bin/java"
-printf '#!/usr/bin/env bash\nexit 0\n' > "$fake_jdk/bin/javac"
-chmod +x "$fake_jdk/bin/java" "$fake_jdk/bin/javac" "$fake_jre/bin/java"
+    chmod +x "$1"
+}
+
+# make_fake_jdk DIR  Write a complete fake JDK home at DIR: bin/java,
+# bin/javac, and the release file that every JDK home holds.
+make_fake_jdk() {
+    mkdir -p "$1/bin"
+    make_fake_java "$1/bin/java" "$1"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$1/bin/javac"
+    chmod +x "$1/bin/javac"
+    printf 'JAVA_VERSION="25.0.1"\n' > "$1/release"
+}
+
+fake_jdk="$work/fake-jdk"
+make_fake_jdk "$fake_jdk"
+
+# A stub java, as macOS ships at /usr/bin/java. Its own directory is no JDK
+# home, and a javac stub sits beside it, so a path test cannot tell the two
+# apart. The stub reports the home of the real JDK. See CHAT-faqxupam.
+stub_home="$work/stub-usr"
+real_jdk="$work/real-jdk"
+make_fake_jdk "$real_jdk"
+mkdir -p "$stub_home/bin"
+make_fake_java "$stub_home/bin/java" "$real_jdk"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$stub_home/bin/javac"
+chmod +x "$stub_home/bin/javac"
+
+# A fake JDK with no release file is no JDK home.
+fake_jre="$work/fake-jre"
+mkdir -p "$fake_jre/bin"
+make_fake_java "$fake_jre/bin/java" "$fake_jre"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$fake_jre/bin/javac"
+chmod +x "$fake_jre/bin/javac"
+
+# The home of a java comes from the java, and never from its path. A path gave
+# /usr for the stub of macOS, and Maven then started a java that never
+# reached its main class. See CHAT-faqxupam.
+run_stage "$work/stage-stub" NODE9_JAVA="$stub_home/bin/java"
+if [[ $status -ne 0 ]]; then
+    bad 'stage_takes_the_java_home_from_the_jvm' "exit $status, output: $out"
+elif [[ "$(cat "$work/mvn-env" 2> /dev/null)" != "JAVA_HOME=$real_jdk" ]]; then
+    bad 'stage_takes_the_java_home_from_the_jvm' \
+        "maven saw $(cat "$work/mvn-env" 2> /dev/null), and the JDK is $real_jdk"
+else
+    ok 'stage_takes_the_java_home_from_the_jvm'
+fi
 
 # NODE9_JAVA must select the JDK of the build. Maven reads JAVA_HOME, so the
 # stage script gives it the home of the named java.
@@ -363,8 +407,8 @@ else
     ok 'stage_gives_the_named_jdk_to_maven'
 fi
 
-# A java with no javac beside it is no JDK. The build keeps the JAVA_HOME of
-# the caller, and the script names the limit on standard error.
+# A directory with no release file is no JDK home. The build then keeps the
+# JAVA_HOME of the caller, and the script names the limit on standard error.
 run_stage "$work/stage-jre" NODE9_JAVA="$fake_jre/bin/java" \
     JAVA_HOME="$work/caller-java-home"
 if [[ $status -ne 0 ]]; then
@@ -372,10 +416,36 @@ if [[ $status -ne 0 ]]; then
 elif [[ "$(cat "$work/mvn-env" 2> /dev/null)" != "JAVA_HOME=$work/caller-java-home" ]]; then
     bad 'stage_keeps_java_home_without_a_jdk' \
         "maven saw $(cat "$work/mvn-env" 2> /dev/null)"
-elif [[ "$out" != *'javac'* ]]; then
+elif [[ "$out" != *'JDK'* ]]; then
     bad 'stage_keeps_java_home_without_a_jdk' "the output names no limit: $out"
 else
     ok 'stage_keeps_java_home_without_a_jdk'
+fi
+
+# A java that answers nothing holds the shell. The stub of macOS does that
+# with no JDK to run. So every probe of a java takes a time limit, and
+# NODE9_JAVA_LIMIT sets the seconds. See CHAT-faqxupam.
+hang_java="$work/hang-java"
+printf '#!/usr/bin/env bash\nsleep 600\n' > "$hang_java"
+chmod +x "$hang_java"
+
+stage_start=$SECONDS
+out="$(timeout 40 env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" \
+    MVN_ENV="$work/mvn-env" NODE9_JAVA="$hang_java" NODE9_JAVA_LIMIT=2 \
+    JAVA_HOME="$work/caller-java-home" \
+    "$stager" "$work/stage-hang" 2>&1)"
+status=$?
+stage_spent=$(( SECONDS - stage_start ))
+if [[ $status -eq 124 ]]; then
+    bad 'stage_limits_the_java_probe' 'the stage script did not stop in 40 s'
+elif (( stage_spent > 15 )); then
+    bad 'stage_limits_the_java_probe' \
+        "the probe took ${stage_spent}s, and the limit was 2s"
+elif [[ "$(cat "$work/mvn-env" 2> /dev/null)" != "JAVA_HOME=$work/caller-java-home" ]]; then
+    bad 'stage_limits_the_java_probe' \
+        "maven saw $(cat "$work/mvn-env" 2> /dev/null)"
+else
+    ok 'stage_limits_the_java_probe'
 fi
 
 # A failed build leaves no stage directory.
@@ -401,10 +471,15 @@ exit 0
 STUB
 chmod +x "$stub_bin/java-version-stub"
 
-install_bin="$work/install-bin"
+# The path tools of the install sit in a bin directory with a javac beside
+# them, as /usr/bin holds java and javac on macOS. A path test cannot tell
+# that directory from a JDK home. See CHAT-faqxupam.
+install_bin="$work/install-home/bin"
 mkdir -p "$install_bin"
 cp "$stub_bin/mvn" "$install_bin/mvn"
 cp "$stub_bin/java-version-stub" "$install_bin/java"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$install_bin/javac"
+chmod +x "$install_bin/javac"
 
 # run_install PREFIX [env assignments...] [-- installer arguments...]
 run_install() {
@@ -614,6 +689,44 @@ if [[ "$alt_case" == 'ok' ]]; then
     ok 'install_uses_the_named_java_and_mvn'
 else
     bad 'install_uses_the_named_java_and_mvn' "$alt_case"
+fi
+
+# The version check of the install takes the same time limit. A java that
+# answers nothing stops the install with one line, and the earlier home stays.
+# See CHAT-faqxupam.
+install_start=$SECONDS
+out="$(timeout 40 env PATH="$install_bin:/usr/bin:/bin" \
+    MVN_CALLS="$work/mvn-calls" NODE9_JAVA="$hang_java" NODE9_JAVA_LIMIT=2 \
+    bash "$installer" --prefix "$work/home-hang-java" 2>&1)"
+status=$?
+install_spent=$(( SECONDS - install_start ))
+if [[ $status -eq 124 ]]; then
+    bad 'install_limits_the_java_probe' 'the install did not stop in 40 s'
+elif (( install_spent > 15 )); then
+    bad 'install_limits_the_java_probe' \
+        "the check took ${install_spent}s, and the limit was 2s"
+elif [[ $status -ne 2 ]]; then
+    bad 'install_limits_the_java_probe' "exit $status, output: $out"
+elif [[ "$out" != *'limit'* ]]; then
+    bad 'install_limits_the_java_probe' "the output names no limit: $out"
+elif [[ -e "$work/home-hang-java" ]]; then
+    bad 'install_limits_the_java_probe' 'the install made a home'
+else
+    ok 'install_limits_the_java_probe'
+fi
+
+# A caller that names no java keeps the JAVA_HOME of the environment. On a
+# host with sdkman, that value is the JDK home that Maven needs, and no derived
+# path may replace it. See CHAT-faqxupam.
+run_install "$work/home-caller-java-home" JAVA_HOME="$work/caller-sdk-home" \
+    MVN_ENV="$work/caller-mvn-env"
+if [[ $status -ne 0 ]]; then
+    bad 'install_keeps_the_java_home_of_the_caller' "exit $status, output: $out"
+elif [[ "$(cat "$work/caller-mvn-env" 2> /dev/null)" != "JAVA_HOME=$work/caller-sdk-home" ]]; then
+    bad 'install_keeps_the_java_home_of_the_caller' \
+        "maven saw $(cat "$work/caller-mvn-env" 2> /dev/null)"
+else
+    ok 'install_keeps_the_java_home_of_the_caller'
 fi
 
 # The install hands the named java to the build as well, so Maven compiles
