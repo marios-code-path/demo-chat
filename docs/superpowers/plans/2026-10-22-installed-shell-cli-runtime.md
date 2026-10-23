@@ -127,7 +127,8 @@ asks Mario for that window once.
 - Produces: `install` runs in this order. 1. Check the arguments. 2. Check
   `java`, its major version, and `mvn`. 3. Build the jar set into a temporary
   stage beside the prefix. 4. Replace the code files and the code directories.
-  5. Replace `lib/` with the stage by one rename. 6. Create the state
+  5. Move the old `lib/` aside. Move the stage into `lib/`. Restore the old
+  set if the second move fails. 6. Create the state
   directories. 7. Import the state when `--import-state` is present. 8. Write
   the `.installed` marker last.
 - Produces: a failure of any step before step 4 leaves the prefix unchanged.
@@ -135,8 +136,9 @@ asks Mario for that window once.
   with its marker and its earlier jar set.
 - Produces: `--dry-run` prints two more lines, `java: <version>` and
   `lib: <stage plan>`. It builds nothing.
-- Produces: `--skip-cli` installs no `lib/`. It writes `cli: skipped` in the
-  marker, so a reader of the marker can tell that home from a complete one.
+- Produces: `--skip-cli` does not build or replace `lib/`. A new home has no
+  `lib/` and records `cli: skipped`. An existing home keeps `lib/` and records
+  `cli: lib, kept`.
   The offline suite uses the flag, because a real build takes minutes.
 
 - [ ] **Step 1: Write the failing cases** in `shell-scripts/test-shell-cli-lib.sh`. Each case installs into a temporary prefix, with stubs for `java` and `mvn` on `PATH`.
@@ -145,10 +147,10 @@ asks Mario for that window once.
   - `install_builds_the_cli_lib`: a `mvn` stub writes two jars. The home then holds `lib/one.jar` and `lib/shell-cli.options`.
   - `install_replaces_the_lib_whole`: a stale file in `lib/` is gone after a second install, and `data/`, `secrets/`, and `images/` keep their files.
   - `install_dry_run_builds_nothing`: `--dry-run` prints a `lib:` line, and the `mvn` stub records no call.
-  - `install_skip_cli_installs_no_lib`: `--skip-cli` leaves no `lib/` directory, writes the marker, and the marker holds `cli: skipped`.
+  - `install_skip_cli_installs_no_lib`: On a new home, `--skip-cli` leaves no `lib/` and records `cli: skipped`.
   - `install_writes_no_marker_without_a_lib`: a `mvn` stub that exits 1 on a new prefix gives a nonzero status, no `lib/`, and no `.installed` marker.
   - `install_keeps_the_previous_home_when_the_build_fails`: a complete home, then a second install whose `mvn` stub exits 1. The code files, `lib/`, and the marker all keep their earlier content.
-  - `install_holds_no_development_identity`: a search of `node-9/install`, `node-9/bin/`, and the installed `lib/shell-cli.options` finds no development identity name.
+  - `install_holds_no_development_identity`: a search of the launcher, stage script, and installed options finds no fixed development login.
 - [ ] **Step 2: Run** `bash shell-scripts/test-shell-cli-lib.sh`. Expected: FAIL on the nine new cases. This suite needs no free port.
 - [ ] **Step 3: Implement** the step order of the Interfaces block in `node-9/install`: the checks, the build into a temporary stage, the code replacement, the `lib/` rename, the state directories, the import, and the marker last. Read the major version from `java -version` output. Treat `lib` as a code directory, not a state directory.
 - [ ] **Step 4: Run** the suite. Expected: PASS.

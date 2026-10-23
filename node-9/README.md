@@ -192,9 +192,10 @@ The install builds the jar set on demand. It needs Java 25 or later and
 Maven. It stops with status 2 and names the missing command when either one
 is absent. The measured set holds 149 jars and about 66 MB.
 
-`--skip-cli` installs no `lib/`. The marker then records `cli: skipped`, so no
-reader takes that home for a complete one. The offline suites use that flag,
-because a full build takes minutes.
+`--skip-cli` does not build or replace `lib/`. A new home has no `lib/`, and its
+marker records `cli: skipped`. An existing home keeps its jar set, and its
+marker records `cli: lib, kept`. The offline suites use this flag because a
+full build takes minutes.
 
 `NODE9_JAVA` names the java of the version check and of the installed
 launcher. It also sets `JAVA_HOME` of the build, so Maven compiles with that
@@ -212,9 +213,9 @@ that asks for neither takes the frozen pair.
 The installed launcher defaults to core port 6890 and management port 6891.
 The frozen root key URL uses management port 6891.
 
-The login is no part of the installed runtime. It arrives at run time in two
-values, `CHAT_SHELL_USER` and `CHAT_SHELL_PASSWORD_FILE`. No installed file
-holds a login name.
+The launcher and its frozen options hold no fixed login name. The caller
+selects a login at run time with `CHAT_SHELL_USER` and
+`CHAT_SHELL_PASSWORD_FILE`.
 
 ```bash
 just build-shell-cli-lib /tmp/cli-lib     # stage the jar set alone
