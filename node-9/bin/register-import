@@ -842,7 +842,7 @@ post_once() {
         import_error "the post of $kind in $target returned $status"
         return 1
     fi
-    message_id="$(printf '%s\n' "$out" | jq -r 'select(.id) | .id' \
+    message_id="$(printf '%s\n' "$out" | jq -r 'select(.messageId) | .messageId' \
         2> /dev/null | head -1)"
     if [[ -z "$message_id" ]]; then
         import_error "the post of $kind in $target returned no message ID"

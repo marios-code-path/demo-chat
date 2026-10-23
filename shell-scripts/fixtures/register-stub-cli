@@ -56,6 +56,15 @@ record() {
           text: $text}'
 }
 
+# post_receipt ID REQUEST_ID  Print the shape of the installed post result.
+post_receipt() {
+    local id="$1" request_id="$2"
+    jq -cS -n --arg message "$id" --arg request "$request_id" \
+        --arg command "cmd-$id" \
+        '{messageId: $message, commandId: $command,
+          requestId: $request, outcome: "ACCEPTED"}'
+}
+
 # seed_index  Put STUB_INDEX_PRE messages into the index on first use.
 seed_index() {
     local want="${STUB_INDEX_PRE:-0}" index=0 id
@@ -158,8 +167,7 @@ case "$command_name" in
         fi
         if [[ -n "$request_id" && -f "$state/requests/$request_id" ]]; then
             id="$(cat "$state/requests/$request_id")"
-            grep -h "\"$id\"" "$state/messages/$topic.jsonl" 2> /dev/null \
-                | head -1
+            post_receipt "$id" "$request_id"
             exit 0
         fi
         id="$(next_id)"
@@ -178,7 +186,7 @@ case "$command_name" in
             printf 'stub: the post outcome is uncertain\n' >&2
             exit 75
         fi
-        grep -h "\"$id\"" "$state/messages/$topic.jsonl" | head -1
+        post_receipt "$id" "$request_id"
         exit 0
         ;;
     messages)
