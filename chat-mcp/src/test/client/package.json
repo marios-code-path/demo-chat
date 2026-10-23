@@ -6,6 +6,6 @@
   "description": "The pinned MCP client harness for the chat-mcp adapter.",
   "license": "UNLICENSED",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.31.0"
+    "@modelcontextprotocol/sdk": "1.32.0"
   }
 }
