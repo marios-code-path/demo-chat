@@ -116,6 +116,14 @@ build-shell-cli:
 	    -DincludeScope=runtime -Dmdep.outputFile="$PWD/chat-deploy/target/shell-cli.classpath"
 	echo "[build-shell-cli] Done in $SECONDS s. Run shell-scripts/chat-shell-cli."
 
+# Stage the shell CLI runtime for an installed node-9 home. The stage holds
+# every runtime jar and the frozen JVM options. node-9/install calls the same
+# script. See CHAT-bjqzvsoe.
+build-shell-cli-lib stage:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	shell-scripts/build-shell-cli-lib {{quote(stage)}}
+
 # Flags go to chat-build. The shell key type must match the core: use --key-type uuid for a uuid core.
 # --build runs build-shell first. The recipe keeps it, because chat-build --build builds an image.
 # Start the interactive shell client. Start a core service first. Add --build after a pull.

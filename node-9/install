@@ -21,9 +21,13 @@ src="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 prefix=/opt/demo-chat/node-9
 import_dir=''
 dry_run=false
+skip_cli=false
+
+# The Java floor of the shell CLI runtime. pom.xml sets the same value.
+java_floor=25
 
 usage() {
-    printf 'usage: install [--prefix DIR] [--import-state DIR] [--dry-run]\n'
+    printf 'usage: install [--prefix DIR] [--import-state DIR] [--dry-run] [--skip-cli]\n'
 }
 
 fail() {
@@ -44,6 +48,7 @@ while (( $# )); do
             shift
             ;;
         --dry-run) dry_run=true ;;
+        --skip-cli) skip_cli=true ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; fail "unknown argument: $1" 2 ;;
     esac
@@ -95,9 +100,46 @@ complete_state() {
     done
 }
 
+# NODE9_JAVA and NODE9_MVN name another java and another mvn. A host with
+# several JDKs takes one of them, and the offline suite points at an absent
+# command.
+java_command="${NODE9_JAVA:-java}"
+mvn_command="${NODE9_MVN:-mvn}"
+
+# java_major  Print the major version of the selected java.
+java_major() {
+    "$java_command" -version 2>&1 \
+        | sed -nE 's/.*version "([0-9]+).*/\1/p' | head -1
+}
+
+# The shell CLI runtime needs Java. The check runs before every copy, so a
+# host without Java keeps its earlier home and takes no partial one. See
+# CHAT-bjqzvsoe.
+java_version='skipped'
+if [[ "$skip_cli" != 'true' ]]; then
+    command -v "$java_command" > /dev/null 2>&1 \
+        || fail "no java at $java_command. The shell CLI runtime needs Java $java_floor. Install Java, or pass --skip-cli." 2
+    java_version="$(java_major)"
+    [[ -n "$java_version" ]] \
+        || fail 'cannot read the java version. The shell CLI runtime needs a readable version.' 2
+    (( java_version >= java_floor )) \
+        || fail "java $java_version is at $java_command, and the shell CLI runtime needs Java $java_floor." 2
+    command -v "$mvn_command" > /dev/null 2>&1 \
+        || fail "no mvn at $mvn_command. The install builds the shell CLI runtime from source." 2
+    [[ -x "$src/../shell-scripts/build-shell-cli-lib" ]] \
+        || fail 'no build-shell-cli-lib script beside the node-9 directory.' 2
+fi
+
 if [[ "$dry_run" == 'true' ]]; then
     printf 'prefix: %s\n' "$prefix"
     printf 'code: %s %s\n' "${code_files[*]}" "${code_dirs[*]}"
+    printf 'java: %s\n' "$java_version"
+    if [[ "$skip_cli" == 'true' ]]; then
+        printf 'lib: skipped\n'
+    else
+        printf 'lib: one build of the jar set from %s\n' \
+            "$(cd "$src/.." && pwd)"
+    fi
     printf 'state kept: %s secrets.env\n' "${state_dirs[*]}"
     if [[ -n "$import_dir" ]]; then
         gap="$(complete_state "$import_dir")"
@@ -107,6 +149,25 @@ if [[ "$dry_run" == 'true' ]]; then
 fi
 
 umask 022
+
+# The jar set is built before any copy. A failed build then leaves the
+# earlier home whole, with its code, its jar set, and its marker. The stage
+# sits beside the prefix, so one rename completes it.
+lib_stage=''
+if [[ "$skip_cli" != 'true' ]]; then
+    stage_parent="$(mktemp -d "$(dirname "$prefix")/.node9-install-XXXXXX")" \
+        || fail 'no temporary directory for the jar set.' 1
+    lib_stage="$stage_parent/lib"
+    if ! "$src/../shell-scripts/build-shell-cli-lib" "$lib_stage" \
+        > "$stage_parent/build.log" 2>&1; then
+        printf 'node-9 install: the shell CLI build failed. Its log is at %s\n' \
+            "$stage_parent/build.log" >&2
+        exit 1
+    fi
+    printf 'node-9 install: %s\n' "$(tail -1 "$stage_parent/build.log")"
+    rm -f "$stage_parent/build.log"
+fi
+
 mkdir -p "$prefix" || fail "cannot create $prefix." 1
 
 # Replace the code. A directory is replaced whole, so a removed file goes.
@@ -119,6 +180,14 @@ for dir in "${code_dirs[@]}"; do
 done
 rm -f "$prefix/ansible/vault/owner.yml"
 chmod 755 "$prefix"/bin/*
+
+# The jar set replaces the earlier one whole, so a dependency that left the
+# build leaves the home. lib/ is code, not state.
+if [[ -n "$lib_stage" ]]; then
+    rm -rf "${prefix:?}/lib"
+    mv "$lib_stage" "$prefix/lib" || fail "cannot move the jar set to $prefix/lib." 1
+    rmdir "$stage_parent" 2> /dev/null
+fi
 
 # The owner Vault stays beside the home, in <parent>/vault/owner.yml.
 owner_vault="$(dirname "$prefix")/vault/owner.yml"
@@ -161,6 +230,11 @@ fi
     printf 'installed-at: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     printf 'source-commit: %s\n' \
         "$(git -C "$src" rev-parse HEAD 2>/dev/null || printf unknown)"
+    if [[ "$skip_cli" == 'true' ]]; then
+        printf 'cli: skipped\n'
+    else
+        printf 'cli: lib, java %s\n' "$java_version"
+    fi
 } > "$prefix/.installed"
 
 printf 'node-9 install: installed in %s\n' "$prefix"

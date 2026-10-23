@@ -217,6 +217,291 @@ else
         "exit $status, stderr lines $err_lines: $(head -2 "$err_file")"
 fi
 
+# -- The stage script ----------------------------------------------------
+
+stager="$repo_root/shell-scripts/build-shell-cli-lib"
+
+# A mvn stub. It writes two jars into the output directory of the call, and it
+# records every call.
+cat > "$stub_bin/mvn" <<'STUB'
+#!/usr/bin/env bash
+set -uo pipefail
+printf '%s\n' "$*" >> "${MVN_CALLS:?Set MVN_CALLS}"
+out=''
+for word in "$@"; do
+    case "$word" in
+        -DoutputDirectory=*) out="${word#-DoutputDirectory=}" ;;
+    esac
+done
+if [[ -n "$out" ]]; then
+    mkdir -p "$out"
+    # One real jar holds the main class entry, because the stage script checks
+    # for it. The other is a plain file, which is enough for a count.
+    stage_tmp="$(mktemp -d)"
+    mkdir -p "$stage_tmp/com/demo/chat"
+    : > "$stage_tmp/com/demo/chat/ShellCliKt.class"
+    ( cd "$stage_tmp" && zip -q -r "$out/chat-shell-0.0.1.jar" com )
+    rm -rf "$stage_tmp"
+    printf 'jar one\n' > "$out/one.jar"
+    printf 'jar two\n' > "$out/two.jar"
+fi
+if [[ -n "${MVN_FAIL:-}" ]]; then exit 1; fi
+exit 0
+STUB
+chmod +x "$stub_bin/mvn"
+
+# run_stage DIR [extra env]  Run the stage script with the stubs.
+run_stage() {
+    local dir="$1"
+    shift
+    rm -f "$work/mvn-calls"
+    out="$(env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" \
+        JAVA_ARGS="$work/stage-java-args" "$@" "$stager" "$dir" 2>&1)"
+    status=$?
+}
+
+out="$(env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" "$stager" 2>&1)"
+status=$?
+if [[ $status -eq 2 ]]; then
+    ok 'stage_refuses_a_missing_argument'
+else
+    bad 'stage_refuses_a_missing_argument' "exit $status, output: $out"
+fi
+
+mkdir -p "$work/busy-stage"
+printf 'keep\n' > "$work/busy-stage/keep"
+run_stage "$work/busy-stage"
+if [[ $status -eq 2 && "$(cat "$work/busy-stage/keep")" == 'keep' ]]; then
+    ok 'stage_refuses_an_existing_stage'
+else
+    bad 'stage_refuses_an_existing_stage' "exit $status, output: $out"
+fi
+
+# A minimal PATH holds bash and no mvn. The script names the missing command.
+out="$(env PATH=/usr/bin:/bin "$stager" "$work/no-mvn-stage" 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'mvn'* && ! -e "$work/no-mvn-stage" ]]; then
+    ok 'stage_refuses_an_absent_mvn'
+else
+    bad 'stage_refuses_an_absent_mvn' "exit $status, output: $out"
+fi
+
+run_stage "$work/stage-one"
+header_case='ok'
+if [[ $status -ne 0 ]]; then
+    header_case="exit $status, output: $out"
+elif [[ "$(sed -n '1p' "$work/stage-one/shell-cli.options")" != '# key-type uuid' ]]; then
+    header_case="line 1 is $(sed -n '1p' "$work/stage-one/shell-cli.options")"
+elif [[ "$(sed -n '2p' "$work/stage-one/shell-cli.options")" != '# node-id 9' ]]; then
+    header_case="line 2 is $(sed -n '2p' "$work/stage-one/shell-cli.options")"
+elif [[ ! -f "$work/stage-one/one.jar" ]]; then
+    header_case='the stage holds no jar'
+fi
+if [[ "$header_case" == 'ok' ]]; then
+    ok 'stage_writes_the_options_header'
+else
+    bad 'stage_writes_the_options_header' "$header_case"
+fi
+
+if [[ "$out" == *'jars'* && "$out" == *'bytes'* ]]; then
+    ok 'stage_names_its_jar_count'
+else
+    bad 'stage_names_its_jar_count' "output: $out"
+fi
+
+if [[ ! -f "$work/stage-one/shell-cli.options" ]]; then
+    bad 'stage_writes_no_identity' 'the stage holds no options file'
+elif grep -qE "$dev_names" "$work/stage-one/shell-cli.options"; then
+    bad 'stage_writes_no_identity' \
+        "the options name $(grep -oE "$dev_names" "$work/stage-one/shell-cli.options" | sort -u | tr '\n' ' ')"
+else
+    ok 'stage_writes_no_identity'
+fi
+
+# A failed build leaves no stage directory.
+run_stage "$work/stage-fail" MVN_FAIL=1
+if [[ $status -ne 0 && ! -e "$work/stage-fail" ]]; then
+    ok 'stage_leaves_nothing_after_a_failed_build'
+else
+    bad 'stage_leaves_nothing_after_a_failed_build' \
+        "exit $status, output: $out"
+fi
+
+# -- The install ---------------------------------------------------------
+
+installer="$repo_root/node-9/install"
+
+# A java stub for the install check. It prints one version line, as java
+# prints it, on standard error.
+cat > "$stub_bin/java-version-stub" <<'STUB'
+#!/usr/bin/env bash
+printf 'openjdk version "%s" 2026-01-01\n' "${JAVA_FAKE_VERSION:-25.0.1}" >&2
+printf 'OpenJDK Runtime Environment\n' >&2
+exit 0
+STUB
+chmod +x "$stub_bin/java-version-stub"
+
+install_bin="$work/install-bin"
+mkdir -p "$install_bin"
+cp "$stub_bin/mvn" "$install_bin/mvn"
+cp "$stub_bin/java-version-stub" "$install_bin/java"
+
+# run_install PREFIX [env assignments...] [-- installer arguments...]
+run_install() {
+    local prefix="$1"
+    shift
+    local env_pairs=()
+    local args=()
+    local seen_dash=false
+    local word
+    for word in "$@"; do
+        if [[ "$word" == '--' ]]; then
+            seen_dash=true
+            continue
+        fi
+        if [[ "$seen_dash" == 'true' ]]; then
+            args+=("$word")
+        else
+            env_pairs+=("$word")
+        fi
+    done
+    rm -f "$work/mvn-calls"
+    out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+        "${env_pairs[@]}" bash "$installer" --prefix "$prefix" \
+        "${args[@]+"${args[@]}"}" 2>&1)"
+    status=$?
+}
+
+# macOS always holds /usr/bin/java, so the case names an absent java instead
+# of emptying the path.
+run_install "$work/home-no-java" NODE9_JAVA="$work/no-such-java"
+if [[ $status -eq 2 && "$out" == *'java'* \
+      && ! -f "$work/home-no-java/.installed" ]]; then
+    ok 'install_refuses_an_absent_java'
+else
+    bad 'install_refuses_an_absent_java' "exit $status, output: $out"
+fi
+
+run_install "$work/home-old-java" JAVA_FAKE_VERSION=21.0.5
+if [[ $status -eq 2 && "$out" == *'21'* && "$out" == *'25'* \
+      && ! -f "$work/home-old-java/.installed" ]]; then
+    ok 'install_refuses_an_old_java'
+else
+    bad 'install_refuses_an_old_java' "exit $status, output: $out"
+fi
+
+run_install "$work/home-one"
+lib_case='ok'
+if [[ $status -ne 0 ]]; then
+    lib_case="exit $status, output: $out"
+elif [[ ! -f "$work/home-one/lib/one.jar" ]]; then
+    lib_case='the home holds no lib/one.jar'
+elif [[ ! -f "$work/home-one/lib/shell-cli.options" ]]; then
+    lib_case='the home holds no frozen options'
+elif [[ ! -f "$work/home-one/.installed" ]]; then
+    lib_case='the home holds no marker'
+fi
+if [[ "$lib_case" == 'ok' ]]; then
+    ok 'install_builds_the_cli_lib'
+else
+    bad 'install_builds_the_cli_lib' "$lib_case"
+fi
+
+printf 'stale\n' > "$work/home-one/lib/stale.jar"
+printf 'keep\n' > "$work/home-one/data/marker"
+printf 'keep\n' > "$work/home-one/secrets.env"
+run_install "$work/home-one"
+replace_case='ok'
+if [[ $status -ne 0 ]]; then
+    replace_case="exit $status, output: $out"
+elif [[ -e "$work/home-one/lib/stale.jar" ]]; then
+    replace_case='the stale jar stayed'
+elif [[ "$(cat "$work/home-one/data/marker")" != 'keep' ]]; then
+    replace_case='the data file changed'
+elif [[ "$(cat "$work/home-one/secrets.env")" != 'keep' ]]; then
+    replace_case='the secrets file changed'
+fi
+if [[ "$replace_case" == 'ok' ]]; then
+    ok 'install_replaces_the_lib_whole'
+else
+    bad 'install_replaces_the_lib_whole' "$replace_case"
+fi
+
+run_install "$work/home-dry" -- --dry-run
+if [[ $status -eq 0 && "$out" == *'lib:'* && "$out" == *'java:'* \
+      && ! -s "$work/mvn-calls" && ! -e "$work/home-dry" ]]; then
+    ok 'install_dry_run_builds_nothing'
+else
+    bad 'install_dry_run_builds_nothing' \
+        "exit $status, mvn calls $(grep -c . "$work/mvn-calls" 2> /dev/null), output: $out"
+fi
+
+run_install "$work/home-skip" -- --skip-cli
+skip_case='ok'
+if [[ $status -ne 0 ]]; then
+    skip_case="exit $status, output: $out"
+elif [[ -e "$work/home-skip/lib" ]]; then
+    skip_case='the home holds a lib directory'
+elif [[ ! -f "$work/home-skip/.installed" ]]; then
+    skip_case='the home holds no marker'
+elif ! grep -q 'cli: skipped' "$work/home-skip/.installed"; then
+    skip_case='the marker does not record the skip'
+fi
+if [[ "$skip_case" == 'ok' ]]; then
+    ok 'install_skip_cli_installs_no_lib'
+else
+    bad 'install_skip_cli_installs_no_lib' "$skip_case"
+fi
+
+run_install "$work/home-build-fails" MVN_FAIL=1
+if [[ $status -ne 0 && ! -e "$work/home-build-fails/lib" \
+      && ! -f "$work/home-build-fails/.installed" ]]; then
+    ok 'install_writes_no_marker_without_a_lib'
+else
+    bad 'install_writes_no_marker_without_a_lib' "exit $status, output: $out"
+fi
+
+# A complete home, then a failed build. The home keeps every file.
+run_install "$work/home-keep"
+printf 'keep\n' > "$work/home-keep/data/marker"
+before_marker="$(cat "$work/home-keep/.installed")"
+before_jars="$(find "$work/home-keep/lib" -type f | sort | tr '\n' ' ')"
+run_install "$work/home-keep" MVN_FAIL=1
+keep_case='ok'
+if [[ $status -eq 0 ]]; then
+    keep_case='the second install reported success'
+elif [[ "$(cat "$work/home-keep/.installed")" != "$before_marker" ]]; then
+    keep_case='the marker changed'
+elif [[ "$(find "$work/home-keep/lib" -type f | sort | tr '\n' ' ')" \
+        != "$before_jars" ]]; then
+    keep_case='the jar set changed'
+elif [[ "$(cat "$work/home-keep/data/marker")" != 'keep' ]]; then
+    keep_case='the data file changed'
+fi
+if [[ "$keep_case" == 'ok' ]]; then
+    ok 'install_keeps_the_previous_home_when_the_build_fails'
+else
+    bad 'install_keeps_the_previous_home_when_the_build_fails' "$keep_case"
+fi
+
+# No shipped file of the installed runtime names a development identity.
+leak_case='ok'
+# The files of this task. node-9/install holds older references, and
+# CHAT-sufkkqon owns that repair, so it stays out of this case.
+while IFS= read -r file; do
+    if grep -qE "$dev_names" "$file"; then
+        leak_case="$file names $(grep -oE "$dev_names" "$file" | sort -u | tr '\n' ' ')"
+        break
+    fi
+done < <(printf '%s\n' "$repo_root/shell-scripts/build-shell-cli-lib" \
+    "$repo_root/shell-scripts/chat-shell-cli" \
+    "$work/home-one/lib/shell-cli.options")
+if [[ "$leak_case" == 'ok' ]]; then
+    ok 'install_holds_no_development_identity'
+else
+    bad 'install_holds_no_development_identity' "$leak_case"
+fi
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1

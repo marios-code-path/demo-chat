@@ -825,10 +825,14 @@ else
 fi
 
 # -- Install outside the source tree -------------------------------------
+#
+# Every install case passes --skip-cli. A full install builds the shell CLI
+# runtime from source, which needs Maven and minutes. The runtime cases live
+# in shell-scripts/test-shell-cli-lib.sh. See CHAT-bjqzvsoe.
 
 install_home="$work/opt/node-9"
 mkdir -p "$work/opt"
-out="$(bash node-9/install --prefix "$install_home" 2>&1)"
+out="$(bash node-9/install --skip-cli --prefix "$install_home" 2>&1)"
 status=$?
 if [[ $status -eq 0 && -f "$install_home/.installed" \
       && -f "$install_home/advertise.yml" \
@@ -843,7 +847,7 @@ fi
 printf 'keep\n' > "$install_home/secrets.env"
 printf 'keep\n' > "$install_home/data/marker"
 printf 'stale\n' > "$install_home/bin/old-script"
-out="$(bash node-9/install --prefix "$install_home" 2>&1)"
+out="$(bash node-9/install --skip-cli --prefix "$install_home" 2>&1)"
 status=$?
 if [[ $status -eq 0 && "$(cat "$install_home/secrets.env")" == 'keep' \
       && "$(cat "$install_home/data/marker")" == 'keep' \
@@ -853,7 +857,7 @@ else
     bad 'install_rerun_keeps_state_and_replaces_code' "exit $status, output: $out"
 fi
 
-out="$(bash node-9/install --prefix "$repo_root/node-9-home-test" 2>&1)"
+out="$(bash node-9/install --skip-cli --prefix "$repo_root/node-9-home-test" 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'git work tree'* \
       && ! -e "$repo_root/node-9-home-test" ]]; then
@@ -864,7 +868,7 @@ fi
 
 mkdir -p "$work/foreign"
 printf 'x\n' > "$work/foreign/file"
-out="$(bash node-9/install --prefix "$work/foreign" 2>&1)"
+out="$(bash node-9/install --skip-cli --prefix "$work/foreign" 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'no .installed marker'* ]]; then
     ok 'install_refuses_a_foreign_directory'
@@ -882,7 +886,7 @@ mkdir -p "$bad_state/secrets"
 grep -v THETA "$fixture" > "$bad_state/secrets.env"
 
 home_a="$work/opt/import-a"
-out="$(bash node-9/install --prefix "$home_a" --import-state "$good_state" 2>&1)"
+out="$(bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" 2>&1)"
 status=$?
 if [[ $status -eq 0 && -f "$home_a/secrets/Theta.password" \
       && "$(stat -f %Lp "$home_a/secrets.env" 2>/dev/null || stat -c %a "$home_a/secrets.env")" == '600' ]]; then
@@ -892,7 +896,7 @@ else
 fi
 
 printf 'changed\n' > "$home_a/secrets.env"
-bash node-9/install --prefix "$home_a" --import-state "$good_state" >/dev/null 2>&1
+bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" >/dev/null 2>&1
 if [[ "$(cat "$home_a/secrets.env")" == 'changed' ]]; then
     ok 'install_import_never_overwrites'
 else
@@ -900,7 +904,7 @@ else
 fi
 
 home_b="$work/opt/import-b"
-out="$(bash node-9/install --prefix "$home_b" --import-state "$bad_state" 2>&1)"
+out="$(bash node-9/install --skip-cli --prefix "$home_b" --import-state "$bad_state" 2>&1)"
 status=$?
 if [[ $status -eq 0 && ! -e "$home_b/secrets.env" && "$out" == *'import skipped'* ]]; then
     ok 'install_skips_an_incomplete_secret_set'
