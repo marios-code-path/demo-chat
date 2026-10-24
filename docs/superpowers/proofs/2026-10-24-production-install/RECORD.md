@@ -27,6 +27,32 @@ product change.
 
 PR #274 fixed both. Each fix failed first.
 
+## The state of the master checks
+
+The `build` job of Maven CI failed on `c6d21e86`, `1d23a180`, and `fe9fa19b`,
+and its reason was the pin: `expected: <1.31.0> but was: <1.32.0>` in
+`McpAdapterHarnessTests`. That job passes on `c7421b4d`.
+
+The `integration` job of `c7421b4d` fails for another reason. The log reads:
+
+```
+> Pulling run image 'docker.io/paketobuildpacks/ubuntu-noble-run-tiny:0.0.150' for platform 'linux/arm64'
+> Running creator
+   [creator]     exec /cnb/lifecycle/creator: exec format error
+Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.0.8:build-image (default) on project chat-deploy-memory-integration-tests
+```
+
+The runner of that job is `ubuntu-latest`, which is `linux/amd64`. So the
+builder pulled an image of another architecture, and the lifecycle binary
+cannot run. No file of this repository names a platform, and the earlier runs
+hold no such error, so the cause sits above this repository. The builder image
+of the module is `paketobuildpacks/builder-noble-java-tiny:latest`, and a
+moving tag can change under a build.
+
+So master does not pass its checks yet. This install came from the commit, and
+not from a passing run. The owner asked for a deployable from a green master,
+and this record names the gap.
+
 ## The install
 
 Command: `bash node-9/install`, from the master checkout, with the default
