@@ -71,7 +71,13 @@ jobs:
           ${{ runner.os }}-maven-
           ${{ runner.os }}-
     - name: Integration tests
-      run: mvn -B clean verify -Ptest-build,integration
+      # imagePlatform names the architecture of this runner. The builder pulled
+      # a linux/arm64 run image on 2026-10-24, and the lifecycle binary then
+      # gave "exec /cnb/lifecycle/creator: exec format error" on this amd64
+      # runner. No file of this repository names a platform, so the resolution
+      # came from the daemon. A named platform makes the build repeatable. A
+      # local build on another architecture names its own value.
+      run: mvn -B clean verify -Ptest-build,integration -Dspring-boot.build-image.imagePlatform=linux/amd64
 
   # The reactor jobs above cannot activate expose-webflux or rest-core-e2e,
   # so the agent HTTP and relay test classes are skipped there. This job runs
