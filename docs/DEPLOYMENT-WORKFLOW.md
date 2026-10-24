@@ -241,6 +241,10 @@ same repository. Maven supplies the image reference from the selected module.
 The build writes a record after Maven succeeds and Docker confirms the image.
 A failed build adds nothing. A lock protects concurrent writes to one manifest.
 The writer renames a temporary file to replace the manifest as one operation.
+The manifest has file mode `0600`. Only its owner can read it.
+
+If a path holds non-JSON data or another JSON type, the build returns status 1.
+The writer leaves that file unchanged.
 
 Use a new path for each deployment run. An old path can contain images from
 an earlier run.

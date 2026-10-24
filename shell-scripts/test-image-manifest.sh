@@ -254,21 +254,45 @@ fi
 # -- No name, no manifest and no image query -----------------------------
 
 : > "$work/docker-calls"
-inherited_manifest="$work/inherited-manifest.json"
-out="$(CHAT_IMAGE_MANIFEST="$inherited_manifest" STUB_ID=sha256:poison \
-    env "${clean_env[@]}" PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
+out="$(env "${clean_env[@]}" PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
     KEYSTORE_PASS=test-pass CASSANDRA_CONTACT_POINTS=127.0.0.1 \
     MVN_CALLS="$work/mvn-calls" DOCKER_CALLS="$work/docker-calls" \
     STUB_REF=docker.io/library/chat-rest:0.0.1 \
     "$build" core --memory --build --notls --long --node-id 0 \
     --env-file "$work/no-manifest.env" 2>&1)"
 status=$?
-if (( status == 0 )) && [[ ! -e "$inherited_manifest" ]] \
-   && ! grep -q 'image inspect' "$work/docker-calls"; then
+if (( status == 0 )) && ! grep -q 'image inspect' "$work/docker-calls"; then
     ok 'no_manifest_name_keeps_the_earlier_behavior'
 else
     bad 'no_manifest_name_keeps_the_earlier_behavior' \
         "exit $status, docker calls: $(cat "$work/docker-calls")"
+fi
+
+# An explicit flag selects the manifest when the environment default is empty.
+flag_manifest="$work/flag-manifest.json"
+run_build "$work/unused-manifest.json" CHAT_IMAGE_MANIFEST= \
+    STUB_REF=docker.io/library/chat-rest:0.0.1 -- \
+    core --memory --build --notls --long --node-id 0 \
+    --image-manifest "$flag_manifest"
+if (( status == 0 )) && [[ "$(records_of "$flag_manifest")" == '1' ]] \
+   && [[ ! -e "$work/unused-manifest.json" ]]; then
+    ok 'image_manifest_flag_selects_path'
+else
+    bad 'image_manifest_flag_selects_path' "exit $status, output: $out"
+fi
+
+# The flag does not write a manifest when the command selects --run.
+: > "$work/docker-calls"
+run_manifest="$work/run-manifest.json"
+run_build "$work/unused-run-manifest.json" CHAT_IMAGE_MANIFEST= \
+    STUB_REF=docker.io/library/chat-rest:0.0.1 -- \
+    core --memory --run --notls --long --node-id 0 \
+    --image-manifest "$run_manifest"
+if (( status == 0 )) && [[ ! -e "$run_manifest" ]] \
+   && [[ ! -s "$work/docker-calls" ]]; then
+    ok 'image_manifest_flag_needs_build'
+else
+    bad 'image_manifest_flag_needs_build' "exit $status, output: $out"
 fi
 
 # -- The write leaves no temporary file ----------------------------------

@@ -1213,7 +1213,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                       help="build a container image via spring-boot:build-image")
     parser.add_argument("--image-manifest", default=os.environ.get("CHAT_IMAGE_MANIFEST", ""),
                         metavar="PATH",
-                        help="append the built image to this JSON manifest. One path "
+                        help="with --build, append the image to this JSON manifest. One path "
                              "serves one deployment run, and a later push reads the list. "
                              "CHAT_IMAGE_MANIFEST sets the default.")
 
