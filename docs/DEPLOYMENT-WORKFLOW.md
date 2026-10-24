@@ -123,7 +123,7 @@ makes one without any TLS material.
 ### An image repository prefix, only for `--build`
 
 ```bash
-export IMAGE_REPO_PREFIX=<your registry host>/<your project>
+export IMAGE_REPO_PREFIX=registry.example.invalid/chat
 ```
 
 **This variable is optional.** The parent pom defaults `image.repo` to
@@ -144,17 +144,18 @@ serves one deployment run, so the core, REST, and authserv builds of that run
 leave one list for the push.
 
 ```bash
+set -euo pipefail
 export CHAT_IMAGE_MANIFEST=/tmp/release-2026-10-24.json
-shell-scripts/chat-build core --cassandra --build --key-type uuid --node-id 9
-shell-scripts/chat-build rest --cassandra --build --key-type uuid
-shell-scripts/image-references "$CHAT_IMAGE_MANIFEST" | while read -r image; do
+shell-scripts/chat-build core --cassandra --build --uuid --node-id 9 --notls
+shell-scripts/chat-build rest --client --build --uuid --node-id 10 --notls
+shell-scripts/image-references "$CHAT_IMAGE_MANIFEST" | while IFS= read -r image; do
     docker push "$image"
 done
 ```
 
 Each record holds the image reference, the image id, the architecture, the
-service, and the module. The repository digest joins the record only when the
-image holds one, because a local image takes its digest from a push.
+service, and the module. The repository digest joins the record only when
+Docker reports one for the same repository.
 
 The build writes a record after two steps pass: the Maven build, and one
 `docker image inspect` of the reference. A failed build adds nothing. The

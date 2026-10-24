@@ -44,11 +44,14 @@ def main() -> int:
         return 2
     lines = []
     for record in records:
-        if not isinstance(record, dict) or not record.get("reference"):
-            print(f"image-references: {path} holds a record with no reference.",
+        if (not isinstance(record, dict)
+                or not isinstance(record.get("reference"), str)
+                or not record["reference"]
+                or any(char.isspace() for char in record["reference"])):
+            print(f"image-references: {path} holds an invalid reference.",
                   file=sys.stderr)
             return 2
-        lines.append(str(record["reference"]))
+        lines.append(record["reference"])
     for line in lines:
         print(line)
     return 0

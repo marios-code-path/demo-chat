@@ -47,7 +47,7 @@ if [[ "${1:-}" == 'image' && "${2:-}" == 'inspect' ]]; then
         exit 1
     fi
     printf '{"Id":"%s","Architecture":"%s","Os":"linux","RepoDigests":%s}\n' \
-        "${STUB_ID:-sha256:1111}" "${STUB_ARCH:-arm64}" "${STUB_DIGESTS:-[]}"
+        "${STUB_ID-sha256:1111}" "${STUB_ARCH-arm64}" "${STUB_DIGESTS:-[]}"
     exit 0
 fi
 exit 0
@@ -187,6 +187,26 @@ else
         "record $(jq -c '.[0]' "$digest_manifest" 2> /dev/null)"
 fi
 
+matching_digest="$work/matching-digest.json"
+run_build "$matching_digest" STUB_REF=docker.io/library/chat-web:0.0.1 \
+    STUB_DIGESTS='["other/image@sha256:aaaa","docker.io/library/chat-web@sha256:bbbb"]'
+if (( status == 0 )) \
+   && [[ "$(jq -r '.[0].digest' "$matching_digest" 2> /dev/null)" \
+         == 'docker.io/library/chat-web@sha256:bbbb' ]]; then
+    ok 'manifest_uses_matching_digest'
+else
+    bad 'manifest_uses_matching_digest' "exit $status, record: $(cat "$matching_digest" 2> /dev/null)"
+fi
+
+missing_fields="$work/missing-fields.json"
+run_build "$missing_fields" STUB_REF=docker.io/library/chat-web:0.0.1 \
+    STUB_ID= STUB_ARCH=
+if (( status != 0 )) && [[ ! -f "$missing_fields" ]]; then
+    ok 'manifest_refuses_missing_image_fields'
+else
+    bad 'manifest_refuses_missing_image_fields' "exit $status, record: $(cat "$missing_fields" 2> /dev/null)"
+fi
+
 # -- No name, no manifest and no image query -----------------------------
 
 : > "$work/docker-calls"
@@ -232,6 +252,17 @@ else
     ok 'manifest_of_another_type_stays'
 fi
 
+# A list with an invalid record must not lose that record during an update.
+invalid_record="$work/invalid-record.json"
+printf '[{"imageId":"sha256:old"}]\n' > "$invalid_record"
+run_build "$invalid_record" STUB_REF=docker.io/library/chat-rest:0.0.1
+if [[ "$(cat "$invalid_record")" == '[{"imageId":"sha256:old"}]' ]] \
+   && (( status != 0 )); then
+    ok 'manifest_with_invalid_record_stays'
+else
+    bad 'manifest_with_invalid_record_stays' "exit $status, file: $(cat "$invalid_record")"
+fi
+
 # -- Builds that share one manifest keep every record --------------------
 
 parallel="$work/parallel.json"
@@ -269,6 +300,16 @@ else
         ok 'references_command_refuses_another_type'
     else
         bad 'references_command_refuses_another_type' "exit $status, output: $out"
+    fi
+
+    numeric_reference="$work/numeric-reference.json"
+    printf '[{"reference":42}]\n' > "$numeric_reference"
+    out="$("$references" "$numeric_reference" 2>&1)"
+    status=$?
+    if (( status != 0 )) && [[ "$out" == *'numeric-reference.json'* ]]; then
+        ok 'references_command_refuses_nontext_reference'
+    else
+        bad 'references_command_refuses_nontext_reference' "exit $status, output: $out"
     fi
 fi
 

@@ -1051,6 +1051,14 @@ class BuildContext:
             print(f"chat-build: the image query of {reference} gives no JSON object.",
                   file=sys.stderr)
             return 1
+        if (not isinstance(details, dict)
+                or not isinstance(details.get("Id"), str)
+                or not details["Id"]
+                or not isinstance(details.get("Architecture"), str)
+                or not details["Architecture"]):
+            print(f"chat-build: the image query of {reference} has no image id "
+                  "or architecture.", file=sys.stderr)
+            return 1
         record = {
             "reference": reference,
             "imageId": details.get("Id", ""),
@@ -1059,8 +1067,13 @@ class BuildContext:
             "module": str(self.module_dir().name),
         }
         digests = details.get("RepoDigests") or []
-        if digests:
-            record["digest"] = digests[0]
+        repository = reference.rsplit(":", 1)[0]
+        if isinstance(digests, list):
+            matching = next((digest for digest in digests
+                             if isinstance(digest, str)
+                             and digest.startswith(repository + "@")), None)
+            if matching:
+                record["digest"] = matching
         path.parent.mkdir(parents=True, exist_ok=True)
         # One lock holds the read, the change, and the write. Two builds can
         # share one manifest of a deployment run, and an unlocked pair loses
@@ -1087,9 +1100,16 @@ class BuildContext:
                               f"{type(earlier).__name__}, and a manifest is a list. "
                               f"The file stays as it is.", file=sys.stderr)
                         return 1
+                    if any(not isinstance(item, dict)
+                           or not isinstance(item.get("reference"), str)
+                           or not item["reference"]
+                           or any(char.isspace() for char in item["reference"])
+                           for item in earlier):
+                        print(f"chat-build: {path} holds an invalid image record. "
+                              "The file stays as it is.", file=sys.stderr)
+                        return 1
                     records = [r for r in earlier
-                               if isinstance(r, dict)
-                               and r.get("reference") != reference]
+                               if r["reference"] != reference]
                 records.append(record)
                 # The stage file carries a unique name, so two writers never
                 # share one path, and the rename reaches the manifest whole.
