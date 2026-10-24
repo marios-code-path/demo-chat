@@ -86,6 +86,7 @@ backend has no claim store, so no lease check applies. -->
                             <mainClass>${mainClass}</mainClass>
                             <image>
                                 <name>${appImageName}</name>
+                                <builder>${paketo.builder}</builder>
                                 <cleanCache>true</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>${shellImageJavaOptions} -Dapp.key.type=long</BPE_APPEND_JAVA_TOOL_OPTIONS>
@@ -114,6 +115,7 @@ backend has no claim store, so no lease check applies. -->
                                 <configuration>
                                     <image>
                                         <name>${uuidAppImageName}</name>
+                                        <builder>${paketo.builder}</builder>
                                         <env>
                                             <BPE_APPEND_JAVA_TOOL_OPTIONS>${shellImageJavaOptions} -Dapp.key.type=uuid</BPE_APPEND_JAVA_TOOL_OPTIONS>
                                         </env>
