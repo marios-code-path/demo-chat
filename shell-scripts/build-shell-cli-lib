@@ -103,7 +103,13 @@ tmp="$(mktemp -d "$parent/.shell-cli-lib-XXXXXX")" \
 # skips both, and the test jar of chat-core then never reaches the local
 # repository. chat-security needs that jar: node3 reported "The following
 # artifacts could not be resolved: com.demo:chat-core:jar:tests:0.0.1".
-if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" -pl chat-deploy -am \
+# The list names the four modules of the copy step, so the step installs
+# chat-shell, chat-shell-host, and chat-client-rsocket as well. Those three
+# reach chat-deploy through its profiles alone, so -am without a profile never
+# adds them, and the copy step then finds no chat-shell jar. node3 reported
+# that too: "could not be resolved: com.demo:chat-shell:jar:0.0.1".
+if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
+    -pl chat-deploy,chat-shell,chat-shell-host,chat-client-rsocket -am \
     -DskipTests \
     install > "$tmp.reactor.log" 2>&1; then
     rm -rf "$tmp"
