@@ -87,6 +87,40 @@ parent="$(dirname "$stage")"
 tmp="$(mktemp -d "$parent/.shell-cli-lib-XXXXXX")" \
     || fail 'no temporary directory'
 
+# The reactor build comes first. A one module build of chat-deploy resolves
+# every sibling module from the local repository, and a fresh host holds none
+# of them. node3 failed that way: "Could not find artifact
+# com.demo:chat-core:jar:0.0.1". So this step builds chat-deploy with -am,
+# which adds the modules that it needs, and it installs them. A host that
+# already holds them does an incremental build.
+#
+# This step names no profile. The four profiles of the copy step make
+# chat-deploy depend on chat-shell, and chat-shell depend on chat-deploy, so a
+# reactor of both modules holds a cycle: "The projects in the reactor contain a
+# cyclic reference". The modules install without those profiles, and the copy
+# step then reads them from the local repository. See CHAT-tqsteufr.
+# The step skips the test run, and it compiles the tests. maven.test.skip=true
+# skips both, and the test jar of chat-core then never reaches the local
+# repository. chat-security needs that jar: node3 reported "The following
+# artifacts could not be resolved: com.demo:chat-core:jar:tests:0.0.1".
+# The list names the four modules of the copy step, so the step installs
+# chat-shell, chat-shell-host, and chat-client-rsocket as well. Those three
+# reach chat-deploy through its profiles alone, so -am without a profile never
+# adds them, and the copy step then finds no chat-shell jar. node3 reported
+# that too: "could not be resolved: com.demo:chat-shell:jar:0.0.1".
+if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
+    -pl chat-deploy,chat-shell,chat-shell-host,chat-client-rsocket -am \
+    -DskipTests \
+    install > "$tmp.reactor.log" 2>&1; then
+    rm -rf "$tmp"
+    printf 'build-shell-cli-lib: the module build failed. Its log is at %s\n' \
+        "$tmp.reactor.log" >&2
+    exit 1
+fi
+rm -f "$tmp.reactor.log"
+
+# The dependency copy follows. It runs on chat-deploy alone, so the stage holds
+# the runtime set of that module and nothing of another module.
 if ! "$mvn_command" -B -ntp -f "$repo_root/chat-deploy/pom.xml" \
     -Pdeploy,shell,shell-host,client-backend -Dmaven.test.skip=true \
     package dependency:copy-dependencies -DincludeScope=runtime \
