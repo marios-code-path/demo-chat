@@ -56,7 +56,19 @@ checks=0
 ok() { checks=$((checks + 1)); printf 'ok   %s\n' "$1"; }
 bad() { checks=$((checks + 1)); failures=$((failures + 1)); printf 'FAIL %s: %s\n' "$1" "$2"; }
 
-mode_of() { stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1" 2>/dev/null; }
+# mode_of PATH  Print the octal mode of PATH.
+#
+# The two stat commands take different flags, and one order cannot serve both.
+# GNU stat reads -f as --file-system, and it then prints the file system of the
+# path and returns 0. So a Darwin-first order never reaches its fallback on
+# Linux, and the caller compares a file system report with a mode. The same
+# switch stands in node-9/bin/register-import. See CHAT-tqsteufr.
+mode_of() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
 
 # run_setup NAME [ARGS...]  Run setup-secrets against the fixture Vault.
 # The secrets file and directory land in $work. Status lands in $status_of.
@@ -64,6 +76,7 @@ run_setup() {
     local name="$1"; shift
     ( cd "$repo_root" \
       && XDG_CONFIG_HOME="${RUN_CONFIG:-$config}" \
+         NODE9_ALLOW_SOURCE_TREE=1 \
          NODE9_ANSIBLE_DIR="$ansible_dir" \
          NODE9_SECRETS_FILE="$work/$name.env" \
          NODE9_SECRETS_DIR="$work/$name.d" \

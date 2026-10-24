@@ -30,6 +30,20 @@ failures=0
 ok() { printf 'ok   %s\n' "$1"; }
 bad() { printf 'FAIL %s: %s\n' "$1" "$2"; failures=$((failures + 1)); }
 
+# mode_of PATH  Print the octal mode of PATH.
+#
+# The two stat commands take different flags, and no order of a fallback pair
+# serves both. GNU stat reads -f as --file-system, so it prints the file system
+# of the path and returns 0. A Darwin-first pair then never reaches its
+# fallback on Linux, and the caller compares a file system report with a mode.
+# The same switch stands in node-9/bin/register-import. See CHAT-tqsteufr.
+mode_of() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
 # node9_args TOGGLE
 # Print node9_compose_args from the repository root.
 node9_args() {
@@ -341,8 +355,7 @@ secrets_out="$( cd "$repo_root" \
        NODE9_SECRETS_FILE="$generated" NODE9_SECRETS_DIR="$generated_dir" \
        bash node-9/bin/setup-secrets --local 2>&1 )"
 secrets_status=$?
-secrets_mode="$(stat -c '%a' "$generated" 2>/dev/null \
-    || stat -f '%Lp' "$generated" 2>/dev/null)"
+secrets_mode="$(mode_of "$generated")"
 if [[ $secrets_status -eq 0 && "$secrets_mode" == '600' ]]; then
     ok 'secrets_created_with_mode_0600'
 else
@@ -837,7 +850,7 @@ status=$?
 if [[ $status -eq 0 && -f "$install_home/.installed" \
       && -f "$install_home/advertise.yml" \
       && -x "$install_home/bin/start" && -d "$install_home/data" \
-      && "$(stat -f %Lp "$install_home/secrets" 2>/dev/null || stat -c %a "$install_home/secrets")" == '700' \
+      && "$(mode_of "$install_home/secrets")" == '700' \
       && ! -e "$install_home/install" ]]; then
     ok 'install_copies_code_and_creates_state_dirs'
 else
@@ -889,7 +902,7 @@ home_a="$work/opt/import-a"
 out="$(bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" 2>&1)"
 status=$?
 if [[ $status -eq 0 && -f "$home_a/secrets/Theta.password" \
-      && "$(stat -f %Lp "$home_a/secrets.env" 2>/dev/null || stat -c %a "$home_a/secrets.env")" == '600' ]]; then
+      && "$(mode_of "$home_a/secrets.env")" == '600' ]]; then
     ok 'install_imports_a_complete_secret_set'
 else
     bad 'install_imports_a_complete_secret_set' "exit $status, output: $out"
