@@ -123,12 +123,51 @@ makes one without any TLS material.
 ### An image repository prefix, only for `--build`
 
 ```bash
-export IMAGE_REPO_PREFIX=harbor.lan/chat
+export IMAGE_REPO_PREFIX=<your registry host>/<your project>
 ```
 
 **This variable is optional.** The parent pom defaults `image.repo` to
 `docker.io/library`, and the `image-repo-from-env` profile takes this value
 when you set one. Set it only to name a different registry.
+
+**It covers the deploy modules alone.** `chat-deploy` and the
+`chat-deploy-*` modules read `${image.repo}`. Other modules hold a fixed
+registry name in their own pom: `chat-shell`, `chat-web`, and `chat-gateway`
+each name `docker.io/library`. So this variable does not rename every image of
+the project.
+
+### The image manifest of one deployment run
+
+`chat-build ... --build --image-manifest PATH` appends one record for the image
+that the build produced. `CHAT_IMAGE_MANIFEST` sets the same path. One path
+serves one deployment run, so the core, REST, and authserv builds of that run
+leave one list for the push.
+
+```bash
+export CHAT_IMAGE_MANIFEST=/tmp/release-2026-10-24.json
+shell-scripts/chat-build core --cassandra --build --key-type uuid --node-id 9
+shell-scripts/chat-build rest --cassandra --build --key-type uuid
+shell-scripts/image-references "$CHAT_IMAGE_MANIFEST" | while read -r image; do
+    docker push "$image"
+done
+```
+
+Each record holds the image reference, the image id, the architecture, the
+service, and the module. The repository digest joins the record only when the
+image holds one, because a local image takes its digest from a push.
+
+The build writes a record after two steps pass: the Maven build, and one
+`docker image inspect` of the reference. A failed build adds nothing. The
+reference comes from the module itself, through
+`mvn help:evaluate -Dexpression=appImageName`, so a module with a fixed
+registry name records that name.
+
+One lock beside the manifest holds every write, so builds that share a path
+keep every record. The write reaches the file in one rename. A file that holds
+another JSON type stays as it is, and the build stops with status 1.
+
+Use a new path for the next run. An old path carries the images of the earlier
+run into its push list.
 
 `CHAT-gkwqnnxn` added the default. Before 2026-09-22 only
 `shell-scripts/build.sh` defaulted it, and `chat-build ... --build` failed
