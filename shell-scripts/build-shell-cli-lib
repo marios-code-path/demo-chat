@@ -87,6 +87,24 @@ parent="$(dirname "$stage")"
 tmp="$(mktemp -d "$parent/.shell-cli-lib-XXXXXX")" \
     || fail 'no temporary directory'
 
+# The reactor build comes first. A one module build of chat-deploy resolves
+# every sibling module from the local repository, and a fresh host holds none
+# of them. node3 failed that way: "Could not find artifact
+# com.demo:chat-core:jar:0.0.1". So this step builds chat-deploy with -am,
+# which adds the modules that it needs, and it installs them. A host that
+# already holds them does an incremental build. See CHAT-tqsteufr.
+if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" -pl chat-deploy -am \
+    -Pdeploy,shell,shell-host,client-backend -Dmaven.test.skip=true \
+    install > "$tmp.reactor.log" 2>&1; then
+    rm -rf "$tmp"
+    printf 'build-shell-cli-lib: the module build failed. Its log is at %s\n' \
+        "$tmp.reactor.log" >&2
+    exit 1
+fi
+rm -f "$tmp.reactor.log"
+
+# The dependency copy follows. It runs on chat-deploy alone, so the stage holds
+# the runtime set of that module and nothing of another module.
 if ! "$mvn_command" -B -ntp -f "$repo_root/chat-deploy/pom.xml" \
     -Pdeploy,shell,shell-host,client-backend -Dmaven.test.skip=true \
     package dependency:copy-dependencies -DincludeScope=runtime \
