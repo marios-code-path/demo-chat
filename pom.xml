@@ -56,6 +56,13 @@
              pom. See CHAT-icgifzbv. -->
         <tomcat.version>11.0.26</tomcat.version>
         <spring-boot.version>4.0.8</spring-boot.version>
+        <!-- The buildpack builder of every image build. The tag is a version,
+             and never "latest". The "latest" tag of this builder served
+             linux/arm64 alone on 2026-10-23, so an amd64 build failed with
+             "exec /cnb/lifecycle/creator: exec format error". The versioned
+             tags 0.0.198 to 0.0.200 serve amd64 and arm64. See
+             CHAT-tqsteufr. -->
+        <paketo.builder>docker.io/paketobuildpacks/builder-noble-java-tiny:0.0.200</paketo.builder>
         <spring-cloud-bom.version>2025.1.3</spring-cloud-bom.version>
 
         <!-- No BOM manages these. They are declared once in
@@ -594,6 +601,7 @@
                             <mainClass>${appMainClass}</mainClass>
                             <image>
                                 <name>${appImageName}</name>
+                                <builder>${paketo.builder}</builder>
                                 <cleanCache>false</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
