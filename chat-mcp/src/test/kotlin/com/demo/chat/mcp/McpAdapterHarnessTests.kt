@@ -32,7 +32,10 @@ class McpAdapterHarnessTests {
     private val hiddenName: String = "refused-topic-name"
 
     /** The pinned client. The adapter serves the revision this release declares. */
-    private val pinnedSdkVersion: String = "1.31.0"
+    /* The value follows chat-mcp/src/test/client/package.json. A bump of that
+     * file without this line fails the harness. See CHAT-faqxupam for the
+     * earlier case of one value in two places. */
+    private val pinnedSdkVersion: String = "1.32.0"
 
     /** The protocol revision this adapter serves. See decision D1 in the plan. */
     private val servedRevision: String = "2025-11-25"
