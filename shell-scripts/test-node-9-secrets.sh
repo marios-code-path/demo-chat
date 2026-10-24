@@ -155,7 +155,17 @@ else
     bad 'missing_vault_password_stops' "status=$status_of file=$([[ -e "$work/novault.env" ]] && echo yes || echo no) err=$(head -1 "$work/novault.err")"
 fi
 
-RUN_PATH='/usr/bin:/bin' run_setup noansible
+# A path of this host can hold ansible-playbook in /usr/bin, and node3 does.
+# So the case builds one directory of the commands that the script needs, and
+# it leaves ansible-playbook out. See CHAT-tqsteufr.
+noansible_bin="$work/noansible-bin"
+mkdir -p "$noansible_bin"
+for tool in bash sh dirname basename uname mkdir chmod mv cp rm sed tr cat \
+            grep head tail ls env printf openssl git docker; do
+    tool_path="$(command -v "$tool" 2> /dev/null)" || continue
+    ln -sf "$tool_path" "$noansible_bin/$tool"
+done
+RUN_PATH="$noansible_bin" run_setup noansible
 if [[ "$status_of" -ne 0 ]] && [[ ! -e "$work/noansible.env" ]] \
    && grep -q -- '--local' "$work/noansible.err"; then
     ok 'missing_ansible_stops'
