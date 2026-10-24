@@ -33,6 +33,9 @@ REGISTER_IMPORT_NAMESPACE='e9d6d78a-0020-43e3-9893-92737b9e536c'
 import_bundle=''
 import_cli_path=''
 import_work=''
+# The login of the owner comes from --as at run time. No script names it.
+# See CHAT-sufkkqon.
+import_owner=''
 
 # import_error MESSAGE  Print one line on standard error and return 2.
 import_error() {
@@ -902,20 +905,40 @@ verify_topic() {
     return 0
 }
 
-# join_all TOPIC  Join Sigma, Theta, Phi, and Mario to one topic.
+# agent_members [OWNER]  Print the agent login of every member that this host
+# declares, one name on each line, in sorted order. OWNER leaves the list,
+# because the owner value lives in secrets.env and needs no password file.
+#
+# secrets.env declares the members. Each line of the form
+# CHAT_USER_<NAME>_PASSWORD=<value> names one login. So the list comes from the
+# host, and no name stands in this file. A host with another set of agents
+# needs no change here. A declared member with no password file is a gap, and
+# import_credentials names it. See CHAT-sufkkqon.
+agent_members() {
+    local owner="${1:-}" secrets_file
+    secrets_file="${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}"
+    [[ -r "$secrets_file" ]] || return 0
+    sed -nE 's/^CHAT_USER_([A-Z0-9]+)_PASSWORD=.+$/\1/p' "$secrets_file" \
+        | awk '{ print toupper(substr($0, 1, 1)) tolower(substr($0, 2)) }' \
+        | awk -v owner="$owner" '$0 != owner' \
+        | sort -u
+}
+
+# join_all TOPIC  Join every agent member and the owner to one topic.
 join_all() {
     local topic="$1" name file secrets_dir
     secrets_dir="${NODE9_SECRETS_DIR:-$NODE9_DIR/secrets}"
-    for name in Sigma Theta Phi Mario; do
-        if [[ "$name" == 'Mario' ]]; then
-            file="$import_work/Mario.password"
-        else
-            file="$secrets_dir/$name.password"
-        fi
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        file="$secrets_dir/$name.password"
         CHAT_SHELL_USER="$name" CHAT_SHELL_PASSWORD_FILE="$file" \
             "$import_cli_path" join "$topic" > /dev/null 2>&1 \
             || { import_error "$name does not join $topic"; return 1; }
-    done
+    done < <(agent_members "$import_owner")
+    CHAT_SHELL_USER="$import_owner" \
+        CHAT_SHELL_PASSWORD_FILE="$import_work/owner.password" \
+        "$import_cli_path" join "$topic" > /dev/null 2>&1 \
+        || { import_error "the owner does not join $topic"; return 1; }
     return 0
 }
 
@@ -1044,30 +1067,41 @@ import_cli() {
     printf '%s\n' "$cli"
 }
 
-# import_credentials WORK_DIR
-# Check the four logins and write the owner password file. Return 77 when one
+# import_credentials WORK_DIR OWNER
+# Check every agent login and write the owner password file. Return 77 when one
 # login is absent. The function makes no live call, and it prints no secret.
+#
+# The owner value sits in secrets.env, under the key of its own login. So the
+# owner name arrives at run time, and no name stands here. See CHAT-sufkkqon.
 import_credentials() {
-    local work_dir="$1" secrets_dir secrets_file name value
+    local work_dir="$1" owner="$2" secrets_dir secrets_file name value owner_key
     secrets_dir="${NODE9_SECRETS_DIR:-$NODE9_DIR/secrets}"
     secrets_file="${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}"
-    for name in Sigma Theta Phi; do
+    local members=0
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
         if [[ ! -r "$secrets_dir/$name.password" ]]; then
             import_error "cannot read the login of $name at $secrets_dir/$name.password. Run setup-secrets."
             return 77
         fi
-    done
+        members=$(( members + 1 ))
+    done < <(agent_members "$owner")
+    if (( members == 0 )); then
+        import_error "no agent login is in $secrets_dir. Run setup-secrets."
+        return 77
+    fi
     if [[ ! -r "$secrets_file" ]]; then
         import_error "cannot read $secrets_file. Run setup-secrets."
         return 77
     fi
-    value="$(sed -n 's/^CHAT_USER_MARIO_PASSWORD=//p' "$secrets_file" \
+    owner_key="CHAT_USER_$(printf '%s' "$owner" | tr '[:lower:]' '[:upper:]')_PASSWORD"
+    value="$(sed -n "s/^$owner_key=//p" "$secrets_file" \
         | head -n 1)"
     if [[ -z "$value" ]]; then
         import_error "the owner login is absent from $secrets_file. Run setup-secrets --owner."
         return 77
     fi
-    ( umask 077; printf '%s\n' "$value" > "$work_dir/Mario.password" ) \
+    ( umask 077; printf '%s\n' "$value" > "$work_dir/owner.password" ) \
         || { import_error 'the owner login does not reach a private file'; return 1; }
     return 0
 }
@@ -1092,7 +1126,7 @@ import_preflight() {
     node9_load_env || return 2
 
     cli="$(import_cli)" || return
-    import_credentials "$work_dir"
+    import_credentials "$work_dir" "$user"
     status=$?
     if (( status != 0 )); then
         return "$status"
@@ -1103,7 +1137,10 @@ import_preflight() {
     export CHAT_SHELL_KEY_TYPE=uuid
     export CHAT_SHELL_NODE_ID=9
     export CHAT_SHELL_USER="$user"
-    export CHAT_SHELL_PASSWORD_FILE="$work_dir/Mario.password"
+    export CHAT_SHELL_PASSWORD_FILE="$work_dir/owner.password"
+    # Every later function takes the owner login from this value, and no
+    # function names it. See CHAT-sufkkqon.
+    import_owner="$user"
 
     if ! curl --connect-timeout 2 --max-time 3 --fail --silent \
         --output /dev/null \
@@ -1385,10 +1422,21 @@ verify_pointers() {
 # budget, and 1 for a failed read or a denied warning.
 verify_reads() {
     local target="${REGISTER_IMPORT_READ_TARGET_MS:-10000}"
-    local attempt user start finish status median
+    local attempt user start finish status median name count index
+    local readers=()
+    # The readers are the agents of this host and the owner. The spec asks for
+    # five reads, so a shorter list repeats from its start. No name stands in
+    # this file. See CHAT-sufkkqon.
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        readers+=("$name")
+    done < <(agent_members "$import_owner")
+    readers+=("$import_owner")
+    count=${#readers[@]}
     : > "$import_work/times"
     attempt=0
-    for user in Sigma Theta Phi Mario Sigma; do
+    for (( index = 0; index < 5; index++ )); do
+        user="${readers[$(( index % count ))]}"
         attempt=$(( attempt + 1 ))
         start="$(import_now_ms)"
         "$NODE9_DIR/bin/register" read --as "$user" \

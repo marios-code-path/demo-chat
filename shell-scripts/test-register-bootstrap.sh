@@ -754,6 +754,45 @@ else
     bad 'verify_stall_returns_124' "exit $status, output: $out"
 fi
 
+# secrets.env declares the members, and the import joins every one of them. No
+# shipped script names a development identity. A host that declares another
+# agent joins that agent, and it keeps every earlier one. See CHAT-sufkkqon.
+cp "$install_home/secrets.env" "$work/secrets.env.kept"
+printf 'CHAT_USER_QUARTZ_PASSWORD=fixture-quartz-password\n' \
+    >> "$install_home/secrets.env"
+printf 'fixture-quartz-password\n' > "$install_home/secrets/Quartz.password"
+chmod 600 "$install_home/secrets/Quartz.password"
+reset_stub
+rm -rf "$receipts"
+full_apply
+member_case='ok'
+if (( status != 0 )); then
+    member_case="exit $status, output: $out"
+elif ! grep -qx 'Quartz register-index' "$stub_state/joins/all" 2> /dev/null; then
+    member_case='the declared agent did not join the index'
+elif ! grep -qx 'Phi register-index' "$stub_state/joins/all" 2> /dev/null; then
+    member_case='an earlier agent lost its membership'
+elif ! grep -qx 'Mario register-index' "$stub_state/joins/all" 2> /dev/null; then
+    member_case='the owner did not join the index'
+fi
+mv "$work/secrets.env.kept" "$install_home/secrets.env"
+rm -f "$install_home/secrets/Quartz.password"
+if [[ "$member_case" == 'ok' ]]; then
+    ok 'apply_joins_every_declared_agent'
+else
+    bad 'apply_joins_every_declared_agent' "$member_case"
+fi
+
+# The importer itself names no member. The owner guard and the ownership proof
+# stay named, and CHAT-sufkkqon holds that remaining work.
+member_names="$(grep -nE '(for|in) +(Sigma|Theta|Phi)' \
+    "$repo_root/node-9/bin/register-import" | head -3)"
+if [[ -z "$member_names" ]]; then
+    ok 'importer_holds_no_member_name'
+else
+    bad 'importer_holds_no_member_name' "$member_names"
+fi
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1
