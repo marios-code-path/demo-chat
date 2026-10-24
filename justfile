@@ -24,6 +24,10 @@ check-ci:
 check-flags:
 	./shell-scripts/test-flags.sh
 
+# Check image manifest output with stub Maven and Docker commands.
+check-image-manifest:
+	./shell-scripts/test-image-manifest.sh
+
 # Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh

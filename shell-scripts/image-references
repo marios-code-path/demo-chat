@@ -30,13 +30,14 @@ def main() -> int:
         print("usage: image-references MANIFEST", file=sys.stderr)
         return 2
     path = Path(sys.argv[1]).expanduser()
-    if not path.is_file():
-        print(f"image-references: no file at {path}", file=sys.stderr)
-        return 2
     try:
+        if not path.is_file():
+            print(f"image-references: no file at {path}", file=sys.stderr)
+            return 2
         records = json.loads(path.read_text())
-    except json.JSONDecodeError as error:
-        print(f"image-references: {path} holds no JSON: {error}", file=sys.stderr)
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as error:
+        print(f"image-references: cannot read UTF-8 JSON from {path}: {error}",
+              file=sys.stderr)
         return 2
     if not isinstance(records, list):
         print(f"image-references: {path} holds a JSON {type(records).__name__}, "

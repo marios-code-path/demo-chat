@@ -126,49 +126,20 @@ makes one without any TLS material.
 export IMAGE_REPO_PREFIX=registry.example.invalid/chat
 ```
 
+Replace the example prefix with your registry path before a build or push.
+
 **This variable is optional.** The parent pom defaults `image.repo` to
 `docker.io/library`, and the `image-repo-from-env` profile takes this value
 when you set one. Set it only to name a different registry.
 
-**It covers the deploy modules alone.** `chat-deploy` and the
-`chat-deploy-*` modules read `${image.repo}`. Other modules hold a fixed
-registry name in their own pom: `chat-shell`, `chat-web`, and `chat-gateway`
-each name `docker.io/library`. So this variable does not rename every image of
-the project.
+The POMs for `chat-deploy`, `chat-deploy-memory`, `chat-deploy-cassandra`,
+`chat-deploy-redis`, `chat-deploy-kafka`, and `chat-authorization-server` use
+`${image.repo}`. Direct builds of `chat-shell`, `chat-web`, `chat-gateway`, and
+`chat-deploy-memory-integration-test` use fixed `docker.io/library` names.
 
-### The image manifest of one deployment run
-
-`chat-build ... --build --image-manifest PATH` appends one record for the image
-that the build produced. `CHAT_IMAGE_MANIFEST` sets the same path. One path
-serves one deployment run, so the core, REST, and authserv builds of that run
-leave one list for the push.
-
-```bash
-set -euo pipefail
-export CHAT_IMAGE_MANIFEST=/tmp/release-2026-10-24.json
-shell-scripts/chat-build core --cassandra --build --uuid --node-id 9 --notls
-shell-scripts/chat-build rest --client --build --uuid --node-id 10 --notls
-shell-scripts/image-references "$CHAT_IMAGE_MANIFEST" | while IFS= read -r image; do
-    docker push "$image"
-done
-```
-
-Each record holds the image reference, the image id, the architecture, the
-service, and the module. The repository digest joins the record only when
-Docker reports one for the same repository.
-
-The build writes a record after two steps pass: the Maven build, and one
-`docker image inspect` of the reference. A failed build adds nothing. The
-reference comes from the module itself, through
-`mvn help:evaluate -Dexpression=appImageName`, so a module with a fixed
-registry name records that name.
-
-One lock beside the manifest holds every write, so builds that share a path
-keep every record. The write reaches the file in one rename. A file that holds
-another JSON type stays as it is, and the build stops with status 1.
-
-Use a new path for the next run. An old path carries the images of the earlier
-run into its push list.
+`chat-build` selects `chat-deploy` for its REST, gateway, and shell services.
+The prefix therefore affects those service builds too. It selects
+`chat-authorization-server` for authserv.
 
 `CHAT-gkwqnnxn` added the default. Before 2026-09-22 only
 `shell-scripts/build.sh` defaulted it, and `chat-build ... --build` failed
@@ -246,6 +217,33 @@ before you build, or supply the property when you run the image.
 
 *Measured on 2026-09-22: the Cassandra image builds and starts. The memory
 image was built and run later through the container launcher.*
+
+### Record images for a push
+
+`chat-build ... --build --image-manifest PATH` records the image of each
+successful build. `CHAT_IMAGE_MANIFEST` sets the same path. One path serves one
+deployment run, so builds in that run leave one list for the push.
+
+```bash
+set -euo pipefail
+export CHAT_IMAGE_MANIFEST=/tmp/release-2026-10-24.json
+shell-scripts/chat-build core --cassandra --build --uuid --node-id 9 --notls
+shell-scripts/chat-build rest --client --build --uuid --node-id 10 --notls
+shell-scripts/image-references "$CHAT_IMAGE_MANIFEST" | while IFS= read -r image; do
+    docker push "$image"
+done
+```
+
+Each record holds the image reference, image id, architecture, service, and
+module. Docker supplies a repository digest only when it reports one for the
+same repository. Maven supplies the image reference from the selected module.
+
+The build writes a record after Maven succeeds and Docker confirms the image.
+A failed build adds nothing. A lock protects concurrent writes to one manifest.
+The writer renames a temporary file to replace the manifest as one operation.
+
+Use a new path for each deployment run. An old path can contain images from
+an earlier run.
 
 ### Launch the core container
 

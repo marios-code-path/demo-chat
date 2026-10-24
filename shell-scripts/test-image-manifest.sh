@@ -20,6 +20,10 @@ bad() { printf 'FAIL %s: %s\n' "$1" "$2"; failures=$((failures + 1)); }
 
 stub_bin="$work/bin"
 mkdir -p "$stub_bin"
+# Remove caller settings before each stubbed build. The test supplies its own
+# manifest path and stub values after these removals.
+clean_env=(-u CHAT_IMAGE_MANIFEST -u STUB_REF -u STUB_ID -u STUB_ARCH
+           -u STUB_DIGESTS -u MVN_EXIT -u DOCKER_EXIT)
 
 # The Maven stub answers two calls. A property query prints one image
 # reference. Every other call is the build, and MVN_EXIT sets its status.
@@ -76,7 +80,8 @@ run_build() {
             env_pairs+=("$word")
         fi
     done
-    out="$(env PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
+    args+=(--env-file "$work/chat-build-$BASHPID.env")
+    out="$(env "${clean_env[@]}" PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
         KEYSTORE_PASS=test-pass CASSANDRA_CONTACT_POINTS=127.0.0.1 \
         MVN_CALLS="$work/mvn-calls" DOCKER_CALLS="$work/docker-calls" \
         CHAT_IMAGE_MANIFEST="$manifest" "${env_pairs[@]}" \
@@ -112,6 +117,13 @@ if [[ "$case_one" == 'ok' ]]; then
     ok 'manifest_records_one_build'
 else
     bad 'manifest_records_one_build' "$case_one"
+fi
+
+manifest_mode="$(python3 -c 'import os, sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777))' "$manifest")"
+if [[ "$manifest_mode" == '0o600' ]]; then
+    ok 'manifest_is_private'
+else
+    bad 'manifest_is_private' "mode $manifest_mode"
 fi
 
 # A build with no repository digest records none. A local image holds no
@@ -198,6 +210,17 @@ else
     bad 'manifest_uses_matching_digest' "exit $status, record: $(cat "$matching_digest" 2> /dev/null)"
 fi
 
+untagged_digest="$work/untagged-digest.json"
+run_build "$untagged_digest" STUB_REF=registry.example.invalid:5000/chat/web \
+    STUB_DIGESTS='["registry.example.invalid:5000/chat/web@sha256:cccc"]'
+if (( status == 0 )) \
+   && [[ "$(jq -r '.[0].digest' "$untagged_digest" 2> /dev/null)" \
+         == 'registry.example.invalid:5000/chat/web@sha256:cccc' ]]; then
+    ok 'manifest_keeps_port_of_untagged_digest'
+else
+    bad 'manifest_keeps_port_of_untagged_digest' "exit $status, record: $(cat "$untagged_digest" 2> /dev/null)"
+fi
+
 missing_fields="$work/missing-fields.json"
 run_build "$missing_fields" STUB_REF=docker.io/library/chat-web:0.0.1 \
     STUB_ID= STUB_ARCH=
@@ -207,16 +230,41 @@ else
     bad 'manifest_refuses_missing_image_fields' "exit $status, record: $(cat "$missing_fields" 2> /dev/null)"
 fi
 
+# Maven can return an unresolved property or the text null with status zero.
+: > "$work/docker-calls"
+unresolved_manifest="$work/unresolved.json"
+run_build "$unresolved_manifest" 'STUB_REF=${appImageName}'
+if (( status != 0 )) && [[ ! -e "$unresolved_manifest" ]] \
+   && [[ ! -s "$work/docker-calls" ]]; then
+    ok 'manifest_refuses_unresolved_image_name'
+else
+    bad 'manifest_refuses_unresolved_image_name' "exit $status, output: $out"
+fi
+
+: > "$work/docker-calls"
+null_manifest="$work/null.json"
+run_build "$null_manifest" STUB_REF=null
+if (( status != 0 )) && [[ ! -e "$null_manifest" ]] \
+   && [[ ! -s "$work/docker-calls" ]]; then
+    ok 'manifest_refuses_null_image_name'
+else
+    bad 'manifest_refuses_null_image_name' "exit $status, output: $out"
+fi
+
 # -- No name, no manifest and no image query -----------------------------
 
 : > "$work/docker-calls"
-out="$(env PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
+inherited_manifest="$work/inherited-manifest.json"
+out="$(CHAT_IMAGE_MANIFEST="$inherited_manifest" STUB_ID=sha256:poison \
+    env "${clean_env[@]}" PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
     KEYSTORE_PASS=test-pass CASSANDRA_CONTACT_POINTS=127.0.0.1 \
     MVN_CALLS="$work/mvn-calls" DOCKER_CALLS="$work/docker-calls" \
     STUB_REF=docker.io/library/chat-rest:0.0.1 \
-    "$build" core --memory --build --notls --long --node-id 0 2>&1)"
+    "$build" core --memory --build --notls --long --node-id 0 \
+    --env-file "$work/no-manifest.env" 2>&1)"
 status=$?
-if (( status == 0 )) && ! grep -q 'image inspect' "$work/docker-calls"; then
+if (( status == 0 )) && [[ ! -e "$inherited_manifest" ]] \
+   && ! grep -q 'image inspect' "$work/docker-calls"; then
     ok 'no_manifest_name_keeps_the_earlier_behavior'
 else
     bad 'no_manifest_name_keeps_the_earlier_behavior' \
@@ -250,6 +298,25 @@ elif [[ "$out" != *'other-type.json'* ]]; then
     bad 'manifest_of_another_type_stays' "the output names no file: $out"
 else
     ok 'manifest_of_another_type_stays'
+fi
+
+binary_manifest="$work/binary.json"
+printf '\377' > "$binary_manifest"
+run_build "$binary_manifest" STUB_REF=docker.io/library/chat-rest:0.0.1
+if (( status != 0 )) && [[ "$(od -An -tx1 "$binary_manifest" | tr -d ' \n')" == 'ff' ]] \
+   && [[ "$out" != *Traceback* ]]; then
+    ok 'manifest_refuses_non_utf8_file'
+else
+    bad 'manifest_refuses_non_utf8_file' "exit $status, output: $out"
+fi
+
+blocked_parent="$work/blocked-parent"
+printf 'not a directory\n' > "$blocked_parent"
+run_build "$blocked_parent/manifest.json" STUB_REF=docker.io/library/chat-rest:0.0.1
+if (( status != 0 )) && [[ "$out" != *Traceback* ]]; then
+    ok 'manifest_reports_file_error'
+else
+    bad 'manifest_reports_file_error' "exit $status, output: $out"
 fi
 
 # A list with an invalid record must not lose that record during an update.
@@ -310,6 +377,15 @@ else
         ok 'references_command_refuses_nontext_reference'
     else
         bad 'references_command_refuses_nontext_reference' "exit $status, output: $out"
+    fi
+
+    out="$("$references" "$binary_manifest" 2>&1)"
+    status=$?
+    if (( status == 2 )) && [[ "$out" == *'binary.json'* ]] \
+       && [[ "$out" != *Traceback* ]]; then
+        ok 'references_command_refuses_non_utf8_file'
+    else
+        bad 'references_command_refuses_non_utf8_file' "exit $status, output: $out"
     fi
 fi
 

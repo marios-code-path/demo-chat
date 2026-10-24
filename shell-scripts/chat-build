@@ -1003,9 +1003,9 @@ class BuildContext:
     def image_reference(self, env: dict[str, str]) -> str:
         """The image reference of this module, as the POM composes it.
 
-        Maven answers, because no rule here can. The deploy modules read
-        ${image.repo}, which IMAGE_REPO_PREFIX sets, and other modules hold a
-        fixed registry name. So this asks the module that built the image.
+        Some modules read ${image.repo}; others use fixed image names.
+        chat-deploy has a shell resolver for its launch path. This path asks
+        Maven for the effective POM value used by build-image.
         """
         cmd = [
             "mvn",
@@ -1022,7 +1022,10 @@ class BuildContext:
                                 capture_output=True, text=True)
         if answer.returncode != 0:
             return ""
-        return answer.stdout.strip().splitlines()[-1].strip() if answer.stdout.strip() else ""
+        reference = answer.stdout.strip().splitlines()[-1].strip() if answer.stdout.strip() else ""
+        if reference == "null" or "${" in reference:
+            return ""
+        return reference
 
     def record_image(self, env: dict[str, str]) -> int:
         """Append this build's image to the manifest. Return 0 on success.
@@ -1067,7 +1070,9 @@ class BuildContext:
             "module": str(self.module_dir().name),
         }
         digests = details.get("RepoDigests") or []
-        repository = reference.rsplit(":", 1)[0]
+        # A colon before the last slash belongs to a registry port.
+        repository = (reference.rsplit(":", 1)[0]
+                      if ":" in reference.rsplit("/", 1)[-1] else reference)
         if isinstance(digests, list):
             matching = next((digest for digest in digests
                              if isinstance(digest, str)
@@ -1085,11 +1090,11 @@ class BuildContext:
             try:
                 records = []
                 if path.is_file():
-                    text = path.read_text()
                     try:
+                        text = path.read_text()
                         earlier = json.loads(text) if text.strip() else []
-                    except json.JSONDecodeError:
-                        print(f"chat-build: {path} holds no JSON, so the manifest "
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        print(f"chat-build: {path} holds no UTF-8 JSON, so the manifest "
                               f"takes no record. The file stays as it is.",
                               file=sys.stderr)
                         return 1
@@ -1115,9 +1120,12 @@ class BuildContext:
                 # share one path, and the rename reaches the manifest whole.
                 handle, stage_name = tempfile.mkstemp(dir=str(path.parent),
                                                       prefix=path.name + ".")
-                with os.fdopen(handle, "w") as stage:
-                    stage.write(json.dumps(records, indent=2, sort_keys=True) + "\n")
-                os.replace(stage_name, path)
+                try:
+                    with os.fdopen(handle, "w") as stage:
+                        stage.write(json.dumps(records, indent=2, sort_keys=True) + "\n")
+                    os.replace(stage_name, path)
+                finally:
+                    Path(stage_name).unlink(missing_ok=True)
             finally:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
         print(f"chat-build: {reference} reaches {path}", file=sys.stderr)
@@ -1140,7 +1148,11 @@ class BuildContext:
         # The manifest takes a record after the build passes alone. A failed
         # build produces no image, so it names nothing to push.
         if status == 0 and self.args.build and self.args.image_manifest:
-            return self.record_image(env)
+            try:
+                return self.record_image(env)
+            except OSError as error:
+                print(f"chat-build: image manifest failed: {error}", file=sys.stderr)
+                return 1
         return status
 
 
