@@ -99,8 +99,12 @@ tmp="$(mktemp -d "$parent/.shell-cli-lib-XXXXXX")" \
 # reactor of both modules holds a cycle: "The projects in the reactor contain a
 # cyclic reference". The modules install without those profiles, and the copy
 # step then reads them from the local repository. See CHAT-tqsteufr.
+# The step skips the test run, and it compiles the tests. maven.test.skip=true
+# skips both, and the test jar of chat-core then never reaches the local
+# repository. chat-security needs that jar: node3 reported "The following
+# artifacts could not be resolved: com.demo:chat-core:jar:tests:0.0.1".
 if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" -pl chat-deploy -am \
-    -Dmaven.test.skip=true \
+    -DskipTests \
     install > "$tmp.reactor.log" 2>&1; then
     rm -rf "$tmp"
     printf 'build-shell-cli-lib: the module build failed. Its log is at %s\n' \
