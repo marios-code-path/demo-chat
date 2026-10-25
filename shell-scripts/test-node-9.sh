@@ -560,7 +560,7 @@ mkdir -p "$sandbox/bin"
 cp node-9/node-9.env node-9/compose.yaml node-9/compose.vector-disk.yaml \
     node-9/userinit.yml "$sandbox/" 2>/dev/null
 cp -R node-9/schema "$sandbox/" 2>/dev/null
-cp node-9/bin/lib.sh node-9/bin/setup-secrets node-9/bin/start \
+cp node-9/bin/lib.sh node-9/bin/secrets-local.sh node-9/bin/setup-secrets node-9/bin/start \
     node-9/bin/stop node-9/bin/save-images node-9/bin/load-images \
     "$sandbox/bin/" 2>/dev/null
 
@@ -608,7 +608,13 @@ exit 0
 STUB
 
 printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/curl"
-chmod +x "$work/bin/docker" "$work/bin/mvn" "$work/bin/curl"
+cat > "$work/bin/nc" <<'STUB'
+#!/usr/bin/env bash
+# Only the named port is busy. The test never probes or binds a live port.
+[[ "${1:-}" == '-z' && "${2:-}" == '127.0.0.1' \
+    && "${3:-}" == "${TEST_BUSY_PORT:-}" ]]
+STUB
+chmod +x "$work/bin/docker" "$work/bin/mvn" "$work/bin/curl" "$work/bin/nc"
 
 stub_env=(PATH="$work/bin:$PATH" DOCKER_CALLS="$work/start-calls"
     MVN_CALLS="$work/start-mvn" SCHEMA_STATE="$work/start-state")
@@ -656,10 +662,11 @@ printf 'CHAT_SERVICE_PASSWORD=start-service\nCHAT_ADMIN_PASSWORD=start-admin\nCH
 mkdir -p "$work/empty-config"
 mv "$sandbox/secrets.env" "$sandbox/secrets.env.saved"
 reset_start
-env "${stub_env[@]}" XDG_CONFIG_HOME="$work/empty-config" \
-    bash "$sandbox/bin/start" >/dev/null 2>&1
+out="$(env "${stub_env[@]}" XDG_CONFIG_HOME="$work/empty-config" \
+    bash "$sandbox/bin/start" 2>&1)"
 status=$?
-if [[ $status -eq 2 && ! -e "$sandbox/secrets.env" ]]; then
+if [[ $status -eq 2 && ! -e "$sandbox/secrets.env" \
+      && "$out" == *'--vault-source'* ]]; then
     ok 'start_without_vault_stops'
 else
     bad 'start_without_vault_stops' "exit $status, secrets file $([ -e "$sandbox/secrets.env" ] && echo present || echo absent)"
@@ -723,31 +730,22 @@ else
     bad 'start_dry_run_off_has_no_vector_dir' 'the vector directory state is wrong'
 fi
 
-# GNU netcat exits after one connection, so do not probe the listener.
-nc -l -p 6890 >/dev/null 2>&1 &
-listener=$!
-/bin/sleep 0.5
 reset_start
-env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run >/dev/null 2>&1
+env "${stub_env[@]}" TEST_BUSY_PORT=6890 \
+    bash "$sandbox/bin/start" --dry-run >/dev/null 2>&1
 status=$?
-kill "$listener" >/dev/null 2>&1
-wait "$listener" 2>/dev/null
 if [[ $status -eq 3 && ! -e "$work/start-calls" ]]; then
     ok 'start_refuses_busy_port'
 else
     bad 'start_refuses_busy_port' "exit $status, docker calls $([ -e "$work/start-calls" ] && echo yes || echo no)"
 fi
 
-# The registry port needs the same check. Compose otherwise fails at the bind
-# with a message that names no node-9 value. See CHAT-yexqiyie.
-nc -l -p 6892 >/dev/null 2>&1 &
-listener=$!
-/bin/sleep 0.5
+# The registry port needs the same check. The stub makes only that port busy.
+# Compose otherwise fails at the bind with no node-9 value. See CHAT-yexqiyie.
 reset_start
-out="$(env "${stub_env[@]}" bash "$sandbox/bin/start" --dry-run 2>&1)"
+out="$(env "${stub_env[@]}" TEST_BUSY_PORT=6892 \
+    bash "$sandbox/bin/start" --dry-run 2>&1)"
 status=$?
-kill "$listener" >/dev/null 2>&1
-wait "$listener" 2>/dev/null
 if [[ $status -eq 3 && ! -e "$work/start-calls" \
       && "$out" == *'port 6892 is in use'* ]]; then
     ok 'start_refuses_a_busy_registry_port'
@@ -843,34 +841,55 @@ fi
 # runtime from source, which needs Maven and minutes. The runtime cases live
 # in shell-scripts/test-shell-cli-lib.sh. See CHAT-bjqzvsoe.
 
-install_home="$work/opt/node-9"
-mkdir -p "$work/opt"
-out="$(bash node-9/install --skip-cli --prefix "$install_home" 2>&1)"
+install_home="$work/install-home/node-9"
+mkdir -p "$work/install-home"
+install_bundle="$work/install-bundle"
+mkdir -p "$install_bundle"
+printf 'fixture-shared-pass\n' > "$install_bundle/vault-pass"
+printf 'shared-fixture\n' > "$install_bundle/shared.yml"
+printf 'owner-fixture\n' > "$install_bundle/owner.yml"
+install_config="$work/install-config"
+out="$(env XDG_CONFIG_HOME="$install_config" bash node-9/install --skip-cli \
+    --prefix "$install_home" --vault-source "$install_bundle" 2>&1)"
 status=$?
 if [[ $status -eq 0 && -f "$install_home/.installed" \
       && -f "$install_home/advertise.yml" \
       && -x "$install_home/bin/start" && -d "$install_home/data" \
       && "$(mode_of "$install_home/secrets")" == '700' \
+      && -f "$(dirname "$install_home")/vault/shared.yml" \
       && ! -e "$install_home/install" ]]; then
     ok 'install_copies_code_and_creates_state_dirs'
 else
     bad 'install_copies_code_and_creates_state_dirs' "exit $status, output: $out"
 fi
 
-printf 'keep\n' > "$install_home/secrets.env"
-printf 'keep\n' > "$install_home/data/marker"
-printf 'stale\n' > "$install_home/bin/old-script"
-out="$(bash node-9/install --skip-cli --prefix "$install_home" 2>&1)"
+# A complete plaintext set for the import and reinstall cases.
+good_state="$work/good-state"
+mkdir -p "$good_state/secrets"
+cp "$fixture" "$good_state/secrets.env"
+for name in Sigma Theta Phi; do
+    upper="$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')"
+    sed -n "s/^CHAT_USER_${upper}_PASSWORD=//p" "$good_state/secrets.env" \
+        > "$good_state/secrets/$name.password"
+done
+
+reinstall_home="$work/opt/reinstall"
+bash node-9/install --skip-cli --prefix "$reinstall_home" \
+    --import-state "$good_state" >/dev/null 2>&1
+printf 'keep\n' > "$reinstall_home/data/marker"
+printf 'stale\n' > "$reinstall_home/bin/old-script"
+out="$(bash node-9/install --skip-cli --prefix "$reinstall_home" --keep-secrets 2>&1)"
 status=$?
-if [[ $status -eq 0 && "$(cat "$install_home/secrets.env")" == 'keep' \
-      && "$(cat "$install_home/data/marker")" == 'keep' \
-      && ! -e "$install_home/bin/old-script" ]]; then
+if [[ $status -eq 0 && "$(cat "$reinstall_home/secrets.env")" == "$(cat "$fixture")" \
+      && "$(cat "$reinstall_home/data/marker")" == 'keep' \
+      && ! -e "$reinstall_home/bin/old-script" ]]; then
     ok 'install_rerun_keeps_state_and_replaces_code'
 else
     bad 'install_rerun_keeps_state_and_replaces_code' "exit $status, output: $out"
 fi
 
-out="$(bash node-9/install --skip-cli --prefix "$repo_root/node-9-home-test" 2>&1)"
+out="$(bash node-9/install --skip-cli --keep-secrets \
+    --prefix "$repo_root/node-9-home-test" 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'git work tree'* \
       && ! -e "$repo_root/node-9-home-test" ]]; then
@@ -881,7 +900,7 @@ fi
 
 mkdir -p "$work/foreign"
 printf 'x\n' > "$work/foreign/file"
-out="$(bash node-9/install --skip-cli --prefix "$work/foreign" 2>&1)"
+out="$(bash node-9/install --skip-cli --keep-secrets --prefix "$work/foreign" 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'no .installed marker'* ]]; then
     ok 'install_refuses_a_foreign_directory'
@@ -889,14 +908,11 @@ else
     bad 'install_refuses_a_foreign_directory' "exit $status, output: $out"
 fi
 
-# Import: a complete set copies. An incomplete set is skipped. No overwrite.
-good_state="$work/good-state"
-mkdir -p "$good_state/secrets"
-cp "$fixture" "$good_state/secrets.env"
-for name in Sigma Theta Phi; do printf 'pw-%s\n' "$name" > "$good_state/secrets/$name.password"; done
+# Import: a complete consistent set copies. An incomplete source fails. An
+# identical target keeps, and a conflicting target fails.
 bad_state="$work/bad-state"
 mkdir -p "$bad_state/secrets"
-grep -v THETA "$fixture" > "$bad_state/secrets.env"
+grep -v CHAT_USER_THETA_PASSWORD "$fixture" > "$bad_state/secrets.env"
 
 home_a="$work/opt/import-a"
 out="$(bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" 2>&1)"
@@ -908,21 +924,30 @@ else
     bad 'install_imports_a_complete_secret_set' "exit $status, output: $out"
 fi
 
-printf 'changed\n' > "$home_a/secrets.env"
-bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" >/dev/null 2>&1
-if [[ "$(cat "$home_a/secrets.env")" == 'changed' ]]; then
-    ok 'install_import_never_overwrites'
+out="$(bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" 2>&1)"
+status=$?
+if [[ $status -eq 0 && "$(cat "$home_a/secrets.env")" == "$(cat "$fixture")" ]]; then
+    ok 'install_keeps_an_identical_import_target'
 else
-    bad 'install_import_never_overwrites' 'secrets.env changed'
+    bad 'install_keeps_an_identical_import_target' "exit $status, output: $out"
+fi
+
+printf 'changed\n' > "$home_a/secrets.env"
+out="$(bash node-9/install --skip-cli --prefix "$home_a" --import-state "$good_state" 2>&1)"
+status=$?
+if [[ $status -eq 1 && "$(cat "$home_a/secrets.env")" == 'changed' ]]; then
+    ok 'install_refuses_a_conflicting_import_target'
+else
+    bad 'install_refuses_a_conflicting_import_target' "exit $status, output: $out"
 fi
 
 home_b="$work/opt/import-b"
 out="$(bash node-9/install --skip-cli --prefix "$home_b" --import-state "$bad_state" 2>&1)"
 status=$?
-if [[ $status -eq 0 && ! -e "$home_b/secrets.env" && "$out" == *'import skipped'* ]]; then
-    ok 'install_skips_an_incomplete_secret_set'
+if [[ $status -eq 2 && ! -e "$home_b" && "$out" == *'incomplete'* ]]; then
+    ok 'install_refuses_an_incomplete_secret_set'
 else
-    bad 'install_skips_an_incomplete_secret_set' "exit $status, output: $out"
+    bad 'install_refuses_an_incomplete_secret_set' "exit $status, output: $out"
 fi
 
 # An installed start with no image stops before Maven. A register with no

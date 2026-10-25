@@ -460,6 +460,11 @@ fi
 # -- The install ---------------------------------------------------------
 
 installer="$repo_root/node-9/install"
+install_bundle="$work/install-bundle"
+mkdir -p "$install_bundle"
+printf 'fixture-vault-pass\n' > "$install_bundle/vault-pass"
+printf 'fixture-shared-vault\n' > "$install_bundle/shared.yml"
+printf 'fixture-owner-vault\n' > "$install_bundle/owner.yml"
 
 # A java stub for the install check. It prints one version line, as java
 # prints it, on standard error.
@@ -502,7 +507,8 @@ run_install() {
     done
     rm -f "$work/mvn-calls"
     out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
-        "${env_pairs[@]}" bash "$installer" --prefix "$prefix" \
+        XDG_CONFIG_HOME="$work/install-config" "${env_pairs[@]}" \
+        bash "$installer" --prefix "$prefix" --vault-source "$install_bundle" \
         "${args[@]+"${args[@]}"}" 2>&1)"
     status=$?
 }
@@ -546,7 +552,6 @@ fi
 
 printf 'stale\n' > "$work/home-one/lib/stale.jar"
 printf 'keep\n' > "$work/home-one/data/marker"
-printf 'keep\n' > "$work/home-one/secrets.env"
 run_install "$work/home-one"
 replace_case='ok'
 if [[ $status -ne 0 ]]; then
@@ -555,8 +560,8 @@ elif [[ -e "$work/home-one/lib/stale.jar" ]]; then
     replace_case='the stale jar stayed'
 elif [[ "$(cat "$work/home-one/data/marker")" != 'keep' ]]; then
     replace_case='the data file changed'
-elif [[ "$(cat "$work/home-one/secrets.env")" != 'keep' ]]; then
-    replace_case='the secrets file changed'
+elif [[ ! -f "$work/vault/shared.yml" ]]; then
+    replace_case='the stable vault is absent'
 fi
 if [[ "$replace_case" == 'ok' ]]; then
     ok 'install_replaces_the_lib_whole'
@@ -672,8 +677,10 @@ chmod +x "$work/alt-tools/alt-mvn" "$work/alt-tools/alt-java"
 # names point at a working pair, so a call through the path cannot succeed.
 rm -f "$work/mvn-calls"
 out="$(env PATH="/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+    XDG_CONFIG_HOME="$work/install-config" \
     NODE9_MVN="$work/alt-tools/alt-mvn" NODE9_JAVA="$work/alt-tools/alt-java" \
-    bash "$installer" --prefix "$work/home-alt-tools" 2>&1)"
+    bash "$installer" --prefix "$work/home-alt-tools" \
+    --vault-source "$install_bundle" 2>&1)"
 status=$?
 alt_case='ok'
 if [[ $status -ne 0 ]]; then
@@ -696,8 +703,10 @@ fi
 # See CHAT-faqxupam.
 install_start=$SECONDS
 out="$(timeout 40 env PATH="$install_bin:/usr/bin:/bin" \
+    XDG_CONFIG_HOME="$work/install-config" \
     MVN_CALLS="$work/mvn-calls" NODE9_JAVA="$hang_java" NODE9_JAVA_LIMIT=2 \
-    bash "$installer" --prefix "$work/home-hang-java" 2>&1)"
+    bash "$installer" --prefix "$work/home-hang-java" \
+    --vault-source "$install_bundle" 2>&1)"
 status=$?
 install_spent=$(( SECONDS - install_start ))
 if [[ $status -eq 124 ]]; then
@@ -747,8 +756,9 @@ fi
 run_install "$work/home-gap"
 printf 'old\n' > "$work/home-gap/lib/old-marker"
 out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
-    NODE9_INSTALL_FAIL_LIB_MOVE=1 bash "$installer" \
-    --prefix "$work/home-gap" 2>&1)"
+    XDG_CONFIG_HOME="$work/install-config" NODE9_INSTALL_FAIL_LIB_MOVE=1 \
+    bash "$installer" --prefix "$work/home-gap" \
+    --vault-source "$install_bundle" 2>&1)"
 status=$?
 gap_case='ok'
 if [[ $status -eq 0 ]]; then

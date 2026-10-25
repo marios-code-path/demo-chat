@@ -82,25 +82,45 @@ A post writes a new generation. A restart reuses the files. Measured on
 
 ## Secrets
 
-Ansible Vault holds the stored values. `node-9/ansible/vault/shared.yml` is
-encrypted. Its password stays outside the repository, at
-`~/.config/chat-node-9/vault-pass`, with mode 0600.
+The vaults are per host. The current Git tree tracks no vault ciphertext. The full
+runbook is `node-9/ansible/vault/README.md`. See CHAT-cnwkjsrp.
 
-`node-9/bin/setup-secrets` writes the values. It runs the shared playbook by
-default. It runs the owner playbook with `--owner`, from Mario's terminal.
-The owner playbook reads `node-9/ansible/vault/owner.yml` and writes
-`CHAT_USER_MARIO_PASSWORD`. No client copy exists. Mario creates that Vault
-file once:
+Two Ansible Vault files hold the stored values:
 
+- `shared.yml` holds `service_password`, `admin_password`,
+  `embedding_api_key`, `sigma_password`, `theta_password`, and
+  `phi_password`. Its vault ID is `shared`.
+- `owner.yml` holds `mario_password` alone. Its vault ID is `owner`.
+
+`node-9/install --vault-source DIR` copies a complete bundle to fixed
+per-host paths:
+
+| Bundle file | Target | Mode |
+|-------------|--------|------|
+| `shared.yml` | `<parent of prefix>/vault/shared.yml` | 0600 |
+| `owner.yml` | `<parent of prefix>/vault/owner.yml` | 0600 |
+| `vault-pass` | `${XDG_CONFIG_HOME:-$HOME/.config}/chat-node-9/vault-pass` | 0600 |
+
+The installer links the installed `ansible/vault/shared.yml` and
+`ansible/vault/owner.yml` to the stable files. A code replacement removes
+neither vault.
+
+A `--vault-source` install copies ciphertext alone. Its marker records
+`plaintext: pending`. Finish with the installed commands:
+
+```bash
+/opt/demo-chat/node-9/bin/setup-secrets
+/opt/demo-chat/node-9/bin/setup-secrets --owner
 ```
-ansible-vault create --vault-id owner@prompt node-9/ansible/vault/owner.yml
-```
 
-The file holds one line: `mario_password: <the owner password>`.
+The first command runs the shared playbook. The second prompts for the
+owner vault password and writes `CHAT_USER_MARIO_PASSWORD`. Ansible stores
+that password nowhere.
 
 `node-9/bin/setup-secrets --local` generates random values without Ansible.
-The default run never falls back to it. A missing `ansible-playbook` or
-Vault password stops the default run with one line.
+It runs only on an explicit request, and the owner password needs a
+terminal. The default run never falls back to it. When the shared vault is
+absent, `setup-secrets` names `--vault-source` and the runbook.
 
 A write is create-only. `secrets.env` keeps mode 0600, `node-9/secrets/`
 keeps mode 0700, and each agent password file keeps mode 0600. The written
@@ -152,10 +172,39 @@ that path. Run node 9 from the installed copy, not from a work tree. A work
 tree holds its own `data/`, `secrets/` and `secrets.env`, so removing it
 removes node 9's state.
 
-The installer copies the code files, writes the `.installed` marker, and
-creates `data/`, `secrets/` (mode 0700) and `images/` when they are missing.
-A re-run replaces code files alone. It never reads, writes, or deletes
-`data/`, `secrets/`, `secrets.env`, or `images/`.
+Every install states exactly one secrets choice:
+
+```bash
+node-9/install (--vault-source DIR | --import-state DIR \
+                | --local-secrets | --keep-secrets)
+```
+
+- `--vault-source DIR` copies a complete vault bundle. The bundle holds
+  `vault-pass`, `shared.yml`, and `owner.yml`. Plaintext setup stays
+  pending; the run prints both `setup-secrets` commands.
+- `--import-state DIR` copies a complete plaintext set. The set holds seven
+  keys, three agent files, and each file equals its key value.
+- `--local-secrets` generates new local values during the install. The owner
+  password needs a terminal. It creates no vault, and the values are not
+  reproducible after loss.
+- `--keep-secrets` keeps complete state on a reinstall. It changes no secret
+  or vault file.
+
+Zero or two choices stop with status 2 before any build or copy, and print
+the four choices.
+
+The installer copies the code files, writes the `.installed` marker last,
+and creates `data/`, `secrets/` (mode 0700) and `images/` when they are
+missing. It never deletes `data/`, `secrets/`, `secrets.env`, or a stable
+vault file. The marker records the choice:
+
+```
+secrets: vault-source
+plaintext: pending
+```
+
+The values are `vault-source`, `import-state`, `local`, or `kept`, and the
+plaintext state is `pending` or `complete`.
 
 A source tree refuses to run. `start`, `stop`, `setup-secrets`, `register`,
 `load-images` and `save-images` stop with status 2 unless the `.installed`
@@ -165,19 +214,23 @@ stop containers that started from a work tree. Use it in the offline tests.
 The installer refuses a prefix inside a git work tree. It refuses a
 non-empty prefix that has no marker.
 
-`--import-state DIR` copies `secrets.env` and `secrets/` from the node-9
-directory `DIR`. It never overwrites a file. It skips the import and names the
-gap when the set is incomplete. It never copies Cassandra data. `--dry-run`
-changes nothing.
+`--dry-run` prints the choice, source paths, target paths, and create or
+keep actions. It writes no file and prints no value.
 
 The marker changes three scripts. An installed `start` never calls Maven. A
 missing image stops it with status 4. Run `load-images` first. An installed
 `register` takes the CLI from `CHAT_SHELL_CLI`, or from `bin/chat-shell-cli`.
 An installed `setup-secrets` skips its repository check.
 
-The owner Vault stays at `<parent of the prefix>/vault/owner.yml`. The
-installer links it into `ansible/vault/owner.yml`. The Vault password stays
-at `~/.config/chat-node-9/vault-pass`.
+Both vault files stay outside the code directory, at
+`<parent of the prefix>/vault/`. The installer links them into
+`ansible/vault/`. The Vault password stays at
+`${XDG_CONFIG_HOME:-$HOME/.config}/chat-node-9/vault-pass`.
+
+An installed home from the earlier layout may hold a copy of the last
+tracked `shared.yml`. A copy with the recorded hash is inert: the code
+replacement removes it, and any choice proceeds. A different file stops the
+run with status 1 and is never removed. See `node-9/ansible/vault/README.md`.
 
 Containers that started from a work tree keep the old mounts. Run `stop`
 there, then run `start` from the installed copy.

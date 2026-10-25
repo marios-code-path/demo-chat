@@ -28,6 +28,10 @@ check-flags:
 check-image-manifest:
 	./shell-scripts/test-image-manifest.sh
 
+# Check the node-9 secrets choices without a live node.
+check-node-9-install-secrets:
+	./shell-scripts/test-node-9-install-secrets.sh
+
 # Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh

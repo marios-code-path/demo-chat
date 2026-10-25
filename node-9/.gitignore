@@ -3,3 +3,4 @@ secrets/
 data/
 images/
 run/
+ansible/vault/*.yml

@@ -31,7 +31,14 @@ file_mode_of() {
 
 install_home="$work/opt/node-9"
 mkdir -p "$work/opt"
-if ! install_out="$(bash node-9/install --prefix "$install_home" 2>&1)"; then
+bundle="$work/vault-bundle"
+mkdir -p "$bundle"
+printf 'fixture-vault-pass\n' > "$bundle/vault-pass"
+printf 'fixture-shared-vault\n' > "$bundle/shared.yml"
+printf 'fixture-owner-vault\n' > "$bundle/owner.yml"
+if ! install_out="$(env XDG_CONFIG_HOME="$work/config" \
+    bash node-9/install --skip-cli --prefix "$install_home" \
+    --vault-source "$bundle" 2>&1)"; then
     printf 'FAIL the suite cannot install a home: %s\n' "$install_out"
     exit 1
 fi
