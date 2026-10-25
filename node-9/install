@@ -571,7 +571,9 @@ install_stable() {
         chmod 0600 "$target"
         printf 'keep %s\n' "$target"
     else
-        cp "$source" "$target" || fail "cannot copy $source to $target." 1
+        # The copy makes the file with mode 0600, not the umask of the run.
+        (umask 077 && cp "$source" "$target") \
+            || fail "cannot copy $source to $target." 1
         chmod 0600 "$target"
         printf 'create %s\n' "$target"
     fi
@@ -592,12 +594,12 @@ case "$choice" in
     import-state)
         case "$(state_target_status "$import_state")" in
             absent)
-                cp "$import_state/secrets.env" "$prefix/secrets.env" \
+                (umask 077 && cp "$import_state/secrets.env" "$prefix/secrets.env") \
                     || fail 'cannot copy secrets.env.' 1
                 chmod 0600 "$prefix/secrets.env"
                 for name in Sigma Theta Phi; do
                     file="$prefix/secrets/$name.password"
-                    cp "$import_state/secrets/$name.password" "$file" \
+                    (umask 077 && cp "$import_state/secrets/$name.password" "$file") \
                         || fail "cannot copy $name.password." 1
                     chmod 0600 "$file"
                 done
