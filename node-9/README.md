@@ -299,6 +299,61 @@ It needs no Maven, no JDK, and no repository copy. `start` reads
 `CORE_IMAGE` from `node-9.env` and finds the loaded image. It calls Maven
 only when the image is absent.
 
+## The project register
+
+The register is an application concern. Install creates no register. Run
+`register-create` for each project checkout. Each install holds its own copy
+of every project register that it imports.
+
+`NODE_9_REGISTER_TOPIC_NAME` holds the register name, for example
+`demo-chat-register`. It lives in `.envrc` of the project checkout. A read
+command takes the name, or `NODE_9_REGISTER_TOPIC_ID`. A write command needs
+the name, because the name mints every topic. The name wins when both
+variables are set. No variable stops the command with status 2.
+
+One register owns three topic shapes:
+
+| Purpose | Shape |
+|---------|-------|
+| Pointer index | `<name>` |
+| Entry topic | `<name>-fr-<short>` |
+| Snapshot topic | `<name>-fr-snapshot-<12 hex>` |
+
+The name holds at most 37 characters. That bound leaves room for
+`-fr-snapshot-` and twelve hex characters inside the 64 character limit.
+
+```bash
+node-9/bin/register-create <name> [<path>] [--source-date DATE] --as <owner>
+```
+
+The command takes the name as an argument, and it reads no register variable.
+Without a path it creates the room alone, with its ownership proof and its
+membership. With a path it gives one entry to each `## ` section after the
+preamble. A path needs `--source-date`, because the date enters the bundle
+hash. A retry repeats the date and resumes. A new date makes a new bundle,
+and the occupied index stops that run with status 1.
+
+The command refuses a name that another register holds. A register owns every
+room that starts with `<name>-fr-`. A room of this run's own topics is not a
+collision, so a retry resumes.
+
+Exit status:
+
+- 0: the register is ready.
+- 1: a room of another register holds the name space, the index holds
+  messages without a matching receipt, or a readback differs.
+- 2: an argument, a name, a path, a symbolic link, a section, or the
+  installed guard.
+- 69: the core is not available.
+- 77: a login is absent.
+
+A section above 16,384 bytes stops with status 2. A repeated slug takes
+`<slug>-<section>`. A second collision, an empty slug, and a short name of
+the snapshot shape also stop with status 2.
+
+`node-9/bin/register` reads, opens, and posts one register. The design is
+`docs/superpowers/specs/2026-10-24-project-register-design.md`.
+
 ## Import a register snapshot
 
 One bundle carries one reviewed Markdown snapshot to a prepared host. See
@@ -306,13 +361,19 @@ One bundle carries one reviewed Markdown snapshot to a prepared host. See
 `docs/superpowers/specs/2026-10-21-portable-register-import-design.md`.
 
 ```bash
-node-9/bin/register-import pack --source FILE --mapping FILE --bundle DIR
-/opt/demo-chat/node-9/bin/register-import apply --bundle DIR --as Mario
-/opt/demo-chat/node-9/bin/register-import verify --bundle DIR --as Mario
+node-9/bin/register-import pack --source FILE --mapping FILE \
+    --bundle DIR --register NAME
+/opt/demo-chat/node-9/bin/register-import apply --bundle DIR \
+    --as Mario --register NAME
+/opt/demo-chat/node-9/bin/register-import verify --bundle DIR \
+    --as Mario --register NAME
 ```
 
 `pack` makes no network call, and it needs no installed home. `apply` and
-`verify` run from an installed copy alone.
+`verify` run from an installed copy alone. Every command takes the register
+name from `--register`, or from `NODE_9_REGISTER_TOPIC_NAME`. An empty value
+after the flag stops with status 2. The name mints every topic and every
+request ID.
 
 Exit status:
 
@@ -324,9 +385,9 @@ Exit status:
 - 77: a login is absent.
 - 124: a bounded read passed its time limit.
 
-Receipts live in `$NODE9_DIR/data/register-import/<bundle-hash>/`. They belong
-to one host. Do not copy them to another host. A retry reads them and makes no
-second message.
+Receipts live in `$NODE9_DIR/data/register-import/<register>/<bundle-hash>/`.
+They belong to one host and one register. Do not copy them to another host. A
+retry reads them and makes no second message.
 
 Mario keeps every agent off the host during the import. Mario directs agents
 to the new register only after `verify` returns 0.
@@ -349,10 +410,12 @@ measured.
 
 `bash shell-scripts/test-node-9.sh` runs offline. It starts no container.
 
-`bash shell-scripts/test-register-bundle.sh` checks `register-range`,
-`register-uuid5`, and `pack`. `bash shell-scripts/test-register-bootstrap.sh`
-checks `apply` and `verify` against a stub shell CLI and a stub cqlsh. Both
-suites run offline, and they reach no core.
+`bash shell-scripts/test-node-9-register.sh` checks the `register` wrapper
+against a stub shell CLI. `bash shell-scripts/test-register-bundle.sh` checks
+`register-range`, `register-uuid5`, and `pack`.
+`bash shell-scripts/test-register-bootstrap.sh` checks `apply`, `verify`, and
+`register-create` against a stub shell CLI and a stub cqlsh. The three suites
+run offline, and they reach no core.
 
 Ten cases of `test-node-9.sh` need free ports 6890, 6891, and 6892. Stop node
 9 before that suite.
