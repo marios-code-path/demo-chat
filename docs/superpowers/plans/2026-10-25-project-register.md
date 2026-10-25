@@ -405,7 +405,10 @@ flag. The six checks are `pack_refuses_a_bare_register`,
 `pack_refuses_an_empty_register`, `apply_refuses_a_bare_register`,
 `apply_refuses_an_empty_register`, `verify_refuses_a_bare_register`, and
 `verify_refuses_an_empty_register`. A helper `run_flag` runs one command
-with a clean stub state and a valid environment name.
+with a clean stub state and a valid environment name. A helper
+`bounded SECONDS COMMAND` runs it under an alarm and maps a killed run to
+status 124. A parser loop then fails the check, and it does not hang the
+suite.
 
 `pack` needs the name too. `build_requests` takes the snapshot topic from
 `snapshot_topic`, and every snapshot request ID holds that topic. The top

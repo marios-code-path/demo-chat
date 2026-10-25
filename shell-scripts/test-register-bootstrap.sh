@@ -168,6 +168,20 @@ reset_stub() {
     mkdir -p "$stub_state"
 }
 
+# bounded SECONDS COMMAND...
+# Run one command under an alarm. Print its output. Status 124 means the
+# command passed the limit. A parser loop then fails the check instead of
+# hanging the suite. See the Task 4 review.
+bounded() {
+    local limit="$1" out status
+    shift
+    out="$(perl -e 'alarm shift @ARGV; exec @ARGV' "$limit" "$@" 2>&1)"
+    status=$?
+    (( status == 142 )) && status=124
+    printf '%s\n' "$out"
+    return "$status"
+}
+
 # calls  Print the number of stub calls.
 calls() {
     if [[ -f "$stub_state/log" ]]; then
@@ -316,10 +330,11 @@ else
 fi
 
 # A flag with no value stops at once. A valid environment name does not
-# rescue the flag. See the Task 4 review.
+# rescue the flag. Every run is bounded, so a parser loop fails the check.
+# See the Task 4 review.
 run_flag() {
     reset_stub
-    out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+    out="$(bounded 10 env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         NODE9_ALLOW_SOURCE_TREE=1 \
         NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
