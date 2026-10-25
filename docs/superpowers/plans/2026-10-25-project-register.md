@@ -1,6 +1,6 @@
 # Project Registers Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For the implementer:** Execute Native, in this session, in task order. The project forbids sub-agent driven development and markdown checklists. Track the work with `fp comment CHAT-jmnjvupr` at each task boundary.
 
 **Goal:** Give node 9 one register room per project, named by an environment variable, and one command that creates a register from a `forward-register.md`.
 
@@ -42,7 +42,7 @@
 - Produces: `node9_register_name` prints the name and returns 0. It returns 2 when only the id is set.
 - Produces: `node9_register_name_error NAME` prints one reason and returns 1 for a bad name. It returns 0 for a good name.
 
-- [ ] **Step 1: Write the failing tests**
+**Step 1: Write the failing tests**
 
 Add to `shell-scripts/test-register-bootstrap.sh`, before the summary block:
 
@@ -101,12 +101,12 @@ out="$(register_probe 'node9_register_name_error demo-chat-register')"
     || bad 'register_name_accepts_a_good_name' "$out"
 ```
 
-- [ ] **Step 2: Run the suite and watch the new checks fail**
+**Step 2: Run the suite and watch the new checks fail**
 
 Run: `bash shell-scripts/test-register-bootstrap.sh`
 Expected: `FAIL register_...` lines and a nonzero exit.
 
-- [ ] **Step 3: Add the three helpers to `node-9/bin/lib.sh`**
+**Step 3: Add the three helpers to `node-9/bin/lib.sh`**
 
 ```bash
 node9_register_value() {
@@ -136,12 +136,12 @@ node9_register_name_error() {
 }
 ```
 
-- [ ] **Step 4: Run the suite and check it passes**
+**Step 4: Run the suite and check it passes**
 
 Run: `bash shell-scripts/test-register-bootstrap.sh`
 Expected: `0 failures`.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
 git add node-9/bin/lib.sh shell-scripts/test-register-bootstrap.sh
@@ -160,13 +160,13 @@ git commit -m "CHAT-jmnjvupr: Resolve the register value in one helper"
 - Consumes: `node9_register_value` and `node9_register_name` from Task 1.
 - Produces: the wrapper variable `register` holds the value for every shell call.
 
-- [ ] **Step 1: Set the default register in the test harness and update fixtures**
+**Step 1: Set the default register in the test harness and update fixtures**
 
 In `run_wrapper`, add `NODE_9_REGISTER_TOPIC_NAME="${REGISTER_NAME-demo-chat-register}"` to the `env` list. The `-` form keeps an empty value empty, so `REGISTER_NAME=''` simulates an absent variable.
 
 Change `index_record` to `register_record`, with topic `${REGISTER_NAME-demo-chat-register}`. Replace every `register-index` literal in fixtures and assertions with the same default. A caller that sets `REGISTER_NAME` changes both the room and the fixture.
 
-- [ ] **Step 2: Write the failing checks**
+**Step 2: Write the failing checks**
 
 ```bash
 reset_stub
@@ -188,12 +188,12 @@ else
 fi
 ```
 
-- [ ] **Step 3: Run the suite and watch both checks fail**
+**Step 3: Run the suite and watch both checks fail**
 
 Run: `bash shell-scripts/test-node-9-register.sh`
 Expected: `FAIL read_names_the_register` and `FAIL missing_register_is_status_2`.
 
-- [ ] **Step 4: Change the wrapper**
+**Step 4: Change the wrapper**
 
 Right after `node9_require_installed`, read the value:
 
@@ -207,12 +207,12 @@ At `read_index`: `run_shell join "$register"` and `run_shell register-read --ind
 At `open`: the index readback is `messages "$register" --format records`, and the pointer post is `--topic "$register"`.
 At `post`: the index record read is `messages "$register" --format records`.
 
-- [ ] **Step 5: Run the suite and check it passes**
+**Step 5: Run the suite and check it passes**
 
 Run: `bash shell-scripts/test-node-9-register.sh`
 Expected: `0 failures`.
 
-- [ ] **Step 6: Commit**
+**Step 6: Commit**
 
 ```bash
 git add node-9/bin/register shell-scripts/test-node-9-register.sh
@@ -231,7 +231,7 @@ git commit -m "CHAT-jmnjvupr: Read and write the named register room"
 - Consumes: `node9_register_name` from Task 1.
 - Produces: the topic `<name>-fr-<short>`.
 
-- [ ] **Step 1: Write the failing checks**
+**Step 1: Write the failing checks**
 
 ```bash
 reset_stub
@@ -275,12 +275,12 @@ fi
 
 The existing `open` fixtures and assertions name `forward-register-x` and `forward-register-other`. Change them to `demo-chat-register-fr-x` and `demo-chat-register-fr-other` in this task.
 
-- [ ] **Step 2: Run the suite and watch the checks fail**
+**Step 2: Run the suite and watch the checks fail**
 
 Run: `bash shell-scripts/test-node-9-register.sh`
 Expected: the four new `FAIL` lines.
 
-- [ ] **Step 3: Change the `open` case**
+**Step 3: Change the `open` case**
 
 ```bash
 name="$(node9_register_name)" || exit 2
@@ -291,12 +291,12 @@ new_topic="$name-fr-$short"
     || fail "the topic $new_topic passes 64 characters." 2
 ```
 
-- [ ] **Step 4: Run the suite and check it passes**
+**Step 4: Run the suite and check it passes**
 
 Run: `bash shell-scripts/test-node-9-register.sh`
 Expected: `0 failures`.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
 git add node-9/bin/register shell-scripts/test-node-9-register.sh
@@ -308,22 +308,29 @@ git commit -m "CHAT-jmnjvupr: Build entry topics from the register name"
 ### Task 4: The importer takes `--register`
 
 **Files:**
-- Modify: `node-9/bin/register-import` (`apply_bundle`, `verify_bundle`, `ensure_index`, `index_message_count`, `snapshot_topic`, `join_all`, `validate_mapping`, the receipt path)
+- Modify: `node-9/bin/register-import` (`apply_bundle`, `verify_bundle`, `import_preflight`, `ensure_index`, `index_message_count`, `import_posts`, `verify_pointers`, `verify_reads`, `snapshot_topic`, `join_all`, the receipt path)
 - Test: `shell-scripts/test-register-bootstrap.sh`
 
 **Interfaces:**
-- Consumes: `node9_register_value` and `node9_register_name_error` from Task 1.
+- Consumes: `node9_register_name` and `node9_register_name_error` from Task 1.
 - Produces: the global `import_register`. `apply` and `verify` accept `--register NAME`.
 
-- [ ] **Step 1: Write the failing checks**
+**Step 1: Write the failing checks**
 
 Change the suite fixture. The mapping topics become
 `demo-chat-register-fr-first` and `demo-chat-register-fr-second`. The
 `snapshot_topic_name` value becomes `demo-chat-register-fr-snapshot-<12>`.
 The `entry_id` lookup takes the new topic name.
 
-In `run_apply`, append `--register "${REGISTER:-demo-chat-register}"` to the
-apply call.
+Change `run_apply` in two ways. Give it the default register in its
+environment: `NODE_9_REGISTER_TOPIC_NAME="${NODE_9_REGISTER_TOPIC_NAME-demo-chat-register}"`.
+Pass the flag only when `REGISTER` is non-empty:
+
+```bash
+local -a reg=()
+[[ -n "${REGISTER:-}" ]] && reg=(--register "$REGISTER")
+"$install_home/bin/register-import" apply --bundle "$bundle" "${reg[@]}" --as Mario
+```
 
 Add these checks:
 
@@ -335,11 +342,32 @@ else
     bad 'apply_reads_the_named_register' "exit $status, log: $(head -3 "$stub_state/log")"
 fi
 
+REGISTER=demo-chat-register run_apply
+if [[ $status -eq 0 && "$(calls)" -gt 0 ]]; then
+    ok 'apply_takes_an_explicit_register'
+else
+    bad 'apply_takes_an_explicit_register' "exit $status, calls=$(calls)"
+fi
+
 REGISTER='' NODE_9_REGISTER_TOPIC_NAME='' run_apply
 if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
     ok 'apply_needs_a_register'
 else
     bad 'apply_needs_a_register' "exit $status, calls=$(calls)"
+fi
+
+REGISTER='' NODE_9_REGISTER_TOPIC_NAME='' NODE_9_REGISTER_TOPIC_ID=abc123 run_apply
+if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
+    ok 'apply_refuses_an_id_alone'
+else
+    bad 'apply_refuses_an_id_alone' "exit $status, calls=$(calls)"
+fi
+
+REGISTER=Demo run_apply
+if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
+    ok 'apply_refuses_a_bad_register'
+else
+    bad 'apply_refuses_a_bad_register' "exit $status, calls=$(calls)"
 fi
 ```
 
@@ -349,32 +377,34 @@ entry topic is `forward-register-first`. Apply it with
 The `test-register-bundle.sh` suite stays offline and register-free, so it
 needs no change.
 
-- [ ] **Step 2: Run the suite and watch the checks fail**
+**Step 2: Run the suite and watch the checks fail**
 
 Run: `bash shell-scripts/test-register-bootstrap.sh`
 Expected: the new `FAIL` lines.
 
-- [ ] **Step 3: Change the importer**
+**Step 3: Change the importer**
 
 - Add `import_register=''` beside `import_owner`.
-- In `apply_bundle` and `verify_bundle`, accept `--register`; then set `import_register="${register_arg:-$(node9_register_value)}"` before the preflight call.
+- In `apply_bundle` and `verify_bundle`, accept `--register`; then set the value before the preflight call. An explicit value must pass `node9_register_name_error`. With no flag, use `node9_register_name`, never `node9_register_value`, because a write mints topic names and receipt paths. A missing name returns 2.
 - In `import_preflight`, after `check_bundle`, add a prefix check. Every entry topic in `content-manifest.json` must start with `$import_register-fr-`. A mismatch returns 2 and names the topic. `pack` keeps no register, so its offline contract does not change.
-- Replace the literal `register-index` with `$import_register` in `ensure_index`, `index_message_count` (pass `--index` to the CLI), `topic_room_id` calls, and `join_all`.
+- Replace every literal `register-index` with `$import_register`. The sites are lines 537, 539, 549, 567, 569, 575 (`ensure_index`), 1020 and 1028 (the pointer posts), 1031 (the index readback), and 1241 (`join_all`).
+- Pass the index to every importer read. Line 513 (`index_message_count`), line 1031 (`import_posts` readback), and line 1382 (`verify_pointers`) run `register-read --index "$import_register"`.
+- Line 1442 (`verify_reads`) runs the wrapper. Give it the name in its environment: `env NODE_9_REGISTER_TOPIC_NAME="$import_register" "$NODE9_DIR/bin/register" read --as "$user"`.
 - `snapshot_topic`: `printf '%s-fr-snapshot-%s\n' "$import_register" "${1:0:12}"`.
 - Ownership: compare the proof to `$import_owner`.
 - Receipts: `$NODE9_DIR/data/register-import/$import_register/$bundle_hash`.
 
-- [ ] **Step 4: Run the suite and check it passes**
+**Step 4: Run the suite and check it passes**
 
 Run: `bash shell-scripts/test-register-bootstrap.sh`
 Expected: `0 failures`.
 
-- [ ] **Step 5: Run the bundle suite**
+**Step 5: Run the bundle suite**
 
 Run: `bash shell-scripts/test-register-bundle.sh`
 Expected: its existing count passes.
 
-- [ ] **Step 6: Commit**
+**Step 6: Commit**
 
 ```bash
 git add node-9/bin/register-import shell-scripts/test-register-bootstrap.sh
@@ -392,24 +422,24 @@ git commit -m "CHAT-jmnjvupr: Import into the named register"
 **Interfaces:**
 - Produces: `register-read --index` has no default.
 
-- [ ] **Step 1: Change the contract test row**
+**Step 1: Change the contract test row**
 
 `Expected("register-read", "Read the register: its index and the newest recent entry of each topic", listOf(Opt("index", null), Opt("maxAgeHours", "24")))`
 
-- [ ] **Step 2: Run the test and watch it fail**
+**Step 2: Run the test and watch it fail**
 
 Run: `mvn -q -pl chat-shell -am -Dtest=ShellCommandContractTests -Dsurefire.failIfNoSpecifiedTests=false test`
 Expected: a failure naming the `index` default.
 
-- [ ] **Step 3: Make the option required**
+**Step 3: Make the option required**
 
 In `registerReadCommand`: `.longName("index").required(true).type(String::class.java).build()`.
 
-- [ ] **Step 4: Run the test and check it passes**
+**Step 4: Run the test and check it passes**
 
 Same command. Expected: BUILD SUCCESS.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
 git add chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommandsRegistrar.kt chat-shell/src/test/kotlin/com/demo/chat/test/commands/ShellCommandContractTests.kt
@@ -427,9 +457,9 @@ git commit -m "CHAT-jmnjvupr: Require an index on register-read"
 **Interfaces:**
 - Consumes: the importer functions `pack_bundle`, `apply_bundle`, `verify_bundle` with `REGISTER_IMPORT_LIB=1`.
 - Consumes: `node9_register_name_error`, `node9_key_error`, `node9_title_error`.
-- Produces: `register-create <name> [<path>] --as <owner>`.
+- Produces: `register-create <name> [<path>] [--source-date DATE] --as <owner>`.
 
-- [ ] **Step 1: Write the failing checks**
+**Step 1: Write the failing checks**
 
 Add a fixture with a preamble and three sections. Two sections share a heading. Checks:
 
@@ -444,22 +474,26 @@ Add a fixture with a preamble and three sections. Two sections share a heading. 
 | `create_empty_slug_refuses` | status 2, section named |
 | `create_snapshot_collision_refuses` | status 2, section named |
 | `create_oversize_section_refuses` | status 2, section named |
-| `create_name_collision_refuses` | a room named `demo-chat-register-fr-x` exists, so a second create stops with status 1 and names it |
+| `create_name_collision_refuses` | a room named `demo-chat-register-fr-x` exists, so a create stops with status 1 and names it |
+| `create_name_collision_reverse` | register `demo-chat` owns `demo-chat-fr-*`, so `demo-chat-fr-x-register` stops with status 1 |
+| `create_retry_same_date_resumes` | two runs with one `--source-date` and one file give status 0 and one bundle hash |
+| `create_changed_date_stops` | a second run with a new `--source-date` stops with status 1 |
+| `create_date_is_required` | a path and no `--source-date` stops with status 2 |
 | `create_missing_owner_refuses` | status 2 |
 | `create_path_must_be_absolute` | status 2 |
 | `create_refuses_a_symlink` | status 2 |
 | `create_resumes` | a second run with the same receipts gives status 0 |
 
-- [ ] **Step 2: Run the suite and watch the checks fail**
+**Step 2: Run the suite and watch the checks fail**
 
 Run: `bash shell-scripts/test-register-bootstrap.sh`
 Expected: `FAIL create_...` lines.
 
-- [ ] **Step 3: Write `node-9/bin/register-create`**
+**Step 3: Write `node-9/bin/register-create`**
 
 Requirements the script must meet:
 
-- Parse `<name> [<path>] --as <owner>`. Refuse extras with status 2.
+- Parse `<name> [<path>] [--source-date DATE] --as <owner>`. Refuse extras with status 2. A path without `--source-date` stops with status 2. A date must match `^[0-9]{4}-[0-9]{2}-[0-9]{2}$`.
 - Source `lib.sh`. Source `register-import` with `REGISTER_IMPORT_LIB=1`.
 - Call `node9_require_installed`, then `node9_register_name_error`. Refuse a bad name with status 2.
 - Resolve the CLI as the wrapper does: `CHAT_SHELL_CLI`, else `$NODE9_DIR/bin/chat-shell-cli`.
@@ -467,16 +501,17 @@ Requirements the script must meet:
 - Derive entries in one `awk` pass. Record for each `## ` heading: the line number, the heading text, and the end line of the first paragraph.
 - Compute the source SHA-256. Derive each short name, key, and title per the spec.
 - Refuse these cases from the design: a register name collision, a second short-name collision, an empty slug, a short name equal to the source snapshot short, and a section above 16,384 bytes.
-- Write the mapping JSON to a private temp directory. Include `version: 1`, `source_sha256`, `source_date` (today, UTC), `source_basis` (`register-create <name>`), `session` (the preamble range), and the entries.
+- Refuse a name collision in both directions. The first direction checks for a room that starts with `<name>-fr-`. The second checks whether `<name>` starts with `<other>-fr-` for a register that already exists.
+- Write the mapping JSON to a private temp directory. Include `version: 1`, `source_sha256`, `source_date` (the `--source-date` value, never the run date), `source_basis` (`register-create <name>`), `session` (the preamble range), and the entries. The date enters the bundle hash. A retry repeats it.
 - Call `pack_bundle`, then `apply_bundle --register`, then `verify_bundle --register`.
 - Without a path: read the owner credentials with `import_credentials`, run `add-topic --name <name>` as the owner, run the ownership proof, run `join_all <name>`, and stop with status 0.
 
-- [ ] **Step 4: Run the suite and check it passes**
+**Step 4: Run the suite and check it passes**
 
 Run: `bash shell-scripts/test-register-bootstrap.sh`
 Expected: `0 failures`.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
 git add node-9/bin/register-create shell-scripts/test-register-bootstrap.sh
@@ -493,19 +528,19 @@ git commit -m "CHAT-jmnjvupr: Add register-create"
 - Modify: `.github/workflows/maven.yml`
 - Modify: `justfile`
 
-- [ ] **Step 1: Add the register section to `node-9/README.md`**
+**Step 1: Add the register section to `node-9/README.md`**
 
 State the environment variable, the topic shapes, `register-create`, and the fact that install creates no register.
 
-- [ ] **Step 2: Add the superseded note to the 2026-10-17 design**
+**Step 2: Add the superseded note to the 2026-10-17 design**
 
 One paragraph. It names the 2026-10-24 design and the one-register-per-project rule.
 
-- [ ] **Step 3: Add the suites to CI and the justfile**
+**Step 3: Add the suites to CI and the justfile**
 
 `maven.yml` steps for `test-node-9-register.sh`, `test-register-bootstrap.sh`, and `test-register-bundle.sh`. A `check-register` recipe in `justfile` runs the three.
 
-- [ ] **Step 4: Run every gate**
+**Step 4: Run every gate**
 
 ```bash
 bash shell-scripts/test-node-9-register.sh
@@ -517,7 +552,7 @@ git diff --check
 
 Expected: `0 failures` from each suite, `drift check` exit 0, and no whitespace error.
 
-- [ ] **Step 5: Commit**
+**Step 5: Commit**
 
 ```bash
 git add node-9/README.md docs/superpowers/specs/2026-10-17-topic-register-design.md .github/workflows/maven.yml justfile

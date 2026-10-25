@@ -106,7 +106,7 @@ The name holds at most 37 characters. That bound leaves room for
 ### `register-create`
 
 ```
-register-create <name> [<path>] --as <owner>
+register-create <name> [<path>] [--source-date DATE] --as <owner>
 ```
 
 This is a new script, `node-9/bin/register-create`. It runs from an installed
@@ -115,6 +115,11 @@ home. It reads no register variable.
 `--as` is required. There is no default owner. A missing owner stops the
 command with status 2. The importer applies the same rule to `apply` and
 `verify`.
+
+`--source-date` is required when a path is given. It holds one ISO date. The
+date enters the bundle hash, so a retry must repeat it. A retry with the same
+date finds the saved receipt. A retry with a new date is a new bundle, and
+the room conflict rule stops it. The date never defaults to the run date.
 
 The script builds the mapping and calls the importer functions that already
 run `pack`, `apply`, and `verify`. It does not copy that code. The mapping
