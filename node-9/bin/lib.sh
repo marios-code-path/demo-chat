@@ -96,6 +96,56 @@ node9_title_error() {
     return 0
 }
 
+# node9_register_value
+# Print the register value and return 0. The name wins over the id. Print one
+# line and return 2 when neither variable is set. A read uses this function.
+# See CHAT-jmnjvupr.
+node9_register_value() {
+    local name="${NODE_9_REGISTER_TOPIC_NAME:-}" id="${NODE_9_REGISTER_TOPIC_ID:-}"
+    if [[ -n "$name" ]]; then printf '%s\n' "$name"; return 0; fi
+    if [[ -n "$id" ]]; then printf '%s\n' "$id"; return 0; fi
+    printf 'node-9: set NODE_9_REGISTER_TOPIC_NAME or NODE_9_REGISTER_TOPIC_ID.\n' >&2
+    return 2
+}
+
+# node9_register_name
+# Print the register name and return 0. A write uses this function, because it
+# mints topic names and receipt paths. Return 2 when the name is absent or
+# invalid. See CHAT-jmnjvupr.
+node9_register_name() {
+    local name="${NODE_9_REGISTER_TOPIC_NAME:-}" reason
+    if [[ -z "$name" ]]; then
+        printf 'node-9: a write needs NODE_9_REGISTER_TOPIC_NAME. An id gives no topic prefix.\n' >&2
+        return 2
+    fi
+    reason="$(node9_register_name_error "$name")" \
+        || { printf 'node-9: %s\n' "$reason" >&2; return 2; }
+    printf '%s\n' "$name"
+}
+
+# node9_register_name_error NAME
+# Print one reason and return 1 for a name that cannot form a topic. Return 0
+# for a safe name. A name holds lowercase letters, digits, and dashes, starts
+# with a letter or a digit, and holds at most 37 characters. The bound leaves
+# room for -fr-snapshot- and twelve hex characters inside 64. See
+# CHAT-jmnjvupr.
+node9_register_name_error() {
+    local name="${1-}"
+    if [[ -z "$name" ]]; then
+        printf 'the register name is empty.\n'
+        return 1
+    fi
+    if (( ${#name} > 37 )); then
+        printf 'the register name passes 37 characters.\n'
+        return 1
+    fi
+    if [[ ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+        printf 'the register name is not lowercase letters, digits, and dashes.\n'
+        return 1
+    fi
+    return 0
+}
+
 # node9_check_toggle VALUE
 # Status 0 for on or off. Otherwise print the value and return 2.
 node9_check_toggle() {

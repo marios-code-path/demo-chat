@@ -800,6 +800,63 @@ else
     bad 'importer_holds_no_member_name' "$member_names"
 fi
 
+# -- Register value helpers ---------------------------------------------
+
+lib="$repo_root/node-9/bin/lib.sh"
+
+# register_probe PROGRAM [ENV ASSIGNMENT...]
+# Source lib.sh in a clean environment, run one program, and print
+# "<status>|<output>".
+register_probe() {
+    local program="$1"; shift
+    local out status
+    out="$(env -u NODE_9_REGISTER_TOPIC_NAME -u NODE_9_REGISTER_TOPIC_ID "$@" \
+        bash -c 'source "$0" > /dev/null 2>&1; eval "$1"' \
+        "$lib" "$program" 2>&1)"
+    status=$?
+    printf '%s|%s' "$status" "$out"
+}
+
+out="$(register_probe 'node9_register_value')"
+if [[ "$out" == 2\|* ]] && [[ "$out" == *NODE_9_REGISTER_TOPIC_NAME* ]] \
+   && [[ "$out" == *NODE_9_REGISTER_TOPIC_ID* ]]; then
+    ok 'register_value_needs_a_variable'
+else
+    bad 'register_value_needs_a_variable' "$out"
+fi
+
+out="$(register_probe 'node9_register_value' \
+    NODE_9_REGISTER_TOPIC_NAME=demo-chat-register)"
+[[ "$out" == '0|demo-chat-register' ]] && ok 'register_value_prefers_the_name' \
+    || bad 'register_value_prefers_the_name' "$out"
+
+out="$(register_probe 'node9_register_value' NODE_9_REGISTER_TOPIC_ID=abc)"
+[[ "$out" == '0|abc' ]] && ok 'register_value_takes_the_id' \
+    || bad 'register_value_takes_the_id' "$out"
+
+out="$(register_probe 'node9_register_name' NODE_9_REGISTER_TOPIC_ID=abc)"
+[[ "$out" == 2\|* ]] && ok 'register_name_refuses_an_id_alone' \
+    || bad 'register_name_refuses_an_id_alone' "$out"
+
+out="$(register_probe 'node9_register_name' NODE_9_REGISTER_TOPIC_NAME=Demo)"
+[[ "$out" == 2\|* ]] && ok 'register_name_refuses_an_invalid_env_name' \
+    || bad 'register_name_refuses_an_invalid_env_name' "$out"
+
+out="$(register_probe 'node9_register_value' \
+    NODE_9_REGISTER_TOPIC_NAME=demo-chat-register NODE_9_REGISTER_TOPIC_ID=abc)"
+[[ "$out" == '0|demo-chat-register' ]] && ok 'register_value_name_wins' \
+    || bad 'register_value_name_wins' "$out"
+
+for bad_name in Demo --x a_b "$(printf 'a%.0s' $(seq 1 38))"; do
+    out="$(register_probe "node9_register_name_error $bad_name")"
+    [[ "$out" == 1\|* ]] && ok "register_name_refuses_${bad_name//[^a-zA-Z0-9]/_}" \
+        || bad "register_name_refuses_${bad_name//[^a-zA-Z0-9]/_}" "$out"
+done
+
+out="$(register_probe 'node9_register_name_error demo-chat-register')"
+[[ "$out" == '0|' ]] && ok 'register_name_accepts_a_good_name' \
+    || bad 'register_name_accepts_a_good_name' "$out"
+
 if ((failures > 0)); then
     echo "$failures case(s) failed"
     exit 1
