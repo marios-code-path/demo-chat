@@ -47,6 +47,8 @@ The owner declared the slate clean on 2026-10-24.
 
 - The room topic rule stays `^[a-z0-9][a-z0-9-]{0,63}$`.
 - A topic name holds at most 64 characters.
+- One source section holds at most 16,384 bytes. The importer applies the
+  same limit today.
 - The pointer line form stays `<key> | <topic> | <metadata> | <title>`.
 - The owner proof stays one `*` permission row on the room.
 - The wrapper keeps its 30 second limit.
@@ -117,8 +119,8 @@ holds one entry per section, with the entry range cut from the source file.
 Order:
 
 1. Check the toolchain guard and the name rule.
-2. Check the path. The path must be absolute, a regular file, not a link, and
-   readable.
+2. Check the path when one is given. The path must be absolute, a regular
+   file, not a link, and readable.
 3. Derive the entries from the file.
 4. Read the owner credentials.
 5. Create the room `<name>` when it is absent.
@@ -128,7 +130,7 @@ Order:
 9. Post the snapshot sections, the entry sections, and the pointer lines.
 10. Read back every pointer and the whole register.
 
-Without a path, steps 1, 2, 4, 5, 7, and 8 run alone. The room stays empty.
+Without a path, steps 1, 4, 5, 7, and 8 run alone. The room stays empty.
 
 A repeated command resumes through the receipt directory of the importer.
 
@@ -145,15 +147,33 @@ The splitter cuts the file at each line that starts with `## `.
 - The key is the first `CHAT-[a-z0-9]+` token in the heading. Without such a
   token, the key is `section-<index>`.
 - The title is the heading text after `## `. It must pass the title rule.
-- A repeated short name takes its section index as a suffix.
-- A paragraph above the section byte limit stops the command. The command
-  never cuts a paragraph.
+
+Short names are assigned in section order:
+
+- The first section with a slug keeps that slug.
+- A later section with the same slug takes `<slug>-<index>`.
+- A suffixed name that another section already holds stops the command with
+  status 2. The line names both section indexes.
+- An empty slug stops the command with status 2. The line names the section
+  index.
+- A short name that breaks the topic rule or the length bound stops the
+  command with status 2.
+
+Two size rules apply:
+
+- One heading section must hold at most 16,384 bytes. The importer applies
+  the same limit to every section, and the snapshot keeps each section as one
+  part. A larger section stops the command with status 2. The line names the
+  section. No command cuts a section.
+- The entry text is the heading and the first paragraph. A heading section
+  that passes the limit always fits an entry.
 
 ### `register open`, `register post`, `register read`
 
 - The index room is the name from the variable, or the id when no name is set.
-- `open` builds `<name>-fr-<short>`. The short name holds lowercase letters,
-  digits, and dashes alone. An uppercase letter is refused.
+- `open` builds `<name>-fr-<short>`. The short name holds one or more
+  lowercase letters, digits, or dashes. It starts with a letter or a digit.
+  An empty, uppercase, or other short name stops with status 2.
 - `open` and `post` join the index room when the read is denied.
 - `open` and `post` read pointers from the room named by `<name>`. The record
   filter compares against that name, not against a fixed string.
@@ -203,12 +223,15 @@ These are builder choices. Revisit any of them.
 1. The name holds at most 37 characters.
 2. The key falls back to `section-<index>` when the heading holds no issue id.
 3. The short name is a slug of the heading. A repeated short takes the
-   section index.
-4. The preamble is not an entry.
-5. The path is optional. Without it, the command creates an empty register.
-6. The name wins when both variables are set.
-7. `chat-shell` loses the `register-index` default of `register-read`.
-8. A repeated `register-create` resumes through the importer receipts.
+   section index. A second collision and an empty slug are refusals, not
+   silent renames.
+4. The importer section limit of 16,384 bytes stands. This design does not
+   relax it.
+5. The preamble is not an entry.
+6. The path is optional. Without it, the command creates an empty register.
+7. The name wins when both variables are set.
+8. `chat-shell` loses the `register-index` default of `register-read`.
+9. A repeated `register-create` resumes through the importer receipts.
 
 ## What is left to the builder
 
