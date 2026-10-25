@@ -106,11 +106,15 @@ The name holds at most 37 characters. That bound leaves room for
 ### `register-create`
 
 ```
-register-create <name> [<path>] [--as <owner>]
+register-create <name> [<path>] --as <owner>
 ```
 
 This is a new script, `node-9/bin/register-create`. It runs from an installed
 home. It reads no register variable.
+
+`--as` is required. There is no default owner. A missing owner stops the
+command with status 2. The importer applies the same rule to `apply` and
+`verify`.
 
 The script builds the mapping and calls the importer functions that already
 run `pack`, `apply`, and `verify`. It does not copy that code. The mapping
@@ -158,6 +162,11 @@ Short names are assigned in section order:
   index.
 - A short name that breaks the topic rule or the length bound stops the
   command with status 2.
+
+The snapshot topic `<name>-fr-snapshot-<12 hex>` belongs to the source
+hash. An entry short name equal to `snapshot-<12 hex>` of the source hash
+stops the command with status 2. The line names the section. An entry never
+takes the snapshot topic.
 
 Two size rules apply:
 
@@ -232,6 +241,8 @@ These are builder choices. Revisit any of them.
 7. The name wins when both variables are set.
 8. `chat-shell` loses the `register-index` default of `register-read`.
 9. A repeated `register-create` resumes through the importer receipts.
+10. `--as` is required. No default owner exists.
+11. An entry short name never takes the snapshot topic.
 
 ## What is left to the builder
 
