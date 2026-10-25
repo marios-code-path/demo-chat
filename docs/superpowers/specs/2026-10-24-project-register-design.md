@@ -169,9 +169,14 @@ Short names are assigned in section order:
   command with status 2.
 
 The snapshot topic `<name>-fr-snapshot-<12 hex>` belongs to the source
-hash. An entry short name equal to `snapshot-<12 hex>` of the source hash
-stops the command with status 2. The line names the section. An entry never
-takes the snapshot topic.
+hash. An entry short name of the shape `snapshot-<12 lowercase hex>` stops
+the command with status 2. The line names the section. An entry never takes
+the snapshot topic.
+
+The shape rule reserves the whole snapshot name space. The narrower rule
+holds for one source hash alone. A test file needs a 48 bit hash prefix to
+reach that case, so the offline suite cannot construct it. The shape rule
+holds for every source hash, and one fixed file exercises it.
 
 Two size rules apply:
 
@@ -253,7 +258,8 @@ These are builder choices. Revisit any of them.
 8. `chat-shell` loses the `register-index` default of `register-read`.
 9. A repeated `register-create` resumes through the importer receipts.
 10. `--as` is required. No default owner exists.
-11. An entry short name never takes the snapshot topic.
+11. An entry short name never takes the snapshot topic. The check reserves
+    the whole `snapshot-<12 hex>` shape.
 
 ## What is left to the builder
 

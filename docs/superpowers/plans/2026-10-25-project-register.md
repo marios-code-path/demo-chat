@@ -25,7 +25,7 @@
 
 1. A heading with no letter or digit gives an empty slug. It must refuse, never make an empty topic. Test in Task 6.
 2. Two headings share a slug, and the suffixed name matches another heading's plain slug. It must refuse. Test in Task 6.
-3. An entry short name equals `snapshot-<12 hex>` of the source hash. It must refuse. Test in Task 6.
+3. An entry short name takes the snapshot shape `snapshot-<12 hex>`. It must refuse. Test in Task 6.
 4. One source section is above 16,384 bytes. It must refuse and name the section. Test in Task 6.
 5. A 37 character register name plus a long short name passes 64 characters. It must refuse. Test in Tasks 1 and 3.
 
