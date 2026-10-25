@@ -162,6 +162,8 @@ git commit -m "CHAT-jmnjvupr: Resolve the register value in one helper"
 **Files:**
 - Modify: `node-9/bin/register` (`load_pointers`, `read_index`, the `read`, `open`, and `post` cases)
 - Test: `shell-scripts/test-node-9-register.sh`
+- Test: `shell-scripts/test-node-9.sh` (the installed checks give a register value, and one check covers the absent case)
+- Test: `shell-scripts/test-register-bootstrap.sh` (exports a register name for the importer verify read)
 
 **Interfaces:**
 - Consumes: `node9_register_value` and `node9_register_name` from Task 1.
