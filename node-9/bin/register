@@ -421,9 +421,13 @@ case "$command_name" in
         key="${args[0]}"
         short="${args[1]}"
         title="${args[2]}"
+        # A write needs the name. It mints the entry topic, and an id gives
+        # no prefix. See CHAT-jmnjvupr.
+        name="$(node9_register_name)" || exit 2
+        register="$name"
         check_key "$key"
-        [[ "$short" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] \
-            || fail "the short name $short is not letters, digits, dot, dash, or underscore." 2
+        [[ "$short" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+            || fail "the short name $short is not lowercase letters, digits, or dashes." 2
         check_title "$title"
         use_credentials
 
@@ -438,7 +442,9 @@ case "$command_name" in
             exit 0
         fi
 
-        new_topic="forward-register-$short"
+        new_topic="$name-fr-$short"
+        (( ${#new_topic} <= 64 )) \
+            || fail "the topic $new_topic passes 64 characters." 2
         owner_id="$(pointer_owner "$new_topic")"
         if [[ -n "$owner_id" && "$owner_id" != "$key" ]]; then
             fail "the topic $new_topic belongs to $owner_id, not $key." 1
@@ -490,6 +496,10 @@ case "$command_name" in
     post)
         (( ${#args[@]} == 1 )) || { usage; exit 2; }
         key="${args[0]}"
+        # A write needs the name. It reads the register room by name. See
+        # CHAT-jmnjvupr.
+        name="$(node9_register_name)" || exit 2
+        register="$name"
         check_key "$key"
         if [[ -n "$request_id" ]]; then
             [[ "$request_id" =~ ^[A-Za-z0-9._:-]+$ ]] \
