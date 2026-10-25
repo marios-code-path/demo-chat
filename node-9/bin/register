@@ -53,6 +53,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/lib.sh"
 node9_require_installed || exit 2
 
+# The register value names the index room in every shell call below. A read
+# accepts the name or the id. See CHAT-jmnjvupr.
+register="$(node9_register_value)" || exit 2
+
 # An installed copy has no repository. It takes the CLI from the caller or
 # from its own bin directory.
 if node9_installed; then
@@ -276,16 +280,16 @@ denied_reason() {
 }
 
 # read_index  Read the pointer index into $work/out. A denied index joins
-# register-index once and reads once more. A remaining denial stops with
+# the register room once and reads once more. A remaining denial stops with
 # status 1 and one line, before any topic create or entry post. A readable
 # index joins nothing. See owner decision 38.
 read_index() {
-    run_shell register-read
+    run_shell register-read --index "$register"
     require_ok 'the index read'
     index_denied || return 0
-    run_shell join register-index
-    require_ok 'the join of register-index'
-    run_shell register-read
+    run_shell join "$register"
+    require_ok "the join of $register"
+    run_shell register-read --index "$register"
     require_ok 'the index read after the join'
     if index_denied; then
         reason="$(denied_reason)"
@@ -295,12 +299,14 @@ read_index() {
 }
 
 # load_pointers  Fill $work/pointers from the index records in $work/out.
-# Each row is timestamp, message id, key, topic, metadata, title. The tool
-# never reads the metadata or the title. The @tsv form doubles a backslash,
-# so a key that holds one cannot match. The filter refuses it here, and
-# check_key refuses it at a write.
+# Each row is timestamp, message id, key, topic, metadata, title. Only the
+# records of the register room count. The tool never reads the metadata or
+# the title. The @tsv form doubles a backslash, so a key that holds one
+# cannot match. The filter refuses it here, and check_key refuses it at a
+# write.
 load_pointers() {
-    jq -r 'select((.type // "record") == "record" and .topic=="register-index")
+    jq -r --arg index "$register" \
+        'select((.type // "record") == "record" and .topic == $index)
            | [ .timestamp, .id ]
              + (.text // "" | split("|") | map(gsub("^\\s+|\\s+$"; "")))
            | @tsv' "$work/out" > "$work/pointers" 2> /dev/null \
@@ -396,7 +402,7 @@ case "$command_name" in
         topic="${args[0]:-}"
         use_credentials
         if [[ -z "$topic" ]]; then
-            run_shell register-read
+            run_shell register-read --index "$register"
         else
             run_shell messages "$topic" --format records
         fi
@@ -462,12 +468,12 @@ case "$command_name" in
 
         # The metadata field stays empty. This tool writes none and reads none.
         printf '%s | %s | | %s\n' "$key" "$new_topic" "$title" > "$work/input"
-        run_shell post --topic register-index
+        run_shell post --topic "$register"
         require_ok 'the pointer post'
         new_id="$(jq -r '.messageId // empty' "$work/out" 2> /dev/null | head -n 1)"
         [[ -n "$new_id" ]] || fail 'the pointer post returned no message id.' 75
 
-        run_shell messages register-index --format records
+        run_shell messages "$register" --format records
         require_ok 'the index readback'
         load_pointers \
             || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1

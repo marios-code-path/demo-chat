@@ -6,6 +6,10 @@
 # home a stub shell CLI and a stub curl. Every check runs offline.
 set -uo pipefail
 
+# The verify step reads through the register wrapper, and the wrapper needs a
+# register value. An install sets it in .envrc. See CHAT-jmnjvupr.
+export NODE_9_REGISTER_TOPIC_NAME=demo-chat-register
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 importer="$repo_root/node-9/bin/register-import"

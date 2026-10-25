@@ -89,6 +89,11 @@ stub_args() { tr '\n' ' ' 2>/dev/null < "$stub_dir/call.$1.args"; }
 # calls  Print the number of stub calls.
 calls() { [[ -f "$stub_dir/count" ]] && cat "$stub_dir/count" || echo 0; }
 
+# register_name  The room name that run_wrapper gives the wrapper. The
+# form with - keeps an empty REGISTER_NAME empty, so the wrapper sees no
+# register variable.
+register_name() { printf '%s\n' "${REGISTER_NAME-demo-chat-register}"; }
+
 # run_wrapper NAME ARGS...  Run the wrapper with the stub.
 # The input comes from $work/input. Extra environment words come from
 # EXTRA_ENV, which is a space-separated list. Status lands in $status_of.
@@ -97,6 +102,7 @@ run_wrapper() {
     [[ -f "$work/input" ]] || : > "$work/input"
     # shellcheck disable=SC2086
     ( env ${EXTRA_ENV:-} CHAT_SHELL_CLI="$stub" STUB_DIR="$stub_dir" \
+      NODE_9_REGISTER_TOPIC_NAME="$(register_name)" NODE_9_REGISTER_TOPIC_ID= \
       NODE9_SECRETS_DIR="$secrets_dir" \
       NODE9_SECRETS_FILE="${SECRETS_FILE:-$work/secrets.env}" \
       CHAT_REGISTER_DEADLINE_MS="${DEADLINE_MS:-30000}" \
@@ -111,14 +117,16 @@ message_record() {
         '{id:$id, topic:$topic, sender:"Mario", timestamp:$ts, text:$text}'
 }
 
-# index_record ID TIMESTAMP TEXT  One register-index record line.
-index_record() {
-    message_record "$1" register-index "$2" "$3"
+# register_record ID TIMESTAMP TEXT  One pointer-index record line for the
+# room that run_wrapper names.
+register_record() {
+    message_record "$1" "$(register_name)" "$2" "$3"
 }
 
 # denied_index  One denied-index warning line, as register-read prints it.
 denied_index() {
-    printf '{"type":"warning","kind":"denied-index","topic":"register-index","reason":"Access Denied"}'
+    printf '{"type":"warning","kind":"denied-index","topic":"%s","reason":"Access Denied"}\n' \
+        "$(register_name)"
 }
 
 # password_file_of CALL  The password file that call CALL used.
@@ -188,6 +196,26 @@ if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
     ok 'post_dash_key_is_status_2'
 else
     bad 'post_dash_key_is_status_2' "status=$status_of calls=$(calls)"
+fi
+
+# -- The register value -------------------------------------------------
+
+reset_stub
+stub_reply "$(register_record m1 2026-10-20T00:00:00Z 'CHAT-1 | demo-chat-register-fr-x | | Fix the pump')"
+run_wrapper t_reg_index read --as Theta
+if [[ "$status_of" -eq 0 ]] && grep -qx -- '--index' "$stub_dir/call.1.args" \
+   && grep -qx 'demo-chat-register' "$stub_dir/call.1.args"; then
+    ok 'read_names_the_register'
+else
+    bad 'read_names_the_register' "args=$(stub_args 1)"
+fi
+
+reset_stub
+REGISTER_NAME='' run_wrapper t_reg_missing read --as Theta
+if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
+    ok 'missing_register_is_status_2'
+else
+    bad 'missing_register_is_status_2' "status=$status_of calls=$(calls)"
 fi
 
 # -- Typed JSON on both read forms -------------------------------------
@@ -271,7 +299,7 @@ fi
 # prepare_post  Stub the pointer read, the join, the receipt, and one poll
 # hit for message m9.
 prepare_post() {
-    stub_reply_for 1 "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-x | task | A title')"
+    stub_reply_for 1 "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-x | task | A title')"
     stub_reply_for 2 'Joined forward-register-x'
     stub_reply_for 3 '{"messageId":"m9","commandId":"c9","requestId":"r9","outcome":"ok"}'
     stub_reply_for 4 "$(message_record m9 forward-register-x 2026-10-20T00:01:00Z 'entry')"
@@ -354,18 +382,18 @@ else
     bad 'post_without_a_pointer_fails' "status=$status_of calls=$(calls) err=$(head -1 "$work/t_post_orphan.err")"
 fi
 
-# A denied index joins register-index once, then reads again.
+# A denied index joins the index room once, then reads again.
 reset_stub
 stub_reply_for 1 "$(denied_index)"
-stub_reply_for 2 'Joined register-index'
-stub_reply_for 3 "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-x | task | A title')"
+stub_reply_for 2 "Joined $(register_name)"
+stub_reply_for 3 "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-x | task | A title')"
 stub_reply_for 4 'Joined forward-register-x'
 stub_reply_for 5 '{"messageId":"m9","commandId":"c9","requestId":"r9","outcome":"ok"}'
 stub_reply_for 6 "$(message_record m9 forward-register-x 2026-10-20T00:01:00Z 'entry')"
 printf 'State: after a join\n' > "$work/input"
 run_wrapper t_post_denied_join post CHAT-1 --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 6 ]] \
-   && grep -q 'join register-index' <<< "$(stub_args 2)" \
+   && grep -q "join $(register_name)" <<< "$(stub_args 2)" \
    && jq -e '.type=="post" and .message_id=="m9"' "$work/t_post_denied_join.out" > /dev/null 2>&1; then
     ok 'post_joins_after_a_denied_index'
 else
@@ -375,7 +403,7 @@ fi
 # A second denial stops the post with status 1, before any entry.
 reset_stub
 stub_reply_for 1 "$(denied_index)"
-stub_reply_for 2 'Joined register-index'
+stub_reply_for 2 "Joined $(register_name)"
 stub_reply_for 3 "$(denied_index)"
 printf 'State: denied\n' > "$work/input"
 run_wrapper t_post_denied_twice post CHAT-1 --as Theta
@@ -430,7 +458,7 @@ else
 fi
 
 reset_stub
-stub_reply_for 1 "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-x | task | A title')"
+stub_reply_for 1 "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-x | task | A title')"
 stub_reply_for 2 'Joined forward-register-x'
 stub_reply_for 3 '{"outcome":"ok"}'
 printf 'State: bad receipt\n' > "$work/input"
@@ -658,8 +686,8 @@ for short in 'A|B' 'a b' '-x' 'x/../y' '.hidden'; do
 done
 
 reset_stub
-stub_reply "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')
-$(index_record 2 2026-10-20T00:00:01Z 'CHAT-1 | topic-b | task | B')"
+stub_reply "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')
+$(register_record 2 2026-10-20T00:00:01Z 'CHAT-1 | topic-b | task | B')"
 run_wrapper t_open_exists open CHAT-1 new-topic 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 1 ]] \
    && jq -e '.type=="open" and .topic=="topic-a" and .state=="exists"' "$work/t_open_exists.out" > /dev/null 2>&1; then
@@ -673,7 +701,7 @@ stub_reply_for 1 ''
 stub_reply_for 2 'Created room forward-register-x (id 7)'
 stub_reply_for 3 'Joined forward-register-x'
 stub_reply_for 4 '{"messageId":"m1","commandId":"c1","requestId":"r1","outcome":"ok"}'
-stub_reply_for 5 "$(index_record m1 2026-10-20T00:00:02Z 'CHAT-1 | forward-register-x | task | A title')"
+stub_reply_for 5 "$(register_record m1 2026-10-20T00:00:02Z 'CHAT-1 | forward-register-x | task | A title')"
 run_wrapper t_open_create open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 5 ]] \
    && grep -q 'add-topic' <<< "$(stub_args 2)" \
@@ -687,7 +715,7 @@ fi
 
 # A readable index joins nothing. The first read is the only call.
 reset_stub
-stub_reply "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')"
+stub_reply "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')"
 run_wrapper t_open_no_join open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 1 ]] \
    && ! grep -q 'join' <<< "$(stub_args 1)"; then
@@ -696,14 +724,14 @@ else
     bad 'open_does_not_join_a_readable_index' "status=$status_of calls=$(calls) args=$(stub_args 1)"
 fi
 
-# A denied index joins register-index once, then reads again.
+# A denied index joins the index room once, then reads again.
 reset_stub
 stub_reply_for 1 "$(denied_index)"
-stub_reply_for 2 'Joined register-index'
-stub_reply_for 3 "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')"
+stub_reply_for 2 "Joined $(register_name)"
+stub_reply_for 3 "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')"
 run_wrapper t_open_denied_join open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 3 ]] \
-   && grep -q 'join register-index' <<< "$(stub_args 2)" \
+   && grep -q "join $(register_name)" <<< "$(stub_args 2)" \
    && jq -e '.type=="open" and .state=="exists" and .topic=="topic-a"' "$work/t_open_denied_join.out" > /dev/null 2>&1; then
     ok 'open_joins_after_a_denied_index'
 else
@@ -713,7 +741,7 @@ fi
 # A second denial stops the open with status 1, before any create.
 reset_stub
 stub_reply_for 1 "$(denied_index)"
-stub_reply_for 2 'Joined register-index'
+stub_reply_for 2 "Joined $(register_name)"
 stub_reply_for 3 "$(denied_index)"
 run_wrapper t_open_denied_twice open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 1 ]] && [[ "$(calls)" -eq 3 ]] \
@@ -730,8 +758,8 @@ stub_reply_for 1 ''
 stub_reply_for 2 'Created room forward-register-x (id 7)'
 stub_reply_for 3 'Joined forward-register-x'
 stub_reply_for 4 '{"messageId":"m1","commandId":"c1","requestId":"r1","outcome":"ok"}'
-stub_reply_for 5 "$(index_record m0 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')
-$(index_record m1 2026-10-20T00:00:02Z 'CHAT-1 | forward-register-x | task | A title')"
+stub_reply_for 5 "$(register_record m0 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')
+$(register_record m1 2026-10-20T00:00:02Z 'CHAT-1 | forward-register-x | task | A title')"
 run_wrapper t_open_race open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] \
    && jq -e '.type=="open" and .topic=="topic-a" and .pointer_id=="m0"' "$work/t_open_race.out" > /dev/null 2>&1; then
@@ -741,7 +769,7 @@ else
 fi
 
 reset_stub
-stub_reply "$(index_record 9 2026-10-20T00:00:00Z 'CHAT-2 | forward-register-x | task | Another')"
+stub_reply "$(register_record 9 2026-10-20T00:00:00Z 'CHAT-2 | forward-register-x | task | Another')"
 run_wrapper t_open_conflict open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -ne 0 ]] && grep -q 'CHAT-2' "$work/t_open_conflict.err" && [[ "$(calls)" -eq 1 ]]; then
     ok 'open_topic_name_conflict_names_other_id'
@@ -786,7 +814,7 @@ done
 
 # A key that this project does not use is valid. The tool does not know FP.
 reset_stub
-stub_reply "$(index_record 1 2026-10-20T00:00:00Z 'PROJ-7 | topic-a | | A')"
+stub_reply "$(register_record 1 2026-10-20T00:00:00Z 'PROJ-7 | topic-a | | A')"
 run_wrapper t_generic_key open PROJ-7 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(jq -r '.key' "$work/t_generic_key.out")" == 'PROJ-7' ]]; then
     ok 'a_key_from_another_project_is_valid'
@@ -818,8 +846,8 @@ fi
 
 # Two pointers name one topic for different fp IDs.
 reset_stub
-stub_reply "$(index_record 8 2026-10-20T00:00:00Z 'CHAT-2 | forward-register-x | task | Another')
-$(index_record 9 2026-10-20T00:00:01Z 'CHAT-3 | forward-register-x | task | Third')"
+stub_reply "$(register_record 8 2026-10-20T00:00:00Z 'CHAT-2 | forward-register-x | task | Another')
+$(register_record 9 2026-10-20T00:00:01Z 'CHAT-3 | forward-register-x | task | Third')"
 run_wrapper t_open_dup_topic open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -ne 0 ]] && grep -q 'CHAT-2' "$work/t_open_dup_topic.err" \
    && [[ "$(calls)" -eq 1 ]]; then
@@ -832,7 +860,7 @@ fi
 reset_stub
 stub_reply_for 1 ''
 stub_status_for 2 1
-stub_reply_for 3 "$(index_record m0 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-other | task | Other')"
+stub_reply_for 3 "$(register_record m0 2026-10-20T00:00:00Z 'CHAT-1 | forward-register-other | task | Other')"
 run_wrapper t_open_lost_race open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 0 ]] && [[ "$(calls)" -eq 3 ]] \
    && jq -e '.type=="open" and .state=="exists" and .topic=="forward-register-other" and .pointer_id=="m0"' "$work/t_open_lost_race.out" > /dev/null 2>&1; then
@@ -847,7 +875,7 @@ stub_reply_for 1 ''
 stub_reply_for 2 'Created room forward-register-x (id 7)'
 stub_reply_for 3 'Joined forward-register-x'
 stub_reply_for 4 '{"messageId":"m1","commandId":"c1","requestId":"r1","outcome":"ok"}'
-stub_reply_for 5 "$(index_record m0 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')"
+stub_reply_for 5 "$(register_record m0 2026-10-20T00:00:00Z 'CHAT-1 | topic-a | task | A')"
 run_wrapper t_open_id_absent open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 75 ]] && [[ ! -s "$work/t_open_id_absent.out" ]]; then
     ok 'open_readback_without_the_new_id_is_75'
@@ -874,7 +902,7 @@ stub_reply_for 1 ''
 stub_reply_for 2 'Created room forward-register-x (id 7)'
 stub_reply_for 3 'Joined forward-register-x'
 stub_reply_for 4 '{"messageId":"m1","commandId":"c1","requestId":"r1","outcome":"ok"}'
-stub_reply_for 5 "$(index_record m1 2026-10-20T00:00:02Z 'CHAT-1 | forward-register-x | task | A title')"
+stub_reply_for 5 "$(register_record m1 2026-10-20T00:00:02Z 'CHAT-1 | forward-register-x | task | A title')"
 printf '0.4\n' > "$stub_dir/sleep"
 DEADLINE_MS=700 run_wrapper t_open_deadline open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -eq 124 ]] && [[ ! -s "$work/t_open_deadline.out" ]]; then
@@ -885,7 +913,7 @@ fi
 
 # A malformed pointer stops the open.
 reset_stub
-stub_reply "$(index_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a')"
+stub_reply "$(register_record 1 2026-10-20T00:00:00Z 'CHAT-1 | topic-a')"
 run_wrapper t_open_malformed open CHAT-1 x 'A title' --as Theta
 if [[ "$status_of" -ne 0 ]] && [[ ! -s "$work/t_open_malformed.out" ]]; then
     ok 'open_fails_on_a_malformed_pointer'
@@ -917,7 +945,7 @@ if [[ -r "$fixtures" ]]; then
     while IFS=$'\t' read -r fx_name fx_line fx_expected; do
         [[ -n "$fx_name" && "$fx_name" != '#'* ]] || continue
         reset_stub
-        stub_reply "$(index_record 1 2026-10-20T00:00:00Z "$fx_line")"
+        stub_reply "$(register_record 1 2026-10-20T00:00:00Z "$fx_line")"
         if [[ "$fx_expected" == 'reject' ]]; then
             run_wrapper "t_fx_$fx_name" open fx-key x 'A title' --as Theta
             if [[ "$status_of" -eq 1 ]] && [[ ! -s "$work/t_fx_$fx_name.out" ]] \
