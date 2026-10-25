@@ -156,15 +156,21 @@ bytes_of() {
     wc -c < "$1" | tr -d ' '
 }
 
-# import_set_register [FLAG_VALUE]
-# Set import_register from the flag value, or from the environment. Print one
-# line and return 2 for an absent or invalid name. A write needs the name,
-# because it mints topics and receipt paths. See CHAT-jmnjvupr.
+# import_set_register [FLAG_VALUE] [FLAG_SEEN]
+# Set import_register from the flag, or from the environment. Print one line
+# and return 2 for an absent or invalid name. FLAG_SEEN holds true when the
+# caller saw the flag. An empty value after the flag is a refusal, not a
+# fallback to the environment. A write needs the name, because it mints
+# topics and receipt paths. See CHAT-jmnjvupr.
 import_set_register() {
-    local flag="${1:-}" reason
-    if [[ -z "$flag" ]]; then
+    local flag="${1:-}" seen="${2:-false}" reason
+    if [[ "$seen" != 'true' ]]; then
         import_register="$(node9_register_name)" || return 2
         return 0
+    fi
+    if [[ -z "$flag" ]]; then
+        import_error 'the flag --register needs a name'
+        return 2
     fi
     reason="$(node9_register_name_error "$flag")" \
         || { import_error "$reason"; return 2; }
@@ -226,7 +232,7 @@ build_requests() {
 # installed home. A failed pack leaves no bundle directory, because the work
 # happens in a private temporary directory beside the target.
 pack_bundle() {
-    local source_file='' mapping='' bundle='' register_flag=''
+    local source_file='' mapping='' bundle='' register_flag='' register_seen='false'
     while (( $# )); do
         case "$1" in
             --source)
@@ -242,8 +248,13 @@ pack_bundle() {
                 shift 2 || true
                 ;;
             --register)
-                register_flag="${2:-}"
-                shift 2 || true
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
                 ;;
             *)
                 import_error "pack does not take the argument $1"
@@ -255,7 +266,7 @@ pack_bundle() {
         || { import_error 'pack needs --source, --mapping, and --bundle'; return; }
     # The name comes first, because build_requests mints the snapshot topic
     # from it. Pack and apply must derive one set of request IDs.
-    import_set_register "$register_flag" || return 2
+    import_set_register "$register_flag" "$register_seen" || return 2
     [[ ! -e "$bundle" && ! -L "$bundle" ]] \
         || { import_error "the bundle path $bundle exists"; return; }
     validate_mapping "$mapping" "$source_file" || return
@@ -1219,7 +1230,7 @@ import_preflight() {
 # Import one bundle into the installed node 9.
 apply_bundle() {
     local bundle='' user='' work_dir status bundle_hash receipt_dir
-    local register_flag=''
+    local register_flag='' register_seen='false'
     while (( $# )); do
         case "$1" in
             --bundle)
@@ -1231,8 +1242,13 @@ apply_bundle() {
                 shift 2 || true
                 ;;
             --register)
-                register_flag="${2:-}"
-                shift 2 || true
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
                 ;;
             *)
                 import_error "apply does not take the argument $1"
@@ -1242,7 +1258,7 @@ apply_bundle() {
     done
     [[ -n "$bundle" && -n "$user" ]] \
         || { import_error 'apply needs --bundle and --as'; return; }
-    import_set_register "$register_flag" || return 2
+    import_set_register "$register_flag" "$register_seen" || return 2
 
     work_dir="$(mktemp -d)" \
         || { import_error 'no temporary directory'; return; }
@@ -1521,7 +1537,7 @@ verify_reads() {
 # Read the destination and prove that it holds this bundle.
 verify_bundle() {
     local bundle='' user='' work_dir status bundle_hash receipt_dir median
-    local register_flag=''
+    local register_flag='' register_seen='false'
     while (( $# )); do
         case "$1" in
             --bundle)
@@ -1533,8 +1549,13 @@ verify_bundle() {
                 shift 2 || true
                 ;;
             --register)
-                register_flag="${2:-}"
-                shift 2 || true
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
                 ;;
             *)
                 import_error "verify does not take the argument $1"
@@ -1544,7 +1565,7 @@ verify_bundle() {
     done
     [[ -n "$bundle" && -n "$user" ]] \
         || { import_error 'verify needs --bundle and --as'; return; }
-    import_set_register "$register_flag" || return 2
+    import_set_register "$register_flag" "$register_seen" || return 2
 
     work_dir="$(mktemp -d)" \
         || { import_error 'no temporary directory'; return; }

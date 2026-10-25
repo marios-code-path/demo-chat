@@ -341,7 +341,7 @@ git commit -m "CHAT-jmnjvupr: Build entry topics from the register name"
 
 **Interfaces:**
 - Consumes: `node9_register_name` and `node9_register_name_error` from Task 1.
-- Produces: the global `import_register`. `pack`, `apply`, and `verify` accept `--register NAME`. All three default to `node9_register_name`, so `pack` and `apply` derive the same request IDs from one environment.
+- Produces: the global `import_register`. `import_set_register [FLAG_VALUE] [FLAG_SEEN]` sets it. `pack`, `apply`, and `verify` accept `--register NAME`. All three default to `node9_register_name`, so `pack` and `apply` derive the same request IDs from one environment.
 
 **Step 1: Write the failing checks**
 
@@ -399,6 +399,14 @@ else
 fi
 ```
 
+A bare `--register` and an empty `--register ''` each stop with status 2,
+for pack, apply, and verify. A valid environment name does not rescue the
+flag. The six checks are `pack_refuses_a_bare_register`,
+`pack_refuses_an_empty_register`, `apply_refuses_a_bare_register`,
+`apply_refuses_an_empty_register`, `verify_refuses_a_bare_register`, and
+`verify_refuses_an_empty_register`. A helper `run_flag` runs one command
+with a clean stub state and a valid environment name.
+
 `pack` needs the name too. `build_requests` takes the snapshot topic from
 `snapshot_topic`, and every snapshot request ID holds that topic. The top
 pack of the suite takes the name from the environment that Task 2 exports.
@@ -454,6 +462,7 @@ Expected: the new `FAIL` lines.
 
 - Add `import_register=''` beside `import_owner`.
 - In `apply_bundle` and `verify_bundle`, accept `--register`; then set the value before the preflight call. An explicit value must pass `node9_register_name_error`. With no flag, use `node9_register_name`, never `node9_register_value`, because a write mints topic names and receipt paths. A missing name returns 2.
+- Each parser records that it saw `--register`. A flag with no value returns 2 at once, so the loop cannot repeat. An empty value after the flag returns 2. It is not a fallback to the environment.
 - In `pack_bundle`, accept `--register` and set `import_register` the same way, before the first `build_requests` call. `snapshot_topic` reads that value, so pack derives the same request IDs as apply. Pack stays offline and needs no installed home.
 - Update the `pack` usage line and the file header with the flag.
 - `check_bundle` runs before any live call in both `apply` and `verify`. It calls `build_requests` again with `import_register`. A bundle packed for another register stops there with status 2.

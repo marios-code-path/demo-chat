@@ -315,6 +315,71 @@ else
     bad 'apply_refuses_a_bad_register' "exit $status, calls=$(calls), output: $out"
 fi
 
+# A flag with no value stops at once. A valid environment name does not
+# rescue the flag. See the Task 4 review.
+run_flag() {
+    reset_stub
+    out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+        NODE9_ALLOW_SOURCE_TREE=1 \
+        NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
+        CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
+        "$@" 2>&1)"
+    status=$?
+}
+
+run_flag "$importer" pack --source "$work/source.md" \
+    --mapping "$work/mapping.json" --bundle "$work/bundle-bare" --register
+if [[ $status -eq 2 && ! -e "$work/bundle-bare" ]]; then
+    ok 'pack_refuses_a_bare_register'
+else
+    bad 'pack_refuses_a_bare_register' "exit $status, output: $out"
+fi
+
+run_flag "$importer" pack --source "$work/source.md" \
+    --mapping "$work/mapping.json" --bundle "$work/bundle-empty" --register ''
+if [[ $status -eq 2 && ! -e "$work/bundle-empty" \
+      && "$out" == *'--register'* ]]; then
+    ok 'pack_refuses_an_empty_register'
+else
+    bad 'pack_refuses_an_empty_register' "exit $status, output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" apply --bundle "$bundle" \
+    --as Mario --register
+if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
+    ok 'apply_refuses_a_bare_register'
+else
+    bad 'apply_refuses_a_bare_register' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" apply --bundle "$bundle" \
+    --as Mario --register ''
+if [[ $status -eq 2 && "$(calls)" -eq 0 && "$out" == *'--register'* ]]; then
+    ok 'apply_refuses_an_empty_register'
+else
+    bad 'apply_refuses_an_empty_register' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" verify --bundle "$bundle" \
+    --as Mario --register
+if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
+    ok 'verify_refuses_a_bare_register'
+else
+    bad 'verify_refuses_a_bare_register' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" verify --bundle "$bundle" \
+    --as Mario --register ''
+if [[ $status -eq 2 && "$(calls)" -eq 0 && "$out" == *'--register'* ]]; then
+    ok 'verify_refuses_an_empty_register'
+else
+    bad 'verify_refuses_an_empty_register' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
 # Pack takes the name too, because every snapshot request ID holds the
 # snapshot topic. The top pack of the suite takes the exported name.
 snapshot_short="$(sha_of "$work/source.md" | cut -c 1-12)"
