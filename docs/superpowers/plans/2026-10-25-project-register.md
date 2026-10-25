@@ -432,7 +432,9 @@ fi
 
 The second check compares the topic across pack and apply. The third proves
 that `check_bundle` derives the request IDs again with the name of the run.
-A bundle packed for one register therefore stops before any live call.
+A bundle packed for one register therefore stops before any live call. The
+mapping holds the name-prefixed entry topics, and the content manifest holds
+the mapping. The bundle hash covers the name through the mapping.
 
 Add one prefix-refusal case. Pack a second bundle from a mapping whose first
 entry topic is `forward-register-first`. Apply it with

@@ -204,6 +204,8 @@ Two size rules apply:
 - `pack`, `apply`, and `verify` take `--register <name>`. The default is the
   variable. Pack derives every request ID from the name, so pack and apply
   agree.
+- The mapping holds the entry topics. The content manifest holds the mapping.
+  The register name therefore enters the bundle hash through the mapping.
 - `ensure_index`, `index_message_count`, `topic_room_id`, and `join_all` use
   that name.
 - Every entry topic starts with `<name>-fr-`.
