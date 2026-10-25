@@ -236,16 +236,28 @@ pack_bundle() {
     while (( $# )); do
         case "$1" in
             --source)
-                source_file="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --source needs a value'
+                    return
+                fi
+                source_file="$2"
+                shift 2
                 ;;
             --mapping)
-                mapping="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --mapping needs a value'
+                    return
+                fi
+                mapping="$2"
+                shift 2
                 ;;
             --bundle)
-                bundle="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
                 ;;
             --register)
                 register_seen='true'
@@ -1234,12 +1246,20 @@ apply_bundle() {
     while (( $# )); do
         case "$1" in
             --bundle)
-                bundle="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
                 ;;
             --as)
-                user="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --as needs a value'
+                    return
+                fi
+                user="$2"
+                shift 2
                 ;;
             --register)
                 register_seen='true'
@@ -1541,12 +1561,20 @@ verify_bundle() {
     while (( $# )); do
         case "$1" in
             --bundle)
-                bundle="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
                 ;;
             --as)
-                user="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --as needs a value'
+                    return
+                fi
+                user="$2"
+                shift 2
                 ;;
             --register)
                 register_seen='true'

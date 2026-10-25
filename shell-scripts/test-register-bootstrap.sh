@@ -370,6 +370,62 @@ else
     bad 'pack_refuses_an_empty_register' "exit $status, output: $out"
 fi
 
+# The other flags hold the same rule. A bare flag stops at once, so the
+# parser makes no second pass. See the whole-branch review.
+run_flag "$importer" pack --source
+if [[ $status -eq 2 && "$out" == *'--source'* ]]; then
+    ok 'pack_refuses_a_bare_source'
+else
+    bad 'pack_refuses_a_bare_source' "exit $status, output: $out"
+fi
+
+run_flag "$importer" pack --source "$work/source.md" --mapping
+if [[ $status -eq 2 && "$out" == *'--mapping'* ]]; then
+    ok 'pack_refuses_a_bare_mapping'
+else
+    bad 'pack_refuses_a_bare_mapping' "exit $status, output: $out"
+fi
+
+run_flag "$importer" pack --source "$work/source.md" \
+    --mapping "$work/mapping.json" --bundle
+if [[ $status -eq 2 && "$out" == *'--bundle'* ]]; then
+    ok 'pack_refuses_a_bare_bundle'
+else
+    bad 'pack_refuses_a_bare_bundle' "exit $status, output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" apply --bundle
+if [[ $status -eq 2 && "$(calls)" -eq 0 && "$out" == *'--bundle'* ]]; then
+    ok 'apply_refuses_a_bare_bundle'
+else
+    bad 'apply_refuses_a_bare_bundle' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" apply --bundle "$bundle" --as
+if [[ $status -eq 2 && "$(calls)" -eq 0 && "$out" == *'--as'* ]]; then
+    ok 'apply_refuses_a_bare_as'
+else
+    bad 'apply_refuses_a_bare_as' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" verify --bundle
+if [[ $status -eq 2 && "$(calls)" -eq 0 && "$out" == *'--bundle'* ]]; then
+    ok 'verify_refuses_a_bare_bundle'
+else
+    bad 'verify_refuses_a_bare_bundle' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
+run_flag "$install_home/bin/register-import" verify --bundle "$bundle" --as
+if [[ $status -eq 2 && "$(calls)" -eq 0 && "$out" == *'--as'* ]]; then
+    ok 'verify_refuses_a_bare_as'
+else
+    bad 'verify_refuses_a_bare_as' \
+        "exit $status, calls=$(calls), output: $out"
+fi
+
 run_flag "$install_home/bin/register-import" apply --bundle "$bundle" \
     --as Mario --register
 if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
@@ -1183,6 +1239,16 @@ if [[ $status -eq 1 && "$out" == *'demo-chat-register-fr-x'* ]]; then
     ok 'create_name_collision_refuses'
 else
     bad 'create_name_collision_refuses' "exit $status, output: $out"
+fi
+
+# A room of the name space stops an empty create too, which allows no topic.
+reset_stub
+printf 'demo-chat-register-fr-x\n' > "$stub_state/topics"
+run_create "$create" demo-chat-register --as Mario
+if [[ $status -eq 1 && "$out" == *'demo-chat-register-fr-x'* ]]; then
+    ok 'create_empty_name_collision_refuses'
+else
+    bad 'create_empty_name_collision_refuses' "exit $status, output: $out"
 fi
 
 # A name inside the name space of another register stops the create.

@@ -207,8 +207,8 @@ The values are `vault-source`, `import-state`, `local`, or `kept`, and the
 plaintext state is `pending` or `complete`.
 
 A source tree refuses to run. `start`, `stop`, `setup-secrets`, `register`,
-`load-images` and `save-images` stop with status 2 unless the `.installed`
-marker is present. `NODE9_ALLOW_SOURCE_TREE=1` overrides the stop. Use it to
+`register-create`, `load-images` and `save-images` stop with status 2 unless
+the `.installed` marker is present. `NODE9_ALLOW_SOURCE_TREE=1` overrides the stop. Use it to
 stop containers that started from a work tree. Use it in the offline tests.
 
 The installer refuses a prefix inside a git work tree. It refuses a
@@ -323,7 +323,7 @@ The name holds at most 37 characters. That bound leaves room for
 `-fr-snapshot-` and twelve hex characters inside the 64 character limit.
 
 ```bash
-node-9/bin/register-create <name> [<path>] [--source-date DATE] --as <owner>
+/opt/demo-chat/node-9/bin/register-create <name> [<path>] [--source-date DATE] --as <owner>
 ```
 
 The command takes the name as an argument, and it reads no register variable.
