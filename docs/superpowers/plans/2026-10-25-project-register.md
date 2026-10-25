@@ -17,7 +17,7 @@
 - A register name holds at most 37 characters.
 - One source section holds at most 16,384 bytes.
 - The pointer line form is `<key> | <topic> | <metadata> | <title>`.
-- A command with no register variable stops with status 2.
+- A command with no register variable and no `--register` stops with status 2.
 - No command prints a secret value.
 - Every commit message starts `CHAT-jmnjvupr: `.
 
@@ -39,7 +39,7 @@
 
 **Interfaces:**
 - Produces: `node9_register_value` prints the register value and returns 0. It prints one line and returns 2 with no variable.
-- Produces: `node9_register_name` prints the name and returns 0. It returns 2 when only the id is set.
+- Produces: `node9_register_name` prints the name and returns 0. It returns 2 when only the id is set, and 2 when the name fails `node9_register_name_error`.
 - Produces: `node9_register_name_error NAME` prints one reason and returns 1 for a bad name. It returns 0 for a good name.
 
 **Step 1: Write the failing tests**
@@ -85,6 +85,10 @@ out="$(register_probe 'node9_register_name' NODE_9_REGISTER_TOPIC_ID=abc)"
 [[ "$out" == 2\|* ]] && ok 'register_name_refuses_an_id_alone' \
     || bad 'register_name_refuses_an_id_alone' "$out"
 
+out="$(register_probe 'node9_register_name' NODE_9_REGISTER_TOPIC_NAME=Demo)"
+[[ "$out" == 2\|* ]] && ok 'register_name_refuses_an_invalid_env_name' \
+    || bad 'register_name_refuses_an_invalid_env_name' "$out"
+
 out="$(register_probe 'node9_register_value' \
     NODE_9_REGISTER_TOPIC_NAME=demo-chat-register NODE_9_REGISTER_TOPIC_ID=abc)"
 [[ "$out" == '0|demo-chat-register' ]] && ok 'register_value_name_wins' \
@@ -118,11 +122,14 @@ node9_register_value() {
 }
 
 node9_register_name() {
-    if [[ -n "${NODE_9_REGISTER_TOPIC_NAME:-}" ]]; then
-        printf '%s\n' "$NODE_9_REGISTER_TOPIC_NAME"; return 0
+    local name="${NODE_9_REGISTER_TOPIC_NAME:-}" reason
+    if [[ -z "$name" ]]; then
+        printf 'node-9: a write needs NODE_9_REGISTER_TOPIC_NAME. An id gives no topic prefix.\n' >&2
+        return 2
     fi
-    printf 'node-9: a write needs NODE_9_REGISTER_TOPIC_NAME. An id gives no topic prefix.\n' >&2
-    return 2
+    reason="$(node9_register_name_error "$name")" \
+        || { printf 'node-9: %s\n' "$reason" >&2; return 2; }
+    printf '%s\n' "$name"
 }
 
 node9_register_name_error() {
@@ -221,10 +228,10 @@ git commit -m "CHAT-jmnjvupr: Read and write the named register room"
 
 ---
 
-### Task 3: `open` mints prefixed topics and checks the short name
+### Task 3: `open` mints prefixed topics and both writes check the name
 
 **Files:**
-- Modify: `node-9/bin/register` (the `open` case)
+- Modify: `node-9/bin/register` (the `open` and `post` cases)
 - Test: `shell-scripts/test-node-9-register.sh`
 
 **Interfaces:**
@@ -266,10 +273,18 @@ fi
 
 EXTRA_ENV='NODE_9_REGISTER_TOPIC_ID=abc123' REGISTER_NAME='' \
     run_wrapper t_open_id open CHAT-9 x "Fix" --as Theta
-if [[ "$status_of" -eq 2 ]]; then
+if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
     ok 'open_refuses_an_id_alone'
 else
-    bad 'open_refuses_an_id_alone' "status=$status_of"
+    bad 'open_refuses_an_id_alone' "status=$status_of calls=$(calls)"
+fi
+
+reset_stub
+REGISTER_NAME=Demo run_wrapper t_post_bad_name post CHAT-9 --as Theta
+if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
+    ok 'post_refuses_an_invalid_register_name'
+else
+    bad 'post_refuses_an_invalid_register_name' "status=$status_of calls=$(calls)"
 fi
 ```
 
@@ -280,16 +295,25 @@ The existing `open` fixtures and assertions name `forward-register-x` and `forwa
 Run: `bash shell-scripts/test-node-9-register.sh`
 Expected: the four new `FAIL` lines.
 
-**Step 3: Change the `open` case**
+**Step 3: Change the `open` and `post` cases**
+
+Both cases resolve and validate the name before any shell call:
 
 ```bash
 name="$(node9_register_name)" || exit 2
+```
+
+Then the `open` case checks the short name and builds the topic:
+
+```bash
 [[ "$short" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
     || fail "the short name $short is not lowercase letters, digits, or dashes." 2
 new_topic="$name-fr-$short"
 (( ${#new_topic} <= 64 )) \
     || fail "the topic $new_topic passes 64 characters." 2
 ```
+
+The `post` case uses `$name` for `load_pointers`, the join, and the post topic.
 
 **Step 4: Run the suite and check it passes**
 
@@ -342,7 +366,7 @@ else
     bad 'apply_reads_the_named_register' "exit $status, log: $(head -3 "$stub_state/log")"
 fi
 
-REGISTER=demo-chat-register run_apply
+REGISTER=demo-chat-register NODE_9_REGISTER_TOPIC_NAME='' run_apply
 if [[ $status -eq 0 && "$(calls)" -gt 0 ]]; then
     ok 'apply_takes_an_explicit_register'
 else
