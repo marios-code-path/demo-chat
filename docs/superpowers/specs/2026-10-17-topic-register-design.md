@@ -274,14 +274,24 @@ from an environment value at the core start, in the same way the shipped
 `Service` user reads `CHAT_SERVICE_PASSWORD`. The `Admin` password also comes
 from the environment, because the shipped value is `changeme`.
 
-Ansible Vault is the stored source of every node 9 secret. Vault encrypts
+Ansible Vault stores the secrets of a vault-backed node 9. Vault encrypts
 the stored copy alone. The files that Ansible writes are plaintext.
 
-- `node-9/ansible/vault/shared.yml` holds the service password, the `Admin`
-  password, the embedding key, and the three agent passwords. It is
-  encrypted at rest.
-- `node-9/ansible/vault/owner.yml` holds the `Mario` password alone. It has
-  its own vault ID and its own password.
+Amendment 2026-10-25 (CHAT-cnwkjsrp). The vaults are per host. The current
+Git tree tracks no ciphertext. `node-9/install` requires exactly one secrets
+choice: `--vault-source DIR`, `--import-state DIR`, `--local-secrets`, or
+`--keep-secrets`. A vault-source bundle holds `vault-pass`, `shared.yml`,
+and `owner.yml`. The installer copies `shared.yml` and `owner.yml` to
+`<parent of prefix>/vault/`, links them into the installed `ansible/vault/`,
+and records `plaintext: pending`. The marker is a code-install record, not
+a readiness signal. The earlier tracked `shared.yml` remains in Git history
+and is not a current source.
+
+- `shared.yml` holds the service password, the `Admin` password, the
+  embedding key, and the three agent passwords. It is encrypted at rest.
+  It lives at `<parent of prefix>/vault/shared.yml` on each host.
+- `owner.yml` holds the `Mario` password alone. It has its own vault ID and
+  its own password. It lives beside `shared.yml`.
 - The shared vault password stays outside the repository, at
   `${XDG_CONFIG_HOME:-$HOME/.config}/chat-node-9/vault-pass`, with mode
   `0600`.
@@ -294,8 +304,9 @@ the stored copy alone. The files that Ansible writes are plaintext.
 - `node-9/bin/setup-secrets --local` generates random values on an explicit
   request alone. It prompts once for the `Mario` password. The default run
   never falls back to it.
-- The default run stops when `ansible-playbook` or the shared vault password
-  is absent. It names `--local` in one line.
+- The default run stops when `ansible-playbook`, the shared vault, or the
+  shared vault password is absent. A missing vault names `--vault-source`
+  and the runbook. The run never selects `--local` on its own.
 - `node-9/secrets.env` holds the values that the core needs:
   `CHAT_SERVICE_PASSWORD`, `CHAT_ADMIN_PASSWORD`,
   `CHAT_EMBEDDING_OPENAI_API_KEY`, and one `CHAT_USER_<NAME>_PASSWORD` for

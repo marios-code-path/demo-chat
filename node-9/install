@@ -1,33 +1,78 @@
 #!/usr/bin/env bash
-# Install node 9 outside the source tree. See CHAT-mvvvnujw.
+# Install node 9 outside the source tree. See CHAT-mvvvnujw and CHAT-cnwkjsrp.
 #
-#   install [--prefix DIR] [--import-state DIR] [--dry-run]
+#   install [--prefix DIR] [--dry-run] [--skip-cli]
+#           (--vault-source DIR | --import-state DIR
+#            | --local-secrets | --keep-secrets)
 #
-# DIR defaults to /opt/demo-chat/node-9. The installer copies code files and
-# writes the .installed marker. It creates data/, secrets/ and images/ when
-# they are missing. A re-run replaces code files alone. It never reads,
-# writes, or deletes data/, secrets/, secrets.env, or images/.
+# DIR defaults to /opt/demo-chat/node-9. Exactly one secrets choice is
+# required, so every install states where its secret state comes from.
+#
+#   --vault-source DIR  copy vault-pass, shared.yml and owner.yml from a
+#                       complete bundle. The vaults stay outside the home,
+#                       under <parent of prefix>/vault/. The installed
+#                       playbook paths link to them. Plaintext setup stays
+#                       pending; the run prints both setup-secrets commands.
+#   --import-state DIR  copy a complete plaintext secrets.env and secrets/.
+#                       The set must hold seven keys, three agent files, and
+#                       each file must equal its key value.
+#   --local-secrets     generate new local values during the install. The
+#                       owner password needs a terminal. No vault is created,
+#                       and the values are not reproducible after loss.
+#   --keep-secrets      keep complete existing state on a reinstall. It
+#                       changes no secret or vault file.
+#
+# The installer copies code files and writes the .installed marker last. It
+# creates data/, secrets/ and images/ when they are missing. It never
+# deletes data/, secrets/, secrets.env or a stable vault file.
 #
 # The installer refuses a prefix inside a git work tree. It refuses a
-# non-empty prefix that has no marker.
-#
-# --import-state DIR copies secrets.env and secrets/ from the node-9
-# directory DIR into a new home. It never overwrites a file. It skips the
-# import and names the gap when DIR holds an incomplete set. It never copies
-# Cassandra data.
+# non-empty prefix that has no marker. It refuses a symlink at a stable
+# vault file or at the vault password.
 set -uo pipefail
 
 src="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=bin/secrets-local.sh
+. "$src/bin/secrets-local.sh"
 prefix=/opt/demo-chat/node-9
-import_dir=''
+choice=''
+vault_source=''
+import_state=''
 dry_run=false
 skip_cli=false
 
 # The Java floor of the shell CLI runtime. pom.xml sets the same value.
 java_floor=25
 
+# The last shared vault artifact that Git tracked. A home from the earlier
+# layout holds a copy of it inside ansible/. It carries no active state when
+# its bytes match. A different file is a real vault and a conflict.
+# The two hooks let the offline suite test the rule without storing
+# ciphertext in the repository. See CHAT-cnwkjsrp.
+legacy_shared_sha256="${NODE9_INSTALL_LEGACY_SHA256:-eb0eee7dbcdcdbbcb79112bef6fafa405717abf89be229ed5aefc345ddb628ed}"
+legacy_shared_size="${NODE9_INSTALL_LEGACY_SIZE:-1463}"
+
 usage() {
-    printf 'usage: install [--prefix DIR] [--import-state DIR] [--dry-run] [--skip-cli]\n'
+    printf 'usage: install [--prefix DIR] [--dry-run] [--skip-cli]\n' >&2
+    printf '       (--vault-source DIR | --import-state DIR | --local-secrets | --keep-secrets)\n' >&2
+}
+
+# choice_error  Name the four choices. The count check calls it.
+choice_error() {
+    printf 'node-9 install: give exactly one secrets choice.\n' >&2
+    printf '  --vault-source DIR  copy a complete per-host vault bundle\n' >&2
+    printf '  --import-state DIR  copy a complete plaintext secrets set\n' >&2
+    printf '  --local-secrets     generate new local values during install\n' >&2
+    printf '  --keep-secrets      keep complete state on a reinstall\n' >&2
+}
+
+# set_choice NAME  Record one choice. A second choice stops with status 2.
+set_choice() {
+    if [[ -n "$choice" ]]; then
+        choice_error
+        exit 2
+    fi
+    choice="$1"
 }
 
 fail() {
@@ -42,11 +87,20 @@ while (( $# )); do
             prefix="$2"
             shift
             ;;
-        --import-state)
-            [[ $# -ge 2 && -n "$2" ]] || fail '--import-state needs a directory.' 2
-            import_dir="$2"
+        --vault-source)
+            [[ $# -ge 2 && -n "$2" ]] || fail '--vault-source needs a directory.' 2
+            set_choice vault-source
+            vault_source="$2"
             shift
             ;;
+        --import-state)
+            [[ $# -ge 2 && -n "$2" ]] || fail '--import-state needs a directory.' 2
+            set_choice import-state
+            import_state="$2"
+            shift
+            ;;
+        --local-secrets) set_choice local-secrets ;;
+        --keep-secrets) set_choice keep-secrets ;;
         --dry-run) dry_run=true ;;
         --skip-cli) skip_cli=true ;;
         -h|--help) usage; exit 0 ;;
@@ -54,6 +108,8 @@ while (( $# )); do
     esac
     shift
 done
+
+[[ -n "$choice" ]] || { choice_error; exit 2; }
 
 [[ "$prefix" == /* ]] || fail "the prefix must be an absolute path, got '$prefix'." 2
 
@@ -79,26 +135,259 @@ if git -C "$anchor" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 # Refuse a non-empty prefix that has no marker.
+[[ ! -L "$prefix/.installed" ]] \
+    || fail "$prefix/.installed is a symbolic link. The marker must be a plain file." 2
 if [[ -d "$prefix" && ! -f "$prefix/.installed" ]] \
    && [[ -n "$(ls -A "$prefix")" ]]; then
     fail "$prefix is not empty and has no .installed marker." 2
 fi
 
-# complete_state DIR  Print the first gap in DIR, or nothing if it is complete.
+# The seven keys that a complete plaintext set holds.
+plaintext_keys=(CHAT_SERVICE_PASSWORD CHAT_ADMIN_PASSWORD \
+    CHAT_EMBEDDING_OPENAI_API_KEY CHAT_USER_SIGMA_PASSWORD \
+    CHAT_USER_THETA_PASSWORD CHAT_USER_PHI_PASSWORD \
+    CHAT_USER_MARIO_PASSWORD)
+
+# key_value KEY FILE  Print one value for an in-memory comparison. Never
+# place this call in a line that prints its answer.
+key_value() {
+    sed -n "s/^$1=//p" "$2"
+}
+
+# complete_state DIR  Print the first gap in a plaintext set, or nothing.
+# Each agent file must equal its key value. The check never prints a value.
 complete_state() {
-    local dir="$1" key name
+    local dir="$1" key name upper file
+    [[ -L "$dir/secrets.env" ]] \
+        && { printf '%s is a symbolic link' "$dir/secrets.env"; return; }
     [[ -f "$dir/secrets.env" ]] || { printf 'secrets.env is missing'; return; }
-    for key in CHAT_SERVICE_PASSWORD CHAT_ADMIN_PASSWORD \
-               CHAT_EMBEDDING_OPENAI_API_KEY CHAT_USER_SIGMA_PASSWORD \
-               CHAT_USER_THETA_PASSWORD CHAT_USER_PHI_PASSWORD; do
+    for key in "${plaintext_keys[@]}"; do
         grep -q "^$key=." "$dir/secrets.env" \
             || { printf '%s is missing from secrets.env' "$key"; return; }
     done
     for name in Sigma Theta Phi; do
-        [[ -s "$dir/secrets/$name.password" ]] \
-            || { printf 'secrets/%s.password is missing' "$name"; return; }
+        upper="$(printf '%s' "$name" | tr '[:lower:]' '[:upper:]')"
+        file="$dir/secrets/$name.password"
+        [[ -L "$file" ]] \
+            && { printf 'secrets/%s.password is a symbolic link' "$name"; return; }
+        [[ -f "$file" && -s "$file" ]] || { printf 'secrets/%s.password is missing' "$name"; return; }
+        [[ "$(cat "$file")" == "$(key_value "CHAT_USER_${upper}_PASSWORD" "$dir/secrets.env")" ]] \
+            || { printf 'secrets/%s.password does not match CHAT_USER_%s_PASSWORD' "$name" "$upper"; return; }
     done
 }
+
+# dir_gap DIR  Print the first reason a source directory is unusable.
+dir_gap() {
+    local dir="$1"
+    [[ "$dir" == /* ]] || { printf 'the path must be absolute: %s' "$dir"; return; }
+    [[ -d "$dir" ]] || { printf 'no directory at %s' "$dir"; return; }
+    [[ -r "$dir" ]] || { printf 'the directory is not readable: %s' "$dir"; return; }
+}
+
+# inside_git DIR  Status 0 when DIR sits inside a git work tree.
+inside_git() {
+    local real
+    real="$(cd "$1" 2>/dev/null && pwd -P)" || return 1
+    git -C "$real" rev-parse --is-inside-work-tree > /dev/null 2>&1
+}
+
+# vault_source_gap DIR  Print the first gap in a vault bundle, or nothing.
+vault_source_gap() {
+    local dir="$1" name file
+    [[ -L "$dir" ]] && { printf '%s is a symbolic link' "$dir"; return; }
+    for name in vault-pass shared.yml owner.yml; do
+        file="$dir/$name"
+        [[ -L "$file" ]] && { printf '%s is a symbolic link' "$file"; return; }
+        [[ -f "$file" && -s "$file" ]] || { printf '%s is missing or empty' "$file"; return; }
+        [[ -r "$file" ]] || { printf '%s is not readable' "$file"; return; }
+    done
+    for file in "$dir"/* "$dir"/.[!.]* "$dir"/..?*; do
+        [[ -e "$file" || -L "$file" ]] || continue
+        name="${file##*/}"
+        case "$name" in
+            vault-pass|shared.yml|owner.yml) ;;
+            *) printf '%s is not a bundle file' "$file"; return ;;
+        esac
+    done
+}
+
+# file_sha256 FILE  Print the SHA-256 of FILE on Darwin or Linux.
+file_sha256() {
+    case "$(uname -s)" in
+        Darwin) shasum -a 256 "$1" | awk '{print $1}' ;;
+        *) sha256sum "$1" | awk '{print $1}' ;;
+    esac
+}
+
+# file_size FILE  Print the byte count.
+file_size() {
+    wc -c < "$1" | tr -d ' '
+}
+
+# plaintext_present  Status 0 when the home holds any plaintext secret path.
+plaintext_present() {
+    [[ -e "$prefix/secrets.env" || -L "$prefix/secrets.env" ]] && return 0
+    [[ -L "$prefix/secrets" ]] && return 0
+    [[ -n "$(ls -A "$prefix/secrets" 2>/dev/null)" ]] && return 0
+    return 1
+}
+
+# legacy_state  Print absent, inert, link, altered or dangling for the
+# in-home shared vault path of the earlier layout.
+legacy_state() {
+    local file="$prefix/ansible/vault/shared.yml" target
+    if [[ -L "$file" ]]; then
+        target="$(readlink "$file")"
+        if [[ "$target" == "$stable_shared" && -f "$target" ]]; then
+            printf 'link'
+        else
+            printf 'foreign-link'
+        fi
+        return
+    fi
+    if [[ -e "$file" ]]; then
+        if [[ -f "$file" \
+              && "$(file_sha256 "$file")" == "$legacy_shared_sha256" \
+              && "$(file_size "$file")" == "$legacy_shared_size" ]]; then
+            printf 'inert'
+        else
+            printf 'altered'
+        fi
+        return
+    fi
+    printf 'absent'
+}
+
+# state_target_status SOURCE  Print absent, keep, partial:PATH or mismatch:PATH
+# for the plaintext targets under the prefix.
+state_target_status() {
+    local source="$1" name target present=0 total=0 i
+    local -a sources=("$source/secrets.env")
+    local -a targets=("$prefix/secrets.env")
+    for name in Sigma Theta Phi; do
+        sources+=("$source/secrets/$name.password")
+        targets+=("$prefix/secrets/$name.password")
+    done
+    for target in "${targets[@]}"; do
+        [[ -L "$target" ]] && { printf 'symlink:%s' "$target"; return; }
+        total=$((total + 1))
+        [[ -e "$target" ]] && present=$((present + 1))
+    done
+    if (( present == 0 )); then printf 'absent'; return; fi
+    for target in "${targets[@]}"; do
+        [[ -e "$target" ]] || { printf 'partial:%s' "$target"; return; }
+    done
+    for i in "${!targets[@]}"; do
+        cmp -s "${sources[$i]}" "${targets[$i]}" \
+            || { printf 'mismatch:%s' "${targets[$i]}"; return; }
+    done
+    printf 'keep'
+}
+
+# vault_action SOURCE TARGET  Print create, keep or conflict for a dry run.
+vault_action() {
+    local source="$1" target="$2"
+    if [[ -e "$target" ]]; then
+        if cmp -s "$source" "$target"; then printf 'keep'; else printf 'conflict'; fi
+    else
+        printf 'create'
+    fi
+}
+
+# Stable vault and password paths. They live outside the code directory, so
+# a code replacement removes neither.
+vault_parent="$(dirname "$prefix")"
+stable_shared="$vault_parent/vault/shared.yml"
+stable_owner="$vault_parent/vault/owner.yml"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+vault_pass="$config_home/chat-node-9/vault-pass"
+
+# Secrets preflight. It runs before the toolchain check and every copy.
+if [[ "$choice" == 'vault-source' ]] \
+   && git -C "$(nearest_existing "$vault_pass")" rev-parse --is-inside-work-tree \
+      > /dev/null 2>&1; then
+    fail "the vault password target $vault_pass is inside a git work tree." 2
+fi
+case "$choice" in
+    vault-source)
+        gap="$(dir_gap "$vault_source")"
+        [[ -z "$gap" ]] || fail "$gap." 2
+        if inside_git "$vault_source"; then
+            fail "the vault source $vault_source is inside a git work tree. Keep vault material outside every source tree." 2
+        fi
+        gap="$(vault_source_gap "$vault_source")"
+        [[ -z "$gap" ]] || fail "$gap." 2
+        if plaintext_present; then
+            fail "$prefix holds plaintext secrets. Use --keep-secrets for a reinstall." 2
+        fi
+        ;;
+    import-state)
+        gap="$(dir_gap "$import_state")"
+        [[ -z "$gap" ]] || fail "$gap." 2
+        gap="$(complete_state "$import_state")"
+        [[ -z "$gap" ]] || fail "the import source is incomplete: $gap." 2
+        ;;
+    local-secrets)
+        if plaintext_present; then
+            fail "$prefix holds plaintext secrets. Use --keep-secrets for a reinstall." 2
+        fi
+        if [[ "$dry_run" != 'true' && ! -t 0 ]]; then
+            fail '--local-secrets needs a terminal for the owner password.' 2
+        fi
+        ;;
+    keep-secrets)
+        [[ -f "$prefix/.installed" ]] \
+            || fail "$prefix has no .installed marker. --keep-secrets is for a reinstall." 2
+        gap="$(complete_state "$prefix")"
+        [[ -z "$gap" ]] || fail "the existing plaintext state is incomplete: $gap." 2
+        ;;
+esac
+
+if [[ -L "$stable_shared" ]]; then
+    fail "$stable_shared is a symbolic link. Stable vault targets must be plain files." 2
+fi
+if [[ -L "$stable_owner" ]]; then
+    fail "$stable_owner is a symbolic link. Stable vault targets must be plain files." 2
+fi
+if [[ -L "$vault_pass" ]]; then
+    fail "$vault_pass is a symbolic link. The vault password must be a plain file." 2
+fi
+
+legacy="$(legacy_state)"
+case "$legacy" in
+    inert)
+        printf 'node-9 install: the in-home shared.yml matches the last tracked artifact. The code replacement removes it.\n'
+        ;;
+    altered)
+        fail "$prefix/ansible/vault/shared.yml differs from the last tracked artifact. Move it before installation." 1
+        ;;
+    foreign-link)
+        fail "$prefix/ansible/vault/shared.yml is not a link to $stable_shared." 2
+        ;;
+esac
+
+if [[ "$choice" == 'vault-source' ]]; then
+    for pair in "shared.yml:$stable_shared" "owner.yml:$stable_owner"; do
+        name="${pair%%:*}"
+        target="${pair#*:}"
+        if [[ -e "$target" ]] && ! cmp -s "$vault_source/$name" "$target"; then
+            fail "$target differs from $vault_source/$name. It is not overwritten." 1
+        fi
+    done
+    if [[ -e "$vault_pass" ]] && ! cmp -s "$vault_source/vault-pass" "$vault_pass"; then
+        fail "$vault_pass differs from $vault_source/vault-pass. It is not overwritten." 1
+    fi
+fi
+
+if [[ "$choice" == 'import-state' ]]; then
+    status="$(state_target_status "$import_state")"
+    case "$status" in
+        absent|keep) ;;
+        partial:*) fail "the target plaintext state is partial: ${status#partial:} is missing." 1 ;;
+        mismatch:*) fail "${status#mismatch:} differs from the import source. It is not overwritten." 1 ;;
+        symlink:*) fail "${status#symlink:} is a symbolic link. The import target must be a plain file." 1 ;;
+    esac
+fi
 
 # NODE9_JAVA names the java of the version check. The build script writes the
 # same java into the frozen options, so the installed launcher runs it.
@@ -145,6 +434,7 @@ fi
 
 if [[ "$dry_run" == 'true' ]]; then
     printf 'prefix: %s\n' "$prefix"
+    printf 'choice: %s\n' "$choice"
     printf 'code: %s %s\n' "${code_files[*]}" "${code_dirs[*]}"
     printf 'java: %s\n' "$java_version"
     if [[ "$skip_cli" == 'true' ]]; then
@@ -153,11 +443,38 @@ if [[ "$dry_run" == 'true' ]]; then
         printf 'lib: one build of the jar set from %s\n' \
             "$(cd "$src/.." && pwd)"
     fi
-    printf 'state kept: %s secrets.env\n' "${state_dirs[*]}"
-    if [[ -n "$import_dir" ]]; then
-        gap="$(complete_state "$import_dir")"
-        printf 'import: %s\n' "${gap:-complete}"
-    fi
+    case "$choice" in
+        vault-source)
+            printf 'source: %s\n' "$vault_source/vault-pass"
+            printf 'source: %s\n' "$vault_source/shared.yml"
+            printf 'source: %s\n' "$vault_source/owner.yml"
+            printf 'target: %s action: %s\n' \
+                "$stable_shared" "$(vault_action "$vault_source/shared.yml" "$stable_shared")"
+            printf 'target: %s action: %s\n' \
+                "$stable_owner" "$(vault_action "$vault_source/owner.yml" "$stable_owner")"
+            printf 'target: %s action: %s\n' \
+                "$vault_pass" "$(vault_action "$vault_source/vault-pass" "$vault_pass")"
+            printf 'playbook link: %s\n' "$prefix/ansible/vault/shared.yml"
+            printf 'playbook link: %s\n' "$prefix/ansible/vault/owner.yml"
+            printf 'plaintext: pending\n'
+            printf 'next: %s/bin/setup-secrets\n' "$prefix"
+            printf 'next: %s/bin/setup-secrets --owner\n' "$prefix"
+            ;;
+        import-state)
+            printf 'source: %s\n' "$import_state"
+            printf 'target: %s action: %s\n' \
+                "$prefix/secrets.env" "$(state_target_status "$import_state")"
+            printf 'plaintext: complete\n'
+            ;;
+        local-secrets)
+            printf 'target: %s action: create\n' "$prefix/secrets.env"
+            printf 'plaintext: complete\n'
+            ;;
+        keep-secrets)
+            printf 'target: %s action: keep\n' "$prefix/secrets.env"
+            printf 'plaintext: complete\n'
+            ;;
+    esac
     exit 0
 fi
 
@@ -236,12 +553,6 @@ if [[ -n "$lib_stage" ]]; then
     rmdir "$stage_parent" 2> /dev/null
 fi
 
-# The owner Vault stays beside the home, in <parent>/vault/owner.yml.
-owner_vault="$(dirname "$prefix")/vault/owner.yml"
-if [[ -f "$owner_vault" ]]; then
-    ln -s "$owner_vault" "$prefix/ansible/vault/owner.yml"
-fi
-
 # State directories. Create alone. Never change a present one.
 for dir in "${state_dirs[@]}"; do
     [[ -d "$prefix/$dir" ]] && continue
@@ -251,26 +562,75 @@ for dir in "${state_dirs[@]}"; do
     esac
 done
 
-# Import a complete set of secrets. Never overwrite.
-if [[ -n "$import_dir" ]]; then
-    gap="$(complete_state "$import_dir")"
-    if [[ -n "$gap" ]]; then
-        printf 'node-9 install: import skipped, %s. Start from scratch.\n' "$gap" >&2
+# install_stable SOURCE TARGET  Create or keep one stable vault file.
+install_stable() {
+    local source="$1" target="$2"
+    if [[ -e "$target" ]]; then
+        cmp -s "$source" "$target" \
+            || fail "$target differs from $source. It is not overwritten." 1
+        chmod 0600 "$target"
+        printf 'keep %s\n' "$target"
     else
-        if [[ ! -e "$prefix/secrets.env" ]]; then
-            cp "$import_dir/secrets.env" "$prefix/secrets.env"
-            chmod 600 "$prefix/secrets.env"
-        fi
-        for file in "$import_dir"/secrets/*; do
-            [[ -f "$file" ]] || continue
-            target="$prefix/secrets/$(basename "$file")"
-            [[ -e "$target" ]] && continue
-            cp "$file" "$target"
-            chmod 600 "$target"
-        done
-        printf 'node-9 install: imported secrets from %s\n' "$import_dir"
+        cp "$source" "$target" || fail "cannot copy $source to $target." 1
+        chmod 0600 "$target"
+        printf 'create %s\n' "$target"
     fi
-fi
+}
+
+# Apply the chosen secrets source. The preflight above accepted it.
+case "$choice" in
+    vault-source)
+        mkdir -p "$vault_parent/vault" \
+            || fail "cannot create $vault_parent/vault." 1
+        install_stable "$vault_source/shared.yml" "$stable_shared"
+        install_stable "$vault_source/owner.yml" "$stable_owner"
+        mkdir -p "$config_home/chat-node-9" \
+            || fail "cannot create $config_home/chat-node-9." 1
+        chmod 0700 "$config_home/chat-node-9"
+        install_stable "$vault_source/vault-pass" "$vault_pass"
+        ;;
+    import-state)
+        case "$(state_target_status "$import_state")" in
+            absent)
+                cp "$import_state/secrets.env" "$prefix/secrets.env" \
+                    || fail 'cannot copy secrets.env.' 1
+                chmod 0600 "$prefix/secrets.env"
+                for name in Sigma Theta Phi; do
+                    file="$prefix/secrets/$name.password"
+                    cp "$import_state/secrets/$name.password" "$file" \
+                        || fail "cannot copy $name.password." 1
+                    chmod 0600 "$file"
+                done
+                printf 'node-9 install: imported secrets from %s\n' "$import_state"
+                ;;
+            keep)
+                printf 'node-9 install: the plaintext state matches %s; it is kept.\n' "$import_state"
+                ;;
+        esac
+        ;;
+    local-secrets)
+        node9_write_local "$prefix/secrets.env" "$prefix/secrets" \
+            || fail 'the local secret generation failed.' 1
+        ;;
+    keep-secrets) ;;
+esac
+
+# Link the stable vault files into the installed playbook paths. A stable
+# file may exist from an earlier run, under any choice.
+mkdir -p "$prefix/ansible/vault"
+for name in shared.yml owner.yml; do
+    stable="$vault_parent/vault/$name"
+    if [[ -f "$stable" ]]; then
+        ln -sfn "$stable" "$prefix/ansible/vault/$name"
+    fi
+done
+
+case "$choice" in
+    vault-source) marker_secrets=vault-source; marker_plaintext=pending ;;
+    import-state) marker_secrets=import-state; marker_plaintext=complete ;;
+    local-secrets) marker_secrets=local; marker_plaintext=complete ;;
+    keep-secrets) marker_secrets=kept; marker_plaintext=complete ;;
+esac
 
 # The marker goes last. Its presence means the copy is complete.
 {
@@ -287,6 +647,14 @@ fi
     else
         printf 'cli: skipped\n'
     fi
+    printf 'secrets: %s\n' "$marker_secrets"
+    printf 'plaintext: %s\n' "$marker_plaintext"
 } > "$prefix/.installed"
 
-printf 'node-9 install: installed in %s\n' "$prefix"
+if [[ "$choice" == 'vault-source' ]]; then
+    printf 'node-9 install: code and ciphertext installed in %s; plaintext setup is pending.\n' "$prefix"
+    printf 'node-9 install: run %s\n' "$prefix/bin/setup-secrets"
+    printf 'node-9 install: run %s\n' "$prefix/bin/setup-secrets --owner"
+else
+    printf 'node-9 install: installed in %s\n' "$prefix"
+fi
