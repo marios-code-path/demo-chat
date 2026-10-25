@@ -345,7 +345,9 @@ Exit status:
 - 2: an argument, a name, a path, a symbolic link, a section, or the
   installed guard.
 - 69: the core is not available.
+- 75: a post outcome stays uncertain. Retry with the same date.
 - 77: a login is absent.
+- 124: a bounded read passed its time limit.
 
 A section above 16,384 bytes stops with status 2. A repeated slug takes
 `<slug>-<section>`. A second collision, an empty slug, and a short name of
