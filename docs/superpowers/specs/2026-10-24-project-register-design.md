@@ -186,8 +186,10 @@ Two size rules apply:
 - `open` and `post` join the index room when the read is denied.
 - `open` and `post` read pointers from the room named by `<name>`. The record
   filter compares against that name, not against a fixed string.
-- `read` passes `--index <value>` to `register-read`. An id works here,
-  because the read parses no pointer.
+- `read` passes `--index <value>` to `register-read`. The shell resolves the
+  value as a room name first, then as a room id (`ShellRooms.room`). So an id
+  works here. The read still parses the pointer records of that room to find
+  the entry topics (`PubSubCommands.readRegister`).
 - `read <topic>` keeps its shape. The pointer gives the topic.
 - A write stops with status 2 when only the id is set. The error line asks
   for the name.
