@@ -17,7 +17,7 @@
 - A register name holds at most 37 characters.
 - One source section holds at most 16,384 bytes.
 - The pointer line form is `<key> | <topic> | <metadata> | <title>`.
-- A command that reads or writes a register room stops with status 2 when it has no register variable and no `--register` value. `register-create` takes the name as an argument. `register-import pack` touches no room.
+- A command that reads, writes, or names a register room stops with status 2 when it has no register variable and no `--register` value. `register-create` takes the name as an argument. `register-import pack` names the room in its request IDs and touches no room.
 - No command prints a secret value.
 - Every commit message starts `CHAT-jmnjvupr: `.
 
@@ -334,12 +334,13 @@ git commit -m "CHAT-jmnjvupr: Build entry topics from the register name"
 ### Task 4: The importer takes `--register`
 
 **Files:**
-- Modify: `node-9/bin/register-import` (`apply_bundle`, `verify_bundle`, `import_preflight`, `ensure_index`, `index_message_count`, `import_posts`, `verify_pointers`, `verify_reads`, `snapshot_topic`, `join_all`, the receipt path)
+- Modify: `node-9/bin/register-import` (`pack_bundle`, `build_requests`, `apply_bundle`, `verify_bundle`, `import_preflight`, `ensure_index`, `index_message_count`, `import_posts`, `verify_pointers`, `verify_reads`, `snapshot_topic`, `join_all`, the receipt path)
 - Test: `shell-scripts/test-register-bootstrap.sh`
+- Test: `shell-scripts/test-register-bundle.sh` (takes the register name, so `pack` and `check_bundle` keep working)
 
 **Interfaces:**
 - Consumes: `node9_register_name` and `node9_register_name_error` from Task 1.
-- Produces: the global `import_register`. `apply` and `verify` accept `--register NAME`.
+- Produces: the global `import_register`. `pack`, `apply`, and `verify` accept `--register NAME`. All three default to `node9_register_name`, so `pack` and `apply` derive the same request IDs from one environment.
 
 **Step 1: Write the failing checks**
 
@@ -397,11 +398,49 @@ else
 fi
 ```
 
+`pack` needs the name too. `build_requests` takes the snapshot topic from
+`snapshot_topic`, and every snapshot request ID holds that topic. The top
+pack of the suite takes the name from the environment that Task 2 exports.
+Add three checks:
+
+```bash
+snapshot_short="$(sha_of "$work/source.md" | cut -c 1-12)"
+packed_topic="$(sed -n 's/^topic: \(.*\) parts [0-9]*$/\1/p' <<< "$pack_out")"
+if [[ "$packed_topic" == "demo-chat-register-fr-snapshot-$snapshot_short" ]] \
+   && [[ "$(jq -r --arg t "$packed_topic" \
+            '[.requests[] | select(.topic == $t)] | length' \
+            "$bundle/bundle-manifest.json")" -gt 0 ]]; then
+    ok 'pack_names_the_snapshot_requests'
+else
+    bad 'pack_names_the_snapshot_requests' "topic=$packed_topic"
+fi
+
+run_apply
+if [[ $status -eq 0 ]] && grep -q "$packed_topic" "$stub_state/log"; then
+    ok 'apply_uses_the_packed_snapshot_topic'
+else
+    bad 'apply_uses_the_packed_snapshot_topic' "exit $status, log: $(head -3 "$stub_state/log")"
+fi
+
+REGISTER=other-register run_apply
+if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
+    ok 'apply_refuses_a_bundle_from_another_register'
+else
+    bad 'apply_refuses_a_bundle_from_another_register' "exit $status, calls=$(calls)"
+fi
+```
+
+The second check compares the topic across pack and apply. The third proves
+that `check_bundle` derives the request IDs again with the name of the run.
+A bundle packed for one register therefore stops before any live call.
+
 Add one prefix-refusal case. Pack a second bundle from a mapping whose first
 entry topic is `forward-register-first`. Apply it with
 `--register demo-chat-register`. Expect status 2 before any topic create.
-The `test-register-bundle.sh` suite stays offline and register-free, so it
-needs no change.
+
+`test-register-bundle.sh` calls `pack` and `check_bundle` many times. It
+needs one line, an export of `NODE_9_REGISTER_TOPIC_NAME=demo-chat-register`
+beside its `importer` value. It stays offline.
 
 **Step 2: Run the suite and watch the checks fail**
 
@@ -412,7 +451,10 @@ Expected: the new `FAIL` lines.
 
 - Add `import_register=''` beside `import_owner`.
 - In `apply_bundle` and `verify_bundle`, accept `--register`; then set the value before the preflight call. An explicit value must pass `node9_register_name_error`. With no flag, use `node9_register_name`, never `node9_register_value`, because a write mints topic names and receipt paths. A missing name returns 2.
-- In `import_preflight`, after `check_bundle`, add a prefix check. Every entry topic in `content-manifest.json` must start with `$import_register-fr-`. A mismatch returns 2 and names the topic. `pack` keeps no register, so its offline contract does not change.
+- In `pack_bundle`, accept `--register` and set `import_register` the same way, before the first `build_requests` call. `snapshot_topic` reads that value, so pack derives the same request IDs as apply. Pack stays offline and needs no installed home.
+- Update the `pack` usage line and the file header with the flag.
+- `check_bundle` runs before any live call in both `apply` and `verify`. It calls `build_requests` again with `import_register`. A bundle packed for another register stops there with status 2.
+- In `import_preflight`, after `check_bundle`, add a prefix check. Every entry topic in `content-manifest.json` must start with `$import_register-fr-`. A mismatch returns 2 and names the topic.
 - Replace every literal `register-index` with `$import_register`. The sites are lines 537, 539, 549, 567, 569, 575 (`ensure_index`), 1020 and 1028 (the pointer posts), 1031 (the index readback), and 1241 (`join_all`).
 - Pass the index to every importer read. Line 513 (`index_message_count`), line 1031 (`import_posts` readback), and line 1382 (`verify_pointers`) run `register-read --index "$import_register"`.
 - Line 1442 (`verify_reads`) runs the wrapper. Give it the name in its environment: `env NODE_9_REGISTER_TOPIC_NAME="$import_register" "$NODE9_DIR/bin/register" read --as "$user"`.
@@ -433,7 +475,8 @@ Expected: its existing count passes.
 **Step 6: Commit**
 
 ```bash
-git add node-9/bin/register-import shell-scripts/test-register-bootstrap.sh
+git add node-9/bin/register-import shell-scripts/test-register-bootstrap.sh \
+    shell-scripts/test-register-bundle.sh
 git commit -m "CHAT-jmnjvupr: Import into the named register"
 ```
 
@@ -529,7 +572,7 @@ Requirements the script must meet:
 - Refuse these cases from the design: a register name collision, a second short-name collision, an empty slug, a short name equal to the source snapshot short, and a section above 16,384 bytes.
 - Refuse a name collision in both directions. The first direction checks for a room that starts with `<name>-fr-`. The second checks whether `<name>` starts with `<other>-fr-` for a register that already exists.
 - Write the mapping JSON to a private temp directory. Include `version: 1`, `source_sha256`, `source_date` (the `--source-date` value, never the run date), `source_basis` (`register-create <name>`), `session` (the preamble range), and the entries. The date enters the bundle hash. A retry repeats it.
-- Call `pack_bundle`, then `apply_bundle --register`, then `verify_bundle --register`.
+- Call `pack_bundle --register <name>`, then `apply_bundle --register <name>`, then `verify_bundle --register <name>`.
 - Without a path: read the owner credentials with `import_credentials`, run `add-topic --name <name>` as the owner, run the ownership proof, run `join_all <name>`, and stop with status 0.
 
 **Step 4: Run the suite and check it passes**
@@ -556,7 +599,7 @@ git commit -m "CHAT-jmnjvupr: Add register-create"
 
 **Step 1: Add the register section to `node-9/README.md`**
 
-State the environment variable, the topic shapes, `register-create`, and the fact that install creates no register.
+State the environment variable, the topic shapes, `register-create`, and the fact that install creates no register. Add `--register NAME` to the `pack` usage line at line 309, and to the `apply` and `verify` usage lines.
 
 **Step 2: Add the superseded note to the 2026-10-17 design**
 

@@ -201,7 +201,9 @@ Two size rules apply:
 
 ### `register-import`
 
-- `apply` and `verify` take `--register <name>`. The default is the variable.
+- `pack`, `apply`, and `verify` take `--register <name>`. The default is the
+  variable. Pack derives every request ID from the name, so pack and apply
+  agree.
 - `ensure_index`, `index_message_count`, `topic_room_id`, and `join_all` use
   that name.
 - Every entry topic starts with `<name>-fr-`.
