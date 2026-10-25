@@ -508,6 +508,8 @@ git commit -m "CHAT-jmnjvupr: Import into the named register"
 **Files:**
 - Modify: `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommandsRegistrar.kt:98`
 - Test: `chat-shell/src/test/kotlin/com/demo/chat/test/commands/ShellCommandContractTests.kt:47`
+- Test: `chat-shell/src/test/kotlin/com/demo/chat/test/commands/PubSubRegisterReadTests.kt` (the two `parse("register-read")` calls take `--index register-index`)
+- Modify: `docs/SHELL-COMMAND-CONTRACT.md:72` (the row loses the default and marks `--index` required)
 
 **Interfaces:**
 - Produces: `register-read --index` has no default.
@@ -525,14 +527,27 @@ Expected: a failure naming the `index` default.
 
 In `registerReadCommand`: `.longName("index").required(true).type(String::class.java).build()`.
 
-**Step 4: Run the test and check it passes**
+The two `DefaultCommandParser(registry).parse("register-read")` calls in
+`PubSubRegisterReadTests.kt` then fail. Give each one the value
+`--index register-index`. The two tests still read the room of that name.
 
-Same command. Expected: BUILD SUCCESS.
+**Step 4: Run both command test classes and check they pass**
 
-**Step 5: Commit**
+Run: `mvn -q -pl chat-shell -am -Dtest='ShellCommandContractTests,PubSubRegisterReadTests' -Dsurefire.failIfNoSpecifiedTests=false test`
+Expected: BUILD SUCCESS.
+
+**Step 5: Change the contract document row**
+
+The row at line 72 becomes `--index` `String` with the word `required` and
+no default. The document is the contract that the registrar must agree with.
+
+**Step 6: Commit**
 
 ```bash
-git add chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommandsRegistrar.kt chat-shell/src/test/kotlin/com/demo/chat/test/commands/ShellCommandContractTests.kt
+git add chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommandsRegistrar.kt \
+    chat-shell/src/test/kotlin/com/demo/chat/test/commands/ShellCommandContractTests.kt \
+    chat-shell/src/test/kotlin/com/demo/chat/test/commands/PubSubRegisterReadTests.kt \
+    docs/SHELL-COMMAND-CONTRACT.md
 git commit -m "CHAT-jmnjvupr: Require an index on register-read"
 ```
 
