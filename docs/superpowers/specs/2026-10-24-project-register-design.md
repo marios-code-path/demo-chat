@@ -1,6 +1,6 @@
 # Project registers on node 9
 
-Status: draft for owner approval.
+Status: approved after review on 2026-10-25.
 See CHAT-jmnjvupr. Supersedes the single-register rule of
 `docs/superpowers/specs/2026-10-17-topic-register-design.md`.
 
