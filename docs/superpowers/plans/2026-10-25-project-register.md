@@ -509,6 +509,7 @@ git commit -m "CHAT-jmnjvupr: Import into the named register"
 - Modify: `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommandsRegistrar.kt:98`
 - Test: `chat-shell/src/test/kotlin/com/demo/chat/test/commands/ShellCommandContractTests.kt:47`
 - Test: `chat-shell/src/test/kotlin/com/demo/chat/test/commands/PubSubRegisterReadTests.kt` (the two `parse("register-read")` calls take `--index register-index`)
+- Test: `chat-shell/src/test/kotlin/com/demo/chat/test/cli/DirectOutputTests.kt:94` (the command line takes `--index register-index`)
 - Modify: `docs/SHELL-COMMAND-CONTRACT.md:72` (the row loses the default and marks `--index` required)
 
 **Interfaces:**
@@ -530,6 +531,10 @@ In `registerReadCommand`: `.longName("index").required(true).type(String::class.
 The two `DefaultCommandParser(registry).parse("register-read")` calls in
 `PubSubRegisterReadTests.kt` then fail. Give each one the value
 `--index register-index`. The two tests still read the room of that name.
+
+The command line of `register-read` in `DirectOutputTests.kt` takes the same
+value. A parser error would otherwise skip the command, so the test would
+stop checking the output path of that command.
 
 **Step 4: Run both command test classes and check they pass**
 
