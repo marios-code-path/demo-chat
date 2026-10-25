@@ -5,7 +5,7 @@
 # stand for two hosts. It answers the calls that the importer makes:
 #
 #   whoami
-#   register-read
+#   register-read --index <room>
 #   add-topic --name <topic>
 #   join <topic>
 #   post --topic <topic> [--requestId <id>]      Text comes from standard in.
@@ -16,7 +16,8 @@
 #
 # Failure switches:
 #   STUB_NO_CORE=1            Every call exits 69 and logs nothing.
-#   STUB_DENY_INDEX=1         A read of register-index gives a denied warning.
+#   STUB_REGISTER=<name>      The index room name. Default demo-chat-register.
+#   STUB_DENY_INDEX=1         A read of the index gives a denied warning.
 #   STUB_INDEX_PRE=<n>        The index starts with n messages.
 #   STUB_FAIL_AFTER_POST=<n>  The nth post stores its message, then exits 75.
 #   STUB_STALL_READ=1         A read sleeps past every test budget.
@@ -25,6 +26,9 @@
 set -uo pipefail
 
 state="${STUB_STATE:?Set STUB_STATE}"
+# The index room carries the register name. A read names its room with
+# --index. See CHAT-jmnjvupr.
+register_room="${STUB_REGISTER:-demo-chat-register}"
 mkdir -p "$state/messages" "$state/requests" "$state/joins"
 [[ -f "$state/count" ]] || printf '0\n' > "$state/count"
 [[ -f "$state/posts" ]] || printf '0\n' > "$state/posts"
@@ -72,12 +76,12 @@ seed_index() {
     [[ -f "$state/seeded" ]] && return 0
     : > "$state/seeded"
     (( want == 0 )) && return 0
-    printf 'register-index\n' >> "$state/topics"
+    printf '%s\n' "$register_room" >> "$state/topics"
     for (( index = 0; index < want; index++ )); do
         id="$(next_id)"
         printf 'seed %s\n' "$index" > "$state/seed-text"
-        record register-index "$id" "$state/seed-text" \
-            >> "$state/messages/register-index.jsonl"
+        record "$register_room" "$id" "$state/seed-text" \
+            >> "$state/messages/$register_room.jsonl"
     done
     rm -f "$state/seed-text"
 }
@@ -94,6 +98,22 @@ case "$command_name" in
         exit 0
         ;;
     register-read)
+        index=''
+        while (( $# )); do
+            case "$1" in
+                --index)
+                    index="${2:-}"
+                    shift 2 || true
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+        if [[ -z "$index" ]]; then
+            printf 'stub: register-read needs --index\n' >&2
+            exit 2
+        fi
         if [[ "${STUB_STALL_READ:-0}" == '1' ]]; then
             sleep 120
             exit 0
@@ -104,19 +124,20 @@ case "$command_name" in
             exit 0
         fi
         if [[ ! -f "$state/topics" ]] \
-              || ! grep -qx 'register-index' "$state/topics"; then
-            printf 'stub: no room has the name register-index\n' >&2
+              || ! grep -qx "$index" "$state/topics"; then
+            printf 'stub: no room has the name %s\n' "$index" >&2
             exit 1
         fi
         if [[ "${CHAT_SHELL_USER:-}" != 'Mario' ]] \
-              && ! grep -qx "${CHAT_SHELL_USER:-} register-index" \
+              && ! grep -qx "${CHAT_SHELL_USER:-} $index" \
                   "$state/joins/all" 2> /dev/null; then
-            jq -cS -n '{type: "warning", kind: "denied-index",
-                        topic: "register-index", reason: "Access Denied"}'
+            jq -cS -n --arg topic "$index" \
+                '{type: "warning", kind: "denied-index",
+                  topic: $topic, reason: "Access Denied"}'
             exit 0
         fi
-        [[ -f "$state/messages/register-index.jsonl" ]] \
-            && cat "$state/messages/register-index.jsonl"
+        [[ -f "$state/messages/$index.jsonl" ]] \
+            && cat "$state/messages/$index.jsonl"
         exit 0
         ;;
     add-topic)
@@ -209,7 +230,7 @@ case "$command_name" in
             exit 0
         fi
         [[ -n "${STUB_READ_SLEEP:-}" ]] && sleep "$STUB_READ_SLEEP"
-        if [[ "${STUB_DENY_INDEX:-0}" == '1' && "$topic" == 'register-index' ]]; then
+        if [[ "${STUB_DENY_INDEX:-0}" == '1' && "$topic" == "$register_room" ]]; then
             jq -cS -n '{type: "warning", warning: "denied-index"}'
             exit 0
         fi

@@ -337,6 +337,7 @@ git commit -m "CHAT-jmnjvupr: Build entry topics from the register name"
 - Modify: `node-9/bin/register-import` (`pack_bundle`, `build_requests`, `apply_bundle`, `verify_bundle`, `import_preflight`, `ensure_index`, `index_message_count`, `import_posts`, `verify_pointers`, `verify_reads`, `snapshot_topic`, `join_all`, the receipt path)
 - Test: `shell-scripts/test-register-bootstrap.sh`
 - Test: `shell-scripts/test-register-bundle.sh` (takes the register name, so `pack` and `check_bundle` keep working)
+- Test: `shell-scripts/fixtures/register-stub-cli` (reads a named index room and needs `--index`)
 
 **Interfaces:**
 - Consumes: `node9_register_name` and `node9_register_name_error` from Task 1.
@@ -463,6 +464,11 @@ Expected: the new `FAIL` lines.
 - `snapshot_topic`: `printf '%s-fr-snapshot-%s\n' "$import_register" "${1:0:12}"`.
 - Ownership: compare the proof to `$import_owner`.
 - Receipts: `$NODE9_DIR/data/register-import/$import_register/$bundle_hash`.
+- The stub CLI reads the room that `--index` names, and it refuses a read
+  with no `--index`. Its `STUB_REGISTER` value names the seeded room.
+- A library caller sets `import_register` itself. The suite calls
+  `import_set_register ""` and sets `import_owner` before `ensure_index` or
+  `check_bundle`. `run_apply` clears the receipt directory of every register.
 
 **Step 4: Run the suite and check it passes**
 
@@ -478,7 +484,8 @@ Expected: its existing count passes.
 
 ```bash
 git add node-9/bin/register-import shell-scripts/test-register-bootstrap.sh \
-    shell-scripts/test-register-bundle.sh
+    shell-scripts/test-register-bundle.sh \
+    shell-scripts/fixtures/register-stub-cli
 git commit -m "CHAT-jmnjvupr: Import into the named register"
 ```
 
