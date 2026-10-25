@@ -175,8 +175,8 @@ the snapshot topic.
 
 The shape rule reserves the whole snapshot name space. The narrower rule
 holds for one source hash alone. A test file needs a 48 bit hash prefix to
-reach that case, so the offline suite cannot construct it. The shape rule
-holds for every source hash, and one fixed file exercises it.
+reach that case, so the offline suite cannot practically construct it. The
+shape rule holds for every source hash, and one fixed file exercises it.
 
 Two size rules apply:
 
