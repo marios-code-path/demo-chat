@@ -123,12 +123,23 @@ makes one without any TLS material.
 ### An image repository prefix, only for `--build`
 
 ```bash
-export IMAGE_REPO_PREFIX=harbor.lan/chat
+export IMAGE_REPO_PREFIX=registry.example.invalid/chat
 ```
+
+Replace the example prefix with your registry path before a build or push.
 
 **This variable is optional.** The parent pom defaults `image.repo` to
 `docker.io/library`, and the `image-repo-from-env` profile takes this value
 when you set one. Set it only to name a different registry.
+
+The POMs for `chat-deploy`, `chat-deploy-memory`, `chat-deploy-cassandra`,
+`chat-deploy-redis`, `chat-deploy-kafka`, and `chat-authorization-server` use
+`${image.repo}`. Direct builds of `chat-shell`, `chat-web`, `chat-gateway`, and
+`chat-deploy-memory-integration-test` use fixed `docker.io/library` names.
+
+`chat-build` selects `chat-deploy` for its REST, gateway, and shell services.
+The prefix therefore affects those service builds too. It selects
+`chat-authorization-server` for authserv.
 
 `CHAT-gkwqnnxn` added the default. Before 2026-09-22 only
 `shell-scripts/build.sh` defaulted it, and `chat-build ... --build` failed
@@ -206,6 +217,37 @@ before you build, or supply the property when you run the image.
 
 *Measured on 2026-09-22: the Cassandra image builds and starts. The memory
 image was built and run later through the container launcher.*
+
+### Record images for a push
+
+`chat-build ... --build --image-manifest PATH` records the image of each
+successful build. `CHAT_IMAGE_MANIFEST` sets the same path. One path serves one
+deployment run, so builds in that run leave one list for the push.
+
+```bash
+set -euo pipefail
+export CHAT_IMAGE_MANIFEST=/tmp/release-2026-10-24.json
+shell-scripts/chat-build core --cassandra --build --uuid --node-id 9 --notls
+shell-scripts/chat-build rest --client --build --uuid --node-id 10 --notls
+shell-scripts/image-references "$CHAT_IMAGE_MANIFEST" | while IFS= read -r image; do
+    docker push "$image"
+done
+```
+
+Each record holds the image reference, image id, architecture, service, and
+module. Docker supplies a repository digest only when it reports one for the
+same repository. Maven supplies the image reference from the selected module.
+
+The build writes a record after Maven succeeds and Docker confirms the image.
+A failed build adds nothing. A lock protects concurrent writes to one manifest.
+The writer renames a temporary file to replace the manifest as one operation.
+The manifest has file mode `0600`. Only its owner can read it.
+
+If a path holds non-JSON data or another JSON type, the build returns status 1.
+The writer leaves that file unchanged.
+
+Use a new path for each deployment run. An old path can contain images from
+an earlier run.
 
 ### Launch the core container
 

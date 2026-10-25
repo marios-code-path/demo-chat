@@ -20,6 +20,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Test image manifest
+      run: ./shell-scripts/test-image-manifest.sh
+
     - name: Set up JDK 25
       uses: actions/setup-java@v5
       with:

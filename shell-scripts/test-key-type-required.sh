@@ -82,7 +82,11 @@ expect_plan dry-run-memory 0 --key-type long -- -Dapp.key.type=long
 expect_plan dry-run-memory 0 --key-type uuid -- -Dapp.key.type=uuid
 expect_plan dry-run-shell 1 --key-type long -- -Dapp.key.type=long
 expect_plan deploy-core-cassandra-lucene-redis 16 --key-type long --dry-run -- -Dapp.key.type=long
-expect_plan build-shell --dry-run -- 'mvn -B -ntp -pl chat-shell -am'
+expected_shell_plan='mvn -B -ntp -pl chat-shell,chat-shell-host -am'
+# chat-shell-host joined that reactor in CHAT-bgbyqvgd, because the ! command
+# of the shell launch lives there. This pattern followed one module alone, so
+# the case failed from that commit. See CHAT-jmnjvupr.
+expect_plan build-shell --dry-run -- "$expected_shell_plan"
 
 if ((failures > 0)); then
     echo "$failures case(s) failed"

@@ -48,6 +48,27 @@ chat-build core --memory --run --notls --node-id 0 --dry-run --key-type long
 `JAVA_TOOL_OPTIONS` flag one per line, and the env file path. It is the fastest
 way to answer "why is this property set".
 
+## Build image manifest
+
+Pass `--image-manifest PATH` with `--build` to record each successful image
+build. `CHAT_IMAGE_MANIFEST` sets the default path. Reuse one path for the
+builds in one deployment run. Use a new path for the next run.
+
+```bash
+./shell-scripts/chat-build core --cassandra --build --notls --node-id 9 --uuid \
+    --image-manifest /tmp/release-images.json
+./shell-scripts/image-references /tmp/release-images.json
+```
+
+Each record holds the image reference, image id, architecture, service, and
+module. A matching repository digest is optional. The writer locks the file
+and replaces it as one operation. `image-references` prints one reference per
+line. Use its output for a push command.
+
+The path has no effect with `--run` or `--dry-run`. Without a path, the build
+does not query Docker for manifest data. The manifest test runs with
+`just check-image-manifest`.
+
 ## Container launch
 
 `chat-deploy` builds one core RSocket image through `chat-build` and starts one
@@ -359,6 +380,7 @@ not make one cheaper to add.
 | `--init PHASES` | Comma-separated: `users`, `rootkeys`. |
 | `--profile NAME` | Additional Spring profile. Repeatable. |
 | `--run` / `--build` | `spring-boot:run` (default) or `spring-boot:build-image`. |
+| `--image-manifest PATH` | Record the image after a successful `--build`. |
 | `--bake` | Pass options via the env file rather than inheriting them. |
 | `--env-file PATH` | Where to write the env file. |
 | `--dry-run` | Print everything, execute nothing. |
@@ -493,6 +515,7 @@ moves the whole core/rest allocation.
 | `KAFKA_BOOTSTRAP_SERVERS` | Kafka brokers. Defaults to `localhost:9092`. |
 | `ROOTKEY_SOURCE_URI` | Peer to fetch root keys from. Defaults to `http://$CORE_HOST:$CORE_MGMT_PORT`. |
 | `DEBUG_SUSPEND` | `y` to have the JDWP agent wait for a debugger. Defaults to `n`. |
+| `CHAT_IMAGE_MANIFEST` | Default path for `--image-manifest`. Used only with `--build`. |
 
 ---
 

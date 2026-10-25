@@ -23,7 +23,10 @@ Python 3.10+ stdlib only.
 from __future__ import annotations
 
 import argparse
+import fcntl
+import json
 import os
+import tempfile
 import re
 import shlex
 import subprocess
@@ -997,6 +1000,137 @@ class BuildContext:
         path.write_text(self.env_file_content())
         return path
 
+    def image_reference(self, env: dict[str, str]) -> str:
+        """The image reference of this module, as the POM composes it.
+
+        Some modules read ${image.repo}; others use fixed image names.
+        chat-deploy has a shell resolver for its launch path. This path asks
+        Maven for the effective POM value used by build-image.
+        """
+        cmd = [
+            "mvn",
+            "-B",
+            "-ntp",
+            "-q",
+            f"-DimageName={self.image_name}",
+            "-P" + ",".join(self.maven_profiles()),
+            "-DforceStdout",
+            "-Dexpression=appImageName",
+            "help:evaluate",
+        ]
+        answer = subprocess.run(cmd, cwd=self.module_dir(), env=env,
+                                capture_output=True, text=True)
+        if answer.returncode != 0:
+            return ""
+        reference = answer.stdout.strip().splitlines()[-1].strip() if answer.stdout.strip() else ""
+        if reference == "null" or "${" in reference:
+            return ""
+        return reference
+
+    def record_image(self, env: dict[str, str]) -> int:
+        """Append this build's image to the manifest. Return 0 on success.
+
+        The record holds the reference, the image id, and the architecture.
+        The repository digest is optional, because a local image holds none
+        until a push gives it one. The write replaces a record of the same
+        reference, and it reaches the file in one rename. See CHAT-jmnjvupr.
+        """
+        path = Path(self.args.image_manifest).expanduser()
+        reference = self.image_reference(env)
+        if not reference:
+            print("chat-build: the module reports no image name, so the manifest "
+                  "takes no record.", file=sys.stderr)
+            return 1
+        inspect = subprocess.run(
+            ["docker", "image", "inspect", "--format", "{{json .}}", reference],
+            capture_output=True, text=True)
+        if inspect.returncode != 0:
+            print(f"chat-build: docker holds no image {reference}, so the manifest "
+                  f"takes no record.", file=sys.stderr)
+            return 1
+        try:
+            details = json.loads(inspect.stdout.strip().splitlines()[0])
+        except (json.JSONDecodeError, IndexError):
+            print(f"chat-build: the image query of {reference} gives no JSON object.",
+                  file=sys.stderr)
+            return 1
+        if (not isinstance(details, dict)
+                or not isinstance(details.get("Id"), str)
+                or not details["Id"]
+                or not isinstance(details.get("Architecture"), str)
+                or not details["Architecture"]):
+            print(f"chat-build: the image query of {reference} has no image id "
+                  "or architecture.", file=sys.stderr)
+            return 1
+        record = {
+            "reference": reference,
+            "imageId": details.get("Id", ""),
+            "architecture": details.get("Architecture", ""),
+            "service": self.service.name,
+            "module": str(self.module_dir().name),
+        }
+        digests = details.get("RepoDigests") or []
+        # A colon before the last slash belongs to a registry port.
+        repository = (reference.rsplit(":", 1)[0]
+                      if ":" in reference.rsplit("/", 1)[-1] else reference)
+        if isinstance(digests, list):
+            matching = next((digest for digest in digests
+                             if isinstance(digest, str)
+                             and digest.startswith(repository + "@")), None)
+            if matching:
+                record["digest"] = matching
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # One lock holds the read, the change, and the write. Two builds can
+        # share one manifest of a deployment run, and an unlocked pair loses
+        # records: six parallel builds left two. The lock file stays beside the
+        # manifest. See CHAT-jmnjvupr.
+        lock_path = path.with_name(path.name + ".lock")
+        with open(lock_path, "a+") as lock:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                records = []
+                if path.is_file():
+                    try:
+                        text = path.read_text()
+                        earlier = json.loads(text) if text.strip() else []
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        print(f"chat-build: {path} holds no UTF-8 JSON, so the manifest "
+                              f"takes no record. The file stays as it is.",
+                              file=sys.stderr)
+                        return 1
+                    # A JSON value of another type is somebody else's file.
+                    # The build refuses it, and it changes nothing.
+                    if not isinstance(earlier, list):
+                        print(f"chat-build: {path} holds a JSON "
+                              f"{type(earlier).__name__}, and a manifest is a list. "
+                              f"The file stays as it is.", file=sys.stderr)
+                        return 1
+                    if any(not isinstance(item, dict)
+                           or not isinstance(item.get("reference"), str)
+                           or not item["reference"]
+                           or any(char.isspace() for char in item["reference"])
+                           for item in earlier):
+                        print(f"chat-build: {path} holds an invalid image record. "
+                              "The file stays as it is.", file=sys.stderr)
+                        return 1
+                    records = [r for r in earlier
+                               if r["reference"] != reference]
+                records.append(record)
+                # The stage file carries a unique name, so two writers never
+                # share one path, and the rename reaches the manifest whole.
+                handle, stage_name = tempfile.mkstemp(dir=str(path.parent),
+                                                      prefix=path.name + ".")
+                try:
+                    with os.fdopen(handle, "w") as stage:
+                        stage.write(json.dumps(records, indent=2, sort_keys=True) + "\n")
+                    os.replace(stage_name, path)
+                finally:
+                    Path(stage_name).unlink(missing_ok=True)
+            finally:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        print(f"chat-build: {reference} reaches {path}", file=sys.stderr)
+        return 0
+
     def execute(self) -> int:
         env_file = self.write_env_file()
         print(f"ENV_FILE={env_file}", file=sys.stderr)
@@ -1010,7 +1144,16 @@ class BuildContext:
 
         cmd = self.compose_maven_command()
         print("+ " + " ".join(shlex.quote(c) for c in cmd), file=sys.stderr)
-        return subprocess.run(cmd, cwd=self.module_dir(), env=env).returncode
+        status = subprocess.run(cmd, cwd=self.module_dir(), env=env).returncode
+        # The manifest takes a record after the build passes alone. A failed
+        # build produces no image, so it names nothing to push.
+        if status == 0 and self.args.build and self.args.image_manifest:
+            try:
+                return self.record_image(env)
+            except OSError as error:
+                print(f"chat-build: image manifest failed: {error}", file=sys.stderr)
+                return 1
+        return status
 
 
 def find_consul_host() -> str:
@@ -1068,6 +1211,11 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                       help="run locally via spring-boot:run (default)")
     goal.add_argument("--build", action="store_true",
                       help="build a container image via spring-boot:build-image")
+    parser.add_argument("--image-manifest", default=os.environ.get("CHAT_IMAGE_MANIFEST", ""),
+                        metavar="PATH",
+                        help="with --build, append the image to this JSON manifest. One path "
+                             "serves one deployment run, and a later push reads the list. "
+                             "CHAT_IMAGE_MANIFEST sets the default.")
 
     parser.add_argument("--init", default="", metavar="PHASES",
                         help="init phases, comma separated: users,rootkeys")

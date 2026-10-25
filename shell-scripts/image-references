@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Print the image reference of every record of one build manifest.
+
+    image-references MANIFEST
+
+chat-build --image-manifest writes the manifest of one deployment run. This
+command prints one reference on each line, in the order of the file, so a push
+loop reads them directly:
+
+    shell-scripts/image-references run.json | while read -r ref; do
+        docker push "$ref"
+    done
+
+Maven owns the standard output of a build, so no caller can read references
+from a build log. This command reads the file instead. See CHAT-jmnjvupr.
+
+Status 0 prints the list. Status 2 names a file that holds no manifest: an
+absent file, text that is no JSON, a JSON value of another type, or a record
+with no reference.
+"""
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+
+def main() -> int:
+    if len(sys.argv) != 2:
+        print("usage: image-references MANIFEST", file=sys.stderr)
+        return 2
+    path = Path(sys.argv[1]).expanduser()
+    try:
+        if not path.is_file():
+            print(f"image-references: no file at {path}", file=sys.stderr)
+            return 2
+        records = json.loads(path.read_text())
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as error:
+        print(f"image-references: cannot read UTF-8 JSON from {path}: {error}",
+              file=sys.stderr)
+        return 2
+    if not isinstance(records, list):
+        print(f"image-references: {path} holds a JSON {type(records).__name__}, "
+              f"and a manifest is a list.", file=sys.stderr)
+        return 2
+    lines = []
+    for record in records:
+        if (not isinstance(record, dict)
+                or not isinstance(record.get("reference"), str)
+                or not record["reference"]
+                or any(char.isspace() for char in record["reference"])):
+            print(f"image-references: {path} holds an invalid reference.",
+                  file=sys.stderr)
+            return 2
+        lines.append(record["reference"])
+    for line in lines:
+        print(line)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
