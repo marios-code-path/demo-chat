@@ -30,10 +30,10 @@ jobs:
       run: ./shell-scripts/test-node-9-register.sh
 
     - name: Test the register import bundle
-      run: ./shell-scripts/test-register-bundle.sh
+      run: bash shell-scripts/test-register-bundle.sh
 
     - name: Test the register import on a prepared host
-      run: ./shell-scripts/test-register-bootstrap.sh
+      run: bash shell-scripts/test-register-bootstrap.sh
 
     - name: Set up JDK 25
       uses: actions/setup-java@v5

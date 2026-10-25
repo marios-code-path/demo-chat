@@ -34,9 +34,9 @@ check-node-9-install-secrets:
 
 # Check the register wrapper, the import bundle, and the prepared-host import. Starts no node.
 check-register:
-	./shell-scripts/test-node-9-register.sh
-	./shell-scripts/test-register-bundle.sh
-	./shell-scripts/test-register-bootstrap.sh
+	bash shell-scripts/test-node-9-register.sh
+	bash shell-scripts/test-register-bundle.sh
+	bash shell-scripts/test-register-bootstrap.sh
 
 # Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
