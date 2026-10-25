@@ -536,9 +536,9 @@ The command line of `register-read` in `DirectOutputTests.kt` takes the same
 value. A parser error would otherwise skip the command, so the test would
 stop checking the output path of that command.
 
-**Step 4: Run both command test classes and check they pass**
+**Step 4: Run the three test classes and check they pass**
 
-Run: `mvn -q -pl chat-shell -am -Dtest='ShellCommandContractTests,PubSubRegisterReadTests' -Dsurefire.failIfNoSpecifiedTests=false test`
+Run: `mvn -q -pl chat-shell -am -Dtest='ShellCommandContractTests,PubSubRegisterReadTests,DirectOutputTests' -Dsurefire.failIfNoSpecifiedTests=false test`
 Expected: BUILD SUCCESS.
 
 **Step 5: Change the contract document row**
