@@ -17,7 +17,7 @@
 - A register name holds at most 37 characters.
 - One source section holds at most 16,384 bytes.
 - The pointer line form is `<key> | <topic> | <metadata> | <title>`.
-- A command with no register variable and no `--register` stops with status 2.
+- A command that reads or writes a register room stops with status 2 when it has no register variable and no `--register` value. `register-create` takes the name as an argument. `register-import pack` touches no room.
 - No command prints a secret value.
 - Every commit message starts `CHAT-jmnjvupr: `.
 
