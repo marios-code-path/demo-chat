@@ -562,7 +562,7 @@ git commit -m "CHAT-jmnjvupr: Require an index on register-read"
 
 **Files:**
 - Create: `node-9/bin/register-create`
-- Test: `shell-scripts/test-register-bootstrap.sh`
+- Test: `shell-scripts/test-register-bootstrap.sh` (it also answers the room list)
 
 **Interfaces:**
 - Consumes: the importer functions `pack_bundle`, `apply_bundle`, `verify_bundle` with `REGISTER_IMPORT_LIB=1`.
@@ -590,9 +590,11 @@ Add a fixture with a preamble and three sections. Two sections share a heading. 
 | `create_changed_date_stops` | a second run with a new `--source-date` stops with status 1 |
 | `create_date_is_required` | a path and no `--source-date` stops with status 2 |
 | `create_missing_owner_refuses` | status 2 |
+| `create_empty_owner_refuses` | an empty `--as` value stops with status 2 |
 | `create_path_must_be_absolute` | status 2 |
 | `create_refuses_a_symlink` | status 2 |
 | `create_resumes` | a second run with the same receipts gives status 0 |
+| `create_empty_resumes` | a second run with no path gives status 0 and makes no second room |
 
 **Step 2: Run the suite and watch the checks fail**
 
@@ -610,8 +612,9 @@ Requirements the script must meet:
 - With a path: check absolute, regular file, no link, readable.
 - Derive entries in one `awk` pass. Record for each `## ` heading: the line number, the heading text, and the end line of the first paragraph.
 - Compute the source SHA-256. Derive each short name, key, and title per the spec.
-- Refuse these cases from the design: a register name collision, a second short-name collision, an empty slug, a short name equal to the source snapshot short, and a section above 16,384 bytes.
-- Refuse a name collision in both directions. The first direction checks for a room that starts with `<name>-fr-`. The second checks whether `<name>` starts with `<other>-fr-` for a register that already exists.
+- Refuse these cases from the design: a register name collision, a second short-name collision, an empty slug, a short name of the snapshot shape, and a section above 16,384 bytes.
+- Refuse every short name of the shape `^snapshot-[0-9a-f]{12}$`. That rule covers the design rule for the source hash, and one fixed source file can exercise it.
+- Refuse a name collision in both directions. The first direction checks for a room that starts with `<name>-fr-`. The second checks whether `<name>` starts with `<other>-fr-` for a register that already exists. A room of this run's own topics is not a collision, so a retry resumes.
 - Write the mapping JSON to a private temp directory. Include `version: 1`, `source_sha256`, `source_date` (the `--source-date` value, never the run date), `source_basis` (`register-create <name>`), `session` (the preamble range), and the entries. The date enters the bundle hash. A retry repeats it.
 - Call `pack_bundle --register <name>`, then `apply_bundle --register <name>`, then `verify_bundle --register <name>`.
 - Without a path: read the owner credentials with `import_credentials`, run `add-topic --name <name>` as the owner, run the ownership proof, run `join_all <name>`, and stop with status 0.

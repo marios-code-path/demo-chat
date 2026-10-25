@@ -101,6 +101,17 @@ room_id_of() {
 }
 owner="$(cat "$state/owner" 2> /dev/null || printf 'Mario\n')"
 case "$query" in
+    # The room list answers the name-collision check of register-create.
+    *'FROM chat_uuid.chat_room_name'*)
+        printf '\n name\n'
+        printf -- '------\n'
+        if [[ -f "$state/topics" ]]; then
+            while IFS= read -r name; do
+                [[ -n "$name" ]] && printf ' %s\n' "$name"
+            done < "$state/topics"
+        fi
+        exit 0
+        ;;
     *'FROM chat_uuid.chat_room WHERE name = '*'ALLOW FILTERING;'*)
         name="$(printf '%s' "$query" | sed -n "s/.*name = '\\([^']*\\)'.*/\\1/p")"
         if [[ -f "$state/topics" ]] && grep -qx "$name" "$state/topics"; then
@@ -992,6 +1003,271 @@ if [[ -z "$member_names" ]]; then
     ok 'importer_holds_no_member_name'
 else
     bad 'importer_holds_no_member_name' "$member_names"
+fi
+
+# -- register-create -----------------------------------------------------
+
+# A source with a preamble and three sections. Two sections share a heading.
+create_source="$work/create-source.md"
+cat > "$create_source" <<'EOF'
+Register for the offline suite.
+## First heading
+Paragraph one.
+## Second heading CHAT-abc123
+Paragraph two.
+## First heading
+Paragraph three.
+EOF
+
+create="$install_home/bin/register-create"
+
+# run_create [ENV ASSIGNMENT...] -- ARGS...
+# Run the installed register-create with the stub CLI and the stub cqlsh. The
+# run is bounded, so a parser loop fails the check instead of hanging.
+run_create() {
+    out="$(bounded 60 env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
+        CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
+        "$@" 2>&1)"
+    status=$?
+}
+
+# One create from a source packs, applies, and verifies three entries.
+reset_stub
+rm -rf "$install_home/data/register-import"
+run_create "$create" demo-chat-register "$create_source" \
+    --source-date 2026-10-22 --as Mario
+create_topics="$(ls "$stub_state/messages" 2> /dev/null \
+    | sed 's/\.jsonl$//' | sort)"
+create_want="$(printf '%s\n' \
+    demo-chat-register \
+    demo-chat-register-fr-first-heading \
+    demo-chat-register-fr-first-heading-3 \
+    demo-chat-register-fr-second-heading-chat-abc123 \
+    "demo-chat-register-fr-snapshot-$(sha_of "$create_source" | cut -c 1-12)" \
+    | sort)"
+if [[ $status -eq 0 && "$create_topics" == "$create_want" ]]; then
+    ok 'create_derives_entries'
+else
+    bad 'create_derives_entries' \
+        "exit $status, topics: $create_topics, output: $out"
+fi
+
+create_index="$stub_state/messages/demo-chat-register.jsonl"
+if grep -q 'CHAT-abc123 | demo-chat-register-fr-second-heading-chat-abc123' \
+    "$create_index" 2> /dev/null; then
+    ok 'create_key_from_issue_id'
+else
+    bad 'create_key_from_issue_id' \
+        "the index holds: $(cat "$create_index" 2> /dev/null)"
+fi
+
+if grep -q 'section-1 | demo-chat-register-fr-first-heading' \
+    "$create_index" 2> /dev/null; then
+    ok 'create_key_fallback'
+else
+    bad 'create_key_fallback' \
+        "the index holds: $(cat "$create_index" 2> /dev/null)"
+fi
+
+if grep -q 'section-3 | demo-chat-register-fr-first-heading-3' \
+    "$create_index" 2> /dev/null; then
+    ok 'create_repeated_slug_suffix'
+else
+    bad 'create_repeated_slug_suffix' \
+        "the index holds: $(cat "$create_index" 2> /dev/null)"
+fi
+
+# A second run with the same date finds the receipts and stores no message.
+create_messages="$(cat "$stub_state"/messages/*.jsonl 2> /dev/null | grep -c .)"
+run_create "$create" demo-chat-register "$create_source" \
+    --source-date 2026-10-22 --as Mario
+create_hashes="$(ls "$install_home/data/register-import/demo-chat-register" \
+    2> /dev/null | wc -l | tr -d ' ')"
+retry_case='ok'
+if [[ $status -ne 0 ]]; then
+    retry_case="exit $status, output: $out"
+elif [[ "$create_hashes" != '1' ]]; then
+    retry_case="the register holds $create_hashes bundle hashes"
+fi
+if [[ "$retry_case" == 'ok' ]]; then
+    ok 'create_retry_same_date_resumes'
+else
+    bad 'create_retry_same_date_resumes' "$retry_case"
+fi
+
+create_messages_after="$(cat "$stub_state"/messages/*.jsonl 2> /dev/null \
+    | grep -c .)"
+if [[ "$retry_case" == 'ok' \
+      && "$create_messages_after" == "$create_messages" ]]; then
+    ok 'create_resumes'
+else
+    bad 'create_resumes' \
+        "messages were $create_messages and are $create_messages_after, output: $out"
+fi
+
+# A new date makes a new bundle, and the occupied index holds no receipt.
+run_create "$create" demo-chat-register "$create_source" \
+    --source-date 2026-10-23 --as Mario
+if [[ $status -eq 1 ]]; then
+    ok 'create_changed_date_stops'
+else
+    bad 'create_changed_date_stops' "exit $status, output: $out"
+fi
+
+# A second short-name collision names both sections.
+cat > "$work/create-collision.md" <<'EOF'
+Preamble.
+## First-3
+Body.
+## First
+Body.
+## First
+Body.
+EOF
+reset_stub
+run_create "$create" demo-chat-register "$work/create-collision.md" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 2 && "$out" == *'section 1'* && "$out" == *'section 3'* \
+      && "$(calls)" -eq 0 ]]; then
+    ok 'create_second_collision_refuses'
+else
+    bad 'create_second_collision_refuses' "exit $status, output: $out"
+fi
+
+# A heading with no letter or digit has no short name.
+printf 'Preamble.\n## ---\nBody.\n' > "$work/create-empty-slug.md"
+reset_stub
+run_create "$create" demo-chat-register "$work/create-empty-slug.md" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 2 && "$out" == *'section 1'* \
+      && "$out" == *'short name'* ]]; then
+    ok 'create_empty_slug_refuses'
+else
+    bad 'create_empty_slug_refuses' "exit $status, output: $out"
+fi
+
+# A short name of the snapshot shape never takes the snapshot topic.
+printf 'Preamble.\n## Snapshot abcdef012345\nBody.\n' \
+    > "$work/create-snapshot.md"
+reset_stub
+run_create "$create" demo-chat-register "$work/create-snapshot.md" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 2 && "$out" == *'section 1'* \
+      && "$out" == *'snapshot'* ]]; then
+    ok 'create_snapshot_collision_refuses'
+else
+    bad 'create_snapshot_collision_refuses' "exit $status, output: $out"
+fi
+
+# One section above the range limit refuses, and names the section.
+{
+    printf 'Preamble.\n## Big\n'
+    head -c 17000 /dev/zero | tr '\0' 'x'
+    printf '\n'
+} > "$work/create-oversize.md"
+reset_stub
+run_create "$create" demo-chat-register "$work/create-oversize.md" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 2 && "$out" == *'section 1'* && "$out" == *'16384'* ]]; then
+    ok 'create_oversize_section_refuses'
+else
+    bad 'create_oversize_section_refuses' "exit $status, output: $out"
+fi
+
+# A room of the name space stops the create.
+reset_stub
+printf 'demo-chat-register-fr-x\n' > "$stub_state/topics"
+run_create "$create" demo-chat-register "$create_source" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 1 && "$out" == *'demo-chat-register-fr-x'* ]]; then
+    ok 'create_name_collision_refuses'
+else
+    bad 'create_name_collision_refuses' "exit $status, output: $out"
+fi
+
+# A name inside the name space of another register stops the create.
+reset_stub
+printf 'demo-chat\n' > "$stub_state/topics"
+run_create "$create" demo-chat-fr-x-register "$create_source" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 1 && "$out" == *'demo-chat'* ]]; then
+    ok 'create_name_collision_reverse'
+else
+    bad 'create_name_collision_reverse' "exit $status, output: $out"
+fi
+
+# A path needs one date, and a date needs one path.
+reset_stub
+run_create "$create" demo-chat-register "$create_source" --as Mario
+if [[ $status -eq 2 && "$out" == *'--source-date'* && "$(calls)" -eq 0 ]]; then
+    ok 'create_date_is_required'
+else
+    bad 'create_date_is_required' "exit $status, output: $out"
+fi
+
+reset_stub
+run_create "$create" demo-chat-register "$create_source" \
+    --source-date 2026-10-22
+if [[ $status -eq 2 && "$out" == *'--as'* && "$(calls)" -eq 0 ]]; then
+    ok 'create_missing_owner_refuses'
+else
+    bad 'create_missing_owner_refuses' "exit $status, output: $out"
+fi
+
+reset_stub
+run_create "$create" demo-chat-register "$create_source" \
+    --source-date 2026-10-22 --as ''
+if [[ $status -eq 2 && "$out" == *'--as'* && "$(calls)" -eq 0 ]]; then
+    ok 'create_empty_owner_refuses'
+else
+    bad 'create_empty_owner_refuses' "exit $status, output: $out"
+fi
+
+reset_stub
+run_create "$create" demo-chat-register create-source.md \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 2 && "$out" == *'not absolute'* && "$(calls)" -eq 0 ]]; then
+    ok 'create_path_must_be_absolute'
+else
+    bad 'create_path_must_be_absolute' "exit $status, output: $out"
+fi
+
+rm -f "$work/create-link.md"
+ln -s "$create_source" "$work/create-link.md"
+reset_stub
+run_create "$create" demo-chat-register "$work/create-link.md" \
+    --source-date 2026-10-22 --as Mario
+if [[ $status -eq 2 && "$out" == *'symbolic link'* && "$(calls)" -eq 0 ]]; then
+    ok 'create_refuses_a_symlink'
+else
+    bad 'create_refuses_a_symlink' "exit $status, output: $out"
+fi
+
+# No path creates one empty room, and a second run completes again.
+reset_stub
+rm -rf "$install_home/data/register-import"
+run_create "$create" demo-chat-register --as Mario
+empty_case='ok'
+if [[ $status -ne 0 ]]; then
+    empty_case="exit $status, output: $out"
+elif [[ "$(grep -c '^add-topic --name demo-chat-register$' \
+        "$stub_state/log" 2> /dev/null)" != '1' ]]; then
+    empty_case="the log: $(cat "$stub_state/log" 2> /dev/null)"
+fi
+if [[ "$empty_case" == 'ok' ]]; then
+    ok 'create_empty_register'
+else
+    bad 'create_empty_register' "$empty_case"
+fi
+
+run_create "$create" demo-chat-register --as Mario
+if [[ $status -eq 0 \
+      && "$(grep -c '^add-topic --name demo-chat-register$' \
+          "$stub_state/log" 2> /dev/null)" == '1' ]]; then
+    ok 'create_empty_resumes'
+else
+    bad 'create_empty_resumes' \
+        "exit $status, the log: $(cat "$stub_state/log" 2> /dev/null)"
 fi
 
 # -- Register value helpers ---------------------------------------------
