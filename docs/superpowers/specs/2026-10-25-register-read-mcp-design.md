@@ -79,7 +79,8 @@ The core remains the authority for topic access.
 The portal binds one Unix-domain socket at an absolute operator-selected path.
 The parent directory must be private to the operating-system account.
 The portal restricts socket access to that account.
-It refuses a path that names a file, link, or socket from another process.
+It refuses any existing path, including a stale socket.
+An operator must confirm that no portal uses a stale socket before removing it.
 It binds the socket after it checks the path and parent directory.
 It then records the bound path's owner and file identity with `lstat`.
 The owner must equal the portal process account.
@@ -128,7 +129,9 @@ The status is the shell status for a shell failure.
 The status is null for a portal or socket failure.
 It returns no partial records.
 It returns no raw exception, credential, or backend response text.
-The portal logs one bounded diagnostic without secret values.
+The portal writes one bounded diagnostic for each failed request to standard error.
+The diagnostic contains no secret values or request text.
+It uses standard error because the installed launcher disables console logging.
 MCP standard output continues to carry protocol frames alone.
 
 | Code | Condition |
@@ -136,7 +139,7 @@ MCP standard output continues to carry protocol frames alone.
 | `INVALID_INPUT` | The request breaks the socket schema or topic rule. |
 | `BUSY` | Another read is active. |
 | `UNAVAILABLE` | The backend or portal cannot answer. |
-| `TIMEOUT` | The request deadline expires. |
+| `TIMEOUT` | The backend or portal deadline expires. |
 | `OUTPUT_TOO_LARGE` | The response exceeds its byte limit. |
 | `INVALID_OUTPUT` | The shell read emits an invalid typed line. |
 | `READ_FAILED` | Another shell read failure occurs. |
@@ -163,7 +166,11 @@ The portal counts from request accept, so the backend read receives the full bud
 The current one-shot `LaunchDeadline` can halt its JVM.
 The current `registerRead` timeout can leave its worker running.
 The portal must not reuse the process-wide one-shot watchdog.
-If a read times out, the portal returns `TIMEOUT` when it can.
+If the backend returns status 124, the portal enters a terminal state before it sends `TIMEOUT`.
+If the socket deadline expires, the portal enters the same terminal state.
+Only one transition can end the portal when both events occur together.
+The terminal state refuses every later read, including a queued request.
+The portal returns `TIMEOUT` when it can.
 It then closes the socket and ends its own process.
 This fail-stop rule prevents a timed-out worker from serving a later request.
 A supervisor may start a new portal process.

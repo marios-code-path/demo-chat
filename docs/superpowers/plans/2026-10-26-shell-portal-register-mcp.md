@@ -15,7 +15,7 @@
 ## Boundaries and order
 
 Run every task inline. Write a failing test before production code.
-Commit only the named paths. Keep the branch local.
+Commit only the named paths. Do not push new commits without owner direction.
 Do not install on node 9 or stop node 9 during this plan.
 The older Stage 1 Task 9 defines a general command socket. This plan creates a separate read-only portal protocol.
 The portal holds one fixed login. The MCP config holds one fixed register selector.
@@ -40,7 +40,7 @@ These signatures keep the tasks aligned:
 - `PortalProtocol.writeReply(OutputStream, PortalReply)`.
 - `PortalReadService(readIndex, readTopic, ObjectMapper).read(PortalRequest, Duration): PortalReply`.
 - `PortalSocketServer.bind()`, `serve()`, and `close()`.
-- `PortalClient(Path).read(index: String, topic: String?): JsonObject`.
+- `PortalClient(Path, readTimeout: Duration = Duration.ofSeconds(35)).read(index: String, topic: String?): JsonObject`.
 - `registerPortalTool(Server, AdapterConfig, PortalClient)`.
 
 `chat-mcp` does not depend on `chat-shell`. Its client validates the JSON reply independently.
@@ -93,6 +93,7 @@ This seam tests output without another JVM or a live RSocket server.
 
 - [ ] **Step 1: Add failing tests.** Cover ordered index lines, typed topic lines, empty success, and invalid JSON.
   Test `duplicate-pointer`, `denied-index`, `denied-topic`, unknown warnings, and shell statuses separately.
+  Wrap a `ShellExit(TIMEOUT)` in another exception. Prove status 124 still produces `TIMEOUT`.
 
 ```kotlin
 @Test fun `an unknown warning makes the read incomplete`() {
@@ -111,7 +112,8 @@ This seam tests output without another JVM or a live RSocket server.
 - [ ] **Step 3: Add the service.** Split nonempty output on line boundaries. Parse each line as one JSON object.
   Require `type=record` or `type=warning` for index lines. Add `type=record` to topic lines.
   Set `complete=false` for every warning except `duplicate-pointer`.
-  Map shell status 69 to `UNAVAILABLE` and 124 to `TIMEOUT`.
+  Use `ShellExitStatus.of(error)` to read the status through wrapped causes.
+  Map status 69 to `UNAVAILABLE` and 124 to `TIMEOUT`.
   Map malformed typed lines to `INVALID_OUTPUT` with null status.
   Map other shell failures to `READ_FAILED` with their original status.
   Return no partial lines on failure. Keep raw exception text out of replies.
@@ -133,22 +135,29 @@ Tests inject `identityOf` to prove mismatch and unavailable-identity behavior.
 Production uses `lstatSocketIdentity` as the default `identityOf`.
 
 - [ ] **Step 1: Add failing tests.** Use a private temporary parent with mode `0700`.
-  Cover bind, mode `0600`, occupied path, owner mismatch, path replacement, shutdown, and one request per connection.
+  Cover bind, mode `0600`, occupied file, stale socket, owner mismatch, path replacement, shutdown, and one request per connection.
   Check `INVALID_INPUT` for a bad frame and `OUTPUT_TOO_LARGE` for a large reply.
   Hold the first read in a latch. Prove the second connection gets `BUSY` without another backend read.
   Inject a short deadline. Prove timeout calls `halt(124)` and blocks later reads.
+  Return a `TIMEOUT` reply before the socket deadline. Prove `halt(124)` and no later backend read.
+  Check one bounded standard-error diagnostic with no request text or secret values.
 - [ ] **Step 2: Run `PortalSocketServerTests`.** Use the Task 1 Maven command with `-Dtest=PortalSocketServerTests`.
   Expected: compilation fails because `PortalSocketServer` is absent.
-- [ ] **Step 3: Add the server.** Check parent owner and mode before bind. Refuse every existing socket path.
+- [ ] **Step 3: Add the server.** Check parent owner and mode before bind. Refuse every existing path, including a stale socket.
   Set socket mode `0600`. Record owner and file identity with `lstat` after bind.
   Close and fail startup if either value is invalid. Leave an unproven path untouched.
   At shutdown, unlink only when owner and file identity still match.
   Keep the accept loop free while one worker reads. Reject concurrent calls with `BUSY`.
   Map frame and reply-size failures to their fixed error codes with null status.
   Start each 30-second budget at accept. Include parsing, backend work, and response write.
-  On timeout, attempt `TIMEOUT`, close the client, and apply safe socket cleanup.
+  On a `TIMEOUT` read reply, mark the server terminal before writing the reply.
+  Apply the same atomic transition when the socket deadline expires. Never clear `BUSY` after that transition.
+  Let only the first timeout path perform cleanup and call `halt(124)`.
+  Attempt `TIMEOUT`, close the client, and apply safe socket cleanup.
   End the portal process after cleanup.
   Keep a separate hard-stop timer so a blocked write cannot retain the process.
+  Write one bounded code-and-status diagnostic for each failed request to standard error.
+  Do not log request data.
 - [ ] **Step 4: Run the focused test.** Expected: ownership, BUSY, deadline, and cleanup cases pass.
 - [ ] **Step 5: Commit.** Stage the two named files. Use `CHAT-hmbigvmf: Serve the guarded portal socket`.
 
@@ -175,13 +184,19 @@ It then calls `loginIfSet()` for the existing credential check.
 `CommandLineExecution` refuses `portal` in one-shot mode.
 
 - [ ] **Step 1: Add failing tests.** Test missing and refused login before bind.
+  Test one valid login in portal mode and one valid login through the interactive command.
   Test the interactive login gate, command registration, one-shot refusal, and stop-signal cleanup.
   Test source and installed option fixtures with `CHAT_SHELL_CLI_PRINT_OPTIONS=1`.
+  Prove the installed fixture holds exactly one portal mode option and no one-shot mode option.
 - [ ] **Step 2: Run focused tests.** Run `mvn -B -pl chat-shell -am test -Dtest=PortalModeTests -Dsurefire.failIfNoSpecifiedTests=false`.
   Expected: the mode and command tests fail because portal wiring is absent.
 - [ ] **Step 3: Add mode wiring and launcher.** The new script requires `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE`, and `CHAT_SHELL_PORTAL_SOCKET`.
   It invokes the installed or source shell classpath once with `chat.shell.mode=portal`.
-  Update `chat-shell-cli` to replace its frozen one-shot mode option for this launch.
+  Set `CHAT_SHELL_MODE=portal` in `chat-shell-portal` before it invokes `chat-shell-cli`.
+  In `chat-shell-cli`, accept only `one-shot` and `portal` for `CHAT_SHELL_MODE`.
+  Filter `-Dchat.shell.mode=*` from installed options. Append the selected mode exactly once.
+  Filter any mode option from the source plan. Append the selected mode exactly once.
+  Keep `one-shot` as the default.
   Preserve one-shot command and watchdog behavior. Close the server through one shutdown hook.
 - [ ] **Step 4: Run tests.** Run the focused Maven command and `bash shell-scripts/test-chat-shell-portal.sh`.
   Expected: both pass. The shell test finds one `-Dchat.shell.mode=portal` option.
@@ -206,6 +221,8 @@ The client opens one Unix socket connection per call and exchanges one frame.
 
 - [ ] **Step 1: Add failing tests.** Cover absent portal config, complete config, both selectors, relative path, unknown key, and partial config.
   Cover missing socket, short reply, oversized reply, and an intact status from a portal failure.
+  Let a fake portal accept a connection without replying. Use a 100 ms test deadline.
+  Prove the client returns `UNAVAILABLE` after that deadline.
 
 ```kotlin
 @Test fun `the register name wins when both selectors exist`() {
@@ -222,7 +239,9 @@ The client opens one Unix socket connection per call and exchanges one frame.
 - [ ] **Step 3: Add config and client.** Keep REST settings required for current tools.
   Validate selectors with the portal name rule. Never place credentials in a portal request.
   Decode one bounded JSON reply. Preserve `error.code`, `status`, `complete`, and line order.
-  Map connect and framing failures to `UNAVAILABLE` with null status.
+  Use a nonblocking `SocketChannel` and `Selector` for the complete exchange.
+  Set a 35-second default deadline. Close the socket when the deadline expires.
+  Map connect, framing, and read-deadline failures to `UNAVAILABLE` with null status.
   Do not retry `BUSY` or another failure.
 - [ ] **Step 4: Run focused tests.** Expected: config and socket client cases pass.
 - [ ] **Step 5: Commit.** Stage only the files listed in this task.
@@ -305,12 +324,16 @@ drift check
   Expected: `BUILD SUCCESS`, no test failures, and `drift check` passes.
   Review every drift binding before any `drift link`.
 - [ ] **Step 5: Run process acceptance against a disposable core.**
-  Write `acceptance.sh` from the Stage 1 `cases.sh` sandbox and `core.sh` setup.
+  Use `docs/superpowers/proofs/2026-10-17-one-shot/isolation.sb.sh` for the sandbox.
+  Use `docs/superpowers/proofs/2026-10-17-one-shot/core.sh` for the disposable core.
+  Run `just build-shell-cli` before the portal launch.
+  Write `acceptance.sh` with those named prerequisites.
   Start one portal JVM under the sandbox on ports 6990 and 6991.
   Call the portal twice. Check both replies, one unchanged PID, and no second shell JVM.
   Stop the disposable core with the Stage 1 cleanup path.
   Run `bash docs/superpowers/proofs/2026-10-26-shell-portal-register/acceptance.sh "$portal_plan_log_dir"`.
   Expected: exit 0 and one portal PID across both calls.
+  The native-image build is outside this portal proof. Record that limit in `RECORD.md`.
 - [ ] **Step 6: Run live comparison after a compatibility check.**
   Compare checkout and installed wrapper contracts before calling node 9.
   Read as Sigma. Capture output in a private temporary file.
