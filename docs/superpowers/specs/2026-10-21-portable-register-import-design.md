@@ -116,9 +116,12 @@ It sources the installed `bin/lib.sh` and calls `node9_require_installed` before
 The `verify` command uses the same guard. The `pack` command does not call it.
 Offline tests may set `NODE9_ALLOW_SOURCE_TREE=1` for an isolated fixture.
 It checks the bundle before any shell call.
-It checks the installed shell CLI, all four credentials, and health on port `6891`.
-It fixes core ports `6890` and `6891`, node ID `9`, and UUID keys.
-It refuses a caller override of those values.
+It checks the installed shell CLI, all four credentials, and the health endpoint.
+The health endpoint uses the core management port.
+It keeps node ID `9` and UUID keys fixed, and it refuses a caller override of those two values.
+The core ports come from the caller or the installed default pair `6890` and `6891`.
+An ssh tunnel moves them together, so a moved core port moves the management port with it.
+The tunnel case is `CHAT-egdtmwfc`.
 It sends no password in an argument or the bundle.
 
 The installer issue `CHAT-mvvvnujw` keeps its approved scope: it installs node-9 code and state directories.

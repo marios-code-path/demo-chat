@@ -33,6 +33,9 @@ mkdir -p "$state/messages" "$state/requests" "$state/joins"
 [[ -f "$state/count" ]] || printf '0\n' > "$state/count"
 [[ -f "$state/posts" ]] || printf '0\n' > "$state/posts"
 [[ -f "$state/owner" ]] || printf 'Mario\n' > "$state/owner"
+# Record the core ports of each call, so a test can prove pass-through.
+printf 'CORE_PORT=%s CORE_MGMT_PORT=%s\n' "${CORE_PORT-}" "${CORE_MGMT_PORT-}" \
+    >> "$state/ports.log"
 
 if [[ "${STUB_NO_CORE:-0}" == '1' ]]; then
     printf 'stub: the core is not available\n' >&2

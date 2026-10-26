@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+# Run one local command against a remote node-9 with no manual port work.
+#
+#   node-9-remote [--dry-run] HOST MODE [COMMAND...]
+#
+# The command finds a free offset, opens the tunnel, and runs the command.
+#
+#   1. Start with offset 0.
+#   2. Check 6890, 6891, and 6892 plus the offset on local loopback.
+#   3. A free set ends the search.
+#   4. Otherwise add 100 to the offset and repeat. Stop at 32768.
+#   5. Export CORE_PORT and CORE_MGMT_PORT for the command.
+#   6. Run node-9-tunnel HOST OFFSET MODE COMMAND...
+#
+# The registry endpoint of the target is 127.0.0.1:6892 plus the offset.
+# The offset limit is the OFFSET_LIMIT constant below. See CHAT-egdtmwfc.
+#
+# Exit status:
+#   0  success
+#   1  no free offset below the limit
+#   n  the status of node-9-tunnel
+set -uo pipefail
+
+# The search stops above this offset value. The last offset it tries is the
+# highest multiple of OFFSET_STEP at or below it, which is 32700.
+OFFSET_LIMIT=32768
+OFFSET_STEP=100
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+tcp_check="${CHAT_REMOTE_TCP_CHECK:-$script_dir/isTCPOpen}"
+tunnel="${CHAT_REMOTE_TUNNEL:-$script_dir/node-9-tunnel}"
+
+usage() {
+    printf 'usage: node-9-remote [--dry-run] HOST MODE [COMMAND...]\n' >&2
+}
+
+dry_run=0
+positional=()
+while (( $# )); do
+    case "$1" in
+        --dry-run) dry_run=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        --)
+            shift
+            while (( $# )); do
+                positional+=("$1")
+                shift
+            done
+            ;;
+        --*) usage; exit 2 ;;
+        *) positional+=("$1"); shift ;;
+    esac
+done
+
+(( ${#positional[@]} >= 2 )) || { usage; exit 2; }
+host="${positional[0]}"
+mode="${positional[1]}"
+command_args=()
+if (( ${#positional[@]} > 2 )); then
+    command_args=("${positional[@]:2}")
+fi
+
+for tool in "$tcp_check" "$tunnel"; do
+    [[ -x "$tool" ]] \
+        || { printf 'node-9-remote: %s is not executable.\n' "$tool" >&2; exit 2; }
+done
+
+[[ -n "$host" ]] \
+    || { printf 'node-9-remote: the host is empty.\n' >&2; exit 2; }
+
+# The three local ports for one offset.
+offset_ports() {
+    local offset="$1"
+    printf '%s %s %s\n' \
+        "$(( 6890 + offset ))" "$(( 6891 + offset ))" "$(( 6892 + offset ))"
+}
+
+# find_offset  Print the first offset whose three ports are free.
+# Return 1 when every offset is busy. Return 2 when the port check refuses,
+# because a broken check is not a busy port.
+find_offset() {
+    local offset=0 ports status
+    while (( offset <= OFFSET_LIMIT )); do
+        # shellcheck disable=SC2046
+        ports="$(offset_ports "$offset")"
+        # shellcheck disable=SC2086
+        "$tcp_check" $ports > /dev/null 2>&1
+        status=$?
+        if (( status == 0 )); then
+            printf '%s\n' "$offset"
+            return 0
+        fi
+        (( status == 2 )) && return 2
+        offset=$(( offset + OFFSET_STEP ))
+    done
+    return 1
+}
+
+offset="$(find_offset)"
+find_status=$?
+if (( find_status == 2 )); then
+    printf 'node-9-remote: the port check failed. Check %s.\n' "$tcp_check" >&2
+    exit 2
+fi
+if (( find_status != 0 )); then
+    printf 'node-9-remote: no free port set at or below offset %s.\n' \
+        "$OFFSET_LIMIT" >&2
+    exit 1
+fi
+
+# shellcheck disable=SC2046
+ports="$(offset_ports "$offset")"
+read -r core_port core_mgmt_port registry_port <<< "$ports"
+export CORE_PORT="$core_port"
+export CORE_MGMT_PORT="$core_mgmt_port"
+
+tunnel_args=()
+(( dry_run )) && tunnel_args+=(--dry-run)
+tunnel_args+=("$host" "$offset" "$mode")
+if (( ${#command_args[@]} > 0 )); then
+    tunnel_args+=("${command_args[@]}")
+fi
+
+printf 'node-9-remote: offset %s, ports %s %s %s, registry 127.0.0.1:%s\n' \
+    "$offset" "$core_port" "$core_mgmt_port" "$registry_port" "$registry_port" >&2
+
+"$tunnel" "${tunnel_args[@]}"
+exit $?

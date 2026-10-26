@@ -282,15 +282,36 @@ else
     bad 'apply_status_for_absent_core' "exit $status, output: $out"
 fi
 
-run_apply CORE_PORT=1
-if [[ $status -eq 2 && "$out" == *'CORE_PORT'* && "$(calls)" -eq 0 ]]; then
-    ok 'apply_refuses_port_override'
+# A caller sets the core ports, so an ssh tunnel can move them together.
+# See CHAT-egdtmwfc.
+run_apply CORE_PORT=6990 CORE_MGMT_PORT=6991
+port_line="$(head -n 1 "$stub_state/ports.log" 2> /dev/null)"
+if [[ $status -eq 0 && "$port_line" == 'CORE_PORT=6990 CORE_MGMT_PORT=6991' ]]; then
+    ok 'apply_takes_the_caller_ports'
 else
-    bad 'apply_refuses_port_override' \
-        "exit $status, calls=$(calls), output: $out"
+    bad 'apply_takes_the_caller_ports' \
+        "exit $status, ports=$port_line, output: $out"
 fi
 
+# A caller with no port keeps the installed default pair.
 run_apply
+port_line="$(head -n 1 "$stub_state/ports.log" 2> /dev/null)"
+if [[ $status -eq 0 && "$port_line" == 'CORE_PORT=6890 CORE_MGMT_PORT=6891' ]]; then
+    ok 'apply_defaults_the_core_ports'
+else
+    bad 'apply_defaults_the_core_ports' \
+        "exit $status, ports=$port_line, output: $out"
+fi
+
+# A caller that moves the core port alone moves the management port with it.
+run_apply CORE_PORT=6990
+port_line="$(head -n 1 "$stub_state/ports.log" 2> /dev/null)"
+if [[ $status -eq 0 && "$port_line" == 'CORE_PORT=6990 CORE_MGMT_PORT=6991' ]]; then
+    ok 'apply_moves_the_mgmt_port_with_the_core_port'
+else
+    bad 'apply_moves_the_mgmt_port_with_the_core_port' \
+        "exit $status, ports=$port_line, output: $out"
+fi
 secret_case='ok'
 for secret in fixture-service-password fixture-admin-password \
     fixture-embedding-key fixture-sigma-password fixture-theta-password \
