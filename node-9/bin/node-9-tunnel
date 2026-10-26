@@ -10,6 +10,9 @@
 # MODE is one of four words. `non-persistent` and `false` are the same mode.
 # `persistent` and `true` are the same mode.
 #
+# COMMAND takes every word after MODE. A word that starts with a dash belongs
+# to COMMAND. So `register read --as Theta` needs no `--`.
+#
 # non-persistent  The tunnel lives while COMMAND runs. The command starts
 #                 after the three local ports answer. The tunnel closes after
 #                 the command exits. The status is the status of COMMAND.
@@ -34,20 +37,25 @@ usage() {
 
 dry_run=0
 positional=()
+# The parsing of options ends when the host, the offset, and the mode are
+# complete. Every later word belongs to COMMAND, which holds its own options,
+# for example `register read --as Theta`. A `--` ends the options early.
+# See CHAT-rcmdflag.
+parsing=1
 while (( $# )); do
-    case "$1" in
-        --dry-run) dry_run=1; shift ;;
-        -h|--help) usage; exit 0 ;;
-        --)
-            shift
-            while (( $# )); do
-                positional+=("$1")
-                shift
-            done
-            ;;
-        --*) usage; exit 2 ;;
-        *) positional+=("$1"); shift ;;
-    esac
+    if (( parsing )); then
+        case "$1" in
+            --dry-run) dry_run=1; shift; continue ;;
+            -h|--help) usage; exit 0 ;;
+            --) parsing=0; shift; continue ;;
+            --*) usage; exit 2 ;;
+        esac
+    fi
+    positional+=("$1")
+    shift
+    if (( parsing && ${#positional[@]} >= 3 )); then
+        parsing=0
+    fi
 done
 
 (( ${#positional[@]} >= 3 )) || { usage; exit 2; }

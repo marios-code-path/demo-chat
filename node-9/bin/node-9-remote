@@ -3,6 +3,9 @@
 #
 #   node-9-remote [--dry-run] HOST MODE [COMMAND...]
 #
+# The command takes every word after MODE. A word that starts with a dash
+# belongs to the command. So `register read --as Theta` needs no `--`.
+#
 # The command finds a free offset, opens the tunnel, and runs the command.
 #
 #   1. Start with offset 0.
@@ -36,20 +39,24 @@ usage() {
 
 dry_run=0
 positional=()
+# The parsing of options ends when the host and the mode are complete. Every
+# later word belongs to COMMAND, which holds its own options, for example
+# `register read --as Theta`. A `--` ends the options early. See CHAT-rcmdflag.
+parsing=1
 while (( $# )); do
-    case "$1" in
-        --dry-run) dry_run=1; shift ;;
-        -h|--help) usage; exit 0 ;;
-        --)
-            shift
-            while (( $# )); do
-                positional+=("$1")
-                shift
-            done
-            ;;
-        --*) usage; exit 2 ;;
-        *) positional+=("$1"); shift ;;
-    esac
+    if (( parsing )); then
+        case "$1" in
+            --dry-run) dry_run=1; shift; continue ;;
+            -h|--help) usage; exit 0 ;;
+            --) parsing=0; shift; continue ;;
+            --*) usage; exit 2 ;;
+        esac
+    fi
+    positional+=("$1")
+    shift
+    if (( parsing && ${#positional[@]} >= 2 )); then
+        parsing=0
+    fi
 done
 
 (( ${#positional[@]} >= 2 )) || { usage; exit 2; }

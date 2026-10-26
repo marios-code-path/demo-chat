@@ -66,6 +66,27 @@ else
     bad 'dry_run_starts_nothing' "the stub ssh ran"
 fi
 
+# -- A command flag reaches the command ----------------------------------
+
+# A client command holds its own flags, for example
+# `register read --as Theta`. The parsing of this tool ends after the host,
+# the offset, and the mode. Every later word is the command. See CHAT-rcmdflag.
+rm -f "$pidfile" "$argsfile"
+run_tunnel --dry-run node2.lan 100 non-persistent register read --as Theta
+if [[ $status -eq 0 && "$out" == *'run register read --as Theta'* ]]; then
+    ok 'command_flags_reach_the_command'
+else
+    bad 'command_flags_reach_the_command' "exit $status, output: $out, error: $err"
+fi
+
+# A long option before the host is still a bad option of this tool.
+run_tunnel --bogus node2.lan 100 non-persistent true
+if [[ $status -eq 2 && "$err" == *usage* ]]; then
+    ok 'unknown_option_before_the_host_exits_2'
+else
+    bad 'unknown_option_before_the_host_exits_2' "exit $status, error: $err"
+fi
+
 # -- Argument refusals ---------------------------------------------------
 
 run_tunnel node2.lan 100 sometimes bash -c 'exit 0'
@@ -191,4 +212,4 @@ if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 15
+printf '%d checks, 0 failures\n' 17

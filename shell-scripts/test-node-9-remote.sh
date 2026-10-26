@@ -162,6 +162,29 @@ else
     bad 'dry_run_reaches_the_tunnel' "exit $status, args: $args"
 fi
 
+# -- A command flag reaches the tunnel -----------------------------------
+
+# A client command holds its own flags, for example
+# `register read --as Theta`. The parsing of this tool ends after the host
+# and the mode. Every later word is the command. See CHAT-rcmdflag.
+rm -f "$argsfile" "$envfile"
+run_remote node2.lan non-persistent /opt/demo-chat/node-9/bin/register read --as Theta
+if [[ $status -eq 0 \
+      && "$args" == 'node2.lan 0 non-persistent /opt/demo-chat/node-9/bin/register read --as Theta' ]]; then
+    ok 'command_flags_reach_the_tunnel'
+else
+    bad 'command_flags_reach_the_tunnel' "exit $status, args: $args, error: $err"
+fi
+
+# A flag before the host is still a bad option of this tool.
+rm -f "$argsfile" "$envfile"
+run_remote --bogus node2.lan non-persistent true
+if [[ $status -eq 2 && "$err" == *usage* && ! -f "$argsfile" ]]; then
+    ok 'unknown_option_before_the_host_exits_2'
+else
+    bad 'unknown_option_before_the_host_exits_2' "exit $status, error: $err"
+fi
+
 # -- A missing tool ------------------------------------------------------
 
 CHAT_REMOTE_TCP_CHECK="$work/absent" CHAT_REMOTE_TUNNEL="$tunnel_stub" \
@@ -196,4 +219,4 @@ if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 12
+printf '%d checks, 0 failures\n' 14
