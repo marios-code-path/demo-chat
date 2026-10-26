@@ -10,6 +10,10 @@ set -uo pipefail
 # The suite runs the tools from a source tree on purpose.
 export NODE9_ALLOW_SOURCE_TREE=1
 
+# Pack derives the snapshot request topic from the register name. See
+# CHAT-jmnjvupr.
+export NODE_9_REGISTER_TOPIC_NAME=demo-chat-register
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 ranger="$repo_root/node-9/bin/register-range"
@@ -380,6 +384,8 @@ run_check_bundle() {
       # shellcheck source=/dev/null
       source "$importer" \
           || { printf 'register-import: the library did not load\n'; exit 2; }
+      # check_bundle derives the request IDs, so it needs the register name.
+      import_set_register "" || exit 2
       check_bundle "$1" )
 }
 

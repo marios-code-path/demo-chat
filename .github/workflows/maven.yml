@@ -26,6 +26,15 @@ jobs:
     - name: Test node-9 secrets choices
       run: ./shell-scripts/test-node-9-install-secrets.sh
 
+    - name: Test the register wrapper
+      run: ./shell-scripts/test-node-9-register.sh
+
+    - name: Test the register import bundle
+      run: bash shell-scripts/test-register-bundle.sh
+
+    - name: Test the register import on a prepared host
+      run: bash shell-scripts/test-register-bootstrap.sh
+
     - name: Set up JDK 25
       uses: actions/setup-java@v5
       with:

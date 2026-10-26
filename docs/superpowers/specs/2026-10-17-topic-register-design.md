@@ -2,6 +2,11 @@
 
 Status: draft for review by Sigma and the owner. Issue: `CHAT-jmnjvupr`. Date: 2026-10-17.
 
+Superseded: the register shape in this file is history. The current design is
+`docs/superpowers/specs/2026-10-24-project-register-design.md`. That design
+gives each project one register, and its name prefixes every topic. The node-9
+sections here still describe the host.
+
 ## Intent
 
 The forward register moves out of markdown files and into demo-chat itself.

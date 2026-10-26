@@ -2,12 +2,14 @@
 # Import one reviewed register snapshot into node 9. See CHAT-jmnjvupr and
 # docs/superpowers/specs/2026-10-21-portable-register-import-design.md.
 #
-#   register-import pack --source FILE --mapping FILE --bundle DIR
-#   register-import apply --bundle DIR --as Mario
-#   register-import verify --bundle DIR --as Mario
+#   register-import pack --source FILE --mapping FILE --bundle DIR [--register NAME]
+#   register-import apply --bundle DIR --as Mario [--register NAME]
+#   register-import verify --bundle DIR --as Mario [--register NAME]
 #
 # pack makes no network call, and it needs no installed home. apply and
-# verify run from an installed home alone.
+# verify run from an installed home alone. Every command takes the register
+# name from --register, or from NODE_9_REGISTER_TOPIC_NAME. The name mints
+# every topic and every request ID. See CHAT-jmnjvupr.
 #
 # A refusal prints one line on standard error and returns a nonzero status.
 # Status 2 names invalid input, an invalid bundle, or a failed guard. The
@@ -36,6 +38,10 @@ import_work=''
 # The login of the owner comes from --as at run time. No script names it.
 # See CHAT-sufkkqon.
 import_owner=''
+# The register name comes from --register or from the environment at run
+# time. It mints every topic, every request ID, and the receipt path. See
+# CHAT-jmnjvupr.
+import_register=''
 
 # import_error MESSAGE  Print one line on standard error and return 2.
 import_error() {
@@ -150,9 +156,31 @@ bytes_of() {
     wc -c < "$1" | tr -d ' '
 }
 
+# import_set_register [FLAG_VALUE] [FLAG_SEEN]
+# Set import_register from the flag, or from the environment. Print one line
+# and return 2 for an absent or invalid name. FLAG_SEEN holds true when the
+# caller saw the flag. An empty value after the flag is a refusal, not a
+# fallback to the environment. A write needs the name, because it mints
+# topics and receipt paths. See CHAT-jmnjvupr.
+import_set_register() {
+    local flag="${1:-}" seen="${2:-false}" reason
+    if [[ "$seen" != 'true' ]]; then
+        import_register="$(node9_register_name)" || return 2
+        return 0
+    fi
+    if [[ -z "$flag" ]]; then
+        import_error 'the flag --register needs a name'
+        return 2
+    fi
+    reason="$(node9_register_name_error "$flag")" \
+        || { import_error "$reason"; return 2; }
+    import_register="$flag"
+    return 0
+}
+
 # snapshot_topic SOURCE_SHA  Print the topic name of the snapshot.
 snapshot_topic() {
-    printf 'forward-register-snapshot-%s\n' "${1:0:12}"
+    printf '%s-fr-snapshot-%s\n' "$import_register" "${1:0:12}"
 }
 
 # snapshot_key SOURCE_SHA  Print the pointer key of the snapshot.
@@ -204,20 +232,41 @@ build_requests() {
 # installed home. A failed pack leaves no bundle directory, because the work
 # happens in a private temporary directory beside the target.
 pack_bundle() {
-    local source_file='' mapping='' bundle=''
+    local source_file='' mapping='' bundle='' register_flag='' register_seen='false'
     while (( $# )); do
         case "$1" in
             --source)
-                source_file="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --source needs a value'
+                    return
+                fi
+                source_file="$2"
+                shift 2
                 ;;
             --mapping)
-                mapping="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --mapping needs a value'
+                    return
+                fi
+                mapping="$2"
+                shift 2
                 ;;
             --bundle)
-                bundle="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
+                ;;
+            --register)
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
                 ;;
             *)
                 import_error "pack does not take the argument $1"
@@ -227,6 +276,9 @@ pack_bundle() {
     done
     [[ -n "$source_file" && -n "$mapping" && -n "$bundle" ]] \
         || { import_error 'pack needs --source, --mapping, and --bundle'; return; }
+    # The name comes first, because build_requests mints the snapshot topic
+    # from it. Pack and apply must derive one set of request IDs.
+    import_set_register "$register_flag" "$register_seen" || return 2
     [[ ! -e "$bundle" && ! -L "$bundle" ]] \
         || { import_error "the bundle path $bundle exists"; return; }
     validate_mapping "$mapping" "$source_file" || return
@@ -510,7 +562,8 @@ ownership_proof() {
 # a failed read.
 index_message_count() {
     local cli="$1" out
-    out="$("$cli" register-read 2> /dev/null)" || return 1
+    out="$("$cli" register-read --index "$import_register" 2> /dev/null)" \
+        || return 1
     if printf '%s\n' "$out" \
         | jq -e -s 'any(.[]; (.type // "") == "warning")' > /dev/null 2>&1; then
         return 2
@@ -534,19 +587,20 @@ ensure_index() {
     if [[ -f "$receipt_dir/index.json" ]]; then
         saved_id="$(jq -r '.id // ""' "$receipt_dir/index.json" 2> /dev/null)"
         saved_owner="$(jq -r '.owner // ""' "$receipt_dir/index.json" 2> /dev/null)"
-        room="$(topic_room_id register-index)" \
+        room="$(topic_room_id "$import_register")" \
             || { import_error 'the index read fails'; return 1; }
-        proof="$(ownership_proof register-index)" \
+        proof="$(ownership_proof "$import_register")" \
             || { import_error 'the ownership proof fails'; return 1; }
         if [[ -z "$saved_id" || "$saved_id" != "$room" \
-              || "$saved_owner" != "$proof" || "$proof" != 'Mario' ]]; then
+              || "$saved_owner" != "$proof"
+              || "$proof" != "$import_owner" ]]; then
             import_error 'the saved index proof does not match the live index'
             return 1
         fi
         return 0
     fi
 
-    room="$(topic_room_id register-index)" \
+    room="$(topic_room_id "$import_register")" \
         || { import_error 'the index read fails'; return 1; }
     if [[ -n "$room" ]]; then
         count="$(index_message_count "$cli")"
@@ -564,18 +618,18 @@ ensure_index() {
             return 1
         fi
     else
-        "$cli" add-topic --name register-index > /dev/null 2>&1 \
+        "$cli" add-topic --name "$import_register" > /dev/null 2>&1 \
             || { import_error 'the new index topic fails'; return 1; }
-        room="$(topic_room_id register-index)" \
+        room="$(topic_room_id "$import_register")" \
             || { import_error 'the index read fails'; return 1; }
         [[ -n "$room" ]] \
             || { import_error 'the new index has no room ID'; return 1; }
     fi
 
-    proof="$(ownership_proof register-index)" \
+    proof="$(ownership_proof "$import_register")" \
         || { import_error 'the ownership proof fails'; return 1; }
-    if [[ "$proof" != 'Mario' ]]; then
-        import_error "the * permission row of the index names $proof, not Mario"
+    if [[ "$proof" != "$import_owner" ]]; then
+        import_error "the * permission row of the index names $proof, not $import_owner"
         return 1
     fi
 
@@ -1017,7 +1071,7 @@ import_posts() {
         printf '%s | %s | %s | %s\n' "$key" "$entry_topic" "$bundle_hash" \
             "$title" > "$import_work/pointer.txt"
         message_id="$(post_once "$receipt_dir" entry-pointer "$entry_topic" 0 \
-            "$import_work/pointer.txt" register-index)" || return $?
+            "$import_work/pointer.txt" "$import_register")" || return $?
         printf '%s\n' "$message_id" >> "$import_work/pointers.jsonl"
     done
 
@@ -1025,10 +1079,11 @@ import_posts() {
         "$bundle_hash" "Forward register snapshot $source_date" \
         > "$import_work/pointer.txt"
     message_id="$(post_once "$receipt_dir" snapshot-pointer "$topic" 0 \
-        "$import_work/pointer.txt" register-index)" || return $?
+        "$import_work/pointer.txt" "$import_register")" || return $?
     printf '%s\n' "$message_id" >> "$import_work/pointers.jsonl"
 
-    "$import_cli_path" register-read > "$import_work/index.jsonl" 2> /dev/null \
+    "$import_cli_path" register-read --index "$import_register" \
+        > "$import_work/index.jsonl" 2> /dev/null \
         || { import_error 'the index readback fails'; return 1; }
     while IFS= read -r message_id; do
         [[ -n "$message_id" ]] || continue
@@ -1112,6 +1167,7 @@ import_credentials() {
 # sets import_cli_path, and it exports the login of the owner.
 import_preflight() {
     local bundle="$1" user="$2" work_dir="$3" cli status reported_user
+    local bad_topic
 
     [[ "$user" == 'Mario' ]] \
         || { import_error 'the first delivery accepts the import user Mario alone'; return 2; }
@@ -1122,6 +1178,16 @@ import_preflight() {
     import_fixed CHAT_SHELL_NODE_ID 9 || return
 
     check_bundle "$bundle" || return
+    # Every entry topic carries the register name as a prefix. A bundle
+    # of another register stops here, before any live call. See
+    # CHAT-jmnjvupr.
+    bad_topic="$(jq -r --arg prefix "$import_register-fr-" '
+        [.entries[] | select(.topic | startswith($prefix) | not) | .topic][0]
+        // ""' "$bundle/content-manifest.json" 2> /dev/null)"
+    if [[ -n "$bad_topic" ]]; then
+        import_error "the entry topic $bad_topic does not start with $import_register-fr-"
+        return 2
+    fi
     node9_require_installed || return 2
     node9_load_env || return 2
 
@@ -1176,15 +1242,33 @@ import_preflight() {
 # Import one bundle into the installed node 9.
 apply_bundle() {
     local bundle='' user='' work_dir status bundle_hash receipt_dir
+    local register_flag='' register_seen='false'
     while (( $# )); do
         case "$1" in
             --bundle)
-                bundle="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
                 ;;
             --as)
-                user="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --as needs a value'
+                    return
+                fi
+                user="$2"
+                shift 2
+                ;;
+            --register)
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
                 ;;
             *)
                 import_error "apply does not take the argument $1"
@@ -1194,6 +1278,7 @@ apply_bundle() {
     done
     [[ -n "$bundle" && -n "$user" ]] \
         || { import_error 'apply needs --bundle and --as'; return; }
+    import_set_register "$register_flag" "$register_seen" || return 2
 
     work_dir="$(mktemp -d)" \
         || { import_error 'no temporary directory'; return; }
@@ -1205,7 +1290,7 @@ apply_bundle() {
     fi
 
     bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
-    receipt_dir="$NODE9_DIR/data/register-import/$bundle_hash"
+    receipt_dir="$NODE9_DIR/data/register-import/$import_register/$bundle_hash"
     import_bundle="$bundle"
     import_work="$work_dir"
 
@@ -1238,7 +1323,7 @@ apply_bundle() {
         rm -rf "$work_dir"
         return "$status"
     fi
-    join_all register-index
+    join_all "$import_register"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"
@@ -1379,7 +1464,8 @@ verify_pointers() {
     source_hash="$(jq -r '.source_sha256' "$manifest")"
     bundle_hash="$(jq -r '.content_sha256' \
         "$import_bundle/bundle-manifest.json")"
-    "$import_cli_path" register-read > "$import_work/index.jsonl" 2> /dev/null \
+    "$import_cli_path" register-read --index "$import_register" \
+        > "$import_work/index.jsonl" 2> /dev/null \
         || { import_error 'the index read fails'; return 1; }
     if has_warning "$import_work/index.jsonl"; then
         import_error 'the index read gives a denied warning'
@@ -1439,7 +1525,8 @@ verify_reads() {
         user="${readers[$(( index % count ))]}"
         attempt=$(( attempt + 1 ))
         start="$(import_now_ms)"
-        "$NODE9_DIR/bin/register" read --as "$user" \
+        env NODE9_REGISTER_TOPIC_NAME="$import_register" \
+            "$NODE9_DIR/bin/register" read --as "$user" \
             > "$import_work/read.jsonl" 2> "$import_work/read.err"
         status=$?
         finish="$(import_now_ms)"
@@ -1470,15 +1557,33 @@ verify_reads() {
 # Read the destination and prove that it holds this bundle.
 verify_bundle() {
     local bundle='' user='' work_dir status bundle_hash receipt_dir median
+    local register_flag='' register_seen='false'
     while (( $# )); do
         case "$1" in
             --bundle)
-                bundle="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
                 ;;
             --as)
-                user="${2:-}"
-                shift 2 || true
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --as needs a value'
+                    return
+                fi
+                user="$2"
+                shift 2
+                ;;
+            --register)
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
                 ;;
             *)
                 import_error "verify does not take the argument $1"
@@ -1488,6 +1593,7 @@ verify_bundle() {
     done
     [[ -n "$bundle" && -n "$user" ]] \
         || { import_error 'verify needs --bundle and --as'; return; }
+    import_set_register "$register_flag" "$register_seen" || return 2
 
     work_dir="$(mktemp -d)" \
         || { import_error 'no temporary directory'; return; }
@@ -1499,7 +1605,7 @@ verify_bundle() {
     fi
 
     bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
-    receipt_dir="$NODE9_DIR/data/register-import/$bundle_hash"
+    receipt_dir="$NODE9_DIR/data/register-import/$import_register/$bundle_hash"
     import_bundle="$bundle"
     import_work="$work_dir"
 

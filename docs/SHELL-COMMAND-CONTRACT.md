@@ -69,7 +69,7 @@ See `Positional input` below.
 | `command-status` | `commandStatus` | Show the status of a message command | `--commandId` `String` required | none |
 | `listen` | `listen` | Listen to a topic | `--topic` `String` required | `--topic` |
 | `hangup` | `hangup` | Stop listening to a topic | `--topic` `String` required | `--topic` |
-| `register-read` | `registerRead` | Read the register: its index and the newest recent entry of each topic | `--index` `String` default `register-index`<br>`--maxAgeHours` `String` default `24` | none |
+| `register-read` | `registerRead` | Read the register: its index and the newest recent entry of each topic | `--index` `String` required<br>`--maxAgeHours` `String` default `24` | none |
 | `post` | `post` | Post the text of standard input to a topic | `--topic` `String` required<br>`--requestId` `String` default `_` | `--topic` |
 | `messages` | `messages` | List the messages of a topic | `--topic` `String` required<br>`--limit` `Integer` optional<br>`--format` `String` default `human`<br>`--since` `String` optional | `--topic` |
 

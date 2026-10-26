@@ -983,10 +983,21 @@ else
         "exit $status, ${installed_dry_case}, output: $out"
 fi
 
+# The wrapper needs a register value before it reads or writes a room.
+out="$(env -u NODE_9_REGISTER_TOPIC_NAME -u NODE_9_REGISTER_TOPIC_ID \
+    bash "$install_home/bin/register" read --as Theta 2>&1)"
+status=$?
+if [[ $status -eq 2 && "$out" == *'NODE_9_REGISTER_TOPIC_NAME'* ]]; then
+    ok 'installed_register_needs_a_register'
+else
+    bad 'installed_register_needs_a_register' "exit $status, output: $out"
+fi
+
 # The install ships bin/chat-shell-cli since CHAT-bjqzvsoe, so an absent CLI
 # needs a name that points nowhere. The wrapper reads the CLI path before the
 # login, so this case sees status 2.
 out="$(env CHAT_SHELL_CLI="$work/no-such-cli" \
+    NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
     bash "$install_home/bin/register" read --as Theta 2>&1)"
 status=$?
 if [[ $status -eq 2 && "$out" == *'Set CHAT_SHELL_CLI'* ]]; then
@@ -997,7 +1008,8 @@ fi
 
 # With the shipped CLI and no password file, the next stop is the login. This
 # home holds no secret, because the suite installs it without an import.
-out="$(bash "$install_home/bin/register" read --as Theta 2>&1)"
+out="$(env NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
+    bash "$install_home/bin/register" read --as Theta 2>&1)"
 status=$?
 if [[ $status -eq 77 && "$out" == *'Theta.password'* ]]; then
     ok 'installed_register_needs_a_login'

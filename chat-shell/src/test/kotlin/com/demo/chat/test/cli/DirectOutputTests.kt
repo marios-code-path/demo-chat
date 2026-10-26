@@ -91,7 +91,7 @@ class DirectOutputTests {
         "login" to "login --username nobody --password secret",
         "send" to "send hello --topic lobby",
         "command-status" to "command-status --commandId c-1",
-        "register-read" to "register-read",
+        "register-read" to "register-read --index register-index",
         "post" to "post lobby",
         "messages" to "messages lobby",
         "import-claude" to "import-claude --file /nonexistent.json --conversation c --topic t --generation 1 --human h --assistant a",

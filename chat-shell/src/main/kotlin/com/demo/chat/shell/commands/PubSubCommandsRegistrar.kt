@@ -95,7 +95,7 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
         .description("Read the register: its index and the newest recent entry of each topic")
         .group("PubSub")
         .options(
-            CommandOption.with().longName("index").required(false).defaultValue("register-index").type(String::class.java).build(),
+            CommandOption.with().longName("index").required(true).type(String::class.java).build(),
             CommandOption.with().longName("maxAgeHours").required(false).defaultValue("24").type(String::class.java).build(),
         )
         .execute(Consumer<CommandContext> { ctx ->

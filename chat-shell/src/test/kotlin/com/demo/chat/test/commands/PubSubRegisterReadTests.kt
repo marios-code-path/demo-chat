@@ -202,7 +202,7 @@ class PubSubRegisterReadTests {
         val registry = CommandRegistry(setOf(registered))
         val out = StringWriter()
 
-        registered.execute(CommandContext(DefaultCommandParser(registry).parse("register-read"),
+        registered.execute(CommandContext(DefaultCommandParser(registry).parse("register-read --index register-index"),
             registry, PrintWriter(out), mock(InputReader::class.java)))
 
         assertThat(out.toString()).isEmpty()
@@ -219,7 +219,7 @@ class PubSubRegisterReadTests {
         val registry = CommandRegistry(setOf(registered))
         val out = StringWriter()
         val failure = try {
-            registered.execute(CommandContext(DefaultCommandParser(registry).parse("register-read"),
+            registered.execute(CommandContext(DefaultCommandParser(registry).parse("register-read --index register-index"),
                 registry, PrintWriter(out), StreamInput(java.io.ByteArrayInputStream(ByteArray(0)))))
             null
         } catch (e: Throwable) {
