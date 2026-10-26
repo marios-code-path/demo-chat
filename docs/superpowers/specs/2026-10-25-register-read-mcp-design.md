@@ -21,12 +21,13 @@ The wrapper selects the index with `NODE_9_REGISTER_TOPIC_NAME` or `NODE_9_REGIS
 The name wins when both values exist.
 The wrapper starts a new shell JVM for every read.
 The installed `chat-shell-cli` options select one-shot mode.
-`chat.shell.mode=resident` is not built.
 `ShellModeConfiguration` declares the one-shot runner alone.
-This delivery adds resident mode as new scope.
-The stage 1 plan defines a resident shell server in task 9.
-See `docs/superpowers/plans/2026-10-18-topic-register-stage-1-shell-tool.md`.
-The portal needs a resident launch path that selects resident mode explicitly.
+The stage 1 plan's conditional task 9 defines a general command socket.
+That socket accepts shell command lines in `chat-shell/1` frames.
+This portal accepts read-only JSON requests instead.
+This delivery adds a separate `chat.shell.mode=portal` runner.
+The portal launcher selects that mode explicitly.
+See `docs/superpowers/plans/2026-10-18-topic-register-stage-1-shell-tool.md` for the older resident contract.
 
 `chat-shell` already implements the session-start read in `PubSubCommands.registerRead`.
 It implements a named topic read in `PubSubCommands.messages` with the `records` format.
@@ -52,18 +53,18 @@ An interactive shell can enter `portal --socket <absolute-path>` after login.
 The command serves requests in the foreground until the operator stops it.
 The shell cannot accept another login command while the portal command runs.
 
-An unattended launch uses `chat.shell.mode=resident` with the same portal service.
+An unattended launch uses `chat.shell.mode=portal` with the same portal service.
 It requires `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE`, and `CHAT_SHELL_PORTAL_SOCKET`.
 It refuses an anonymous or failed login before it binds the socket.
-The resident process holds the shell context until shutdown.
-Resident mode is new work in this delivery.
+The portal process holds the shell context until shutdown.
+Portal mode is new work in this delivery.
 It adds one runner, one login, one socket bind, and one stop path.
 It starts no launch watchdog, because each request has its own deadline.
-A stop signal ends the process, and the process removes its socket.
+A stop signal ends the process and runs the socket cleanup rule below.
 Both launch paths bind the same fixed identity for the portal lifetime.
 One-shot mode refuses the `portal` command, because its launch watchdog would end a long-lived process.
-The resident launcher uses the installed shell classpath and runtime settings.
-It selects resident mode instead of the frozen one-shot option.
+The portal launcher uses the installed shell classpath and runtime settings.
+It selects portal mode instead of the frozen one-shot option.
 It never fixes a login name or password in installed options.
 
 The portal serves multiple configured project registers through that identity.
@@ -79,11 +80,12 @@ The portal binds one Unix-domain socket at an absolute operator-selected path.
 The parent directory must be private to the operating-system account.
 The portal restricts socket access to that account.
 It refuses a path that names a file, link, or socket from another process.
-It binds the socket first.
-It then checks the owner of the bound socket with `lstat`.
-A mismatch ends the process, and the process removes the socket.
-It removes its own socket at normal shutdown.
-It does not remove a socket whose ownership it cannot prove.
+It binds the socket after it checks the path and parent directory.
+It then records the bound path's owner and file identity with `lstat`.
+The owner must equal the portal process account.
+An owner mismatch or unavailable file identity ends startup and closes the listener.
+The portal leaves the path untouched when ownership is unproven.
+At shutdown, it removes the path only if its owner and file identity still match the recorded values.
 
 Socket permissions separate operating-system accounts.
 They do not separate processes that share one account.
@@ -208,23 +210,23 @@ Other MCP tools retain their current REST behavior in this delivery.
 ## Verification and operation
 
 1. Test portal startup with valid, missing, and refused login credentials in both launch paths.
-2. Test socket ownership, an occupied path, malformed requests, and a concurrent request.
+2. Test socket ownership, safe cleanup, an occupied path, malformed requests, and a concurrent request.
 3. Compare both portal read forms with the wrapper's ordered typed output.
 4. Test duplicate-pointer, denied-index, and denied-topic warnings independently.
 5. Test empty success, failed read, output limit, deadline, and fail-stop recovery.
 6. Test MCP discovery and `chat_read_register` through a real stdio client and portal socket.
 7. Measure that two reads use one shell JVM process.
 8. Compare one live portal read with the installed wrapper after a compatibility check.
-9. Test resident-mode startup, login refusal before bind, stop signal, and socket removal.
+9. Test portal-mode startup, login refusal before bind, stop signal, and socket removal.
 10. Test that a failed MCP read holds `error.code`, `status`, and `complete=false`.
 
 The live check reports the wrapper status and every warning line.
 It does not print passwords or change register content.
 It does not claim a node-9 deployment update or a register import.
 
-The implementation adds resident mode, a `chat-shell-portal` launcher, and adapter configuration guidance.
+The implementation adds portal mode, a `chat-shell-portal` launcher, and adapter configuration guidance.
 It updates `docs/MCP-ADAPTER.md` for config, tools, and failures.
-It updates `docs/BUILD.md` for the resident-mode statement.
+It updates `docs/BUILD.md` for the portal-mode statement.
 Installation and activation require a separate operator action.
 
 ## Sources
@@ -233,7 +235,7 @@ Installation and activation require a separate operator action.
 - `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommands.kt` defines both read forms.
 - `chat-shell/src/main/kotlin/com/demo/chat/shell/cli/LaunchDeadline.kt` defines the one-shot deadline.
 - `chat-shell/src/main/kotlin/com/demo/chat/shell/cli/ShellModeConfiguration.kt` declares the one-shot runner alone.
-- `docs/superpowers/plans/2026-10-18-topic-register-stage-1-shell-tool.md` defines resident mode in task 9.
+- `docs/superpowers/plans/2026-10-18-topic-register-stage-1-shell-tool.md` defines the older general command socket in task 9.
 - `chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/RSocketRequesterFactory.kt` defines requester reuse.
 - `chat-mcp/src/main/kotlin/com/demo/chat/mcp/McpAdapterServer.kt` defines the current MCP server.
 - `docs/MCP-ADAPTER.md` defines the current adapter config, tools, and failures.
