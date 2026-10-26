@@ -94,7 +94,7 @@ Production wiring calls `PubSubCommands.registerRead(index, Duration.ofHours(24)
 The topic lambda calls `PubSubCommands.messages(topic, format = "records")`.
 This seam tests output without another JVM or a live RSocket server.
 
-- [ ] **Step 1: Add failing tests.** Cover ordered index lines, typed topic lines, empty success, and invalid JSON.
+- [x] **Step 1: Add failing tests.** Cover ordered index lines, typed topic lines, empty success, and invalid JSON.
   Test `duplicate-pointer`, `denied-index`, `denied-topic`, unknown warnings, and shell statuses separately.
   Wrap a `ShellExit(TIMEOUT)` in another exception. Prove status 124 still produces `TIMEOUT`.
 
@@ -110,9 +110,9 @@ This seam tests output without another JVM or a live RSocket server.
 }
 ```
 
-- [ ] **Step 2: Run `PortalReadServiceTests`.** Use the Task 1 Maven command with `-Dtest=PortalReadServiceTests`.
+- [x] **Step 2: Run `PortalReadServiceTests`.** Use the Task 1 Maven command with `-Dtest=PortalReadServiceTests`.
   Expected: compilation fails because `PortalReadService` is absent.
-- [ ] **Step 3: Add the service.** Split nonempty output on line boundaries. Parse each line as one JSON object.
+- [x] **Step 3: Add the service.** Split nonempty output on line boundaries. Parse each line as one JSON object.
   Require `type=record` or `type=warning` for index lines. Add `type=record` to topic lines.
   Set `complete=false` for every warning except `duplicate-pointer`.
   Use `ShellExitStatus.of(error)` to read the status through wrapped causes.
@@ -120,8 +120,8 @@ This seam tests output without another JVM or a live RSocket server.
   Map malformed typed lines to `INVALID_OUTPUT` with null status.
   Map other shell failures to `READ_FAILED` with their original status.
   Return no partial lines on failure. Keep raw exception text out of replies.
-- [ ] **Step 4: Run the focused test.** Expected: all read-service cases pass.
-- [ ] **Step 5: Commit.** Stage the two named files. Use `CHAT-hmbigvmf: Map shell register reads`.
+- [x] **Step 4: Run the focused test.** Expected: all read-service cases pass.
+- [x] **Step 5: Commit.** Stage the two named files. Use `CHAT-hmbigvmf: Map shell register reads`.
 
 ## Task 3: Serve and protect one portal socket
 
