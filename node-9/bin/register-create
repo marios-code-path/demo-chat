@@ -190,6 +190,9 @@ create_main() {
     [[ -n "$owner" ]] \
         || { create_error 'the command needs --as <owner>'; return 2; }
     node9_require_installed || return 2
+    # The collision check reads Cassandra through compose. Compose needs the
+    # fixed values of node-9.env with no caller value. See CHAT-ecpenmgk.
+    node9_load_env || return 2
     reason="$(node9_register_name_error "$name")" \
         || { create_error "$reason"; return 2; }
     if [[ -n "$date" && ! "$date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then

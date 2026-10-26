@@ -1079,11 +1079,13 @@ create="$install_home/bin/register-create"
 
 # run_create [ENV ASSIGNMENT...] -- ARGS...
 # Run the installed register-create with the stub CLI and the stub cqlsh. The
-# run is bounded, so a parser loop fails the check instead of hanging.
+# stub cqlsh demands the node-9 environment, so a command that skips
+# node9_load_env fails here. The run is bounded, so a parser loop fails the
+# check instead of hanging.
 run_create() {
     out="$(bounded 60 env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
-        "$@" 2>&1)"
+        STUB_REQUIRE_NODE9_ENV=1 "$@" 2>&1)"
     status=$?
 }
 
