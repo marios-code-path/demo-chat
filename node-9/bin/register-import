@@ -1638,15 +1638,10 @@ verify_bundle() {
         return 1
     fi
 
-    # The timed reads run first. They pass through the register wrapper, and
-    # that wrapper holds the only time limit. A stalled read then gives 124
-    # instead of a late byte difference.
-    median="$(verify_reads)"
-    status=$?
-    if (( status != 0 )); then
-        rm -rf "$work_dir"
-        return "$status"
-    fi
+    # The content and the pointers come first. The timed reads are the last
+    # gate, so a byte fault reports itself on a host that is too slow for the
+    # target. A stall before that gate fails at the content check instead.
+    # See CHAT-aknmdufn.
     verify_content "$receipt_dir"
     status=$?
     if (( status != 0 )); then
@@ -1654,6 +1649,12 @@ verify_bundle() {
         return "$status"
     fi
     verify_pointers "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    median="$(verify_reads)"
     status=$?
     if (( status != 0 )); then
         rm -rf "$work_dir"

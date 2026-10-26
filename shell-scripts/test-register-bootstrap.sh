@@ -1033,14 +1033,36 @@ else
         "slow exit $slow_status, fast exit $fast_status, slow output: $slow_out"
 fi
 
-# A stalled read passes the wrapper budget and gives status 124.
+# A slow host still proves the content. The timed reads are the last gate,
+# so a byte fault reports itself first. See CHAT-aknmdufn.
 rm -rf "$stub_state"
 cp -R "$work/stub-state-good" "$stub_state"
-full_verify STUB_STALL_READ=1 CHAT_REGISTER_DEADLINE_MS=1000
-if [[ $status -eq 124 ]]; then
-    ok 'verify_stall_returns_124'
+entry_id="$(jq -r 'select(.kind == "entry" and .topic == "demo-chat-register-fr-second") | .messageId' \
+    "$receipts/receipts.jsonl" | head -1)"
+jq -c --arg id "$entry_id" \
+    'if .id == $id then .text = "other bytes\n" else . end' \
+    "$stub_state/messages/demo-chat-register-fr-second.jsonl" \
+    > "$stub_state/messages/demo-chat-register-fr-second.new"
+mv "$stub_state/messages/demo-chat-register-fr-second.new" \
+    "$stub_state/messages/demo-chat-register-fr-second.jsonl"
+full_verify STUB_READ_SLEEP=0.2 REGISTER_IMPORT_READ_TARGET_MS=50
+if [[ $status -eq 1 && "$out" == *'demo-chat-register-fr-second'* \
+      && "$out" != *'median read'* ]]; then
+    ok 'verify_content_runs_before_the_median_gate'
 else
-    bad 'verify_stall_returns_124' "exit $status, output: $out"
+    bad 'verify_content_runs_before_the_median_gate' "exit $status, output: $out"
+fi
+
+# A stalled host fails the verify. The content gate reports first, and the
+# read it cannot complete is the snapshot read. The register suite proves the
+# 124 status on the wrapper alone. See CHAT-aknmdufn.
+rm -rf "$stub_state"
+cp -R "$work/stub-state-good" "$stub_state"
+full_verify STUB_STALL_READ=1 STUB_STALL_SECONDS=2 CHAT_REGISTER_DEADLINE_MS=1000
+if [[ $status -ne 0 && "$out" != *'verify: bundle'* ]]; then
+    ok 'verify_fails_on_a_stalled_read'
+else
+    bad 'verify_fails_on_a_stalled_read' "exit $status, output: $out"
 fi
 
 # secrets.env declares the members, and the import joins every one of them. No
