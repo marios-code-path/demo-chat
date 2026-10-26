@@ -120,6 +120,34 @@ class PortalProtocolTests {
     }
 
     @Test
+    fun `a portal failure keeps an explicit null status`() {
+        val output = ByteArrayOutputStream()
+
+        protocol.writeReply(output, PortalReply(null, emptyList(), false, PortalError(PortalErrorCode.UNAVAILABLE)))
+
+        val frame = mapper.readTree(output.toByteArray())
+        assertThat(frame.has("status")).isTrue()
+        assertThat(frame["status"].isNull).isTrue()
+        assertThat(frame["complete"].booleanValue()).isFalse()
+        assertThat(frame["error"]["code"].textValue()).isEqualTo("UNAVAILABLE")
+    }
+
+    @Test
+    fun `a reply at the exact byte limit is accepted`() {
+        val seed = ByteArrayOutputStream()
+        val emptyRecord = mapper.createObjectNode().put("type", "record").put("text", "")
+        protocol.writeReply(seed, PortalReply(0, listOf(emptyRecord), true))
+        val text = "x".repeat(4_194_304 - seed.size())
+        val record = mapper.createObjectNode().put("type", "record").put("text", text)
+        val output = ByteArrayOutputStream()
+
+        protocol.writeReply(output, PortalReply(0, listOf(record), true))
+
+        assertThat(output.size()).isEqualTo(4_194_304)
+        assertThat(output.toByteArray().last()).isEqualTo('\n'.code.toByte())
+    }
+
+    @Test
     fun `an oversized reply writes no partial frame`() {
         val output = ByteArrayOutputStream()
         val record = mapper.createObjectNode().put("type", "record").put("text", "x".repeat(4_194_304))

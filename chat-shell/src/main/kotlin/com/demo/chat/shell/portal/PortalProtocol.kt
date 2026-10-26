@@ -35,6 +35,16 @@ data class PortalReply(
 
 class PortalProtocolException(val code: PortalErrorCode) : RuntimeException(code.name)
 
+/**
+ * Reads one newline-terminated request frame and writes one reply frame.
+ *
+ * The client closes its socket write side after the request.
+ * Read to end of input before parsing, so a second frame cannot reach a backend read.
+ * A request has at most 4096 bytes, including the newline.
+ * A reply has at most 4194304 bytes, including the newline.
+ * Invalid requests raise `INVALID_INPUT`.
+ * Oversized replies raise `OUTPUT_TOO_LARGE` before any byte is written.
+ */
 class PortalProtocol(private val mapper: ObjectMapper) {
     fun readRequest(input: InputStream): PortalRequest {
         val bytes = ByteArrayOutputStream()
