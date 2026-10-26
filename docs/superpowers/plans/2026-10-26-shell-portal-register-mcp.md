@@ -34,6 +34,17 @@ Requester reuse does not prove one physical RSocket connection.
 
 The table abbreviates paths. Each task names exact paths.
 
+These signatures keep the tasks aligned:
+
+- `PortalProtocol(ObjectMapper).readRequest(InputStream): PortalRequest`.
+- `PortalProtocol.writeReply(OutputStream, PortalReply)`.
+- `PortalReadService(readIndex, readTopic, ObjectMapper).read(PortalRequest, Duration): PortalReply`.
+- `PortalSocketServer.bind()`, `serve()`, and `close()`.
+- `PortalClient(Path).read(index: String, topic: String?): JsonObject`.
+- `registerPortalTool(Server, AdapterConfig, PortalClient)`.
+
+`chat-mcp` does not depend on `chat-shell`. Its client validates the JSON reply independently.
+
 ## Task 1: Define the portal wire contract
 
 **Files:**
@@ -80,7 +91,8 @@ Production wiring calls `PubSubCommands.registerRead(index, Duration.ofHours(24)
 The topic lambda calls `PubSubCommands.messages(topic, format = "records")`.
 This seam tests output without another JVM or a live RSocket server.
 
-- [ ] **Step 1: Add failing tests.** Cover ordered index lines, typed topic lines, empty success, warning kinds, invalid JSON, and shell statuses.
+- [ ] **Step 1: Add failing tests.** Cover ordered index lines, typed topic lines, empty success, and invalid JSON.
+  Test `duplicate-pointer`, `denied-index`, `denied-topic`, unknown warnings, and shell statuses separately.
 
 ```kotlin
 @Test fun `an unknown warning makes the read incomplete`() {
@@ -112,13 +124,17 @@ This seam tests output without another JVM or a live RSocket server.
 - Create: `chat-shell/src/main/kotlin/com/demo/chat/shell/portal/PortalSocketServer.kt`
 - Test: `chat-shell/src/test/kotlin/com/demo/chat/test/portal/PortalSocketServerTests.kt`
 
-**Seam:** `PortalSocketServer(socket: Path, protocol: PortalProtocol, read: (PortalRequest, Duration) -> PortalReply, deadline: Duration, halt: (Int) -> Unit)`.
+**Seam:** `PortalSocketServer(socket: Path, protocol: PortalProtocol, read: (PortalRequest, Duration) -> PortalReply, deadline: Duration, halt: (Int) -> Unit, identityOf: (Path) -> SocketIdentity?)`.
 Use `ServerSocketChannel` with `StandardProtocolFamily.UNIX`.
 The production deadline is 30 seconds. Tests supply a shorter deadline and a recording `halt` function.
 The production `halt` calls `Runtime.getRuntime().halt(code)`.
+`SocketIdentity` holds the owner and file key returned by `lstat`.
+Tests inject `identityOf` to prove mismatch and unavailable-identity behavior.
+Production uses `lstatSocketIdentity` as the default `identityOf`.
 
 - [ ] **Step 1: Add failing tests.** Use a private temporary parent with mode `0700`.
   Cover bind, mode `0600`, occupied path, owner mismatch, path replacement, shutdown, and one request per connection.
+  Check `INVALID_INPUT` for a bad frame and `OUTPUT_TOO_LARGE` for a large reply.
   Hold the first read in a latch. Prove the second connection gets `BUSY` without another backend read.
   Inject a short deadline. Prove timeout calls `halt(124)` and blocks later reads.
 - [ ] **Step 2: Run `PortalSocketServerTests`.** Use the Task 1 Maven command with `-Dtest=PortalSocketServerTests`.
@@ -128,6 +144,7 @@ The production `halt` calls `Runtime.getRuntime().halt(code)`.
   Close and fail startup if either value is invalid. Leave an unproven path untouched.
   At shutdown, unlink only when owner and file identity still match.
   Keep the accept loop free while one worker reads. Reject concurrent calls with `BUSY`.
+  Map frame and reply-size failures to their fixed error codes with null status.
   Start each 30-second budget at accept. Include parsing, backend work, and response write.
   On timeout, attempt `TIMEOUT`, close the client, and apply safe socket cleanup.
   End the portal process after cleanup.
@@ -152,7 +169,9 @@ The production `halt` calls `Runtime.getRuntime().halt(code)`.
 `PortalConfiguration` wires `PubSubCommands`, `PortalReadService`, `PortalProtocol`, and the server factory.
 The command checks `ShellStateConfiguration.loggedInUser` and `loginMetadata` before bind.
 `ShellModeConfiguration` adds `springShellApplicationRunner` only for `chat.shell.mode=portal`.
-That runner requires both environment login values, calls `EnvironmentLogin.loginIfSet()`, then serves.
+That runner calls `EnvironmentLogin.loginRequired()` before it binds the socket.
+`EnvironmentLogin.loginRequired()` checks both values and returns status 77 when either is absent.
+It then calls `loginIfSet()` for the existing credential check.
 `CommandLineExecution` refuses `portal` in one-shot mode.
 
 - [ ] **Step 1: Add failing tests.** Test missing and refused login before bind.
