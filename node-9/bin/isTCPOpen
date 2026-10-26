@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Report whether local TCP ports are free to bind.
+#
+#   isTCPOpen PORT [PORT...]
+#
+# Each PORT is checked on 127.0.0.1 with nc. A port is available when nc
+# finds no listener on it. The command prints one line for each port. The
+# exit status is the answer. See CHAT-gkzjwrkz.
+#
+# Exit status:
+#   0  every port is available
+#   1  one or more ports are in use
+#   2  no port, a bad port value, or a missing nc
+#
+# The name comes from Mario. A free port has no listener. The check is a
+# connection attempt, so it reads the loopback interface alone.
+set -uo pipefail
+
+usage() {
+    printf 'usage: isTCPOpen PORT [PORT...]\n' >&2
+}
+
+if (( $# == 0 )); then
+    usage
+    exit 2
+fi
+
+command -v nc > /dev/null 2>&1 || {
+    printf 'isTCPOpen: no nc in PATH.\n' >&2
+    exit 2
+}
+
+# Check every value before the first probe, so a bad value writes no line.
+for port in "$@"; do
+    if [[ ! "$port" =~ ^[0-9]+$ ]]; then
+        printf 'isTCPOpen: %s is not a port number.\n' "$port" >&2
+        exit 2
+    fi
+    if (( port < 1 || port > 65535 )); then
+        printf 'isTCPOpen: %s is outside 1 to 65535.\n' "$port" >&2
+        exit 2
+    fi
+done
+
+in_use=0
+for port in "$@"; do
+    if nc -z -w 1 127.0.0.1 "$port" > /dev/null 2>&1; then
+        printf '%s in use\n' "$port"
+        in_use=1
+    else
+        printf '%s free\n' "$port"
+    fi
+done
+
+exit "$in_use"
