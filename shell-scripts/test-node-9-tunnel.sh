@@ -90,6 +90,14 @@ else
     bad 'trailing_dry_run_exits_2' "exit $status, output: $out, error: $err"
 fi
 
+# A mistyped option is the same case as a trailing one.
+run_tunnel node2.lan 100 non-persistent --dryrun stop
+if [[ $status -eq 2 && "$err" == *'--dryrun'* && ! -f "$pidfile" ]]; then
+    ok 'mistyped_option_exits_2'
+else
+    bad 'mistyped_option_exits_2' "exit $status, output: $out, error: $err"
+fi
+
 # A `--` word is a separator in any position. The command after it runs.
 rm -f "$pidfile" "$argsfile"
 run_tunnel node2.lan 100 non-persistent -- true
@@ -232,4 +240,4 @@ if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 19
+printf '%d checks, 0 failures\n' 20
