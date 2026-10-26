@@ -110,6 +110,14 @@ else
     bad 'persistent_with_command_exit_2' "exit $status, error: $err"
 fi
 
+# A host that looks like an ssh option must not reach ssh as one.
+run_tunnel -oProxyCommand=true 100 non-persistent bash -c 'exit 0'
+if [[ $status -eq 2 && "$err" == *'looks like an option'* ]]; then
+    ok 'option_shaped_host_exit_2'
+else
+    bad 'option_shaped_host_exit_2' "exit $status, error: $err"
+fi
+
 # -- Non-persistent mode -------------------------------------------------
 
 # The short sleep lets the stub ssh start before the command exits.
@@ -135,6 +143,36 @@ else
     bad 'ssh_carries_the_tunnel_flags' "args: $(cat "$argsfile" 2> /dev/null)"
 fi
 
+# -- A failed tunnel keeps the ssh text ----------------------------------
+
+# The stub prints one marker and exits. The tool must show that text.
+cat > "$work/bad-ssh" <<'STUB'
+#!/usr/bin/env bash
+echo 'SSH-FAILURE-MARKER' >&2
+exit 255
+STUB
+chmod +x "$work/bad-ssh"
+out="$(CHAT_TUNNEL_SSH="$work/bad-ssh" CHAT_TUNNEL_READY_SECONDS=1 \
+    "$tool" node2.lan 100 non-persistent true 2> "$work/stderr")"
+status=$?
+err="$(cat "$work/stderr")"
+if [[ $status -eq 1 && "$err" == *'SSH-FAILURE-MARKER'* ]]; then
+    ok 'failed_tunnel_prints_ssh_text'
+else
+    bad 'failed_tunnel_prints_ssh_text' "exit $status, error: $err"
+fi
+
+# Persistent mode must not print a pid for a tunnel that never started.
+out="$(CHAT_TUNNEL_SSH="$work/bad-ssh" CHAT_TUNNEL_READY_SECONDS=1 \
+    "$tool" node2.lan 400 persistent 2> "$work/stderr")"
+status=$?
+err="$(cat "$work/stderr")"
+if [[ $status -eq 1 && -z "$out" && "$err" == *'SSH-FAILURE-MARKER'* ]]; then
+    ok 'persistent_refuses_a_dead_tunnel'
+else
+    bad 'persistent_refuses_a_dead_tunnel' "exit $status, output: $out, error: $err"
+fi
+
 # -- Persistent mode -----------------------------------------------------
 
 rm -f "$pidfile"
@@ -153,4 +191,4 @@ if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 12
+printf '%d checks, 0 failures\n' 15

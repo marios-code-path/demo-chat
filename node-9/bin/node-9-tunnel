@@ -60,6 +60,8 @@ if (( ${#positional[@]} > 3 )); then
 fi
 
 [[ -n "$host" ]] || { printf 'node-9-tunnel: the host is empty.\n' >&2; exit 2; }
+[[ "$host" != -* ]] \
+    || { printf 'node-9-tunnel: the host %s looks like an option.\n' "$host" >&2; exit 2; }
 [[ "$offset" =~ ^[0-9]+$ ]] \
     || { printf 'node-9-tunnel: the offset %s is not a number.\n' "$offset" >&2; exit 2; }
 (( offset % 100 == 0 )) \
@@ -88,6 +90,8 @@ local_registry=$(( 6892 + offset ))
 
 ssh_bin="${CHAT_TUNNEL_SSH:-ssh}"
 ready_seconds="${CHAT_TUNNEL_READY_SECONDS:-10}"
+[[ "$ready_seconds" =~ ^[0-9]+$ ]] \
+    || { printf 'node-9-tunnel: CHAT_TUNNEL_READY_SECONDS must be a number.\n' >&2; exit 2; }
 
 ssh_args=(
     -N
@@ -97,6 +101,7 @@ ssh_args=(
     -L "127.0.0.1:$local_rsocket:127.0.0.1:6890"
     -L "127.0.0.1:$local_management:127.0.0.1:6891"
     -L "127.0.0.1:$local_registry:127.0.0.1:6892"
+    --
     "$host"
 )
 
@@ -137,35 +142,26 @@ if (( dry_run )); then
     exit 0
 fi
 
-if (( persistent )); then
-    # A detached tunnel takes no terminal input and writes no output.
-    "$ssh_bin" "${ssh_args[@]}" < /dev/null > /dev/null 2>&1 &
-    tunnel_pid=$!
-    sleep 0.3
-    if ! kill -0 "$tunnel_pid" 2> /dev/null; then
-        printf 'node-9-tunnel: the tunnel did not start.\n' >&2
-        exit 1
-    fi
-    disown "$tunnel_pid" 2> /dev/null || true
-    printf '%s\n' "$tunnel_pid"
-    exit 0
-fi
-
 ssh_log="$(mktemp "${TMPDIR:-/tmp}/node-9-tunnel.XXXXXX")" \
     || { printf 'node-9-tunnel: cannot make a log file.\n' >&2; exit 1; }
 
-"$ssh_bin" "${ssh_args[@]}" 2> "$ssh_log" &
-tunnel_pid=$!
-
-# stop_tunnel  End the tunnel and reap it.
+# stop_tunnel  End the tunnel, reap it, and drop the log. The EXIT trap runs
+# this path, so a signal or a failed wait leaves no tunnel behind.
 stop_tunnel() {
-    kill "$tunnel_pid" 2> /dev/null
-    wait "$tunnel_pid" 2> /dev/null
+    if [[ -n "${tunnel_pid:-}" ]]; then
+        kill "$tunnel_pid" 2> /dev/null
+        wait "$tunnel_pid" 2> /dev/null
+    fi
     rm -f "$ssh_log"
 }
+trap stop_tunnel EXIT
+
+# The tunnel takes no terminal input, and it never writes standard output.
+# In non-persistent mode the command owns standard input and output.
+"$ssh_bin" "${ssh_args[@]}" < /dev/null > /dev/null 2> "$ssh_log" &
+tunnel_pid=$!
 
 if ! wait_for_tunnel; then
-    stop_tunnel
     # The ssh text is the exact cause. Print it before the summary line.
     [[ -s "$ssh_log" ]] && cat "$ssh_log" >&2
     printf 'node-9-tunnel: the tunnel did not answer on ports %s %s %s.\n' \
@@ -173,11 +169,16 @@ if ! wait_for_tunnel; then
     exit 1
 fi
 
-trap stop_tunnel EXIT
+if (( persistent )); then
+    disown "$tunnel_pid" 2> /dev/null || true
+    printf '%s\n' "$tunnel_pid"
+    trap - EXIT
+    rm -f "$ssh_log"
+    exit 0
+fi
+
 printf 'node-9-tunnel: %s %s %s reach %s as 6890 6891 6892\n' \
     "$local_rsocket" "$local_management" "$local_registry" "$host" >&2
 "${command_args[@]}"
 status=$?
-trap - EXIT
-stop_tunnel
 exit "$status"
