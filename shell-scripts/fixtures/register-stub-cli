@@ -20,7 +20,8 @@
 #   STUB_DENY_INDEX=1         A read of the index gives a denied warning.
 #   STUB_INDEX_PRE=<n>        The index starts with n messages.
 #   STUB_FAIL_AFTER_POST=<n>  The nth post stores its message, then exits 75.
-#   STUB_STALL_READ=1         A read sleeps past every test budget.
+#   STUB_STALL_READ=1         Every read sleeps past every test budget.
+#   STUB_STALL_SECONDS=<n>    The length of that sleep. Default 120.
 #   STUB_READ_SLEEP=<seconds> Every read waits that long.
 #   STUB_DENY_TOPIC=1         A topic read gives a denied warning and exits 0.
 set -uo pipefail
@@ -127,7 +128,7 @@ case "$command_name" in
             exit 2
         fi
         if [[ "${STUB_STALL_READ:-0}" == '1' ]]; then
-            sleep 120
+            sleep "${STUB_STALL_SECONDS:-120}"
             exit 0
         fi
         [[ -n "${STUB_READ_SLEEP:-}" ]] && sleep "$STUB_READ_SLEEP"
@@ -238,7 +239,7 @@ case "$command_name" in
         topic="${1:-}"
         [[ -n "$topic" ]] || { printf 'stub: messages needs a topic\n' >&2; exit 2; }
         if [[ "${STUB_STALL_READ:-0}" == '1' ]]; then
-            sleep 120
+            sleep "${STUB_STALL_SECONDS:-120}"
             exit 0
         fi
         [[ -n "${STUB_READ_SLEEP:-}" ]] && sleep "$STUB_READ_SLEEP"
