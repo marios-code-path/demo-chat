@@ -1541,7 +1541,10 @@ verify_reads() {
         user="${readers[$(( index % count ))]}"
         attempt=$(( attempt + 1 ))
         start="$(import_now_ms)"
-        env NODE9_REGISTER_TOPIC_NAME="$import_register" \
+        # The wrapper reads NODE_9_REGISTER_TOPIC_NAME. A near miss leaves the
+        # wrapper on the register of the caller's environment, so a check of
+        # one register reads another. See CHAT-tjzxhvjc.
+        env NODE_9_REGISTER_TOPIC_NAME="$import_register" \
             "$NODE9_DIR/bin/register" read --as "$user" \
             > "$import_work/read.jsonl" 2> "$import_work/read.err"
         status=$?
