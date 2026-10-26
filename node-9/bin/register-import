@@ -1172,8 +1172,9 @@ import_preflight() {
     [[ "$user" == 'Mario' ]] \
         || { import_error 'the first delivery accepts the import user Mario alone'; return 2; }
 
-    import_fixed CORE_PORT 6890 || return
-    import_fixed CORE_MGMT_PORT 6891 || return
+    # The core ports come from the caller or the installed default, so an
+    # ssh tunnel can move them together. The node and key type stay fixed.
+    # See CHAT-kewgzgbf and CHAT-egdtmwfc.
     import_fixed CHAT_SHELL_KEY_TYPE uuid || return
     import_fixed CHAT_SHELL_NODE_ID 9 || return
 
@@ -1198,8 +1199,11 @@ import_preflight() {
         return "$status"
     fi
 
-    export CORE_PORT=6890
-    export CORE_MGMT_PORT=6891
+    # The core ports come from the caller or the installed default. An ssh
+    # tunnel moves them together, so a moved core port moves the management
+    # port with it. See CHAT-kewgzgbf and CHAT-egdtmwfc.
+    export CORE_PORT="${CORE_PORT:-6890}"
+    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-$(( CORE_PORT + 1 ))}"
     export CHAT_SHELL_KEY_TYPE=uuid
     export CHAT_SHELL_NODE_ID=9
     export CHAT_SHELL_USER="$user"
