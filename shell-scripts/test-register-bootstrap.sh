@@ -1193,6 +1193,47 @@ else
     bad 'create_changed_date_stops' "exit $status, output: $out"
 fi
 
+# An empty register makes its CLI calls too, and the caller login must reach
+# the core. Without it the core writes no owner row. See CHAT-egdtmwfc.
+reset_stub
+rm -rf "$install_home/data/register-import"
+run_create "$create" empty-register --as Mario
+login_line="$(head -n 1 "$stub_state/login.log" 2> /dev/null)"
+if [[ $status -eq 0 && "$login_line" == 'Mario uuid 9 readable' ]]; then
+    ok 'create_exports_the_caller_login'
+else
+    bad 'create_exports_the_caller_login' \
+        "exit $status, first call: $login_line, output: $out"
+fi
+
+# The entry is the heading and the first paragraph below it, and the blank
+# line under the heading is skipped. A second paragraph stays out of the
+# entry. See the entry granularity rule of the project register design.
+cat > "$work/create-blank.md" <<'EOF'
+Preamble.
+## Alpha
+
+Body one.
+
+Second paragraph.
+
+## Beta
+
+Body two.
+EOF
+reset_stub
+rm -rf "$install_home/data/register-import"
+run_create "$create" blank-register "$work/create-blank.md" \
+    --source-date 2026-10-22 --as Mario
+alpha_text="$(jq -rs 'map(select(.type == "record")) | last | .text | @json' \
+    "$stub_state/messages/blank-register-fr-alpha.jsonl" 2> /dev/null)"
+if [[ $status -eq 0 && "$alpha_text" == '"## Alpha\n\nBody one.\n"' ]]; then
+    ok 'create_entry_holds_the_heading_and_first_paragraph'
+else
+    bad 'create_entry_holds_the_heading_and_first_paragraph' \
+        "exit $status, entry text: [$alpha_text], output: $out"
+fi
+
 # A second short-name collision names both sections.
 cat > "$work/create-collision.md" <<'EOF'
 Preamble.
