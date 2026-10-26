@@ -1058,8 +1058,8 @@ fi
 # 124 status on the wrapper alone. See CHAT-aknmdufn.
 rm -rf "$stub_state"
 cp -R "$work/stub-state-good" "$stub_state"
-full_verify STUB_STALL_READ=1 STUB_STALL_SECONDS=2 CHAT_REGISTER_DEADLINE_MS=1000
-if [[ $status -ne 0 && "$out" != *'verify: bundle'* ]]; then
+full_verify STUB_STALL_READ=1 STUB_STALL_SECONDS=2
+if [[ $status -eq 1 && "$out" == *'do not rebuild the source bytes'* ]]; then
     ok 'verify_fails_on_a_stalled_read'
 else
     bad 'verify_fails_on_a_stalled_read' "exit $status, output: $out"

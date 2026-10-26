@@ -218,15 +218,15 @@ It reconstructs the source from the ordered snapshot parts.
 It compares the result with the bundled source by `cmp` and SHA-256.
 It verifies each mapped entry against its source range.
 It verifies the pointers.
+The content and the pointer checks come first, so a slow host still proves the bytes.
 It then reads the register as all four users.
 It treats a denied warning as a failure, even when the read returns status `0`.
 It measures five complete session reads from command start to the last byte.
 The median must meet the existing 10-second target.
-The content and the pointers come first, so a slow host still proves the bytes.
-A stalled read therefore fails at the content gate.
+A stall before that gate fails at the content check.
 The offline shell stub checks that failure.
 The register suite checks status `124` on the wrapper alone.
-The order is `CHAT-aknmdufn`.
+See `CHAT-aknmdufn`.
 The stage 3 proof already records the live 30-second boundary.
 The import does not pause a live core to test the limit.
 

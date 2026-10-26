@@ -239,7 +239,7 @@ case "$command_name" in
         topic="${1:-}"
         [[ -n "$topic" ]] || { printf 'stub: messages needs a topic\n' >&2; exit 2; }
         if [[ "${STUB_STALL_READ:-0}" == '1' ]]; then
-            sleep 120
+            sleep "${STUB_STALL_SECONDS:-120}"
             exit 0
         fi
         [[ -n "${STUB_READ_SLEEP:-}" ]] && sleep "$STUB_READ_SLEEP"
