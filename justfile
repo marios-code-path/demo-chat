@@ -42,6 +42,10 @@ check-register:
 check-is-tcp-open:
 	bash shell-scripts/test-is-tcp-open.sh
 
+# Check the ssh tunnel tool against a stub ssh. Opens no connection.
+check-node-9-tunnel:
+	bash shell-scripts/test-node-9-tunnel.sh
+
 # Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh

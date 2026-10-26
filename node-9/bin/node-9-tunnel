@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# Open one ssh tunnel to a node-9 host.
+#
+#   node-9-tunnel [--dry-run] HOST OFFSET MODE [COMMAND...]
+#
+# HOST names the remote host. OFFSET is a nonnegative multiple of 100. The
+# tunnel forwards three ports: 6890, 6891, and 6892 plus OFFSET. Each local
+# port reaches the same port on the remote loopback interface.
+#
+# MODE is one of four words. `non-persistent` and `false` are the same mode.
+# `persistent` and `true` are the same mode.
+#
+# non-persistent  The tunnel lives while COMMAND runs. The command starts
+#                 after the three local ports answer. The tunnel closes after
+#                 the command exits. The status is the status of COMMAND.
+# persistent      The tunnel stays after this program exits. The program
+#                 prints the process id. COMMAND is not accepted.
+#
+# --dry-run prints the exact steps. It starts no tunnel and no command.
+#
+# The tunnel output goes to standard error. Standard output belongs to
+# COMMAND. See CHAT-bheycntz.
+#
+# Exit status:
+#   0  success
+#   1  the tunnel did not start
+#   2  an argument is invalid
+#   n  the status of COMMAND in non-persistent mode
+set -uo pipefail
+
+usage() {
+    printf 'usage: node-9-tunnel [--dry-run] HOST OFFSET MODE [COMMAND...]\n' >&2
+}
+
+dry_run=0
+positional=()
+while (( $# )); do
+    case "$1" in
+        --dry-run) dry_run=1; shift ;;
+        -h|--help) usage; exit 0 ;;
+        --)
+            shift
+            while (( $# )); do
+                positional+=("$1")
+                shift
+            done
+            ;;
+        --*) usage; exit 2 ;;
+        *) positional+=("$1"); shift ;;
+    esac
+done
+
+(( ${#positional[@]} >= 3 )) || { usage; exit 2; }
+host="${positional[0]}"
+offset="${positional[1]}"
+mode="${positional[2]}"
+command_args=()
+if (( ${#positional[@]} > 3 )); then
+    command_args=("${positional[@]:3}")
+fi
+
+[[ -n "$host" ]] || { printf 'node-9-tunnel: the host is empty.\n' >&2; exit 2; }
+[[ "$offset" =~ ^[0-9]+$ ]] \
+    || { printf 'node-9-tunnel: the offset %s is not a number.\n' "$offset" >&2; exit 2; }
+(( offset % 100 == 0 )) \
+    || { printf 'node-9-tunnel: the offset %s is not a multiple of 100.\n' "$offset" >&2; exit 2; }
+(( offset <= 32768 )) \
+    || { printf 'node-9-tunnel: the offset %s passes 32768.\n' "$offset" >&2; exit 2; }
+
+case "$mode" in
+    non-persistent|false) persistent=0 ;;
+    persistent|true) persistent=1 ;;
+    *) printf 'node-9-tunnel: the mode %s is not a known mode.\n' "$mode" >&2; exit 2 ;;
+esac
+
+if (( persistent )); then
+    (( ${#command_args[@]} == 0 )) \
+        || { printf 'node-9-tunnel: a persistent tunnel takes no command.\n' >&2; exit 2; }
+else
+    (( ${#command_args[@]} > 0 )) \
+        || { printf 'node-9-tunnel: a non-persistent tunnel needs a command.\n' >&2; exit 2; }
+fi
+
+# The three local ports. The remote side keeps the standard node-9 ports.
+local_rsocket=$(( 6890 + offset ))
+local_management=$(( 6891 + offset ))
+local_registry=$(( 6892 + offset ))
+
+ssh_bin="${CHAT_TUNNEL_SSH:-ssh}"
+ready_seconds="${CHAT_TUNNEL_READY_SECONDS:-10}"
+
+ssh_args=(
+    -N
+    -o ExitOnForwardFailure=yes
+    -o ServerAliveInterval=15
+    -o ServerAliveCountMax=3
+    -L "127.0.0.1:$local_rsocket:127.0.0.1:6890"
+    -L "127.0.0.1:$local_management:127.0.0.1:6891"
+    -L "127.0.0.1:$local_registry:127.0.0.1:6892"
+    "$host"
+)
+
+# tunnel_ready  True when all three local ports answer.
+tunnel_ready() {
+    local port
+    for port in "$local_rsocket" "$local_management" "$local_registry"; do
+        nc -z -w 1 127.0.0.1 "$port" > /dev/null 2>&1 || return 1
+    done
+    return 0
+}
+
+# wait_for_tunnel  Poll the local ports. Return 1 after the budget.
+wait_for_tunnel() {
+    local waited=0
+    (( ready_seconds == 0 )) && return 0
+    while (( waited < ready_seconds * 10 )); do
+        tunnel_ready && return 0
+        sleep 0.1
+        waited=$(( waited + 1 ))
+    done
+    return 1
+}
+
+if (( dry_run )); then
+    printf 'node-9-tunnel: host %s\n' "$host"
+    printf 'node-9-tunnel: offset %s\n' "$offset"
+    printf 'node-9-tunnel: mode %s\n' "$( (( persistent )) && printf persistent || printf non-persistent )"
+    printf 'node-9-tunnel: %s %s\n' "$ssh_bin" "${ssh_args[*]}"
+    if (( ! persistent )); then
+        printf 'node-9-tunnel: wait up to %s seconds for ports %s %s %s\n' \
+            "$ready_seconds" "$local_rsocket" "$local_management" "$local_registry"
+        printf 'node-9-tunnel: run %s\n' "${command_args[*]}"
+        printf 'node-9-tunnel: stop the tunnel after the command exits\n'
+    else
+        printf 'node-9-tunnel: move the tunnel to the background and print its process id\n'
+    fi
+    exit 0
+fi
+
+if (( persistent )); then
+    # A detached tunnel takes no terminal input and writes no output.
+    "$ssh_bin" "${ssh_args[@]}" < /dev/null > /dev/null 2>&1 &
+    tunnel_pid=$!
+    sleep 0.3
+    if ! kill -0 "$tunnel_pid" 2> /dev/null; then
+        printf 'node-9-tunnel: the tunnel did not start.\n' >&2
+        exit 1
+    fi
+    disown "$tunnel_pid" 2> /dev/null || true
+    printf '%s\n' "$tunnel_pid"
+    exit 0
+fi
+
+ssh_log="$(mktemp "${TMPDIR:-/tmp}/node-9-tunnel.XXXXXX")" \
+    || { printf 'node-9-tunnel: cannot make a log file.\n' >&2; exit 1; }
+
+"$ssh_bin" "${ssh_args[@]}" 2> "$ssh_log" &
+tunnel_pid=$!
+
+# stop_tunnel  End the tunnel and reap it.
+stop_tunnel() {
+    kill "$tunnel_pid" 2> /dev/null
+    wait "$tunnel_pid" 2> /dev/null
+    rm -f "$ssh_log"
+}
+
+if ! wait_for_tunnel; then
+    stop_tunnel
+    # The ssh text is the exact cause. Print it before the summary line.
+    [[ -s "$ssh_log" ]] && cat "$ssh_log" >&2
+    printf 'node-9-tunnel: the tunnel did not answer on ports %s %s %s.\n' \
+        "$local_rsocket" "$local_management" "$local_registry" >&2
+    exit 1
+fi
+
+trap stop_tunnel EXIT
+printf 'node-9-tunnel: %s %s %s reach %s as 6890 6891 6892\n' \
+    "$local_rsocket" "$local_management" "$local_registry" "$host" >&2
+"${command_args[@]}"
+status=$?
+trap - EXIT
+stop_tunnel
+exit "$status"
