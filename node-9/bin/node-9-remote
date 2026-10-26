@@ -55,16 +55,33 @@ while (( $# )); do
             --*) usage; exit 2 ;;
         esac
     elif (( ! literal )); then
-        # A tool option after the operands is a caller error. Without this
-        # rule a trailing --dry-run would run the command live.
+        # A -- word is a separator in any position.
+        if [[ "$1" == '--' ]]; then
+            literal=1
+            shift
+            continue
+        fi
+        # An option of this tool anywhere in the command is a caller error.
+        # Without this rule a trailing --dry-run runs the command live.
+        # See CHAT-uhdbljkr.
         case "$1" in
             --dry-run|-h|--help)
                 printf 'node-9-remote: the option %s belongs before the host.\n' \
                     "$1" >&2
                 exit 2
                 ;;
-            --) literal=1; shift; continue ;;
         esac
+        # The first command word is a name, never an option. Without this
+        # rule a mistyped --dryrun runs as a command.
+        if (( ${#positional[@]} == 2 )); then
+            case "$1" in
+                -*)
+                    printf 'node-9-remote: the first command word is the option %s. Put the command first, or write -- before it.\n' \
+                        "$1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
     fi
     positional+=("$1")
     shift
