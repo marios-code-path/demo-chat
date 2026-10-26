@@ -55,11 +55,13 @@ These signatures keep the tasks aligned:
 Construct `PortalProtocol(ObjectMapper())` in the protocol tests.
 The operation is `read-register`. Names match `[A-Za-z0-9][A-Za-z0-9-]{0,63}`.
 The request holds one JSON object and ends with one newline.
+The client half-closes its write side after that frame.
+The server reads to end of input before it starts a backend read.
 `PortalReply` holds `status: Int?`, `lines: List<JsonNode>`, `complete: Boolean`, and optional `error.code`.
 Define error codes `INVALID_INPUT`, `BUSY`, `UNAVAILABLE`, `TIMEOUT`, `OUTPUT_TOO_LARGE`, `INVALID_OUTPUT`, and `READ_FAILED`.
 The request limit is 4096 UTF-8 bytes. The reply limit is 4194304 UTF-8 bytes.
 
-- [ ] **Step 1: Add failing tests.** Cover valid topic, empty frame, bad UTF-8, extra field, non-string name, invalid name, two frames, and byte limits.
+- [x] **Step 1: Add failing tests.** Cover valid topic, empty frame, bad UTF-8, extra field, non-string name, invalid name, two frames, and byte limits.
 
 ```kotlin
 @Test fun `a topic request keeps its selector and topic`() {
@@ -70,12 +72,13 @@ The request limit is 4096 UTF-8 bytes. The reply limit is 4194304 UTF-8 bytes.
 }
 ```
 
-- [ ] **Step 2: Run the focused test.** Run `mvn -B -pl chat-shell -am test -Dtest=PortalProtocolTests -Dsurefire.failIfNoSpecifiedTests=false`.
+- [x] **Step 2: Run the focused test.** Run `mvn -B -pl chat-shell -am test -Dtest=PortalProtocolTests -Dsurefire.failIfNoSpecifiedTests=false`.
   Expected: compilation fails because `PortalProtocol` is absent.
-- [ ] **Step 3: Add the protocol.** Reject malformed UTF-8 and count bytes before JSON parsing.
-  Reject unknown JSON keys and extra frames. Serialize one bounded reply.
-- [ ] **Step 4: Run the same test.** Expected: `PortalProtocolTests` passes.
-- [ ] **Step 5: Commit.** Stage the two named files. Use `CHAT-hmbigvmf: Define portal JSON frames`.
+- [x] **Step 3: Add the protocol.** Reject malformed UTF-8 and count bytes before JSON parsing.
+  Read through end of input. Reject unknown JSON keys and extra frames.
+  Serialize one bounded reply.
+- [x] **Step 4: Run the same test.** Expected: `PortalProtocolTests` passes.
+- [x] **Step 5: Commit.** Stage the two named files. Use `CHAT-hmbigvmf: Define portal JSON frames`.
 
 ## Task 2: Map shell reads to portal replies
 
@@ -239,6 +242,7 @@ The client opens one Unix socket connection per call and exchanges one frame.
 - [ ] **Step 3: Add config and client.** Keep REST settings required for current tools.
   Validate selectors with the portal name rule. Never place credentials in a portal request.
   Decode one bounded JSON reply. Preserve `error.code`, `status`, `complete`, and line order.
+  Half-close the socket write side after sending the request frame.
   Use a nonblocking `SocketChannel` and `Selector` for the complete exchange.
   Set a 35-second default deadline. Close the socket when the deadline expires.
   Map connect, framing, and read-deadline failures to `UNAVAILABLE` with null status.

@@ -98,6 +98,9 @@ A second concurrent request receives `BUSY` without a backend read.
 The request has one UTF-8 JSON object and a size limit of 4 KiB.
 The response has one UTF-8 JSON object and a size limit of 4 MiB.
 Each object occupies one newline-terminated frame.
+The client closes its socket write side after the request frame.
+The portal reads to end of input before it starts a backend read.
+The 30-second request deadline also bounds this input wait.
 The client and server close the connection after one response.
 No socket request contains a shell command line.
 
