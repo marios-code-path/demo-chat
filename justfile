@@ -46,6 +46,10 @@ check-is-tcp-open:
 check-node-9-tunnel:
 	bash shell-scripts/test-node-9-tunnel.sh
 
+# Check the remote command against stub tools. Opens no connection.
+check-node-9-remote:
+	bash shell-scripts/test-node-9-remote.sh
+
 # Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh
