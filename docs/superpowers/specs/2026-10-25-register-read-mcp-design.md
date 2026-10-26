@@ -1,167 +1,207 @@
-# Local MCP access to node-9 register reads
+# Read the node-9 register through a shell portal
 
-Date: 2026-10-25.
+Date: 2026-10-25. Revised: 2026-10-26.
 Tracking: CHAT-hmbigvmf.
-Status: design approved in conversation. Written specification awaits review.
+Status: revised strategy approved in conversation. Written specification awaits review.
 
 ## Objective
 
-Give a local Codex client one read-only MCP tool named `register.read`.
-The tool reads one configured project register through the installed node-9 wrapper.
-The tool must preserve the wrapper's records, warnings, and failure status.
+Expose one `read-register` tool in the existing `chat-mcp` adapter.
+The tool reads the node-9 register through a resident, logged-in `chat-shell` process.
+Repeated reads must not start another shell JVM.
 
-The first delivery supports the session-start read and one topic read.
-It does not expose register creation, import, open, post, membership, or raw shell commands.
+The first delivery supports the session-start read and one named topic read.
+It does not add register writes or general shell command execution to the portal.
 
 ## Current boundaries
 
-`node-9/bin/register read --as <name>` reads the register index and recent entries.
-`node-9/bin/register read <topic> --as <name>` reads one topic.
-The wrapper starts `register-read --index <value>` for the session-start read.
-The wrapper already owns login selection, secret-file access, and a 30-second limit.
+`node-9/bin/register read --as <name>` reads one selected register index and its recent entries.
+`node-9/bin/register read <topic> --as <name>` reads the complete history of one topic.
+The wrapper selects the index with `NODE_9_REGISTER_TOPIC_NAME` or `NODE_9_REGISTER_TOPIC_ID`.
+The name wins when both values exist.
+The wrapper starts a new shell JVM for every read.
+The installed `chat-shell-cli` options select one-shot mode.
+The portal needs a resident launch path that selects resident mode explicitly.
 
-The current `chat-mcp` adapter uses authenticated REST and a configured topic list.
-It does not use the node-9 register wrapper.
-This design adds a separate local stdio server and leaves that adapter unchanged.
+`chat-shell` already implements the session-start read in `PubSubCommands.registerRead`.
+It implements a named topic read in `PubSubCommands.messages` with the `records` format.
+Its RSocket requester factory caches requesters by service instance.
+The cache does not promise exactly one physical connection.
 
-The installed wrapper currently differs from the project-register code in this checkout.
-Live acceptance of a named project register requires a compatible installed wrapper.
-This design does not authorize a node-9 reinstall or a node stop.
+`chat-mcp` already serves MCP through standard input and output.
+Its existing tools use authenticated REST.
+This design adds one local socket client to that adapter.
 
-## Architecture
+The installed node-9 runtime may differ from this checkout.
+This design does not authorize a node-9 reinstall, restart, or stop.
 
-The server is a separate, native executable built from a new Kotlin module.
-It uses the existing Kotlin MCP SDK and GraalVM Native Image.
-JVM tests may support development, but delivery requires a working native executable.
-If the SDK cannot compile to a native executable, stop and review that result.
+## Ownership and identity
 
-One server process holds one agent login and one project register.
-The operator sets both when Codex starts the server.
-The tool input cannot select a login, register, password, executable, or environment variable.
-The server launches the configured installed `register` wrapper for each call.
-It never reads password files directly.
+One portal process holds one authenticated shell identity.
+The portal starts only after the shell proves login through its current RSocket path.
+The operator supplies the identity and password file at runtime.
+The password never enters a command argument, socket request, MCP result, or diagnostic.
+The portal does not accept a login name or credential in a socket request.
 
-The server uses the installed wrapper's absolute path.
-It does not run a shell or resolve that path through `PATH`.
-It passes command arguments as separate process arguments.
-It does not allow caller text to become a command or an option.
+An interactive shell can enter `portal --socket <absolute-path>` after login.
+The command serves requests in the foreground until the operator stops it.
+The shell cannot accept another login command while the portal command runs.
 
-## Configuration
+An unattended launch uses `chat.shell.mode=resident` with the same portal service.
+It requires `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE`, and `CHAT_SHELL_PORTAL_SOCKET`.
+It refuses an anonymous or failed login before it binds the socket.
+The resident process holds the shell context until shutdown.
+Both launch paths bind the same fixed identity for the portal lifetime.
+One-shot mode refuses the `portal` command.
+The resident launcher uses the installed shell classpath and runtime settings.
+It selects resident mode instead of the frozen one-shot option.
+It never fixes a login name or password in installed options.
 
-The server requires these launch settings:
+The portal serves multiple configured project registers through that identity.
+The portal does not infer a register from its current directory.
+Each MCP adapter configuration fixes one register selector.
+The MCP caller cannot select another session-start index or identity.
+The portal applies the shell identity to every backend read.
+The core remains the authority for topic access.
 
-| Setting | Rule |
+## Socket boundary
+
+The portal binds one Unix-domain socket at an absolute operator-selected path.
+The parent directory must be private to the operating-system account.
+The portal restricts socket access to that account.
+It refuses a path that names a file, link, or socket from another process.
+It removes its own socket at normal shutdown.
+It does not remove a socket whose ownership it cannot prove.
+
+Socket permissions separate operating-system accounts.
+They do not separate processes that share one account.
+An account that can connect to the socket can request reads as the portal identity.
+The operator must treat the socket path as an identity-bearing capability.
+
+The portal accepts one request at a time.
+A second concurrent request receives `BUSY` without a backend read.
+The request has one UTF-8 JSON object and a size limit of 4 KiB.
+The response has one UTF-8 JSON object and a size limit of 4 MiB.
+Each object occupies one newline-terminated frame.
+The client and server close the connection after one response.
+No socket request contains a shell command line.
+
+The request fields are `operation`, `index`, and optional `topic`.
+`operation` must equal `read-register`.
+`index` names the register by its configured name or ID.
+An absent `topic` selects the session-start read.
+A present `topic` selects the complete history of that topic.
+As with the wrapper, a named topic need not appear in the selected index.
+The core checks whether the portal identity can read that topic.
+The portal rejects unknown fields and empty strings.
+An index or topic must hold 1 to 64 ASCII letters, digits, or hyphens.
+The first character must be a letter or digit.
+This rule accepts current topic names and UUID text.
+
+The portal answers with `status`, `lines`, and `complete` on a completed read.
+`status` is `0` for a completed shell read, including reads with warnings.
+`lines` holds ordered JSON objects with the existing `record` or `warning` shapes.
+`complete` is false when a warning has kind `denied-index` or `denied-topic`.
+`complete` remains true for a `duplicate-pointer` warning.
+A status `0` and no lines means a readable, empty result.
+
+A failed read answers `error.code` and `status`.
+The status is the shell status for a shell failure.
+The status is null for a portal or socket failure.
+It returns no partial records.
+It returns no raw exception, credential, or backend response text.
+The portal logs one bounded diagnostic without secret values.
+MCP standard output continues to carry protocol frames alone.
+
+| Code | Condition |
 |---|---|
-| `--register-bin PATH` | Absolute path to an executable installed `register` wrapper. |
-| `--as NAME` | One nonempty agent login. The tool call cannot change it. |
-| `NODE_9_REGISTER_TOPIC_NAME` or `NODE_9_REGISTER_TOPIC_ID` | Selects one project register. The name wins when both exist. |
+| `INVALID_INPUT` | The request breaks the socket schema or topic rule. |
+| `BUSY` | Another read is active. |
+| `UNAVAILABLE` | The backend or portal cannot answer. |
+| `TIMEOUT` | The request deadline expires. |
+| `OUTPUT_TOO_LARGE` | The response exceeds its byte limit. |
+| `INVALID_OUTPUT` | The shell read emits an invalid typed line. |
+| `READ_FAILED` | Another shell read failure occurs. |
 
-The server rejects a missing register selector before it starts MCP service.
-The server passes the selected register variables to the wrapper.
-It does not infer a project from the current directory.
-It does not place a password or register content in process arguments.
+The portal maps shell status 69 to `UNAVAILABLE` and 124 to `TIMEOUT`.
+It maps other shell failures to `READ_FAILED` without changing their status.
+An invalid socket request returns `INVALID_INPUT` and a null status.
+An invalid portal login stops startup with shell status 77 before socket binding.
+The adapter maps socket errors to its own fixed MCP error sentences.
+The adapter never reports a missing portal as an empty register.
 
-The operator controls the server command and its environment in Codex MCP configuration.
-An operator may configure a separate server name for another project or agent.
-Do not ship a development login or a production login as a default.
+## Read implementation and limits
+
+The portal calls the existing shell read services.
+It uses `registerRead(index, 24 hours, remaining time)` for the session-start read.
+It uses `messages(topic, format = "records")` for one topic read.
+Both calls run under one request deadline of 30 seconds.
+The deadline starts when the portal accepts the request.
+It covers the backend read and the complete socket response.
+
+The current one-shot `LaunchDeadline` can halt its JVM.
+The current `registerRead` timeout can leave its worker running.
+The portal must not reuse the process-wide one-shot watchdog.
+If a read times out, the portal returns `TIMEOUT` when it can.
+It then closes the socket and ends its own process.
+This fail-stop rule prevents a timed-out worker from serving a later request.
+A supervisor may start a new portal process.
+The portal does not stop node 9.
+
+The portal serializes reads under one fixed login.
+The design does not claim one physical RSocket connection.
+Acceptance measures JVM starts and requester reuse.
+It reports the measured connection count separately.
 
 ## MCP contract
 
-The server exposes one tool, `register.read`.
-The tool declares read-only and idempotent hints.
-It exposes no MCP resource, prompt, subscription, or write tool.
+The existing `chat-mcp` adapter registers `read-register` only when its portal settings are complete.
+The settings are `portalSocket`, `registerName`, and `registerId` in its properties file.
+`portalSocket` must be an absolute path.
+At least one register selector must be present when `portalSocket` is present.
+The name wins if both values exist.
+The adapter refuses a partial portal configuration at startup.
+Existing REST configuration remains required for the existing tools.
 
-The input is an object with one optional `topic` string.
-An absent `topic` selects the session-start read.
-A nonempty `topic` selects one topic read.
-The server rejects an empty string, another property, or a non-string value.
-The topic must start with an ASCII letter or digit.
-It may then contain ASCII letters, digits, or hyphens, up to 64 characters total.
-This rule accepts current topic names and UUID text without allowing an option prefix.
+The MCP tool accepts an object with one optional `topic` string.
+It rejects unknown properties, empty values, and non-string values.
+It declares read-only and idempotent hints.
+It does not accept an index, identity, socket path, or command string from a caller.
 
-The server runs exactly one wrapper command for each tool call:
+The tool forwards all ordered record and warning objects in structured content and JSON text content.
+It includes the portal `complete` value and original `status`.
+It sets `isError=true` when `complete=false`.
+It still returns the visible records and warnings on that incomplete read.
+It also sets `isError=true` on any failed read and returns no partial records.
+This MCP error flag does not change the portal's status `0` for an access warning.
 
-```text
-register read --as <configured agent>
-register read <topic> --as <configured agent>
-```
+The adapter connects to the portal on each tool call.
+It starts no shell, wrapper, or other JVM process.
+Other MCP tools retain their current REST behavior in this delivery.
 
-A successful result has `records`, an array of the wrapper's JSON record objects.
-The server preserves record order and field values.
-It also emits the same object as serialized JSON in MCP text content.
-An empty array is valid only after status 0 with no warning.
+## Verification and operation
 
-The server parses each nonempty stdout line as one JSON object.
-A malformed line, non-record object, or warning prevents a successful result.
-The server never converts a denied index or denied topic into an empty array.
+1. Test portal startup with valid, missing, and refused login credentials.
+2. Test socket ownership, an occupied path, malformed requests, and a concurrent request.
+3. Compare both portal read forms with the wrapper's ordered typed output.
+4. Test duplicate-pointer, denied-index, and denied-topic warnings independently.
+5. Test empty success, failed read, output limit, deadline, and fail-stop recovery.
+6. Test MCP discovery and `read-register` through a real stdio client and portal socket.
+7. Measure that two reads use one shell JVM process.
+8. Compare one live portal read with the installed wrapper after a compatibility check.
 
-For a failed read, the MCP result has `isError=true` and one stable error code.
-The error also carries the wrapper exit status when the process exited.
-The server does not return partial records or raw standard error on failure.
-It writes bounded diagnostics to its own standard error without secret values.
+The live check reports the wrapper status and every warning line.
+It does not print passwords or change register content.
+It does not claim a node-9 deployment update or a register import.
 
-| Error code | Condition |
-|---|---|
-| `INVALID_INPUT` | The tool input breaks the schema or topic rule. |
-| `CONFIGURATION` | A launch setting is absent or invalid. |
-| `PROCESS_FAILED` | The wrapper exits with a nonzero status. |
-| `TIMEOUT` | The server's process bound expires. |
-| `OUTPUT_TOO_LARGE` | A child output stream exceeds its byte limit. |
-| `INVALID_OUTPUT` | The child emits malformed JSON or a non-record object. |
-| `REGISTER_WARNING` | The child emits a warning, including an access denial. |
-
-The server reserves standard output for MCP frames.
-It closes after MCP standard input reaches end of file.
-
-## Process limits
-
-The wrapper keeps its 30-second deadline.
-The server uses a 35-second process bound and ends a child that exceeds it.
-The server captures at most 4 MiB from each child stream.
-It returns `OUTPUT_TOO_LARGE` without partial records when a limit is exceeded.
-The server ends the child process group and waits for cleanup before it answers.
-
-## Installation and operation
-
-The repository build adds one command to build the native MCP executable.
-A separate user install command places that executable in `~/.local/bin`.
-The node-9 installer does not write to a user's home.
-Neither build nor user installation changes the installed node-9 runtime.
-
-After installation, the operator configures a local Codex stdio MCP server.
-The configuration selects the register and agent explicitly.
-For example:
-
-```bash
-codex mcp add node-9-register \
-  --env NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
-  -- ~/.local/bin/node-9-register-mcp \
-  --register-bin /opt/demo-chat/node-9/bin/register --as Sigma
-codex mcp list
-```
-
-`Sigma` and `demo-chat-register` are development examples in this specification.
-An operator supplies independent production values at runtime.
-The command passes no password value.
-Codex must restart before it discovers the new server.
-
-## Verification
-
-1. Test MCP discovery and one `register.read` call through a real stdio client.
-2. Use a stub wrapper to check exact arguments and fixed launch identity.
-3. Test missing configuration, invalid input, nonzero status, timeout, malformed JSON, and oversized output.
-4. Test `denied-index` and `denied-topic` warnings as errors with no partial records.
-5. Build and run the native executable before reporting native support.
-6. Compare one live MCP read with the installed wrapper after checking runtime compatibility.
-
-The live check must report the command status and every warning line.
-It must not print passwords or change register content.
-It does not prove a deployment update or a register import.
+The implementation adds a `chat-shell-portal` launcher and adapter configuration guidance.
+Installation and activation require a separate operator action.
 
 ## Sources
 
-- `node-9/bin/register` and `node-9/bin/lib.sh` define the wrapper and selector.
+- `node-9/bin/register` and `node-9/bin/lib.sh` define the wrapper read and register selector.
+- `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommands.kt` defines both read forms.
+- `chat-shell/src/main/kotlin/com/demo/chat/shell/cli/LaunchDeadline.kt` defines the one-shot deadline.
+- `chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/RSocketRequesterFactory.kt` defines requester reuse.
+- `chat-mcp/src/main/kotlin/com/demo/chat/mcp/McpAdapterServer.kt` defines the current MCP server.
 - `docs/superpowers/specs/2026-10-24-project-register-design.md` defines project registers.
-- `docs/MCP-ADAPTER.md` defines the existing REST adapter boundary.
-- [MCP tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) defines tool names and results.
-- [Codex MCP setup](https://learn.chatgpt.com/docs/extend/mcp) defines local stdio configuration.
