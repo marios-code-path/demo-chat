@@ -2,11 +2,11 @@
 
 Date: 2026-10-25. Revised: 2026-10-26.
 Tracking: CHAT-hmbigvmf.
-Status: revised strategy approved in conversation. Written specification awaits review.
+Status: revised strategy approved. Review findings applied on 2026-10-26. Written specification awaits approval.
 
 ## Objective
 
-Expose one `read-register` tool in the existing `chat-mcp` adapter.
+Expose one `chat_read_register` tool in the existing `chat-mcp` adapter.
 The tool reads the node-9 register through a resident, logged-in `chat-shell` process.
 Repeated reads must not start another shell JVM.
 
@@ -21,6 +21,11 @@ The wrapper selects the index with `NODE_9_REGISTER_TOPIC_NAME` or `NODE_9_REGIS
 The name wins when both values exist.
 The wrapper starts a new shell JVM for every read.
 The installed `chat-shell-cli` options select one-shot mode.
+`chat.shell.mode=resident` is not built.
+`ShellModeConfiguration` declares the one-shot runner alone.
+This delivery adds resident mode as new scope.
+The stage 1 plan defines a resident shell server in task 9.
+See `docs/superpowers/plans/2026-10-18-topic-register-stage-1-shell-tool.md`.
 The portal needs a resident launch path that selects resident mode explicitly.
 
 `chat-shell` already implements the session-start read in `PubSubCommands.registerRead`.
@@ -51,8 +56,12 @@ An unattended launch uses `chat.shell.mode=resident` with the same portal servic
 It requires `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE`, and `CHAT_SHELL_PORTAL_SOCKET`.
 It refuses an anonymous or failed login before it binds the socket.
 The resident process holds the shell context until shutdown.
+Resident mode is new work in this delivery.
+It adds one runner, one login, one socket bind, and one stop path.
+It starts no launch watchdog, because each request has its own deadline.
+A stop signal ends the process, and the process removes its socket.
 Both launch paths bind the same fixed identity for the portal lifetime.
-One-shot mode refuses the `portal` command.
+One-shot mode refuses the `portal` command, because its launch watchdog would end a long-lived process.
 The resident launcher uses the installed shell classpath and runtime settings.
 It selects resident mode instead of the frozen one-shot option.
 It never fixes a login name or password in installed options.
@@ -70,6 +79,9 @@ The portal binds one Unix-domain socket at an absolute operator-selected path.
 The parent directory must be private to the operating-system account.
 The portal restricts socket access to that account.
 It refuses a path that names a file, link, or socket from another process.
+It binds the socket first.
+It then checks the owner of the bound socket with `lstat`.
+A mismatch ends the process, and the process removes the socket.
 It removes its own socket at normal shutdown.
 It does not remove a socket whose ownership it cannot prove.
 
@@ -101,7 +113,11 @@ This rule accepts current topic names and UUID text.
 The portal answers with `status`, `lines`, and `complete` on a completed read.
 `status` is `0` for a completed shell read, including reads with warnings.
 `lines` holds ordered JSON objects with the existing `record` or `warning` shapes.
-`complete` is false when a warning has kind `denied-index` or `denied-topic`.
+A session-start line already holds `type`.
+A topic read line holds five fields and no `type`.
+The portal adds `type` `record` to a topic read line, as the wrapper does.
+`complete` is false for every warning kind except `duplicate-pointer`.
+This rule covers `denied-index`, `denied-topic`, and any kind that a later shell adds.
 `complete` remains true for a `duplicate-pointer` warning.
 A status `0` and no lines means a readable, empty result.
 
@@ -138,6 +154,9 @@ It uses `messages(topic, format = "records")` for one topic read.
 Both calls run under one request deadline of 30 seconds.
 The deadline starts when the portal accepts the request.
 It covers the backend read and the complete socket response.
+This budget differs from the wrapper budget.
+The wrapper counts from process launch, and that count includes the JVM start.
+The portal counts from request accept, so the backend read receives the full budget.
 
 The current one-shot `LaunchDeadline` can halt its JVM.
 The current `registerRead` timeout can leave its worker running.
@@ -155,7 +174,7 @@ It reports the measured connection count separately.
 
 ## MCP contract
 
-The existing `chat-mcp` adapter registers `read-register` only when its portal settings are complete.
+The existing `chat-mcp` adapter registers `chat_read_register` only when its portal settings are complete.
 The settings are `portalSocket`, `registerName`, and `registerId` in its properties file.
 `portalSocket` must be an absolute path.
 At least one register selector must be present when `portalSocket` is present.
@@ -173,28 +192,39 @@ It includes the portal `complete` value and original `status`.
 It sets `isError=true` when `complete=false`.
 It still returns the visible records and warnings on that incomplete read.
 It also sets `isError=true` on any failed read and returns no partial records.
+A failed read result holds `error.code`, `status`, and `complete=false`.
+`error.code` is the portal code.
+`status` is the portal status when present.
+A missing portal gives `UNAVAILABLE` and a null status.
 This MCP error flag does not change the portal's status `0` for an access warning.
 
 The adapter connects to the portal on each tool call.
 It starts no shell, wrapper, or other JVM process.
+MCP clients can issue concurrent calls.
+The adapter does not retry.
+A second call gets `BUSY` until the first read ends.
 Other MCP tools retain their current REST behavior in this delivery.
 
 ## Verification and operation
 
-1. Test portal startup with valid, missing, and refused login credentials.
+1. Test portal startup with valid, missing, and refused login credentials in both launch paths.
 2. Test socket ownership, an occupied path, malformed requests, and a concurrent request.
 3. Compare both portal read forms with the wrapper's ordered typed output.
 4. Test duplicate-pointer, denied-index, and denied-topic warnings independently.
 5. Test empty success, failed read, output limit, deadline, and fail-stop recovery.
-6. Test MCP discovery and `read-register` through a real stdio client and portal socket.
+6. Test MCP discovery and `chat_read_register` through a real stdio client and portal socket.
 7. Measure that two reads use one shell JVM process.
 8. Compare one live portal read with the installed wrapper after a compatibility check.
+9. Test resident-mode startup, login refusal before bind, stop signal, and socket removal.
+10. Test that a failed MCP read holds `error.code`, `status`, and `complete=false`.
 
 The live check reports the wrapper status and every warning line.
 It does not print passwords or change register content.
 It does not claim a node-9 deployment update or a register import.
 
-The implementation adds a `chat-shell-portal` launcher and adapter configuration guidance.
+The implementation adds resident mode, a `chat-shell-portal` launcher, and adapter configuration guidance.
+It updates `docs/MCP-ADAPTER.md` for config, tools, and failures.
+It updates `docs/BUILD.md` for the resident-mode statement.
 Installation and activation require a separate operator action.
 
 ## Sources
@@ -202,6 +232,9 @@ Installation and activation require a separate operator action.
 - `node-9/bin/register` and `node-9/bin/lib.sh` define the wrapper read and register selector.
 - `chat-shell/src/main/kotlin/com/demo/chat/shell/commands/PubSubCommands.kt` defines both read forms.
 - `chat-shell/src/main/kotlin/com/demo/chat/shell/cli/LaunchDeadline.kt` defines the one-shot deadline.
+- `chat-shell/src/main/kotlin/com/demo/chat/shell/cli/ShellModeConfiguration.kt` declares the one-shot runner alone.
+- `docs/superpowers/plans/2026-10-18-topic-register-stage-1-shell-tool.md` defines resident mode in task 9.
 - `chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/RSocketRequesterFactory.kt` defines requester reuse.
 - `chat-mcp/src/main/kotlin/com/demo/chat/mcp/McpAdapterServer.kt` defines the current MCP server.
+- `docs/MCP-ADAPTER.md` defines the current adapter config, tools, and failures.
 - `docs/superpowers/specs/2026-10-24-project-register-design.md` defines project registers.
