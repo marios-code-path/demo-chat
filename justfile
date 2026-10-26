@@ -38,6 +38,10 @@ check-register:
 	bash shell-scripts/test-register-bundle.sh
 	bash shell-scripts/test-register-bootstrap.sh
 
+# Check the local TCP port availability tool. Starts one listener.
+check-is-tcp-open:
+	bash shell-scripts/test-is-tcp-open.sh
+
 # Check the durable deploy recipe flags and the chat-deploy stage output. Starts no service.
 check-deploy-recipe:
 	./shell-scripts/test-deploy-recipe.sh
