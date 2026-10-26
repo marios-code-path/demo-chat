@@ -106,12 +106,10 @@ fixed() {
     fi
 }
 
-fixed CORE_PORT 6890
-fixed CORE_MGMT_PORT 6891
 fixed CHAT_SHELL_KEY_TYPE uuid
 fixed CHAT_SHELL_NODE_ID 9
-export CORE_PORT=6890
-export CORE_MGMT_PORT=6891
+# The core ports come from the caller or the installed default. An ssh tunnel
+# moves them together. See CHAT-kewgzgbf.
 export CHAT_SHELL_KEY_TYPE=uuid
 export CHAT_SHELL_NODE_ID=9
 

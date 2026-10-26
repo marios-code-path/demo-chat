@@ -103,7 +103,8 @@ run_wrapper() {
     local name="$1"; shift
     [[ -f "$work/input" ]] || : > "$work/input"
     # shellcheck disable=SC2086
-    ( env ${EXTRA_ENV:-} CHAT_SHELL_CLI="$stub" STUB_DIR="$stub_dir" \
+    ( env -u CORE_PORT -u CORE_MGMT_PORT ${EXTRA_ENV:-} \
+      CHAT_SHELL_CLI="$stub" STUB_DIR="$stub_dir" \
       NODE_9_REGISTER_TOPIC_NAME="$(register_name)" \
       NODE_9_REGISTER_TOPIC_ID="${REGISTER_ID-}" \
       NODE9_SECRETS_DIR="$secrets_dir" \
@@ -695,25 +696,40 @@ reset_stub
 stub_reply '{"id":"m4","topic":"demo-chat-register-fr-x","sender":"Theta","timestamp":"2026-10-20T00:00:03Z","text":"four"}'
 run_wrapper t_env read --as Theta
 if [[ "$status_of" -eq 0 ]] \
-   && has_env 1 CORE_PORT 6890 \
-   && has_env 1 CORE_MGMT_PORT 6891 \
    && has_env 1 CHAT_SHELL_KEY_TYPE uuid \
-   && has_env 1 CHAT_SHELL_NODE_ID 9; then
+   && has_env 1 CHAT_SHELL_NODE_ID 9 \
+   && ! grep -qx 'CORE_PORT=.*' "$stub_dir/call.1.env" \
+   && ! grep -qx 'CORE_MGMT_PORT=.*' "$stub_dir/call.1.env"; then
     ok 'shell_call_uses_node_9'
 else
     bad 'shell_call_uses_node_9' "status=$status_of env=$(tr '\n' ' ' 2>/dev/null < "$stub_dir/call.1.env" | cut -c1-200)"
 fi
 
-# A caller cannot move the wrapper to another core.
+# A caller names the core ports, so an ssh tunnel can move them together.
+# See CHAT-kewgzgbf.
+reset_stub
+stub_reply '{"id":"m6","topic":"demo-chat-register-fr-x","sender":"Theta","timestamp":"2026-10-20T00:00:05Z","text":"six"}'
+EXTRA_ENV='CORE_PORT=6990 CORE_MGMT_PORT=6991'
+run_wrapper t_ports read --as Theta
+EXTRA_ENV=
+if [[ "$status_of" -eq 0 ]] \
+   && has_env 1 CORE_PORT 6990 \
+   && has_env 1 CORE_MGMT_PORT 6991; then
+    ok 'caller_sets_the_core_ports'
+else
+    bad 'caller_sets_the_core_ports' "status=$status_of env=$(tr '\n' ' ' 2>/dev/null < "$stub_dir/call.1.env" | cut -c1-200)"
+fi
+
+# A caller cannot move the wrapper to another node or key type.
 reset_stub
 stub_reply '{"id":"m5","topic":"demo-chat-register-fr-x","sender":"Theta","timestamp":"2026-10-20T00:00:04Z","text":"five"}'
 EXTRA_ENV='CORE_PORT=6990 CORE_MGMT_PORT=6991 CHAT_SHELL_NODE_ID=16 CHAT_SHELL_KEY_TYPE=long'
 run_wrapper t_redirect read --as Theta
 EXTRA_ENV=
 if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
-    ok 'caller_cannot_redirect_to_node_16'
+    ok 'caller_cannot_change_node_id_or_key_type'
 else
-    bad 'caller_cannot_redirect_to_node_16' "status=$status_of calls=$(calls)"
+    bad 'caller_cannot_change_node_id_or_key_type' "status=$status_of calls=$(calls)"
 fi
 
 # -- The deadline covers the whole wrapper ------------------------------
