@@ -70,13 +70,33 @@ fi
 
 # A client command holds its own flags, for example
 # `register read --as Theta`. The parsing of this tool ends after the host,
-# the offset, and the mode. Every later word is the command. See CHAT-rcmdflag.
+# the offset, and the mode. Every later word is the command. See CHAT-uhdbljkr.
 rm -f "$pidfile" "$argsfile"
 run_tunnel --dry-run node2.lan 100 non-persistent register read --as Theta
 if [[ $status -eq 0 && "$out" == *'run register read --as Theta'* ]]; then
     ok 'command_flags_reach_the_command'
 else
     bad 'command_flags_reach_the_command' "exit $status, output: $out, error: $err"
+fi
+
+# -- An option after the operands is a caller error -----------------------
+
+# A preview that a person asks for at the end must not run the command.
+# A live run of `stop` meets this case. See CHAT-uhdbljkr.
+run_tunnel node2.lan 100 non-persistent stop --dry-run
+if [[ $status -eq 2 && "$err" == *'--dry-run'* && ! -f "$pidfile" ]]; then
+    ok 'trailing_dry_run_exits_2'
+else
+    bad 'trailing_dry_run_exits_2' "exit $status, output: $out, error: $err"
+fi
+
+# A `--` word is a separator in any position. The command after it runs.
+rm -f "$pidfile" "$argsfile"
+run_tunnel node2.lan 100 non-persistent -- true
+if [[ $status -eq 0 ]]; then
+    ok 'separator_word_runs_the_command'
+else
+    bad 'separator_word_runs_the_command' "exit $status, error: $err"
 fi
 
 # A long option before the host is still a bad option of this tool.
@@ -212,4 +232,4 @@ if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 17
+printf '%d checks, 0 failures\n' 19

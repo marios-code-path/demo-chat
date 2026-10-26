@@ -12,6 +12,7 @@
 #
 # COMMAND takes every word after MODE. A word that starts with a dash belongs
 # to COMMAND. So `register read --as Theta` needs no `--`.
+# The option --dry-run goes before HOST. A `--` word is a separator.
 #
 # non-persistent  The tunnel lives while COMMAND runs. The command starts
 #                 after the three local ports answer. The tunnel closes after
@@ -37,18 +38,30 @@ usage() {
 
 dry_run=0
 positional=()
-# The parsing of options ends when the host, the offset, and the mode are
-# complete. Every later word belongs to COMMAND, which holds its own options,
-# for example `register read --as Theta`. A `--` ends the options early.
-# See CHAT-rcmdflag.
+# The host, the offset, and the mode are the fixed operands. An option of this
+# tool goes before them, because every later word belongs to COMMAND. A
+# command option, such as `register read --as Theta`, needs no separator. A
+# `--` word is a separator in any position, and it goes. See CHAT-uhdbljkr.
 parsing=1
+literal=0
 while (( $# )); do
     if (( parsing )); then
         case "$1" in
             --dry-run) dry_run=1; shift; continue ;;
             -h|--help) usage; exit 0 ;;
-            --) parsing=0; shift; continue ;;
+            --) parsing=0; literal=1; shift; continue ;;
             --*) usage; exit 2 ;;
+        esac
+    elif (( ! literal )); then
+        # A tool option after the operands is a caller error. Without this
+        # rule a trailing --dry-run would run the command live.
+        case "$1" in
+            --dry-run|-h|--help)
+                printf 'node-9-tunnel: the option %s belongs before the host.\n' \
+                    "$1" >&2
+                exit 2
+                ;;
+            --) literal=1; shift; continue ;;
         esac
     fi
     positional+=("$1")
