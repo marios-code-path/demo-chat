@@ -3,6 +3,10 @@
 #
 #   node-9-remote [--dry-run] HOST MODE [COMMAND...]
 #
+# The command takes every word after MODE. A word that starts with a dash
+# belongs to the command. So `register read --as Theta` needs no `--`.
+# The option --dry-run goes before HOST. A `--` word is a separator.
+#
 # The command finds a free offset, opens the tunnel, and runs the command.
 #
 #   1. Start with offset 0.
@@ -36,20 +40,37 @@ usage() {
 
 dry_run=0
 positional=()
+# The host and the mode are the fixed operands. An option of this tool goes
+# before them, because every later word belongs to COMMAND. A command option,
+# such as `register read --as Theta`, needs no separator. A `--` word is a
+# separator in any position, and it goes. See CHAT-uhdbljkr.
+parsing=1
+literal=0
 while (( $# )); do
-    case "$1" in
-        --dry-run) dry_run=1; shift ;;
-        -h|--help) usage; exit 0 ;;
-        --)
-            shift
-            while (( $# )); do
-                positional+=("$1")
-                shift
-            done
-            ;;
-        --*) usage; exit 2 ;;
-        *) positional+=("$1"); shift ;;
-    esac
+    if (( parsing )); then
+        case "$1" in
+            --dry-run) dry_run=1; shift; continue ;;
+            -h|--help) usage; exit 0 ;;
+            --) parsing=0; literal=1; shift; continue ;;
+            --*) usage; exit 2 ;;
+        esac
+    elif (( ! literal )); then
+        # A tool option after the operands is a caller error. Without this
+        # rule a trailing --dry-run would run the command live.
+        case "$1" in
+            --dry-run|-h|--help)
+                printf 'node-9-remote: the option %s belongs before the host.\n' \
+                    "$1" >&2
+                exit 2
+                ;;
+            --) literal=1; shift; continue ;;
+        esac
+    fi
+    positional+=("$1")
+    shift
+    if (( parsing && ${#positional[@]} >= 2 )); then
+        parsing=0
+    fi
 done
 
 (( ${#positional[@]} >= 2 )) || { usage; exit 2; }
