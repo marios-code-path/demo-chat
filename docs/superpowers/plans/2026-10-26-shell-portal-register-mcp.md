@@ -328,10 +328,16 @@ drift check
   Use `docs/superpowers/proofs/2026-10-17-one-shot/core.sh` for the disposable core.
   Run `just build-shell-cli` before the portal launch.
   Write `acceptance.sh` with those named prerequisites.
-  Start one portal JVM under the sandbox on ports 6990 and 6991.
-  Call the portal twice. Check both replies, one unchanged PID, and no second shell JVM.
-  Stop the disposable core with the Stage 1 cleanup path.
-  Run `bash docs/superpowers/proofs/2026-10-26-shell-portal-register/acceptance.sh "$portal_plan_log_dir"`.
+  Make `acceptance.sh` start one portal JVM under the sandbox on ports 6990 and 6991.
+  Make it call the portal twice. Check both replies, one unchanged PID, and no second shell JVM.
+  Make it stop the disposable core with the Stage 1 cleanup path.
+
+```bash
+just build-shell-cli
+portal_acceptance_log_dir="$(mktemp -d)"
+bash docs/superpowers/proofs/2026-10-26-shell-portal-register/acceptance.sh "$portal_acceptance_log_dir"
+```
+
   Expected: exit 0 and one portal PID across both calls.
   The native-image build is outside this portal proof. Record that limit in `RECORD.md`.
 - [ ] **Step 6: Run live comparison after a compatibility check.**

@@ -169,7 +169,7 @@ The portal must not reuse the process-wide one-shot watchdog.
 If the backend returns status 124, the portal enters a terminal state before it sends `TIMEOUT`.
 If the socket deadline expires, the portal enters the same terminal state.
 Only one transition can end the portal when both events occur together.
-The terminal state refuses every later read, including a queued request.
+The terminal state prevents every later backend read.
 The portal returns `TIMEOUT` when it can.
 It then closes the socket and ends its own process.
 This fail-stop rule prevents a timed-out worker from serving a later request.
@@ -208,6 +208,9 @@ A missing portal gives `UNAVAILABLE` and a null status.
 This MCP error flag does not change the portal's status `0` for an access warning.
 
 The adapter connects to the portal on each tool call.
+The adapter gives the complete socket exchange a 35-second deadline.
+It closes the socket when that deadline expires.
+It returns `UNAVAILABLE` with a null status after that deadline.
 It starts no shell, wrapper, or other JVM process.
 MCP clients can issue concurrent calls.
 The adapter does not retry.
