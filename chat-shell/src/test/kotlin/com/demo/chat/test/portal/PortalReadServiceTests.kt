@@ -84,6 +84,34 @@ class PortalReadServiceTests {
     }
 
     @Test
+    fun `a line with data after the first JSON value is invalid output`() {
+        listOf(
+            """{"type":"record","id":"1"} {"type":"record","id":"2"}""",
+            """{"type":"record","id":"1"} trailing""",
+        ).forEach { line ->
+            val reply = service(index = { _, _ -> line }).read(request(), deadline)
+
+            assertThat(reply.status).`as`(line).isNull()
+            assertThat(reply.error?.code).`as`(line).isEqualTo(PortalErrorCode.INVALID_OUTPUT)
+            assertThat(reply.lines).`as`(line).isEmpty()
+        }
+    }
+
+    @Test
+    fun `a topic line with a type is invalid output`() {
+        listOf(
+            """{"type":"warning","kind":"denied-topic","topic":"lobby","reason":"Access Denied"}""",
+            """{"type":"record","id":"m1","topic":"lobby","sender":"a","timestamp":"t","text":"hi"}""",
+        ).forEach { line ->
+            val reply = service(topic = { line }).read(request("lobby"), deadline)
+
+            assertThat(reply.status).`as`(line).isNull()
+            assertThat(reply.error?.code).`as`(line).isEqualTo(PortalErrorCode.INVALID_OUTPUT)
+            assertThat(reply.lines).`as`(line).isEmpty()
+        }
+    }
+
+    @Test
     fun `an index line needs a known type`() {
         listOf(
             """{"id":"1"}""",

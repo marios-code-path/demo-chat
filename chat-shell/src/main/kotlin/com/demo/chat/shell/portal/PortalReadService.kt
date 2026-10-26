@@ -11,6 +11,8 @@ import java.time.Duration
  *
  * The index read keeps its typed `record` and `warning` lines.
  * The topic read receives `type` `record` first, as the wrapper does.
+ * Each line holds exactly one JSON object.
+ * A topic line that already holds a type is invalid.
  * A read is complete unless a warning other than `duplicate-pointer` appears.
  * A shell failure keeps its status. A malformed line has no status.
  * A failed read carries no partial lines.
@@ -44,7 +46,11 @@ class PortalReadService(
 
     private fun parse(line: String): JsonNode {
         val node = try {
-            mapper.readTree(line)
+            mapper.factory.createParser(line).use { parser ->
+                val value = mapper.readTree<JsonNode>(parser)
+                if (parser.nextToken() != null) invalidOutput()
+                value
+            }
         } catch (_: JsonProcessingException) {
             invalidOutput()
         }
@@ -59,7 +65,7 @@ class PortalReadService(
     }
 
     private fun addRecordType(node: JsonNode): JsonNode {
-        if (node.has("type")) return node
+        if (node.has("type")) invalidOutput()
         val typed = mapper.createObjectNode()
         typed.put("type", "record")
         node.fields().forEachRemaining { (name, value) -> typed.set<JsonNode>(name, value) }
