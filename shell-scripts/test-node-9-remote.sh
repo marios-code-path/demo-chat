@@ -20,6 +20,7 @@ bad() { printf 'FAIL %s: %s\n' "$1" "$2"; failures=$((failures + 1)); }
 tcp_stub="$work/isTCPOpen"
 cat > "$tcp_stub" <<'STUB'
 #!/usr/bin/env bash
+[[ -n "${STUB_CHECK_STATUS:-}" ]] && exit "$STUB_CHECK_STATUS"
 [[ "${STUB_ALL_BUSY:-0}" == '1' ]] && exit 1
 for port in "$@"; do
     for busy in ${STUB_BUSY:-}; do
@@ -48,6 +49,7 @@ envfile="$work/tunnel.env"
 export STUB_BUSY=''
 export STUB_ALL_BUSY=0
 export STUB_TUNNEL_STATUS=0
+export STUB_CHECK_STATUS=''
 
 # run_remote [ARGS...]  Run the tool against the two stubs.
 run_remote() {
@@ -124,6 +126,20 @@ else
     bad 'no_free_offset_exits_1' "exit $status, error: $err"
 fi
 
+# -- The port check refuses ---------------------------------------------
+
+# Status 2 from isTCPOpen is a bad tool or a missing nc. It is not a busy
+# port, so the search must stop at once with the same cause.
+rm -f "$argsfile" "$envfile"
+STUB_CHECK_STATUS=2
+run_remote node2.lan non-persistent true
+STUB_CHECK_STATUS=''
+if [[ $status -eq 2 && "$err" == *'port check failed'* && ! -f "$argsfile" ]]; then
+    ok 'check_refusal_exits_2'
+else
+    bad 'check_refusal_exits_2' "exit $status, error: $err"
+fi
+
 # -- Status pass-through -------------------------------------------------
 
 rm -f "$argsfile" "$envfile"
@@ -166,10 +182,18 @@ else
     bad 'missing_mode_exits_2' "exit $status, error: $err"
 fi
 
+rm -f "$argsfile"
+run_remote '' non-persistent true
+if [[ $status -eq 2 && "$err" == *'host is empty'* && ! -f "$argsfile" ]]; then
+    ok 'empty_host_exits_2'
+else
+    bad 'empty_host_exits_2' "exit $status, error: $err"
+fi
+
 # -- Result --------------------------------------------------------------
 
 if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 10
+printf '%d checks, 0 failures\n' 12

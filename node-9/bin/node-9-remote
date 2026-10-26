@@ -21,7 +21,8 @@
 #   n  the status of node-9-tunnel
 set -uo pipefail
 
-# The last offset the search tries. It is a multiple of the step.
+# The search stops above this offset value. The last offset it tries is the
+# highest multiple of OFFSET_STEP at or below it, which is 32700.
 OFFSET_LIMIT=32768
 OFFSET_STEP=100
 
@@ -64,6 +65,9 @@ for tool in "$tcp_check" "$tunnel"; do
         || { printf 'node-9-remote: %s is not executable.\n' "$tool" >&2; exit 2; }
 done
 
+[[ -n "$host" ]] \
+    || { printf 'node-9-remote: the host is empty.\n' >&2; exit 2; }
+
 # The three local ports for one offset.
 offset_ports() {
     local offset="$1"
@@ -72,22 +76,33 @@ offset_ports() {
 }
 
 # find_offset  Print the first offset whose three ports are free.
+# Return 1 when every offset is busy. Return 2 when the port check refuses,
+# because a broken check is not a busy port.
 find_offset() {
-    local offset=0 ports
+    local offset=0 ports status
     while (( offset <= OFFSET_LIMIT )); do
         # shellcheck disable=SC2046
         ports="$(offset_ports "$offset")"
         # shellcheck disable=SC2086
-        if "$tcp_check" $ports > /dev/null 2>&1; then
+        "$tcp_check" $ports > /dev/null 2>&1
+        status=$?
+        if (( status == 0 )); then
             printf '%s\n' "$offset"
             return 0
         fi
+        (( status == 2 )) && return 2
         offset=$(( offset + OFFSET_STEP ))
     done
     return 1
 }
 
-if ! offset="$(find_offset)"; then
+offset="$(find_offset)"
+find_status=$?
+if (( find_status == 2 )); then
+    printf 'node-9-remote: the port check failed. Check %s.\n' "$tcp_check" >&2
+    exit 2
+fi
+if (( find_status != 0 )); then
     printf 'node-9-remote: no free port set at or below offset %s.\n' \
         "$OFFSET_LIMIT" >&2
     exit 1
