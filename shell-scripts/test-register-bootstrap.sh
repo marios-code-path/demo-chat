@@ -1193,6 +1193,19 @@ else
     bad 'create_changed_date_stops' "exit $status, output: $out"
 fi
 
+# An empty register makes its CLI calls too, and the caller login must reach
+# the core. Without it the core writes no owner row. See CHAT-egdtmwfc.
+reset_stub
+rm -rf "$install_home/data/register-import"
+run_create "$create" empty-register --as Mario
+login_line="$(head -n 1 "$stub_state/login.log" 2> /dev/null)"
+if [[ $status -eq 0 && "$login_line" == 'Mario uuid 9 readable' ]]; then
+    ok 'create_exports_the_caller_login'
+else
+    bad 'create_exports_the_caller_login' \
+        "exit $status, first call: $login_line, output: $out"
+fi
+
 # A second short-name collision names both sections.
 cat > "$work/create-collision.md" <<'EOF'
 Preamble.

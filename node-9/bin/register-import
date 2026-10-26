@@ -1161,6 +1161,26 @@ import_credentials() {
     return 0
 }
 
+# export_caller WORK_DIR USER
+# Export the values that every shell CLI call reads. A create and an import
+# make the same calls, so they share this one step.
+#
+# The caller login is the load-bearing value. A call with no login reaches the
+# core as no user, and the core then writes no owner row for a new room. A
+# create in that state leaves a room that no user owns. See CHAT-egdtmwfc.
+export_caller() {
+    local work_dir="$1" user="$2"
+    # The core ports come from the caller or the installed default. An ssh
+    # tunnel moves them together, so a moved core port moves the management
+    # port with it. See CHAT-kewgzgbf and CHAT-egdtmwfc.
+    export CORE_PORT="${CORE_PORT:-6890}"
+    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-$(( CORE_PORT + 1 ))}"
+    export CHAT_SHELL_KEY_TYPE=uuid
+    export CHAT_SHELL_NODE_ID=9
+    export CHAT_SHELL_USER="$user"
+    export CHAT_SHELL_PASSWORD_FILE="$work_dir/owner.password"
+}
+
 # import_preflight BUNDLE USER WORK_DIR
 # Run every check that precedes an import or a verification. The order puts
 # the offline checks first, so a caller error makes no live call. The function
@@ -1199,15 +1219,7 @@ import_preflight() {
         return "$status"
     fi
 
-    # The core ports come from the caller or the installed default. An ssh
-    # tunnel moves them together, so a moved core port moves the management
-    # port with it. See CHAT-kewgzgbf and CHAT-egdtmwfc.
-    export CORE_PORT="${CORE_PORT:-6890}"
-    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-$(( CORE_PORT + 1 ))}"
-    export CHAT_SHELL_KEY_TYPE=uuid
-    export CHAT_SHELL_NODE_ID=9
-    export CHAT_SHELL_USER="$user"
-    export CHAT_SHELL_PASSWORD_FILE="$work_dir/owner.password"
+    export_caller "$work_dir" "$user"
     # Every later function takes the owner login from this value, and no
     # function names it. See CHAT-sufkkqon.
     import_owner="$user"

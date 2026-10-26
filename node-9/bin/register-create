@@ -128,6 +128,10 @@ create_empty() {
     import_work="$work"
     import_cli_path="$(import_cli)" || return
     import_credentials "$work" "$owner" || return $?
+    # The owner login must reach the core. Without it the core creates the
+    # room and writes no owner row, and the proof then fails on a room that
+    # already exists. See CHAT-egdtmwfc.
+    export_caller "$work" "$owner"
     add_topic_once "$name" || return 1
     proof="$(ownership_proof "$name")" \
         || { create_error "the ownership proof of $name fails"; return 1; }

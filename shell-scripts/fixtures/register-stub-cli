@@ -36,6 +36,15 @@ mkdir -p "$state/messages" "$state/requests" "$state/joins"
 # Record the core ports of each call, so a test can prove pass-through.
 printf 'CORE_PORT=%s CORE_MGMT_PORT=%s\n' "${CORE_PORT-}" "${CORE_MGMT_PORT-}" \
     >> "$state/ports.log"
+# Record the caller login of each call, so a test can prove that the caller
+# reaches the core. A create without a login leaves a room that no user owns.
+if [[ -r "${CHAT_SHELL_PASSWORD_FILE:-}" ]]; then
+    password_state='readable'
+else
+    password_state='absent'
+fi
+printf '%s %s %s %s\n' "${CHAT_SHELL_USER-}" "${CHAT_SHELL_KEY_TYPE-}" \
+    "${CHAT_SHELL_NODE_ID-}" "$password_state" >> "$state/login.log"
 
 if [[ "${STUB_NO_CORE:-0}" == '1' ]]; then
     printf 'stub: the core is not available\n' >&2
