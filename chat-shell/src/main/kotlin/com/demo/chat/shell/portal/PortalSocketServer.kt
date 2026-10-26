@@ -21,6 +21,7 @@ import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 
 /** The owner and file key of one bound socket path, read with `lstat`. */
 data class SocketIdentity(val owner: String, val fileKey: String)
@@ -70,7 +71,7 @@ class PortalSocketServer(
     private val terminal = AtomicBoolean(false)
     private val busy = AtomicBoolean(false)
     private val halted = AtomicBoolean(false)
-    private val replyLock = Any()
+    private val replyLock = ReentrantLock()
     private val replied = AtomicBoolean(false)
 
     private val workers = Executors.newSingleThreadExecutor { runnable ->
@@ -78,6 +79,9 @@ class PortalSocketServer(
     }
     private val timers = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "portal-timer").apply { isDaemon = true }
+    }
+    private val hardStops = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "portal-hard-stop").apply { isDaemon = true }
     }
 
     /** Check the path, bind, restrict access, and record the socket identity. */
@@ -129,6 +133,7 @@ class PortalSocketServer(
         cleanup()
         workers.shutdownNow()
         timers.shutdownNow()
+        hardStops.shutdownNow()
     }
 
     private fun dispatch(client: SocketChannel) {
@@ -184,10 +189,11 @@ class PortalSocketServer(
     }
 
     /** Write one reply. Answer the protocol code when the reply is too large. Answer null when done or skipped. */
-    private fun writeOnce(client: SocketChannel, reply: PortalReply): PortalErrorCode? =
-        synchronized(replyLock) {
+    private fun writeOnce(client: SocketChannel, reply: PortalReply): PortalErrorCode? {
+        replyLock.lock()
+        try {
             if (terminal.get() || replied.get()) return null
-            try {
+            return try {
                 protocol.writeReply(Channels.newOutputStream(client), reply)
                 replied.set(true)
                 null
@@ -196,21 +202,38 @@ class PortalSocketServer(
             } catch (_: Exception) {
                 null
             }
+        } finally {
+            replyLock.unlock()
         }
+    }
 
+    /**
+     * Enter the timeout state and stop the process.
+     *
+     * A reply write owns [replyLock] while it runs. A timed-out server cannot wait for that write.
+     * This method closes the client first when the lock is busy, so the write ends.
+     * A complete reply wins: this method returns when [replied] is true.
+     */
     private fun terminate(client: SocketChannel, reply: PortalReply) {
-        synchronized(replyLock) {
+        if (!replyLock.tryLock()) {
+            closeQuietly(client)
+            replyLock.lock()
+        }
+        try {
+            if (replied.get()) return
             if (!terminal.compareAndSet(false, true)) return
-            if (!replied.get()) {
-                replied.set(true)
-                val hardStop = timers.schedule({ endProcess() }, HARD_STOP_MILLIS, TimeUnit.MILLISECONDS)
-                try {
-                    writeQuietly(client, reply)
-                } finally {
-                    hardStop.cancel(false)
-                }
-                diagnostic(PortalErrorCode.TIMEOUT, reply.status)
+            replied.set(true)
+            val hardStop = runCatching {
+                hardStops.schedule({ endProcess() }, HARD_STOP_MILLIS, TimeUnit.MILLISECONDS)
+            }.getOrNull()
+            try {
+                writeQuietly(client, reply)
+            } finally {
+                hardStop?.cancel(false)
             }
+            diagnostic(PortalErrorCode.TIMEOUT, reply.status)
+        } finally {
+            replyLock.unlock()
         }
         closeQuietly(client)
         cleanup()
@@ -251,10 +274,13 @@ class PortalSocketServer(
     }
 
     private fun failing(client: SocketChannel, code: PortalErrorCode, status: Int?) {
-        synchronized(replyLock) {
+        replyLock.lock()
+        try {
             if (terminal.get() || replied.get()) return
             replied.set(true)
             writeFailure(client, code, status)
+        } finally {
+            replyLock.unlock()
         }
         diagnostic(code, status)
     }

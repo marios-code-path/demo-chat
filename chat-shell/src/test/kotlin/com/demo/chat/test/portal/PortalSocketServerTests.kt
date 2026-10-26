@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 import java.io.PrintWriter
 import java.net.StandardProtocolFamily
+import java.net.StandardSocketOptions
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
 import java.nio.channels.ServerSocketChannel
@@ -311,6 +312,41 @@ class PortalSocketServerTests {
             runCatching { exchange(path, request) }
             assertThat(reads.get()).isEqualTo(1)
         } finally {
+            server.close()
+            executor.shutdownNow()
+            executor.awaitTermination(2, TimeUnit.SECONDS)
+        }
+    }
+
+    @Test
+    fun `a blocked reply write halts at the deadline`() {
+        val reads = AtomicInteger()
+        val halts = CopyOnWriteArrayList<Int>()
+        val path = socket()
+        val huge = mapper.createObjectNode().put("type", "record").put("text", "x".repeat(4_000_000))
+        val server = PortalSocketServer(path, protocol, { _, _ ->
+            reads.incrementAndGet()
+            PortalReply(0, listOf(huge), true)
+        }, Duration.ofMillis(200), { halts += it }, writer())
+        val executor = Executors.newSingleThreadExecutor()
+        server.bind()
+        executor.submit { server.serve() }
+        val client = SocketChannel.open(StandardProtocolFamily.UNIX)
+
+        try {
+            runCatching { client.setOption(StandardSocketOptions.SO_RCVBUF, 4096) }
+            client.connect(UnixDomainSocketAddress.of(path))
+            val out = Channels.newOutputStream(client)
+            out.write(request.toByteArray(StandardCharsets.UTF_8))
+            out.flush()
+            client.shutdownOutput()
+
+            awaitTrue { halts.isNotEmpty() }
+
+            assertThat(halts).containsExactly(124)
+            assertThat(reads.get()).isEqualTo(1)
+        } finally {
+            client.close()
             server.close()
             executor.shutdownNow()
             executor.awaitTermination(2, TimeUnit.SECONDS)
