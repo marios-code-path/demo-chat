@@ -62,7 +62,7 @@ class PortalClient(
     private val replyLimit: Int = PORTAL_REPLY_LIMIT,
 ) {
     /** Exchange one request frame and one reply frame. */
-    fun read(): PortalReadResult {
+    fun read(topic: String? = null): PortalReadResult {
         val end = System.nanoTime() + deadline.toNanos()
         return try {
             SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
@@ -76,7 +76,7 @@ class PortalClient(
                         if (!await(watcher, SelectionKey.OP_CONNECT, end)) return unavailable()
                         if (!channel.finishConnect()) return unavailable()
                     }
-                    if (!send(channel, key, watcher, end)) return unavailable()
+                    if (!send(channel, key, watcher, end, topic)) return unavailable()
                     channel.shutdownOutput()
                     val reply = receive(channel, key, watcher, end) ?: return unavailable()
                     decode(reply)
@@ -97,8 +97,9 @@ class PortalClient(
         key: SelectionKey,
         watcher: Selector,
         end: Long,
+        topic: String?,
     ): Boolean {
-        val buffer = ByteBuffer.wrap(requestFrame())
+        val buffer = ByteBuffer.wrap(requestFrame(topic))
         key.interestOps(SelectionKey.OP_WRITE)
         while (buffer.hasRemaining()) {
             if (channel.write(buffer) > 0) continue
@@ -215,11 +216,12 @@ class PortalClient(
     }
 
     /** The one request frame. It holds no credential. */
-    private fun requestFrame(): ByteArray {
+    private fun requestFrame(topic: String?): ByteArray {
         val request =
             buildJsonObject {
                 put("operation", READ_REGISTER)
                 put("index", selector)
+                if (topic != null) put("topic", topic)
             }
         return (request.toString() + "\n").toByteArray(StandardCharsets.UTF_8)
     }

@@ -299,7 +299,7 @@ internal fun nextCallNumber(): Long = CALL_NUMBERS.incrementAndGet()
  * The tool schema cannot state `additionalProperties`. This check is the
  * contract, and it runs before any backend call.
  */
-private fun refuseUnknownArguments(request: CallToolRequest, allowed: Set<String>) {
+internal fun refuseUnknownArguments(request: CallToolRequest, allowed: Set<String>) {
     val unknown = (request.arguments?.keys ?: emptySet()) - allowed
     val first = unknown.sorted().firstOrNull()
     if (first != null) {

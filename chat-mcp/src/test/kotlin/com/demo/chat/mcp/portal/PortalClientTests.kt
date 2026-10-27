@@ -130,6 +130,28 @@ class PortalClientTests {
     }
 
     @Test
+    fun `the request carries the topic when the read names one`() {
+        val thread = portal { frame("""{"status":0,"lines":[],"complete":true}""") }
+
+        PortalClient(socket(), "register-index", Duration.ofSeconds(5)).read("CHAT-123")
+
+        thread.join(5_000)
+        val request = Json.parseToJsonElement(received.get()) as JsonObject
+        assertEquals("CHAT-123", request["topic"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `the request carries no topic for an unfiltered read`() {
+        val thread = portal { frame("""{"status":0,"lines":[],"complete":true}""") }
+
+        PortalClient(socket(), "register-index", Duration.ofSeconds(5)).read()
+
+        thread.join(5_000)
+        val request = Json.parseToJsonElement(received.get()) as JsonObject
+        assertFalse(request.containsKey("topic"), "the request carried a topic: ${received.get()}")
+    }
+
+    @Test
     fun `a short reply answers UNAVAILABLE`() {
         val thread = portal { """{"status":0""".toByteArray(StandardCharsets.UTF_8) }
 
