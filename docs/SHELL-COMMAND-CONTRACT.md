@@ -495,8 +495,8 @@ PR #178 added the REST route `GET /message/list/{id}`.
 
 `CHAT-jmnjvupr` adds two ways to run a command without the interactive prompt.
 `chat.shell.mode` selects the mode. Its values are `interactive` (the
-default), `one-shot`, and `resident`. Only `interactive` and `one-shot` exist.
-Resident mode waits for an owner decision. See
+default), `one-shot`, `portal`, and `resident`. The `interactive`, `one-shot`,
+and `portal` modes exist. Resident mode waits for an owner decision. See
 `docs/superpowers/specs/2026-10-17-topic-register-design.md`.
 
 **One-shot mode.** `shell-scripts/chat-shell-cli <command words>` starts a JVM,
@@ -504,6 +504,18 @@ logs in, runs the words as one command line, and exits with a status. Text for
 the command goes on standard input. Run `just build-shell-cli` first. The
 launcher needs `CHAT_SHELL_KEY_TYPE`. It starts silently: no banner, no log on
 the console, and an empty standard error after a success.
+
+**Portal mode.** `shell-scripts/chat-shell-portal` starts one shell JVM and
+keeps it available for register reads. Set `CHAT_SHELL_KEY_TYPE`,
+`CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE`, and the absolute
+`CHAT_SHELL_PORTAL_SOCKET` path. Run `just build-shell-cli` first. The launcher
+logs in before it binds the socket. The socket has owner-only permissions, and
+its parent must be private. The server accepts one `read-register` JSON request
+per Unix socket connection. It does not accept shell command text.
+
+An interactive shell can start the same server with
+`portal --socket <absolute-path>`. This command requires an existing shell
+login. It runs until shutdown. One-shot mode refuses the `portal` command.
 
 **The exit status.** One table serves every mode.
 

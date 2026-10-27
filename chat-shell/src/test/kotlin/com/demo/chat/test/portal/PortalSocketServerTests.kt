@@ -255,6 +255,40 @@ class PortalSocketServerTests {
     }
 
     @Test
+    fun `sequential requests each receive a reply`() {
+        val reads = AtomicInteger()
+
+        Running(read = { _, _ ->
+            reads.incrementAndGet()
+            okReply()
+        }).use { running ->
+            val first = frameOf(exchange(running.path, request))
+            val second = frameOf(exchange(running.path, request))
+
+            assertThat(first["status"].intValue()).isZero()
+            assertThat(second["status"].intValue()).isZero()
+            assertThat(reads.get()).isEqualTo(2)
+        }
+    }
+
+    @Test
+    fun `a protocol failure does not suppress the next reply`() {
+        val reads = AtomicInteger()
+
+        Running(read = { _, _ ->
+            reads.incrementAndGet()
+            okReply()
+        }).use { running ->
+            val failed = frameOf(exchange(running.path, "{\"operation\":\"invalid\",\"index\":\"register-index\"}\n"))
+            val next = frameOf(exchange(running.path, request))
+
+            assertThat(failed["error"]["code"].textValue()).isEqualTo(PortalErrorCode.INVALID_INPUT.name)
+            assertThat(next["status"].intValue()).isZero()
+            assertThat(reads.get()).isEqualTo(1)
+        }
+    }
+
+    @Test
     fun `a read past the deadline calls halt and refuses later reads`() {
         val started = CountDownLatch(1)
         val release = CountDownLatch(1)

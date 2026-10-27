@@ -3,6 +3,7 @@
 The adapter is a standalone program. It speaks the Model Context Protocol
 (MCP) over stdin and stdout. It reads topics and messages from a running Demo Chat deployment.
 Optional sending uses caller-selected request IDs and command status.
+It reads the node register when the operator configures a local portal socket.
 
 The adapter holds no database credential and no direct store access. It calls
 the deployment over HTTP. The deployment checks route access.
@@ -36,9 +37,16 @@ otherwise.
 | `topicIds` | The room IDs this adapter may read or send to. Comma separated. One to 100 ids. |
 | `enableSend` | Optional. `true` or `false`. The default is `false`. |
 | `enableSearch` | Optional. `true` or `false`. The default is `false`. |
+| `portalSocket` | Optional. The absolute path of the portal socket. A relative path fails the start. |
+| `registerName` | Optional. The register to read. It wins over `registerId`. |
+| `registerId` | Optional. The register to read when no name is given. |
 
 An unknown key fails the start. The adapter never accepts a credential as an
 argument.
+
+The three portal keys form one setting. Set `portalSocket` and one selector, or
+set no portal key. A partial setting fails the start. The socket path must be
+absolute. Both selectors match `[A-Za-z0-9][A-Za-z0-9-]{0,63}`.
 
 `backendBaseUrl` must use `https`. The adapter permits `http` on a loopback host
 alone. That form exists for development.
@@ -50,6 +58,13 @@ backendBaseUrl=http://127.0.0.1:6791
 credentialFile=credential.txt
 keyType=long
 topicIds=1554361326074068992
+```
+
+A portal read adds these keys:
+
+```properties
+portalSocket=/run/chat/portal.sock
+registerName=register-index
 ```
 
 ## Run
@@ -106,6 +121,7 @@ client in silence.
 ## Tools and results
 
 Five read tools are available by default.
+A complete portal setting adds `chat_read_register`.
 `enableSend=true` adds the send tool.
 Search remains unavailable, including when `enableSearch=true`.
 Every ID in an MCP argument or result is a string.
@@ -119,6 +135,7 @@ Long IDs retain every digit, including values above `2^53`.
 | `chat_get_message` | `{messageId: string}` | `{message: Message}` |
 | `chat_get_command_status` | `{commandId: string}` | `CommandStatus` |
 | `chat_send_message` | `{topicId: string, text: string, requestId: string}` | `{receipt, outcome, backends}` |
+| `chat_read_register` | `{topic?: string}` | `{status: integer|null, lines: object[], complete: boolean}` |
 
 A `Topic` contains string fields `id`, `root`, and `name`.
 A `Message` contains `messageKey`, `senderId`, `topicId`, `text`, and `timestamp`.
@@ -132,6 +149,27 @@ A status contains `commandId`, `requestId`, `receipt`, `backends`, and numeric `
 Backend entries contain `state`, numeric `attempts`, and nullable `nextRecoveryAt`.
 The adapter omits backend reasons and the status owner.
 The server restricts command status by owner, without an additional adapter room check.
+
+### Reading the node register
+
+The adapter registers `chat_read_register` only when the portal socket and a
+register selector are configured. The selector is fixed at startup. A register
+name wins when the configuration also has a register ID. The caller cannot
+choose the register or the logged-in shell user.
+
+The optional `topic` must match `[A-Za-z0-9][A-Za-z0-9-]{0,63}`. The adapter
+sends it to the portal. The portal reads one fixed register over a local Unix
+socket. Each call opens one socket connection. The client deadline is 35
+seconds. The client does not retry a failure.
+
+A successful result has `status`, `lines`, and `complete` in structured content
+and JSON text content. Each line is a typed record or warning. The adapter
+keeps line order. A warning other than `duplicate-pointer` makes the read
+incomplete. An incomplete read keeps its lines and sets MCP `isError` to true.
+
+A failed read has `error.code`, `status`, `complete=false`, and no partial
+lines. A transport failure uses `UNAVAILABLE` and a null status. The adapter
+does not return a socket path, a credential, or an exception message.
 
 Backend names are `PERSISTENCE`, `INDEX`, `VECTOR`, and `PUBSUB`.
 Backend states are `PENDING`, `SUCCEEDED`, `FAILED`, and `UNCERTAIN`.
@@ -249,7 +287,7 @@ The adapter owns one HTTP transport and closes its watchdog during shutdown.
 `chat-mcp/src/test/client/` holds a Node harness. It is a real MCP client at a
 pinned version. It connects to the adapter over stdio and calls the selected tools.
 
-The harness is pinned to `@modelcontextprotocol/sdk` 1.31.0. That release
+The harness is pinned to `@modelcontextprotocol/sdk` 1.32.0. That release
 declares protocol revision `2025-11-25`, which is the revision this adapter
 serves.
 

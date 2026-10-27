@@ -10,8 +10,9 @@ docker ps --format '{{.Ports}}' | tr ',' '\n' \
     | sed -nE 's/^ *[^ ]*:([0-9]+)(-([0-9]+))?->.*/\1 \3/p' \
     | while read -r first last; do seq "$first" "${last:-$first}"; done \
     | sort -nu > "$S/denied-ports"
-if ! grep -qx 6790 "$S/denied-ports" || ! grep -qx 6791 "$S/denied-ports"; then
-    echo "isolation: 6790 and 6791 are not in the published ports" >&2
+if ! { grep -qx 6790 "$S/denied-ports" && grep -qx 6791 "$S/denied-ports"; } \
+    && ! { grep -qx 6890 "$S/denied-ports" && grep -qx 6891 "$S/denied-ports"; }; then
+    echo "isolation: expected Node 9 host ports 6790/6791 or 6890/6891" >&2
     exit 2
 fi
 {
