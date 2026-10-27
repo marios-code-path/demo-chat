@@ -2,6 +2,7 @@ package com.demo.chat.mcp
 
 import com.demo.chat.mcp.client.JdkBackendHttp
 import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.config.McpLaunchConfig
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -35,7 +36,14 @@ private const val DEFAULT_TIMEOUT_MILLIS: Long = 15_000
  * answer them. The adapter is the production server, so the tool surface is
  * exercised through the real transport.
  */
-class StdioHarness(config: AdapterConfig) : AutoCloseable {
+class StdioHarness private constructor(
+    config: AdapterConfig?,
+    portalOnly: McpLaunchConfig.PortalOnly?,
+) : AutoCloseable {
+    constructor(config: AdapterConfig) : this(config, null)
+
+    constructor(config: McpLaunchConfig.PortalOnly) : this(null, config)
+
     private val toServer = PipedOutputStream()
     private val serverInput = PipedInputStream(toServer, PIPE_BYTES)
     private val fromServer = PipedOutputStream()
@@ -53,7 +61,7 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
      * at shutdown. The harness follows that rule, so a case exercises the real
      * transport over a real loopback backend.
      */
-    private val http = JdkBackendHttp(config.backendBaseUrl)
+    private val http = config?.let { JdkBackendHttp(it.backendBaseUrl) }
 
     init {
         val reader =
@@ -71,7 +79,9 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
         reader.isDaemon = true
         reader.start()
 
-        val server = createMcpServer(config, http)
+        val server =
+            if (config != null) createMcpServer(config, requireNotNull(http))
+            else createPortalMcpServer(requireNotNull(portalOnly))
         val transport = StdioServerTransport(serverInput.asSource().buffered(), fromServer.asSink().buffered())
         scope.launch { server.createSession(transport) }
     }
@@ -168,7 +178,7 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
         scope.cancel()
         runCatching { toServer.close() }
         runCatching { fromServer.close() }
-        http.close()
+        http?.close()
     }
 }
 

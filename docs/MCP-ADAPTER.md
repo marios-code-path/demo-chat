@@ -1,12 +1,13 @@
 # The Demo Chat MCP adapter
 
 The adapter is a standalone program. It speaks the Model Context Protocol
-(MCP) over stdin and stdout. It reads topics and messages from a running Demo Chat deployment.
-Optional sending uses caller-selected request IDs and command status.
-It reads the node register when the operator configures a local portal socket.
+(MCP) over stdin and stdout. In HTTP mode, it reads topics and messages from a
+running Demo Chat deployment. Optional sending uses caller-selected request
+IDs and command status. Portal-only mode reads the node register through a
+local portal socket.
 
-The adapter holds no database credential and no direct store access. It calls
-the deployment over HTTP. The deployment checks route access.
+The adapter holds no database credential and no direct store access. Its HTTP
+tools call the deployment. The deployment checks route access.
 For message-by-ID reads, the adapter also enforces the configured room limit.
 The server checks `SUBSCRIBE` on the room of a message read by ID since `CHAT-erkoxybm`.
 
@@ -15,22 +16,23 @@ The adapter serves protocol revision `2025-11-25`.
 ## Build
 
 ```sh
-mvn -o -B -pl chat-mcp -am package -DskipTests
+just build-mcp-stdio
 ```
 
-The classes land in `chat-mcp/target/classes`. The adapter has no Spring
-context.
+The build writes `chat-mcp/target/classes` and
+`chat-mcp/target/mcp-runtime.classpath`. The adapter has no Spring context.
 
 ## Configure
 
 The adapter takes one argument, `--config <path>`. The environment variable
 `CHAT_MCP_CONFIG` names the same file. The adapter refuses any other argument.
 
-The file is a Java properties file. Every key is required unless the table says
-otherwise.
+The file is a Java properties file. The HTTP mode needs every key unless the
+table says otherwise.
 
 | Key | Meaning |
 |---|---|
+| `mode` | Optional. Set `portal-only` to serve the register tool alone. |
 | `backendBaseUrl` | The origin of the deployment. It carries a scheme, a host and an optional port. It carries no path, query, fragment or user info. |
 | `credentialFile` | The file that holds the token. A relative path resolves against the directory of the configuration file. See `docs/MCP-CREDENTIAL-ISSUANCE.md`. |
 | `keyType` | `long` or `uuid`. It must agree with the deployment. |
@@ -43,6 +45,9 @@ otherwise.
 
 An unknown key fails the start. The adapter never accepts a credential as an
 argument.
+
+Portal-only mode accepts `mode`, `portalSocket`, and one register selector. It
+rejects HTTP settings. It needs no backend token or topic ID.
 
 The three portal keys form one setting. Set `portalSocket` and one selector, or
 set no portal key. A partial setting fails the start. The socket path must be
@@ -67,15 +72,35 @@ portalSocket=/run/chat/portal.sock
 registerName=register-index
 ```
 
+A register-only configuration contains these values:
+
+```properties
+mode=portal-only
+portalSocket=/run/chat/portal.sock
+registerName=register-index
+```
+
+The full HTTP mode still requires its backend settings and a readable token
+file at startup. A portal read does not send that token to the portal.
+
 ## Run
 
 ```sh
-java -cp chat-mcp/target/classes:<dependencies> \
-  com.demo.chat.mcp.McpAdapterMainKt --config /path/to/adapter.properties
+shell-scripts/chat-mcp-stdio --config /path/to/adapter.properties
 ```
 
-The adapter reads protocol frames on stdin and writes them on stdout. It exits
-when stdin reaches end of file.
+An MCP client starts this command and keeps its stdin open. The adapter writes
+protocol frames on stdout. It exits when stdin reaches end of file.
+
+For Codex, add a server entry to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.demo-chat]
+command = "/absolute/path/to/demo-chat/shell-scripts/chat-mcp-stdio"
+args = ["--config", "/absolute/path/to/adapter.properties"]
+```
+
+Start a new Codex session after you add the entry.
 
 ## What each stream carries
 
@@ -120,8 +145,8 @@ client in silence.
 
 ## Tools and results
 
-Five read tools are available by default.
-A complete portal setting adds `chat_read_register`.
+HTTP mode has five read tools. A complete portal setting adds
+`chat_read_register`. Portal-only mode has `chat_read_register` alone.
 `enableSend=true` adds the send tool.
 Search remains unavailable, including when `enableSearch=true`.
 Every ID in an MCP argument or result is a string.

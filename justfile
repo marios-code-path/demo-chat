@@ -142,6 +142,15 @@ build-shell-cli:
 	    -DincludeScope=runtime -Dmdep.outputFile="$PWD/chat-deploy/target/shell-cli.classpath"
 	echo "[build-shell-cli] Done in $SECONDS s. Run shell-scripts/chat-shell-cli."
 
+# Build the adapter once. An MCP client runs the stdio adapter from this classpath.
+build-mcp-stdio:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	mvn -B -ntp -pl chat-mcp -am -Dmaven.test.skip=true package
+	mvn -B -ntp -pl chat-mcp dependency:build-classpath \
+	    -DincludeScope=runtime -Dmdep.outputFile="$PWD/chat-mcp/target/mcp-runtime.classpath"
+	echo '[build-mcp-stdio] Run shell-scripts/chat-mcp-stdio --config PATH.'
+
 # Stage the shell CLI runtime for an installed node-9 home. The stage holds
 # every runtime jar and the frozen JVM options. node-9/install calls the same
 # script. See CHAT-bjqzvsoe.

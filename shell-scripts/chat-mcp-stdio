@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo="${DEMO_CHAT_HOME:-$(cd "$script_dir/.." && pwd)}"
+classpath_file="$repo/chat-mcp/target/mcp-runtime.classpath"
+classes="$repo/chat-mcp/target/classes"
+
+if [[ ! -d "$classes" || ! -s "$classpath_file" ]]; then
+    printf 'chat-mcp-stdio: run just build-mcp-stdio in %s first.\n' "$repo" >&2
+    exit 1
+fi
+
+if [[ "$#" -eq 0 && -z "${CHAT_MCP_CONFIG:-}" ]]; then
+    printf 'chat-mcp-stdio: give --config PATH or set CHAT_MCP_CONFIG.\n' >&2
+    exit 2
+fi
+
+classpath="$(cat "$classpath_file")"
+exec "${CHAT_MCP_JAVA:-java}" -cp "$classes:$classpath" \
+    com.demo.chat.mcp.McpAdapterMainKt "$@"

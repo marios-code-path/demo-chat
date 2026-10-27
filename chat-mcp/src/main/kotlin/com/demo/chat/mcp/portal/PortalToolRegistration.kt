@@ -110,6 +110,11 @@ private val READ_ANNOTATIONS =
 fun registerPortalTool(server: Server, config: AdapterConfig) {
     val socket = config.portalSocket ?: return
     val selector = config.registerSelector ?: return
+    registerPortalTool(server, socket, selector)
+}
+
+/** Register one read tool for a complete portal setting. */
+fun registerPortalTool(server: Server, socket: Path, selector: String) {
     server.addTool(
         Tool(
             name = READ_REGISTER_TOOL_NAME,
