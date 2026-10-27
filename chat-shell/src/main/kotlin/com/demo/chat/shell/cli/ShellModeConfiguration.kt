@@ -1,10 +1,14 @@
 package com.demo.chat.shell.cli
 
 import com.demo.chat.shell.commands.LoginCommands
+import com.demo.chat.shell.portal.PortalRunner
+import com.demo.chat.shell.portal.PortalServerFactory
+import com.demo.chat.shell.portal.ShutdownHooks
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
@@ -33,6 +37,15 @@ class ShellModeConfiguration {
     @ConditionalOnProperty(prefix = "chat.shell", name = ["mode"], havingValue = "one-shot")
     fun oneShotRunner(execution: CommandLineExecution, login: EnvironmentLogin): ApplicationRunner =
         OneShotRunner(execution, login)
+
+    @Bean("springShellApplicationRunner")
+    @ConditionalOnProperty(prefix = "chat.shell", name = ["mode"], havingValue = "portal")
+    fun portalRunner(
+        login: EnvironmentLogin,
+        factory: PortalServerFactory,
+        hooks: ShutdownHooks,
+        @Value("\${chat.shell.portal.socket:}") socket: String,
+    ): ApplicationRunner = PortalRunner(login, factory, socket, hooks)
 }
 
 /**

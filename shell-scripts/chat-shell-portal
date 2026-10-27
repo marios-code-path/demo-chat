@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Runs the shell in portal mode. It needs the login and the socket path.
+# See CHAT-hmbigvmf.
+set -euo pipefail
+
+fail() {
+    printf 'chat-shell-portal: %s\n' "$1" >&2
+    exit 2
+}
+
+[[ -n "${CHAT_SHELL_USER:-}" ]] || fail 'set CHAT_SHELL_USER'
+[[ -n "${CHAT_SHELL_PASSWORD_FILE:-}" ]] || fail 'set CHAT_SHELL_PASSWORD_FILE'
+[[ -n "${CHAT_SHELL_PORTAL_SOCKET:-}" ]] || fail 'set CHAT_SHELL_PORTAL_SOCKET'
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CHAT_SHELL_MODE=portal exec "$here/chat-shell-cli" "$@"
