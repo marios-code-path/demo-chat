@@ -61,14 +61,47 @@ The installed runtime marker is `/opt/demo-chat/node-9/.installed`.
 It reports install time `2026-10-24T02:57:55Z`, source commit `3b025171c06441e441db919f8a3da01d46d71aca`, and `cli: lib, java 25`.
 The installed register wrapper hash is `08483f7727dee53aa4edba73d396daa9ac517149a24ff4acaf3dcf04c091e7b3`.
 The checkout wrapper hash is `365d93bec74e304459e78faa529a00393d245d010681752a48158afd46da184e`.
-The installed wrapper uses the older fixed register read contract.
-The checkout wrapper uses the named `register-read --index` contract.
-The wrappers do not have compatible read contracts.
+The installed wrapper reads the fixed topic `register-index`.
+The checkout wrapper reads a named register.
+The checkout shell CLI requires the option `--index`.
+The wrappers do not have identical read contracts.
+The live room name is `register-index`.
+The live read used the checkout CLI from the source tree.
+It passed the live room name to the checkout contract.
 
-Task 7 requires compatibility before a Node 9 read.
-No live Node 9 read ran because that check failed.
-The Sigma register read also needs elevated access.
-The earlier `sudo -n` attempt failed because sudo required a password.
+### Live read as Sigma, 2026-10-27 UTC
+
+The installed wrapper read exited 0 with 2035 output bytes.
+It returned 7 records and 0 warnings.
+The checkout CLI read ran `register-read --index register-index`.
+It exited 0 in 5027 ms with 2035 output bytes.
+It returned 7 records and 0 warnings.
+The two outputs have the same SHA-256 `8975fa897f46b2c8f3689997a8d7a30f179d9ffd37cdf8044b05dc4a863e18de`.
+So the two read paths return the same live register data.
+
+### Live portal read
+
+One portal JVM started from the checkout tree.
+It logged in as Sigma.
+Its process ID was 92307.
+The portal socket was a private path under `/tmp`.
+The socket bound about 10 seconds after start.
+The MCP client made two `chat_read_register` calls in one session.
+Both replies had status 0, `complete=true`, and 7 lines.
+The adapter exited 0 with no stdout parse failure.
+The portal process ID did not change during the calls.
+The socket stayed present during the calls.
+TERM stopped the portal, and the owned socket was removed.
+No shell JVM remained after shutdown.
+The live core containers kept a start time of 3 days.
+No install, restart, stop, or register write ran.
+
+### Limits of the live proof
+
+The portal does not count accepted connections on the server side.
+Each call opens one socket connection by design.
+The live connection count is unmeasured.
+The installed home still runs source `3b025171c06441e441db919f8a3da01d46d71aca`.
+Its wrapper keeps the older contract until a new install.
+An install of the current source is separate work.
 No register content or password appears in this record.
-
-The live wrapper parity, register counts, warning kinds, process IDs, and connection counts remain unverified.
