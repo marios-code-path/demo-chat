@@ -23,6 +23,9 @@ val KNOWN_CONFIG_KEYS: Set<String> =
         "topicIds",
         "enableSend",
         "enableSearch",
+        "portalSocket",
+        "registerName",
+        "registerId",
     )
 
 /**
@@ -81,6 +84,10 @@ fun loadConfig(
 ): AdapterConfig {
     rejectUnknownKeys(properties)
     val keyType = KeyType.of(properties.getProperty("keyType"))
+    val portalSocket = optionalPortalSocket(properties)
+    val registerName = optionalRegisterName(properties, "registerName")
+    val registerId = optionalRegisterName(properties, "registerId")
+    requirePortalSettings(portalSocket, registerName, registerId)
     return AdapterConfig(
         backendBaseUrl = requireBackendOrigin(required(properties, "backendBaseUrl")),
         credentialFile = baseDirectory.resolve(required(properties, "credentialFile")),
@@ -88,7 +95,57 @@ fun loadConfig(
         topicIds = requireTopicIds(properties.getProperty("topicIds"), keyType),
         enableSend = optionalBoolean(properties, "enableSend"),
         enableSearch = optionalBoolean(properties, "enableSearch"),
+        portalSocket = portalSocket,
+        registerName = registerName,
+        registerId = registerId,
     )
+}
+
+/** The register name rule. It matches the portal request rule. */
+private val REGISTER_NAME = Regex("[A-Za-z0-9][A-Za-z0-9-]{0,63}")
+
+/** Read the portal socket. It must be an absolute path. */
+private fun optionalPortalSocket(properties: Properties): Path? {
+    val text = properties.getProperty("portalSocket")?.trim().orEmpty()
+    if (text.isEmpty()) return null
+    val socket =
+        runCatching { Path.of(text) }.getOrElse {
+            throw ConfigException("portalSocket is not a path: '$text'")
+        }
+    if (!socket.isAbsolute) throw ConfigException("portalSocket must be an absolute path: '$text'")
+    return socket
+}
+
+/** Read one register selector. Both selector keys use the portal name rule. */
+private fun optionalRegisterName(
+    properties: Properties,
+    key: String,
+): String? {
+    val text = properties.getProperty(key)?.trim().orEmpty()
+    if (text.isEmpty()) return null
+    if (!REGISTER_NAME.matches(text)) {
+        throw ConfigException("$key must match ${REGISTER_NAME.pattern}, not '$text'")
+    }
+    return text
+}
+
+/**
+ * Require the complete portal setting or no portal setting.
+ *
+ * A partial setting fails the start. A caller must not guess which register it
+ * reads.
+ */
+private fun requirePortalSettings(
+    socket: Path?,
+    registerName: String?,
+    registerId: String?,
+) {
+    if (socket != null && registerName == null && registerId == null) {
+        throw ConfigException("portalSocket needs registerName or registerId")
+    }
+    if (socket == null && (registerName != null || registerId != null)) {
+        throw ConfigException("registerName and registerId need portalSocket")
+    }
 }
 
 /**

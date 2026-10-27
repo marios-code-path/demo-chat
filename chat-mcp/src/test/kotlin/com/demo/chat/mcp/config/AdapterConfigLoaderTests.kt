@@ -5,6 +5,7 @@ import java.nio.file.Path
 import java.util.Properties
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -139,6 +140,105 @@ class AdapterConfigLoaderTests {
     fun `a boolean key with another value is refused`() {
         assertThrows(ConfigException::class.java) {
             loadConfig(properties("enableSend" to "yes"), baseDirectory)
+        }
+    }
+
+    // --- the portal settings ---
+
+    @Test
+    fun `the portal settings are absent by default`() {
+        val config = loadConfig(properties(), baseDirectory)
+        assertNull(config.portalSocket)
+        assertNull(config.registerName)
+        assertNull(config.registerId)
+        assertNull(config.registerSelector)
+    }
+
+    @Test
+    fun `a complete portal configuration loads`() {
+        val config =
+            loadConfig(
+                properties("portalSocket" to "/run/chat/portal.sock", "registerName" to "register-index"),
+                baseDirectory,
+            )
+        assertEquals(Path.of("/run/chat/portal.sock"), config.portalSocket)
+        assertEquals("register-index", config.registerSelector)
+    }
+
+    @Test
+    fun `the register name wins when both selectors exist`() {
+        val config =
+            loadConfig(
+                properties(
+                    "portalSocket" to "/tmp/chat-portal.sock",
+                    "registerName" to "register-index",
+                    "registerId" to "123e4567-e89b-12d3-a456-426614174000",
+                ),
+                baseDirectory,
+            )
+        assertEquals("register-index", config.registerSelector)
+    }
+
+    @Test
+    fun `the register id is the selector when the name is absent`() {
+        val config =
+            loadConfig(
+                properties(
+                    "portalSocket" to "/tmp/chat-portal.sock",
+                    "registerId" to "123e4567-e89b-12d3-a456-426614174000",
+                ),
+                baseDirectory,
+            )
+        assertEquals("123e4567-e89b-12d3-a456-426614174000", config.registerSelector)
+    }
+
+    @Test
+    fun `a relative portal socket is refused`() {
+        val failure =
+            assertThrows(ConfigException::class.java) {
+                loadConfig(
+                    properties("portalSocket" to "run/portal.sock", "registerName" to "register-index"),
+                    baseDirectory,
+                )
+            }
+        assertTrue(failure.message!!.contains("absolute"), failure.message)
+    }
+
+    @Test
+    fun `a portal socket without a selector is refused`() {
+        val failure =
+            assertThrows(ConfigException::class.java) {
+                loadConfig(properties("portalSocket" to "/tmp/chat-portal.sock"), baseDirectory)
+            }
+        assertTrue(failure.message!!.contains("registerName"), failure.message)
+    }
+
+    @Test
+    fun `a selector without a portal socket is refused`() {
+        val failure =
+            assertThrows(ConfigException::class.java) {
+                loadConfig(properties("registerName" to "register-index"), baseDirectory)
+            }
+        assertTrue(failure.message!!.contains("portalSocket"), failure.message)
+    }
+
+    @Test
+    fun `an invalid register name is refused`() {
+        assertThrows(ConfigException::class.java) {
+            loadConfig(
+                properties("portalSocket" to "/tmp/chat-portal.sock", "registerName" to "-register"),
+                baseDirectory,
+            )
+        }
+    }
+
+    @Test
+    fun `an invalid register id is refused`() {
+        assertThrows(ConfigException::class.java) {
+            loadConfig(
+                properties("portalSocket" to "/tmp/chat-portal.sock", "registerId" to "has space"),
+                baseDirectory,
+            )
         }
     }
 

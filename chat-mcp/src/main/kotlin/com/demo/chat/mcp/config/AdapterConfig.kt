@@ -22,4 +22,14 @@ data class AdapterConfig(
     val enableSend: Boolean,
     /** Whether the adapter registers a search tool. The default is false. */
     val enableSearch: Boolean,
-)
+    /** The portal socket. Absent when the adapter uses no portal. */
+    val portalSocket: Path? = null,
+    /** The register name. It wins over [registerId]. */
+    val registerName: String? = null,
+    /** The register id. */
+    val registerId: String? = null,
+) {
+    /** The register selector. A name wins over an id. */
+    val registerSelector: String?
+        get() = registerName ?: registerId
+}
