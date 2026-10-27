@@ -393,10 +393,28 @@ type must match the core. These variables also apply:
 | `CHAT_SHELL_KEY_TYPE` | Required. `long` or `uuid`. |
 | `CHAT_SHELL_NODE_ID` | The node id of the shell. The default is 1. |
 | `CORE_PORT`, `CORE_MGMT_PORT` | The core, as `chat-build` reads them. |
-| `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE` | The login. Set both or neither. |
+| `CHAT_SHELL_USER`, `CHAT_SHELL_PASSWORD_FILE` | The login. One-shot accepts both or neither. Portal mode requires both. |
+| `CHAT_SHELL_MODE` | `one-shot` or `portal`. The default is `one-shot`. |
+| `CHAT_SHELL_PORTAL_SOCKET` | Required in portal mode. Use an absolute Unix socket path. |
 | `CHAT_SHELL_LOG` | A file for the log. The console log is off. |
 | `CHAT_SHELL_CLI_PRINT_OPTIONS` | Set to 1 to print the JVM options and end. |
 | `CHAT_SHELL_LAUNCH_EPOCH_MS` | The launch time in epoch milliseconds, for the hard limit of `register-read`. The script sets it, in whole seconds, when it is absent. |
+
+To serve register reads, build the shell CLI and start the portal launcher:
+
+```sh
+just build-shell-cli
+CHAT_SHELL_KEY_TYPE=uuid \
+CHAT_SHELL_USER=Admin \
+CHAT_SHELL_PASSWORD_FILE=/run/secrets/chat-shell-password \
+CHAT_SHELL_PORTAL_SOCKET=/run/user/1000/chat/portal.sock \
+shell-scripts/chat-shell-portal
+```
+
+Create the socket parent with private permissions before launch. Portal mode
+logs in before it binds the socket. The process stays in the foreground until
+shutdown. One shell JVM serves repeated socket requests. The server accepts
+one request per connection and checks socket ownership.
 
 `shell-scripts/test-chat-shell-cli-deadline.sh` checks the hard limit of the
 launcher with stubs for `chat-build`, `java`, `perl`, and `date`. It covers a stall

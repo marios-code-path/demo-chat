@@ -73,7 +73,6 @@ class PortalSocketServer(
     private val busy = AtomicBoolean(false)
     private val halted = AtomicBoolean(false)
     private val replyLock = ReentrantLock()
-    private val replied = AtomicBoolean(false)
 
     private val workers = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "portal-worker").apply { isDaemon = true }
@@ -146,10 +145,11 @@ class PortalSocketServer(
             return
         }
         val acceptedAt = System.nanoTime()
-        val timer = timers.schedule({ terminate(client, timeoutReply()) }, deadline.toMillis().coerceAtLeast(1), TimeUnit.MILLISECONDS)
+        val replied = AtomicBoolean(false)
+        val timer = timers.schedule({ terminate(client, timeoutReply(), replied) }, deadline.toMillis().coerceAtLeast(1), TimeUnit.MILLISECONDS)
         workers.execute {
             try {
-                handle(client, acceptedAt)
+                handle(client, acceptedAt, replied)
             } finally {
                 timer.cancel(false)
                 if (!terminal.get()) busy.set(false)
@@ -158,14 +158,14 @@ class PortalSocketServer(
         }
     }
 
-    private fun handle(client: SocketChannel, acceptedAt: Long) {
+    private fun handle(client: SocketChannel, acceptedAt: Long, replied: AtomicBoolean) {
         val request = try {
             protocol.readRequest(Channels.newInputStream(client))
         } catch (error: PortalProtocolException) {
-            failing(client, error.code, null)
+            failing(client, error.code, null, replied)
             return
         } catch (_: Exception) {
-            if (!terminal.get()) failing(client, PortalErrorCode.UNAVAILABLE, null)
+            if (!terminal.get()) failing(client, PortalErrorCode.UNAVAILABLE, null, replied)
             return
         }
         if (terminal.get()) return
@@ -173,25 +173,25 @@ class PortalSocketServer(
         val reply = try {
             read(request, remainingSince(acceptedAt))
         } catch (_: Exception) {
-            if (!terminal.get()) failing(client, PortalErrorCode.UNAVAILABLE, null)
+            if (!terminal.get()) failing(client, PortalErrorCode.UNAVAILABLE, null, replied)
             return
         }
         if (reply.error?.code == PortalErrorCode.TIMEOUT) {
-            terminate(client, reply)
+            terminate(client, reply, replied)
             return
         }
         if (terminal.get()) return
 
-        val failure = writeOnce(client, reply)
+        val failure = writeOnce(client, reply, replied)
         if (failure != null) {
-            failing(client, failure, null)
+            failing(client, failure, null, replied)
         } else if (reply.error != null) {
             diagnostic(reply.error.code, reply.status)
         }
     }
 
     /** Write one reply. Answer the protocol code when the reply is too large. Answer null when done or skipped. */
-    private fun writeOnce(client: SocketChannel, reply: PortalReply): PortalErrorCode? {
+    private fun writeOnce(client: SocketChannel, reply: PortalReply, replied: AtomicBoolean): PortalErrorCode? {
         replyLock.lock()
         try {
             if (terminal.get() || replied.get()) return null
@@ -214,9 +214,9 @@ class PortalSocketServer(
      *
      * A reply write owns [replyLock] while it runs. A timed-out server cannot wait for that write.
      * This method closes the client first when the lock is busy, so the write ends.
-     * A complete reply wins: this method returns when [replied] is true.
+     * A complete reply wins when [replied] is true for this connection.
      */
-    private fun terminate(client: SocketChannel, reply: PortalReply) {
+    private fun terminate(client: SocketChannel, reply: PortalReply, replied: AtomicBoolean) {
         if (!replyLock.tryLock()) {
             closeQuietly(client)
             replyLock.lock()
@@ -275,7 +275,7 @@ class PortalSocketServer(
         return if (remaining.isNegative) Duration.ZERO else remaining
     }
 
-    private fun failing(client: SocketChannel, code: PortalErrorCode, status: Int?) {
+    private fun failing(client: SocketChannel, code: PortalErrorCode, status: Int?, replied: AtomicBoolean) {
         replyLock.lock()
         try {
             if (terminal.get() || replied.get()) return
