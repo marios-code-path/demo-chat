@@ -162,6 +162,12 @@ sends it to the portal. The portal reads one fixed register over a local Unix
 socket. Each call opens one socket connection. The client deadline is 35
 seconds. The client does not retry a failure.
 
+The portal deadline is 30 seconds from socket accept. It covers request
+parsing, the backend read, and the reply write. A timeout attempts a `TIMEOUT`
+reply, removes its owned socket, and halts the shell JVM with status 124. If
+the client cannot receive the reply, it returns `UNAVAILABLE`. Later calls
+fail until an operator or process supervisor restarts the portal.
+
 A successful result has `status`, `lines`, and `complete` in structured content
 and JSON text content. Each line is a typed record or warning. The adapter
 keeps line order. A warning other than `duplicate-pointer` makes the read

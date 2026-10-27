@@ -109,7 +109,8 @@ done
 [[ -S "$S/portal.sock" ]] || fail 'the portal socket did not appear within 120 seconds'
 
 before="$(shell_pids)"
-[[ "$(wc -l <<< "$before" | tr -d ' ')" == 1 ]] || fail 'expected one shell JVM before the reads'
+before_count="$(awk 'NF { count++ } END { print count + 0 }' <<< "$before")"
+[[ "$before_count" == 1 ]] || fail 'expected one shell JVM before the reads'
 portal_pid="$(tr -d ' ' <<< "$before")"
 portal_pgid="$(ps -o pgid= -p "$portal_pid" | tr -d ' ')"
 [[ "$portal_pgid" == "$portal_group" ]] || fail 'the portal JVM left its process group'

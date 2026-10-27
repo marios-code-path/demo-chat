@@ -1,8 +1,9 @@
 # Shell portal register proof
 
 Date: 2026-10-26.
-Source commit: `d7b2ed4535e91e71083bd560a57e97751685e2c5`.
-The source checkout had Task 7 changes when these commands ran.
+Base commit: `d7b2ed4535e91e71083bd560a57e97751685e2c5`.
+Task 7 source commit: `61b4f5e95461834d528a064683f143d9ea67ca1b`.
+That commit contains `PortalEndToEndStdioTests.kt` and `acceptance.sh`.
 
 ## Local verification
 
