@@ -17,7 +17,7 @@ import java.io.PrintWriter
 
 /**
  * The modes of the shell. `chat.shell.mode` is `interactive` (the default),
- * `one-shot`, or `resident`.
+ * `one-shot`, `portal`, or `resident`.
  *
  * **A mode other than `interactive` replaces the application runner of Spring
  * Shell.** The auto-configuration of Spring Shell declares its runner with
