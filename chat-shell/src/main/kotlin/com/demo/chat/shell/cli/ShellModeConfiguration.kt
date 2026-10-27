@@ -38,6 +38,13 @@ class ShellModeConfiguration {
     fun oneShotRunner(execution: CommandLineExecution, login: EnvironmentLogin): ApplicationRunner =
         OneShotRunner(execution, login)
 
+    /**
+     * The diagnostics writer of the portal. The mode configuration owns the
+     * process streams. The portal writes one line for each failed request.
+     */
+    @Bean
+    fun portalDiagnostics(): PrintWriter = PrintWriter(OutputStreamWriter(System.err, Charsets.UTF_8))
+
     @Bean("springShellApplicationRunner")
     @ConditionalOnProperty(prefix = "chat.shell", name = ["mode"], havingValue = "portal")
     fun portalRunner(

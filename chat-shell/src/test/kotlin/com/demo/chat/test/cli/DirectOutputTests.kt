@@ -213,8 +213,9 @@ class DirectOutputTests {
      * `println(` or `print(`, or a `System.out` or `System.err`. A call on a
      * writer, such as `err.println(`, is not direct. The one allowed place is
      * `PubSubCommands.listen`, which streams to a terminal from a background
-     * subscription, and the modes refuse it. The other is the mode runner, which
-     * wraps the process streams as the writers that a command receives.
+     * subscription, and the modes refuse it. The other is the mode
+     * configuration. It wraps the process streams as the writers of a command
+     * and as the diagnostics writer of the portal.
      */
     @Test
     fun `no chat-shell main source prints directly, except listen`() {

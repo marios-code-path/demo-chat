@@ -56,7 +56,11 @@ class PortalConfiguration {
         )
 
     @Bean
-    fun portalServerFactory(protocol: PortalProtocol, read: PortalReadService): PortalServerFactory =
+    fun portalServerFactory(
+        protocol: PortalProtocol,
+        read: PortalReadService,
+        diagnostics: PrintWriter,
+    ): PortalServerFactory =
         PortalServerFactory { socket ->
             PortalSocketServer(
                 socket = socket,
@@ -64,7 +68,7 @@ class PortalConfiguration {
                 read = read::read,
                 deadline = PORTAL_DEADLINE,
                 halt = { Runtime.getRuntime().halt(it) },
-                diagnostics = PrintWriter(System.err, true),
+                diagnostics = diagnostics,
             )
         }
 
