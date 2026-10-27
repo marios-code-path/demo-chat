@@ -4,6 +4,7 @@ import com.demo.chat.mcp.client.BackendHttp
 import com.demo.chat.mcp.client.TopicClient
 import com.demo.chat.mcp.client.MessagingClient
 import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.portal.registerPortalTool
 import com.demo.chat.mcp.tool.TopicToolService
 import com.demo.chat.mcp.tool.registerTopicTools
 import com.demo.chat.mcp.tool.MessagingToolService
@@ -26,7 +27,8 @@ const val MCP_SERVER_VERSION: String = "0.0.1"
  * resource and no subscription. See
  * `docs/superpowers/specs/2026-09-27-demo-chat-mcp-design.md` section 4.
  *
- * The server registers five read tools. Configuration can enable message submission.
+ * The server registers five read tools. A complete portal setting adds one read
+ * tool. Configuration can enable message submission.
  *
  * The transport is required. **The adapter owns one transport for the whole
  * process**, and the caller closes it. A transport built here would belong to
@@ -44,5 +46,6 @@ fun createMcpServer(config: AdapterConfig, http: BackendHttp): Server {
         )
     registerTopicTools(server, TopicToolService(config, TopicClient(config, http)))
     registerMessagingTools(server, MessagingToolService(config, MessagingClient(config, http)), config.enableSend)
+    registerPortalTool(server, config)
     return server
 }

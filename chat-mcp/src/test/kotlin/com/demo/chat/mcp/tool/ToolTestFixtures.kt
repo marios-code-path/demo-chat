@@ -93,6 +93,9 @@ fun testConfig(
     topicIds: List<AdapterId>,
     credentialFile: Path = writeCredentialFile(),
     keyType: KeyType = KeyType.LONG,
+    portalSocket: Path? = null,
+    registerName: String? = null,
+    registerId: String? = null,
 ): AdapterConfig =
     AdapterConfig(
         backendBaseUrl = origin,
@@ -101,4 +104,7 @@ fun testConfig(
         topicIds = topicIds,
         enableSend = false,
         enableSearch = false,
+        portalSocket = portalSocket,
+        registerName = registerName,
+        registerId = registerId,
     )
