@@ -4,6 +4,7 @@ import java.io.IOException
 import java.io.PrintWriter
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
+import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousCloseException
 import java.nio.channels.Channels
 import java.nio.channels.ClosedByInterruptException
@@ -140,6 +141,7 @@ class PortalSocketServer(
         if (!busy.compareAndSet(false, true)) {
             diagnostic(PortalErrorCode.BUSY, null)
             writeFailure(client, PortalErrorCode.BUSY)
+            drainQuietly(client)
             closeQuietly(client)
             return
         }
@@ -302,6 +304,31 @@ class PortalSocketServer(
         runCatching { target?.close() }
     }
 
+    /**
+     * Read and discard the client input before the close.
+     *
+     * Linux sends a reset when a socket closes with unread input.
+     * A reset discards the BUSY reply. The read is non-blocking and bounded.
+     */
+    private fun drainQuietly(client: SocketChannel) {
+        runCatching {
+            client.configureBlocking(false)
+            val buffer = ByteBuffer.allocate(1024)
+            val end = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(DRAIN_MILLIS)
+            var total = 0
+            while (total <= DRAIN_LIMIT && System.nanoTime() < end) {
+                buffer.clear()
+                val count = client.read(buffer)
+                if (count < 0) break
+                if (count == 0) {
+                    Thread.sleep(1)
+                } else {
+                    total += count
+                }
+            }
+        }
+    }
+
     private fun currentUser(): String = System.getProperty("user.name")
 
     private fun failStartup(message: String): Nothing = throw PortalStartupException(message)
@@ -311,6 +338,8 @@ class PortalSocketServer(
 
     private companion object {
         const val HARD_STOP_MILLIS = 1000L
+        const val DRAIN_MILLIS = 200L
+        const val DRAIN_LIMIT = 4096
         val SHARED_PERMISSIONS = setOf(
             PosixFilePermission.GROUP_READ,
             PosixFilePermission.GROUP_WRITE,
