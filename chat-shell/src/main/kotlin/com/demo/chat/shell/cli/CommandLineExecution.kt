@@ -19,8 +19,8 @@ import java.io.PrintWriter
  * [ShellExitStatus]. The command output goes to `out`. A failure goes to
  * `err` as one line, `chat-shell: <message>`, and nothing else goes to `err`.
  *
- * **`listen`, `hangup`, and `script` are refused.** They stream or hold state
- * across commands. **A first word that starts with `@` is refused too.** Spring
+ * **`listen`, `hangup`, `script`, and `portal` are refused.** They stream or
+ * hold state across commands. **A first word that starts with `@` is refused too.** Spring
  * Shell reads such a word as a script file, and one run has one status.
  * **A first word that starts with `!` is refused too.** The host escape prints
  * the status of its bash command and returns none to Spring Shell, so a mode
@@ -70,6 +70,6 @@ class CommandLineExecution(private val parser: CommandParser, private val regist
     }
 
     private companion object {
-        val REFUSED = setOf("listen", "hangup", "script")
+        val REFUSED = setOf("listen", "hangup", "script", "portal")
     }
 }

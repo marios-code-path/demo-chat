@@ -44,6 +44,18 @@ class EnvironmentLogin(private val env: (String) -> String?, private val login: 
         }
     }
 
+    /**
+     * The portal login. It needs both variables before it binds the socket.
+     * A missing variable gives LOGIN. It then runs [loginIfSet].
+     */
+    fun loginRequired() {
+        val user = env(USER)?.ifEmpty { null }
+        val file = env(PASSWORD_FILE)?.ifEmpty { null }
+        if (user == null || file == null)
+            throw ShellExit(ShellExitStatus.LOGIN, "set both $USER and $PASSWORD_FILE")
+        loginIfSet()
+    }
+
     private fun withoutLineEnd(text: String): String = when {
         text.endsWith("\r\n") -> text.dropLast(2)
         text.endsWith("\n") -> text.dropLast(1)

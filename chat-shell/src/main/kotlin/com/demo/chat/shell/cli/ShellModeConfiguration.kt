@@ -1,10 +1,14 @@
 package com.demo.chat.shell.cli
 
 import com.demo.chat.shell.commands.LoginCommands
+import com.demo.chat.shell.portal.PortalRunner
+import com.demo.chat.shell.portal.PortalServerFactory
+import com.demo.chat.shell.portal.ShutdownHooks
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
@@ -13,7 +17,7 @@ import java.io.PrintWriter
 
 /**
  * The modes of the shell. `chat.shell.mode` is `interactive` (the default),
- * `one-shot`, or `resident`.
+ * `one-shot`, `portal`, or `resident`.
  *
  * **A mode other than `interactive` replaces the application runner of Spring
  * Shell.** The auto-configuration of Spring Shell declares its runner with
@@ -33,6 +37,22 @@ class ShellModeConfiguration {
     @ConditionalOnProperty(prefix = "chat.shell", name = ["mode"], havingValue = "one-shot")
     fun oneShotRunner(execution: CommandLineExecution, login: EnvironmentLogin): ApplicationRunner =
         OneShotRunner(execution, login)
+
+    /**
+     * The diagnostics writer of the portal. The mode configuration owns the
+     * process streams. The portal writes one line for each failed request.
+     */
+    @Bean
+    fun portalDiagnostics(): PrintWriter = PrintWriter(OutputStreamWriter(System.err, Charsets.UTF_8))
+
+    @Bean("springShellApplicationRunner")
+    @ConditionalOnProperty(prefix = "chat.shell", name = ["mode"], havingValue = "portal")
+    fun portalRunner(
+        login: EnvironmentLogin,
+        factory: PortalServerFactory,
+        hooks: ShutdownHooks,
+        @Value("\${chat.shell.portal.socket:}") socket: String,
+    ): ApplicationRunner = PortalRunner(login, factory, socket, hooks)
 }
 
 /**

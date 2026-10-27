@@ -11,6 +11,8 @@
 #   CHAT_SHELL_NODE_ID       default 1
 #   CORE_PORT, CORE_MGMT_PORT  the core, as chat-build reads them
 #   CHAT_SHELL_USER, CHAT_SHELL_PASSWORD_FILE  the login, both or neither
+#   CHAT_SHELL_MODE          one-shot or portal, default one-shot
+#   CHAT_SHELL_PORTAL_SOCKET  the absolute socket path for portal mode
 #   CHAT_SHELL_LOG           a file for the log, which is off otherwise
 #   CHAT_SHELL_CLI_PRINT_OPTIONS=1  print the JVM options and end
 #   CHAT_SHELL_LAUNCH_EPOCH_MS  the launch time for a hard limit. The script sets it when it is absent.
@@ -18,6 +20,15 @@
 # The exit status is 0 for success. The other statuses are in the design of
 # the topic register, section "chat-shell as a command tool", part 2.
 set -euo pipefail
+
+mode="${CHAT_SHELL_MODE:-one-shot}"
+case "$mode" in
+    one-shot|portal) ;;
+    *)
+        echo "chat-shell-cli: CHAT_SHELL_MODE must be one-shot or portal." >&2
+        exit 2
+        ;;
+esac
 
 # A command with a hard limit runs under a supervisor from the first line of this script. The JVM has
 # a watchdog too, but it cannot stop a stall before Java starts, such as a stuck chat-build. The
@@ -188,6 +199,7 @@ if [[ -f "$options_file" ]]; then
     while IFS= read -r line; do
         case "$line" in
             ''|'#'*) ;;
+            -Dchat.shell.mode=*) ;;
             *) opts+=("$line") ;;
         esac
     done < "$options_file"
@@ -208,6 +220,7 @@ else
             # The vector module makes the JVM print a warning on standard error, and a shell client needs no vectors.
             --add-modules=jdk.incubator.vector) ;;
             -Dspring.shell.interactive.enabled=*|-Dspring-boot.run.*) ;;
+            -Dchat.shell.mode=*) ;;
             *) opts+=("$line") ;;
         esac
     done < <(sed -nE 's/^  +((-D|--)[^ ].*)$/\1/p' <<< "$plan")
@@ -215,13 +228,21 @@ else
     # These come last, so they win over the plan. The frozen options of an
     # installed home already hold them, because the install captures this list.
     opts+=(
-        -Dchat.shell.mode=one-shot
         -Dspring.shell.interactive.enabled=false
         -Dspring.main.banner-mode=off
         -Dlogging.threshold.console=OFF
         -Dspring.main.web-application-type=none
         --sun-misc-unsafe-memory-access=allow
     )
+fi
+
+opts+=("-Dchat.shell.mode=$mode")
+if [[ "$mode" == portal ]]; then
+    if [[ -z "${CHAT_SHELL_PORTAL_SOCKET:-}" ]]; then
+        echo "chat-shell-cli: set CHAT_SHELL_PORTAL_SOCKET for portal mode." >&2
+        exit 2
+    fi
+    opts+=("-Dchat.shell.portal.socket=$CHAT_SHELL_PORTAL_SOCKET")
 fi
 if [[ -n "${CHAT_SHELL_LOG:-}" ]]; then
     opts+=("-Dlogging.file.name=$CHAT_SHELL_LOG")
