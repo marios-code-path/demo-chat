@@ -209,4 +209,14 @@ class PortalReadServiceTests {
         assertThat(reply.error?.code).isEqualTo(PortalErrorCode.READ_FAILED)
         assertThat(reply.lines).isEmpty()
     }
+
+    @Test
+    fun `a failure carries the deepest cause message as its detail`() {
+        val wrapped = RuntimeException("outer", IllegalStateException("the index topic is missing"))
+
+        val reply = service(index = { _, _ -> throw wrapped }).read(request(), deadline)
+
+        assertThat(reply.error?.code).isEqualTo(PortalErrorCode.READ_FAILED)
+        assertThat(reply.detail).isEqualTo("the index topic is missing")
+    }
 }
