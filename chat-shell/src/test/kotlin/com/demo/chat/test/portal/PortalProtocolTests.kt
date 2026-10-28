@@ -82,12 +82,98 @@ class PortalProtocolTests {
     fun `the request limit counts UTF-8 bytes and the newline`() {
         val largestName = "a".repeat(64)
         val body = """{"operation":"read-register","index":"$largestName"}"""
-        val atLimit = body + " ".repeat(4096 - body.toByteArray().size - 1) + "\n"
+        val atLimit = body + " ".repeat(32768 - body.toByteArray().size - 1) + "\n"
 
-        assertThat(atLimit.toByteArray()).hasSize(4096)
+        assertThat(atLimit.toByteArray()).hasSize(32768)
         assertThat(protocol.readRequest(atLimit.byteInputStream()).index).isEqualTo(largestName)
         refuse((atLimit.dropLast(1) + " \n").toByteArray())
         refuse("""{"operation":"read-register","index":"${"a".repeat(65)}"}
+""".toByteArray())
+    }
+
+    @Test
+    fun `an open request carries key short and title`() {
+        val frame = """{"operation":"open-register-entry","index":"register-index","key":"CHAT-a","short":"snap","title":"Snapshot"}""" + "\n"
+
+        val request = protocol.readRequest(frame.byteInputStream())
+
+        assertThat(request.key).isEqualTo("CHAT-a")
+        assertThat(request.short).isEqualTo("snap")
+        assertThat(request.title).isEqualTo("Snapshot")
+        assertThat(request.text).isNull()
+    }
+
+    @Test
+    fun `a post request carries key text and request id`() {
+        val frame = """{"operation":"post-register-entry","index":"register-index","key":"CHAT-a","text":"hello","requestId":"r-1"}""" + "\n"
+
+        val request = protocol.readRequest(frame.byteInputStream())
+
+        assertThat(request.key).isEqualTo("CHAT-a")
+        assertThat(request.text).isEqualTo("hello")
+        assertThat(request.requestId).isEqualTo("r-1")
+    }
+
+    @Test
+    fun `a post request can omit the request id`() {
+        val frame = """{"operation":"post-register-entry","index":"register-index","key":"CHAT-a","text":"hello"}""" + "\n"
+
+        val request = protocol.readRequest(frame.byteInputStream())
+
+        assertThat(request.requestId).isNull()
+    }
+
+    @Test
+    fun `a post request carries 3072 escaped quote bytes`() {
+        val text = "\"".repeat(3072)
+        val frame = mapper.writeValueAsString(
+            mapOf(
+                "operation" to "post-register-entry",
+                "index" to "register-index",
+                "key" to "CHAT-a",
+                "text" to text,
+                "requestId" to "r-1",
+            ),
+        ) + "\n"
+
+        assertThat(frame.toByteArray().size).isGreaterThan(4096)
+        assertThat(protocol.readRequest(frame.byteInputStream()).text).isEqualTo(text)
+    }
+
+    @Test
+    fun `a post request fits the frame with every capped field at its limit`() {
+        val text = "\u0001".repeat(3072)
+        val frame = mapper.writeValueAsString(
+            mapOf(
+                "operation" to "post-register-entry",
+                "index" to "r".repeat(37),
+                "key" to "\"".repeat(64),
+                "text" to text,
+                "requestId" to "r".repeat(128),
+            ),
+        ) + "\n"
+
+        assertThat(frame.toByteArray().size).isLessThan(32768)
+        assertThat(protocol.readRequest(frame.byteInputStream()).text).isEqualTo(text)
+    }
+
+    @Test
+    fun `a read request refuses write fields`() {
+        refuse("""{"operation":"read-register","index":"index","key":"CHAT-a"}
+""".toByteArray())
+    }
+
+    @Test
+    fun `an open request needs exactly its three fields`() {
+        refuse("""{"operation":"open-register-entry","index":"index","key":"CHAT-a","short":"snap"}
+""".toByteArray())
+        refuse("""{"operation":"open-register-entry","index":"index","key":"CHAT-a","short":"snap","title":"S","text":"hello"}
+""".toByteArray())
+    }
+
+    @Test
+    fun `a post request refuses a non-string text`() {
+        refuse("""{"operation":"post-register-entry","index":"index","key":"CHAT-a","text":5,"requestId":"r-1"}
 """.toByteArray())
     }
 

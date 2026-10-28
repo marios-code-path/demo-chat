@@ -26,14 +26,20 @@ import java.time.Duration
 /** The largest reply frame, including its newline. */
 const val PORTAL_REPLY_LIMIT: Int = 4_194_304
 
-/** The operation of the one portal request. */
+/** The operation that reads the register. */
 private const val READ_REGISTER: String = "read-register"
+
+/** The operation that opens one register entry. */
+private const val OPEN_REGISTER_ENTRY: String = "open-register-entry"
+
+/** The operation that posts one register entry. */
+private const val POST_REGISTER_ENTRY: String = "post-register-entry"
 
 /** The newline byte that ends a frame. */
 private const val NEWLINE: Byte = '\n'.code.toByte()
 
 /** One reply from the portal. The lines keep their order. */
-data class PortalReadResult(
+data class PortalResult(
     /** The shell exit status. It is null when the portal gave no status. */
     val status: Int?,
     /** True when every line is complete. */
@@ -61,8 +67,34 @@ class PortalClient(
     private val deadline: Duration = Duration.ofSeconds(35),
     private val replyLimit: Int = PORTAL_REPLY_LIMIT,
 ) {
+    /** Read the register index, or one topic of it. */
+    fun read(topic: String? = null): PortalResult {
+        val fields = linkedMapOf("operation" to READ_REGISTER, "index" to selector)
+        if (topic != null) fields["topic"] = topic
+        return exchange(fields)
+    }
+
+    /** Open one register entry. A repeated call is idempotent. */
+    fun open(key: String, short: String, title: String): PortalResult =
+        exchange(
+            linkedMapOf(
+                "operation" to OPEN_REGISTER_ENTRY,
+                "index" to selector,
+                "key" to key,
+                "short" to short,
+                "title" to title,
+            ),
+        )
+
+    /** Post one register entry. A request id makes a retry safe. */
+    fun post(key: String, text: String, requestId: String?): PortalResult {
+        val fields = linkedMapOf("operation" to POST_REGISTER_ENTRY, "index" to selector, "key" to key, "text" to text)
+        if (requestId != null) fields["requestId"] = requestId
+        return exchange(fields)
+    }
+
     /** Exchange one request frame and one reply frame. */
-    fun read(topic: String? = null): PortalReadResult {
+    private fun exchange(fields: Map<String, String>): PortalResult {
         val end = System.nanoTime() + deadline.toNanos()
         return try {
             SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
@@ -76,7 +108,7 @@ class PortalClient(
                         if (!await(watcher, SelectionKey.OP_CONNECT, end)) return unavailable()
                         if (!channel.finishConnect()) return unavailable()
                     }
-                    if (!send(channel, key, watcher, end, topic)) return unavailable()
+                    if (!send(channel, key, watcher, end, fields)) return unavailable()
                     channel.shutdownOutput()
                     val reply = receive(channel, key, watcher, end) ?: return unavailable()
                     decode(reply)
@@ -97,9 +129,9 @@ class PortalClient(
         key: SelectionKey,
         watcher: Selector,
         end: Long,
-        topic: String?,
+        fields: Map<String, String>,
     ): Boolean {
-        val buffer = ByteBuffer.wrap(requestFrame(topic))
+        val buffer = ByteBuffer.wrap(requestFrame(fields))
         key.interestOps(SelectionKey.OP_WRITE)
         while (buffer.hasRemaining()) {
             if (channel.write(buffer) > 0) continue
@@ -174,7 +206,7 @@ class PortalClient(
         }
 
     /** Decode one reply frame. A broken frame becomes `UNAVAILABLE`. */
-    private fun decode(text: String?): PortalReadResult {
+    private fun decode(text: String?): PortalResult {
         val root =
             text?.let { runCatching { Json.parseToJsonElement(it) }.getOrNull() } as? JsonObject
                 ?: return unavailable()
@@ -212,20 +244,15 @@ class PortalClient(
                 else -> return unavailable()
             }
 
-        return PortalReadResult(status, complete, lines, errorCode)
+        return PortalResult(status, complete, lines, errorCode)
     }
 
     /** The one request frame. It holds no credential. */
-    private fun requestFrame(topic: String?): ByteArray {
-        val request =
-            buildJsonObject {
-                put("operation", READ_REGISTER)
-                put("index", selector)
-                if (topic != null) put("topic", topic)
-            }
+    private fun requestFrame(fields: Map<String, String>): ByteArray {
+        val request = buildJsonObject { fields.forEach { (name, value) -> put(name, value) } }
         return (request.toString() + "\n").toByteArray(StandardCharsets.UTF_8)
     }
 
-    private fun unavailable(): PortalReadResult =
-        PortalReadResult(status = null, complete = false, lines = emptyList(), errorCode = "UNAVAILABLE")
+    private fun unavailable(): PortalResult =
+        PortalResult(status = null, complete = false, lines = emptyList(), errorCode = "UNAVAILABLE")
 }

@@ -1,12 +1,13 @@
 # The Demo Chat MCP adapter
 
 The adapter is a standalone program. It speaks the Model Context Protocol
-(MCP) over stdin and stdout. It reads topics and messages from a running Demo Chat deployment.
-Optional sending uses caller-selected request IDs and command status.
-It reads the node register when the operator configures a local portal socket.
+(MCP) over stdin and stdout. In HTTP mode, it reads topics and messages from a
+running Demo Chat deployment. Optional sending uses caller-selected request
+IDs and command status. Portal-only mode reads the node register through a
+local portal socket.
 
-The adapter holds no database credential and no direct store access. It calls
-the deployment over HTTP. The deployment checks route access.
+The adapter holds no database credential and no direct store access. Its HTTP
+tools call the deployment. The deployment checks route access.
 For message-by-ID reads, the adapter also enforces the configured room limit.
 The server checks `SUBSCRIBE` on the room of a message read by ID since `CHAT-erkoxybm`.
 
@@ -15,22 +16,23 @@ The adapter serves protocol revision `2025-11-25`.
 ## Build
 
 ```sh
-mvn -o -B -pl chat-mcp -am package -DskipTests
+just build-mcp-stdio
 ```
 
-The classes land in `chat-mcp/target/classes`. The adapter has no Spring
-context.
+The build writes `chat-mcp/target/classes` and
+`chat-mcp/target/mcp-runtime.classpath`. The adapter has no Spring context.
 
 ## Configure
 
 The adapter takes one argument, `--config <path>`. The environment variable
 `CHAT_MCP_CONFIG` names the same file. The adapter refuses any other argument.
 
-The file is a Java properties file. Every key is required unless the table says
-otherwise.
+The file is a Java properties file. The HTTP mode needs every key unless the
+table says otherwise.
 
 | Key | Meaning |
 |---|---|
+| `mode` | Optional. Set `portal-only` to serve the register tool alone. |
 | `backendBaseUrl` | The origin of the deployment. It carries a scheme, a host and an optional port. It carries no path, query, fragment or user info. |
 | `credentialFile` | The file that holds the token. A relative path resolves against the directory of the configuration file. See `docs/MCP-CREDENTIAL-ISSUANCE.md`. |
 | `keyType` | `long` or `uuid`. It must agree with the deployment. |
@@ -43,6 +45,10 @@ otherwise.
 
 An unknown key fails the start. The adapter never accepts a credential as an
 argument.
+
+Portal-only mode accepts `mode`, `portalSocket`, and one register selector. It
+rejects HTTP settings. It needs no backend token or topic ID. The read tool is
+registered for either selector. The write tools need `registerName`.
 
 The three portal keys form one setting. Set `portalSocket` and one selector, or
 set no portal key. A partial setting fails the start. The socket path must be
@@ -67,15 +73,53 @@ portalSocket=/run/chat/portal.sock
 registerName=register-index
 ```
 
+A register-only configuration contains these values:
+
+```properties
+mode=portal-only
+portalSocket=/run/chat/portal.sock
+registerName=register-index
+```
+
+The full HTTP mode still requires its backend settings and a readable token
+file at startup. A portal read does not send that token to the portal.
+
 ## Run
 
 ```sh
-java -cp chat-mcp/target/classes:<dependencies> \
-  com.demo.chat.mcp.McpAdapterMainKt --config /path/to/adapter.properties
+shell-scripts/chat-mcp-stdio --config /path/to/adapter.properties
 ```
 
-The adapter reads protocol frames on stdin and writes them on stdout. It exits
-when stdin reaches end of file.
+An installed node-9 home provides `bin/chat-mcp-stdio`. A normal install stages
+its runtime jars in `lib/mcp/`. An install with `--skip-cli` does not stage them.
+
+An MCP client starts this command and keeps its stdin open. The adapter writes
+protocol frames on stdout. It exits when stdin reaches end of file.
+
+For Codex, add a server entry to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.demo-chat]
+command = "/absolute/path/to/demo-chat/shell-scripts/chat-mcp-stdio"
+args = ["--config", "/absolute/path/to/adapter.properties"]
+```
+
+Start a new Codex session after you add the entry.
+
+## Agent configuration files
+
+`shell-scripts/chat_libs.sh` gives each agent one configuration file.
+The file name is `mcp-portal-<agent>-<project>.properties`.
+Both names are lowercase.
+`MY_AGENT_NAME` sets the agent name. The default is `theta`.
+`MY_PROJECT_NAME` sets the project name.
+The project name defaults to the base name of `MY_PROJECT_HOME`.
+The directory is `${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat`.
+`CHAT_MCP_CONFIG` overrides the whole path.
+Two projects that share one agent thus use two files.
+A missing project file falls back to `mcp-portal-<agent>.properties`.
+The fallback prints one stderr line.
+Create the project file before you start the second project.
 
 ## What each stream carries
 
@@ -120,8 +164,10 @@ client in silence.
 
 ## Tools and results
 
-Five read tools are available by default.
-A complete portal setting adds `chat_read_register`.
+HTTP mode has five read tools. A complete portal setting adds
+`chat_read_register`. A register name also adds `chat_open_register_entry` and
+`chat_post_register_entry`. Portal-only mode has `chat_read_register` alone
+for a register id, and all three register tools for a register name.
 `enableSend=true` adds the send tool.
 Search remains unavailable, including when `enableSearch=true`.
 Every ID in an MCP argument or result is a string.
@@ -136,6 +182,8 @@ Long IDs retain every digit, including values above `2^53`.
 | `chat_get_command_status` | `{commandId: string}` | `CommandStatus` |
 | `chat_send_message` | `{topicId: string, text: string, requestId: string}` | `{receipt, outcome, backends}` |
 | `chat_read_register` | `{topic?: string}` | `{status: integer|null, lines: object[], complete: boolean}` |
+| `chat_open_register_entry` | `{key: string, short: string, title: string}` | one `open` line |
+| `chat_post_register_entry` | `{key: string, text: string, requestId?: string}` | one `post` line |
 
 A `Topic` contains string fields `id`, `root`, and `name`.
 A `Message` contains `messageKey`, `senderId`, `topicId`, `text`, and `timestamp`.
@@ -176,6 +224,64 @@ incomplete. An incomplete read keeps its lines and sets MCP `isError` to true.
 A failed read has `error.code`, `status`, `complete=false`, and no partial
 lines. A transport failure uses `UNAVAILABLE` and a null status. The adapter
 does not return a socket path, a credential, or an exception message.
+
+### Writing the node register
+
+The adapter registers `chat_open_register_entry` and
+`chat_post_register_entry` only when the portal socket and a register name
+are configured. A register id alone registers the read tool only, because
+the name mints every entry topic.
+
+`chat_open_register_entry` opens the entry of one key. Arguments:
+
+- `key` is nonempty and at most 64 characters. It holds no `|`, no
+  backslash, and no control character. It holds no space at its start or
+  its end. The key `-` is reserved.
+- `short` matches `[a-z0-9][a-z0-9-]*`. It names the new topic.
+- `title` is nonempty and holds at most 256 characters. It holds no `|` or control character.
+
+A successful open returns one line with `type` `open`, `state` `created` or
+`exists`, `key`, `topic`, and `pointer_id`. A repeat of an open answers
+`exists` with the same pointer. The tool declares `idempotentHint` true.
+
+`chat_post_register_entry` posts one entry to the topic of the key pointer.
+Arguments:
+
+- `key` follows the open rule.
+- `text` is nonblank and at most 3072 UTF-8 bytes.
+- `requestId` is optional and holds at most 128 characters. It matches `[A-Za-z0-9._:-]+` and is never `_`.
+
+When `requestId` is absent, the tool derives one from the key and text.
+It uses `auto-` plus the first 32 hexadecimal characters of SHA-256.
+The hash input is the UTF-8 key, one `0x00` byte, and the UTF-8 text.
+The same key and text produce the same ID and no second entry on retry.
+An explicit `requestId` overrides the derived ID. Use a new explicit ID to post identical text again.
+A replay answers the receipt of the first post. Compare `message_id` and `command_id` across replies.
+The post reply has no `state` field.
+
+A successful post returns one line with `type` `post`, `key`, `topic`,
+`message_id`, `command_id`, and `request_id`. The tool declares
+`idempotentHint` true for repeated calls with the same arguments.
+
+Both tools refuse an unknown argument before they open a socket.
+An unknown argument sets `isError` to true and reports `no argument named '<name>'`.
+An invalid value sets `isError` to true and names the broken rule.
+The portal request frame holds at most 32768 bytes, including the newline.
+
+Error codes:
+
+| Code | Status | Meaning |
+|------|--------|---------|
+| `INVALID_INPUT` | 2 | The portal refused a field or a value. |
+| `WRITE_FAILED` | 1 | The index read, the topic create, the join, or the pointer post failed. |
+| `NOT_OPEN` | 1 | The key has no pointer. Run `chat_open_register_entry` first. |
+| `UNCONFIRMED` | 75 | The confirmation read never showed the posted message. |
+| `BUSY` | none | Another request holds the portal. |
+| `UNAVAILABLE` | none | The transport failed. |
+
+A refused or uncertain write answers `isError` true and no success line.
+Retry an uncertain post with the same key and text.
+If the first call used an explicit `requestId`, use it again.
 
 Backend names are `PERSISTENCE`, `INDEX`, `VECTOR`, and `PUBSUB`.
 Backend states are `PENDING`, `SUCCEEDED`, `FAILED`, and `UNCERTAIN`.

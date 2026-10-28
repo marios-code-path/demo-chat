@@ -28,6 +28,8 @@ import java.util.Collections
 
 /** The name of the tool under test. */
 private const val TOOL: String = "chat_read_register"
+private const val OPEN: String = "chat_open_register_entry"
+private const val POST: String = "chat_post_register_entry"
 
 /** The fields of the tool answer. */
 private const val STATUS: String = "status"
@@ -253,6 +255,183 @@ class PortalToolTests {
             assertTrue(client.isError(reply))
             assertTrue(client.textOf(reply).contains("must match"))
             assertTrue(portal.received.isEmpty(), "a refused topic reached the portal")
+        }
+    }
+
+    @Test
+    fun `the write tools are absent for a register id alone`() {
+        FakeTopicBackend().use { backend ->
+            FakePortal("""{"status":0,"lines":[],"complete":true}""").use { portal ->
+                val config =
+                    testConfig(
+                        origin = backend.origin,
+                        topicIds = listOf(LongId(11)),
+                        portalSocket = portal.path,
+                        registerId = "register-id",
+                    )
+
+                StdioHarness(config).use { client ->
+                    client.initialize()
+                    val names = tools(client).keys
+
+                    assertTrue(names.contains(TOOL), "the read tool is absent")
+                    assertFalse(names.contains(OPEN), "the open tool is present for a register id")
+                    assertFalse(names.contains(POST), "the post tool is present for a register id")
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `the post tool declares safe retries`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, _ ->
+            val annotations = tools(client).getValue(POST)["annotations"]!!.jsonObject
+
+            assertEquals("true", annotations["idempotentHint"]!!.jsonPrimitiveText())
+        }
+    }
+
+    @Test
+    fun `an open sends the three write fields`() {
+        withPortal("""{"status":0,"lines":[{"type":"open","state":"created"}],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, OPEN, """{"key":"CHAT-a","short":"snap","title":"Snapshot"}""")
+
+            assertFalse(client.isError(reply))
+            val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
+            assertEquals("open-register-entry", request["operation"]!!.jsonPrimitiveText())
+            assertEquals("register-index", request["index"]!!.jsonPrimitiveText())
+            assertEquals("CHAT-a", request["key"]!!.jsonPrimitiveText())
+            assertEquals("snap", request["short"]!!.jsonPrimitiveText())
+            assertEquals("Snapshot", request["title"]!!.jsonPrimitiveText())
+        }
+    }
+
+    @Test
+    fun `an open refuses an unknown argument`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, OPEN, """{"key":"CHAT-a","short":"snap","title":"S","extra":"x"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(client.textOf(reply).contains("no argument named 'extra'"))
+            assertTrue(portal.received.isEmpty(), "a refused argument reached the portal")
+        }
+    }
+
+    @Test
+    fun `an open refuses a key that cannot stand in a pointer line`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, OPEN, """{"key":"a|b","short":"snap","title":"S"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(portal.received.isEmpty(), "a refused key reached the portal")
+        }
+    }
+
+    @Test
+    fun `an open refuses a title past 256 characters before the portal`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, OPEN, """{"key":"CHAT-a","short":"snap","title":"${"a".repeat(257)}"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(portal.received.isEmpty(), "a refused title reached the portal")
+        }
+    }
+
+    @Test
+    fun `a post sends the text and the request id`() {
+        withPortal("""{"status":0,"lines":[{"type":"post","message_id":"m2"}],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"hello","requestId":"r-1"}""")
+
+            assertFalse(client.isError(reply))
+            val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
+            assertEquals("post-register-entry", request["operation"]!!.jsonPrimitiveText())
+            assertEquals("CHAT-a", request["key"]!!.jsonPrimitiveText())
+            assertEquals("hello", request["text"]!!.jsonPrimitiveText())
+            assertEquals("r-1", request["requestId"]!!.jsonPrimitiveText())
+        }
+    }
+
+    @Test
+    fun `a post refuses a request id past 128 characters before the portal`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"hello","requestId":"${"r".repeat(129)}"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(portal.received.isEmpty(), "a refused request id reached the portal")
+        }
+    }
+
+    @Test
+    fun `a post derives a stable request id when it is absent`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+
+            val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
+            assertEquals("auto-a7fe353f139aa685f0072f5de484a8b1", request["requestId"]?.jsonPrimitiveText())
+        }
+    }
+
+    @Test
+    fun `two posts with the same key and text send the same request id`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+            client.callTool(4, POST, """{"key":"CHAT-a","text":"hello"}""")
+
+            val ids = portal.received.map { frame ->
+                (Json.parseToJsonElement(frame) as JsonObject)["requestId"]?.jsonPrimitiveText()
+            }
+            assertEquals(2, ids.size)
+            assertTrue(ids.all { it != null }, "a post carried no request id")
+            assertEquals(ids.first(), ids.last())
+        }
+    }
+
+    @Test
+    fun `two different texts send different request ids`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+            client.callTool(4, POST, """{"key":"CHAT-a","text":"world"}""")
+
+            val ids = portal.received.map { frame ->
+                (Json.parseToJsonElement(frame) as JsonObject)["requestId"]?.jsonPrimitiveText()
+            }
+            assertTrue(ids.all { it != null }, "a post carried no request id")
+            assertEquals(2, ids.distinct().size)
+        }
+    }
+
+    @Test
+    fun `a post refuses a blank text`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"   "}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(client.textOf(reply).contains("empty"))
+            assertTrue(portal.received.isEmpty(), "a refused text reached the portal")
+        }
+    }
+
+    @Test
+    fun `a post refuses a text past the byte limit`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"${"a".repeat(3073)}"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(client.textOf(reply).contains("3072"))
+            assertTrue(portal.received.isEmpty(), "a refused text reached the portal")
+        }
+    }
+
+    @Test
+    fun `an unconfirmed post answers its error and no success line`() {
+        withPortal("""{"status":75,"lines":[],"complete":false,"error":{"code":"UNCONFIRMED"}}""") { client, _ ->
+            val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+
+            assertTrue(client.isError(reply))
+            val structured = client.structuredOf(reply)
+            assertEquals(75, structured[STATUS]!!.jsonPrimitive.int)
+            assertEquals("UNCONFIRMED", structured[ERROR]!!.jsonObject["code"]!!.jsonPrimitiveText())
+            assertTrue(structured[LINES]!!.jsonArray.isEmpty(), "an unconfirmed post kept a line")
         }
     }
 

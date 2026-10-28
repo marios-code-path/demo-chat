@@ -14,7 +14,7 @@ const val CONFIG_ENVIRONMENT: String = "CHAT_MCP_CONFIG"
 /** The largest number of topic ids the adapter accepts. */
 const val MAX_TOPIC_IDS: Int = 100
 
-/** Every key the configuration file may hold. An unknown key fails the start. */
+/** Every key an HTTP configuration may hold. An unknown key fails the start. */
 val KNOWN_CONFIG_KEYS: Set<String> =
     setOf(
         "backendBaseUrl",
@@ -27,6 +27,10 @@ val KNOWN_CONFIG_KEYS: Set<String> =
         "registerName",
         "registerId",
     )
+
+/** The keys accepted when the adapter serves the portal tool alone. */
+private val PORTAL_ONLY_CONFIG_KEYS: Set<String> =
+    setOf("mode", "portalSocket", "registerName", "registerId")
 
 /**
  * Read the configuration file path from the process arguments.
@@ -66,15 +70,40 @@ fun configPathFrom(
 
 /** Read the configuration file and validate every value. */
 fun loadConfigFile(path: Path): AdapterConfig {
+    val properties = readPropertiesFile(path)
+    // A relative credential path resolves against the directory of the
+    // configuration file. The process working directory is the client's, so it
+    // must not decide which file holds the credential.
+    return loadConfig(properties, path.toAbsolutePath().normalize().parent)
+}
+
+/** Read the settings for the HTTP tools or the portal tool alone. */
+fun loadMcpConfigFile(path: Path): McpLaunchConfig {
+    val properties = readPropertiesFile(path)
+    return when (val mode = properties.getProperty("mode")) {
+        null -> McpLaunchConfig.Http(loadConfig(properties, path.toAbsolutePath().normalize().parent))
+        "portal-only" -> {
+            rejectUnknownKeys(properties, PORTAL_ONLY_CONFIG_KEYS)
+            val socket = optionalPortalSocket(properties)
+                ?: throw ConfigException("portalSocket is required in portal-only mode")
+            val name = optionalRegisterName(properties, "registerName")
+            val id = optionalRegisterName(properties, "registerId")
+            val selector = name ?: id
+                ?: throw ConfigException("registerName or registerId is required in portal-only mode")
+            McpLaunchConfig.PortalOnly(socket, selector, name)
+        }
+        else -> throw ConfigException("mode must be portal-only when it is set, not '$mode'")
+    }
+}
+
+/** Read one Java properties file. */
+private fun readPropertiesFile(path: Path): Properties {
     if (!Files.isRegularFile(path)) {
         throw ConfigException("the configuration file does not exist: $path")
     }
     val properties = Properties()
     Files.newBufferedReader(path).use { properties.load(it) }
-    // A relative credential path resolves against the directory of the
-    // configuration file. The process working directory is the client's, so it
-    // must not decide which file holds the credential.
-    return loadConfig(properties, path.toAbsolutePath().normalize().parent)
+    return properties
 }
 
 /** Validate the configuration values. */
@@ -239,12 +268,12 @@ fun requireSameOrigin(
 }
 
 /** Refuse a key that the adapter does not know. */
-private fun rejectUnknownKeys(properties: Properties) {
-    val unknown = properties.stringPropertyNames().filterNot { it in KNOWN_CONFIG_KEYS }.sorted()
+private fun rejectUnknownKeys(properties: Properties, allowed: Set<String> = KNOWN_CONFIG_KEYS) {
+    val unknown = properties.stringPropertyNames().filterNot { it in allowed }.sorted()
     if (unknown.isNotEmpty()) {
         throw ConfigException(
             "the configuration names unknown keys: ${unknown.joinToString(", ")}. " +
-                "Known keys: ${KNOWN_CONFIG_KEYS.sorted().joinToString(", ")}",
+                "Known keys: ${allowed.sorted().joinToString(", ")}",
         )
     }
 }

@@ -190,11 +190,17 @@ node-9/install (--vault-source DIR | --import-state DIR \
 - `--keep-secrets` keeps complete state on a reinstall. It changes no secret
   or vault file.
 
-Zero or two choices stop with status 2 before any build or copy, and print
+For a full install, zero or two choices stop with status 2 before any build or copy, and print
 the four choices.
 
-The installer copies the code files, writes the `.installed` marker last,
-and creates `data/`, `secrets/` (mode 0700) and `images/` when they are
+For an existing installed home, run `node-9/install --bin-only` to replace
+only `bin/`. This mode needs no secrets choice, Java, or Maven.
+It keeps `.installed`, `lib/`, secrets, data, images, schema, and Ansible files.
+It refuses an uninstalled home and a symbolic link at `bin/`.
+Use `--dry-run` to inspect the source and target paths without copying files.
+
+The installer copies the code files and launchers, then writes the `.installed` marker last.
+It creates `data/`, `secrets/` (mode 0700) and `images/` when they are
 missing. It never deletes `data/`, `secrets/`, `secrets.env`, or a stable
 vault file. The marker records the choice:
 
@@ -241,14 +247,29 @@ An installed home runs the shell CLI from `lib/`. That directory holds every
 runtime jar and the file `shell-cli.options`. The home then needs no
 repository, no Maven, and no `~/.m2`. See `CHAT-bjqzvsoe`.
 
-The install builds the jar set on demand. It needs Java 25 or later and
+The install also copies `chat-shell-portal`, `chat-shell-portal-tunnel`, `chat-mcp-stdio`, and
+`generate-agent-instructions` into `bin/`. It copies `setup-portal` from
+`node-9/bin/`. The MCP jars are in `lib/mcp/`.
+The installed MCP launcher needs no source tree or Maven repository.
+Run `bin/generate-agent-instructions PROJECT_NAME /absolute/project/directory`
+to create the agent include and add it to that project's `AGENTS.md`.
+
+Run `bin/setup-portal AGENT PROJECT [start|status|stop]` to manage one named portal and tunnel.
+The default action is `start`. The `status` and `stop` actions need no password.
+The default destination is `node2.lan`.
+Set `CHAT_PORTAL_HOST` to another host before this command when needed.
+The command prints the socket path when the portal is ready.
+It reads `secrets/AGENT.password` by default.
+Set `CHAT_SHELL_PASSWORD_FILE` to another file, or set `CHAT_SHELL_PASSWORD` for a temporary password file.
+
+The install builds both jar sets on demand. It needs Java 25 or later and
 Maven. It stops with status 2 and names the missing command when either one
-is absent. The measured set holds 149 jars and about 66 MB.
+is absent. The earlier shell set measured 149 jars and about 66 MB.
 
 `--skip-cli` does not build or replace `lib/`. A new home has no `lib/`, and its
 marker records `cli: skipped`. An existing home keeps its jar set, and its
 marker records `cli: lib, kept`. The offline suites use this flag because a
-full build takes minutes.
+full build takes minutes. The installed MCP launcher needs `lib/mcp/`.
 
 `NODE9_JAVA` names the java of the version check and of the installed
 launcher. It also sets `JAVA_HOME` of the build, so Maven compiles with that
@@ -280,8 +301,9 @@ selects a login at run time with `CHAT_SHELL_USER` and
 
 ```bash
 just build-shell-cli-lib /tmp/cli-lib     # stage the jar set alone
-node-9/install                            # build and install it
-node-9/install --skip-cli                 # install the scripts alone
+node-9/install --keep-secrets             # rebuild and install all code
+node-9/install --keep-secrets --skip-cli  # keep lib while updating code
+node-9/install --bin-only                 # update bin alone
 ```
 
 ## Move to another host
@@ -355,6 +377,16 @@ the snapshot shape also stop with status 2.
 
 `node-9/bin/register` reads, opens, and posts one register. The design is
 `docs/superpowers/specs/2026-10-24-project-register-design.md`.
+
+The portal socket serves the same open and post rules. The shell path stays
+the default for a login that holds a password file. The portal path serves an
+agent that holds a socket. Both paths apply the key rule, the short name
+rule, the title rule, the request id rule, the earliest pointer rule, the
+join rule, and the readback rule. The portal adds a 3072-byte text limit.
+It also limits titles to 256 characters and request IDs to 128 characters.
+These limits apply to the portal only. A portal request frame holds at most
+32768 bytes, including the newline. A change to a shared rule must update
+both paths. See `CHAT-secgyzgg`.
 
 ## Import a register snapshot
 

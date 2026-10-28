@@ -4,6 +4,7 @@ import com.demo.chat.shell.cli.EnvironmentLogin
 import com.demo.chat.shell.cli.ShellExit
 import com.demo.chat.shell.cli.ShellExitStatus
 import com.demo.chat.shell.commands.PubSubCommands
+import com.demo.chat.shell.commands.TopicCommands
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
@@ -37,8 +38,9 @@ object RuntimeShutdownHooks : ShutdownHooks {
 }
 
 /**
- * The beans of the portal launch. The portal serves one read-only register
- * request per connection. See CHAT-hmbigvmf.
+ * The beans of the portal launch. The portal serves one register request per
+ * connection. A read reads the register. An open and a post write it.
+ * See CHAT-hmbigvmf and CHAT-secgyzgg.
  */
 @Configuration(proxyBeanMethods = false)
 @Profile("shell")
@@ -56,16 +58,34 @@ class PortalConfiguration {
         )
 
     @Bean
+    fun registerGateway(
+        commands: PubSubCommands<*>,
+        topics: TopicCommands<*>,
+        mapper: ObjectMapper,
+    ): RegisterGateway = ShellRegisterGateway(commands, topics, mapper, REGISTER_MAX_AGE)
+
+    @Bean
+    fun portalWriteService(gateway: RegisterGateway, mapper: ObjectMapper): PortalWriteService =
+        PortalWriteService(gateway = gateway, mapper = mapper)
+
+    @Bean
     fun portalServerFactory(
         protocol: PortalProtocol,
         read: PortalReadService,
+        write: PortalWriteService,
         diagnostics: PrintWriter,
     ): PortalServerFactory =
         PortalServerFactory { socket ->
             PortalSocketServer(
                 socket = socket,
                 protocol = protocol,
-                read = read::read,
+                handle = { request, deadline ->
+                    when (request.operation) {
+                        OPEN_REGISTER_ENTRY -> write.open(request, deadline)
+                        POST_REGISTER_ENTRY -> write.post(request, deadline)
+                        else -> read.read(request, deadline)
+                    }
+                },
                 deadline = PORTAL_DEADLINE,
                 halt = { Runtime.getRuntime().halt(it) },
                 diagnostics = diagnostics,

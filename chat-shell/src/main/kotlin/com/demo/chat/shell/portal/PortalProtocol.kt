@@ -12,7 +12,32 @@ import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
-data class PortalRequest(val operation: String, val index: String, val topic: String?)
+/** The operation that reads the register index or one topic. */
+const val READ_REGISTER: String = "read-register"
+
+/** The operation that opens one register entry. */
+const val OPEN_REGISTER_ENTRY: String = "open-register-entry"
+
+/** The operation that posts one register entry. */
+const val POST_REGISTER_ENTRY: String = "post-register-entry"
+
+/**
+ * One portal request.
+ *
+ * A read holds [topic]. An open holds [key], [short], and [title]. A post
+ * holds [key], [text], and [requestId]. Every write field is null for an
+ * operation that does not use it.
+ */
+data class PortalRequest(
+    val operation: String,
+    val index: String,
+    val topic: String? = null,
+    val key: String? = null,
+    val short: String? = null,
+    val title: String? = null,
+    val text: String? = null,
+    val requestId: String? = null,
+)
 
 enum class PortalErrorCode {
     INVALID_INPUT,
@@ -22,6 +47,9 @@ enum class PortalErrorCode {
     OUTPUT_TOO_LARGE,
     INVALID_OUTPUT,
     READ_FAILED,
+    WRITE_FAILED,
+    NOT_OPEN,
+    UNCONFIRMED,
 }
 
 data class PortalError(val code: PortalErrorCode)
@@ -31,16 +59,19 @@ data class PortalReply(
     val lines: List<JsonNode>,
     val complete: Boolean,
     val error: PortalError? = null,
+    /** The cause of a failure. It is for the diagnostic only, never for the wire. */
+    val detail: String? = null,
 )
 
-class PortalProtocolException(val code: PortalErrorCode) : RuntimeException(code.name)
+/** A refused request. [reason] names the broken rule and never reaches the wire. */
+class PortalProtocolException(val code: PortalErrorCode, val reason: String = code.name) : RuntimeException(reason)
 
 /**
  * Reads one newline-terminated request frame and writes one reply frame.
  *
  * The client closes its socket write side after the request.
  * Read to end of input before parsing, so a second frame cannot reach a backend read.
- * A request has at most 4096 bytes, including the newline.
+ * A request has at most 32768 bytes, including the newline.
  * A reply has at most 4194304 bytes, including the newline.
  * Invalid requests raise `INVALID_INPUT`.
  * Oversized replies raise `OUTPUT_TOO_LARGE` before any byte is written.
@@ -83,14 +114,42 @@ class PortalProtocol(private val mapper: ObjectMapper) {
         if (root == null || !root.isObject) invalidInput()
         if (root.fieldNames().asSequence().any { it !in REQUEST_FIELDS }) invalidInput()
 
-        val operation = root.get("operation")?.takeIf { it.isTextual }?.textValue()
-        val index = root.get("index")?.takeIf { it.isTextual }?.textValue()
-        val topicNode = root.get("topic")
-        val topic = topicNode?.takeIf { it.isTextual }?.textValue()
-        if (operation != OPERATION || index == null || !NAME.matches(index)) invalidInput()
-        if (topicNode != null && (topic == null || !NAME.matches(topic))) invalidInput()
+        val operation = root.get("operation")?.takeIf { it.isTextual }?.textValue() ?: invalidInput()
+        val allowed = allowedFields(operation) ?: invalidInput()
+        val present = root.fieldNames().asSequence().toSet()
+        if (!present.all { it in allowed }) invalidInput()
+        if (!present.containsAll(REQUIRED.getValue(operation))) invalidInput()
 
-        return PortalRequest(operation, index, topic)
+        val index = text(root, "index") ?: invalidInput()
+        if (!NAME.matches(index)) invalidInput()
+        val topic = text(root, "topic")
+        if (topic != null && !NAME.matches(topic)) invalidInput()
+
+        return PortalRequest(
+            operation = operation,
+            index = index,
+            topic = topic,
+            key = text(root, "key"),
+            short = text(root, "short"),
+            title = text(root, "title"),
+            text = text(root, "text"),
+            requestId = text(root, "requestId"),
+        )
+    }
+
+    /** The allowed fields of [operation]. Answer null for an unknown operation. */
+    private fun allowedFields(operation: String?): Set<String>? = when (operation) {
+        READ_REGISTER -> READ_FIELDS
+        OPEN_REGISTER_ENTRY -> OPEN_FIELDS
+        POST_REGISTER_ENTRY -> POST_FIELDS
+        else -> null
+    }
+
+    /** Read one optional textual field. A present field that is not text is refused. */
+    private fun text(root: JsonNode, field: String): String? {
+        val node = root.get(field) ?: return null
+        if (!node.isTextual) invalidInput()
+        return node.textValue()
     }
 
     fun writeReply(output: OutputStream, reply: PortalReply) {
@@ -111,11 +170,24 @@ class PortalProtocol(private val mapper: ObjectMapper) {
     private fun invalidInput(): Nothing = throw PortalProtocolException(PortalErrorCode.INVALID_INPUT)
 
     private companion object {
-        const val REQUEST_LIMIT = 4096
+        const val REQUEST_LIMIT = 32768
         const val REPLY_LIMIT = 4_194_304
-        const val OPERATION = "read-register"
         val NEWLINE = '\n'.code.toByte()
         val NAME = Regex("[A-Za-z0-9][A-Za-z0-9-]{0,63}")
-        val REQUEST_FIELDS = setOf("operation", "index", "topic")
+
+        /** Every field that any operation may hold. */
+        val REQUEST_FIELDS = setOf("operation", "index", "topic", "key", "short", "title", "text", "requestId")
+
+        /** The fields of a read, an open, and a post. */
+        val READ_FIELDS = setOf("operation", "index", "topic")
+        val OPEN_FIELDS = setOf("operation", "index", "key", "short", "title")
+        val POST_FIELDS = setOf("operation", "index", "key", "text", "requestId")
+
+        /** The fields that each operation must hold. */
+        val REQUIRED = mapOf(
+            READ_REGISTER to setOf("operation", "index"),
+            OPEN_REGISTER_ENTRY to setOf("operation", "index", "key", "short", "title"),
+            POST_REGISTER_ENTRY to setOf("operation", "index", "key", "text"),
+        )
     }
 }

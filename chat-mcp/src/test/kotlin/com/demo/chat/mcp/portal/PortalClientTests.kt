@@ -152,6 +152,48 @@ class PortalClientTests {
     }
 
     @Test
+    fun `open sends the three write fields`() {
+        val thread = portal { frame("""{"status":0,"lines":[],"complete":true}""") }
+
+        val result = PortalClient(socket(), "register-index", Duration.ofSeconds(5)).open("CHAT-a", "snap", "Snapshot")
+
+        thread.join(5_000)
+        val request = Json.parseToJsonElement(received.get()) as JsonObject
+        assertEquals(setOf("operation", "index", "key", "short", "title"), request.keys)
+        assertEquals("open-register-entry", request["operation"]!!.jsonPrimitive.content)
+        assertEquals("register-index", request["index"]!!.jsonPrimitive.content)
+        assertEquals("CHAT-a", request["key"]!!.jsonPrimitive.content)
+        assertEquals("snap", request["short"]!!.jsonPrimitive.content)
+        assertEquals("Snapshot", request["title"]!!.jsonPrimitive.content)
+        assertNull(result.errorCode)
+    }
+
+    @Test
+    fun `post sends the text and a present request id`() {
+        val thread = portal { frame("""{"status":0,"lines":[],"complete":true}""") }
+
+        PortalClient(socket(), "register-index", Duration.ofSeconds(5)).post("CHAT-a", "hello", "r-1")
+
+        thread.join(5_000)
+        val request = Json.parseToJsonElement(received.get()) as JsonObject
+        assertEquals(setOf("operation", "index", "key", "text", "requestId"), request.keys)
+        assertEquals("post-register-entry", request["operation"]!!.jsonPrimitive.content)
+        assertEquals("hello", request["text"]!!.jsonPrimitive.content)
+        assertEquals("r-1", request["requestId"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun `post omits an absent request id`() {
+        val thread = portal { frame("""{"status":0,"lines":[],"complete":true}""") }
+
+        PortalClient(socket(), "register-index", Duration.ofSeconds(5)).post("CHAT-a", "hello", null)
+
+        thread.join(5_000)
+        val request = Json.parseToJsonElement(received.get()) as JsonObject
+        assertFalse(request.containsKey("requestId"), "the request carried a request id: ${received.get()}")
+    }
+
+    @Test
     fun `a short reply answers UNAVAILABLE`() {
         val thread = portal { """{"status":0""".toByteArray(StandardCharsets.UTF_8) }
 
