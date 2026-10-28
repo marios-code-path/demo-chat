@@ -128,3 +128,8 @@ Run `gh workflow run maven-partial.yml --ref BRANCH -f modules=chat-security -f 
 The build includes selected modules and their required project dependencies.
 It does not test downstream consumers or replace full pull-request CI.
 Use `cancel-in-progress: true` when a push workflow must prefer the newest commit.
+
+## Pull request approval
+
+Before merging a pull request, obtain approval from the repository owner.
+Confirm that GitHub reports at least one approval for the pull request.
