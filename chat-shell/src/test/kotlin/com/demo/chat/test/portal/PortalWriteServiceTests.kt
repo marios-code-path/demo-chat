@@ -147,6 +147,80 @@ class PortalWriteServiceTests {
         assertThat(gateway.calls).isEmpty()
     }
 
+    @Test
+    fun `post joins the pointer topic and posts the text`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+        gateway.messages = { listOf(record("m2", "register-index-fr-snap")) }
+
+        val reply = service(gateway).post(postRequest(), deadline)
+
+        assertThat(reply.error).isNull()
+        assertThat(reply.status).isZero()
+        assertThat(reply.lines.single()["type"].textValue()).isEqualTo("post")
+        assertThat(reply.lines.single()["message_id"].textValue()).isEqualTo("m2")
+        assertThat(reply.lines.single()["topic"].textValue()).isEqualTo("register-index-fr-snap")
+        assertThat(gateway.calls).containsExactly("join:register-index-fr-snap", "post:register-index-fr-snap")
+        assertThat(gateway.postedTexts).containsExactly("hello")
+    }
+
+    @Test
+    fun `post refuses a key with no pointer`() {
+        val gateway = FakeGateway()
+
+        val reply = service(gateway).post(postRequest(), deadline)
+
+        assertThat(reply.error?.code).isEqualTo(PortalErrorCode.NOT_OPEN)
+        assertThat(reply.status).isEqualTo(1)
+        assertThat(reply.lines).isEmpty()
+        assertThat(gateway.calls).isEmpty()
+    }
+
+    @Test
+    fun `post reuses a given request id so a retry adds no entry`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+        gateway.messages = { listOf(record("m2", "register-index-fr-snap")) }
+
+        val reply = service(gateway).post(postRequest(requestId = "r-1"), deadline)
+
+        assertThat(gateway.postedRequestIds).containsExactly("r-1")
+        assertThat(reply.lines.single()["request_id"].textValue()).isEqualTo("r-1")
+    }
+
+    @Test
+    fun `post generates a request id when the request holds none`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+        gateway.messages = { listOf(record("m2", "register-index-fr-snap")) }
+
+        val reply = service(gateway).post(postRequest(), deadline)
+
+        assertThat(gateway.postedRequestIds).hasSize(1)
+        assertThat(gateway.postedRequestIds.single()).isNotEmpty()
+        assertThat(reply.lines.single()["request_id"].textValue()).isEqualTo(gateway.postedRequestIds.single())
+    }
+
+    @Test
+    fun `post answers unconfirmed when the read never shows the message`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+        gateway.messages = { emptyList() }
+
+        val reply = service(gateway).post(postRequest(), deadline)
+
+        assertThat(reply.error?.code).isEqualTo(PortalErrorCode.UNCONFIRMED)
+        assertThat(reply.status).isEqualTo(75)
+        assertThat(reply.lines).isEmpty()
+    }
+
+    @Test
+    fun `post refuses a text past the byte limit`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+
+        val reply = service(gateway).post(postRequest(text = "a".repeat(3073)), deadline)
+
+        assertThat(reply.error?.code).isEqualTo(PortalErrorCode.INVALID_INPUT)
+        assertThat(reply.status).isEqualTo(2)
+        assertThat(gateway.calls).isEmpty()
+    }
+
     private fun openRequest(key: String = "CHAT-a", short: String = "snap"): PortalRequest =
         PortalRequest(
             operation = OPEN_REGISTER_ENTRY,
@@ -187,6 +261,9 @@ class PortalWriteServiceTests {
     private fun warning(kind: String): JsonNode =
         mapper.readTree("""{"type":"warning","kind":"$kind","reason":"Access Denied"}""")
 
+    private fun record(id: String, topic: String): JsonNode =
+        mapper.readTree("""{"id":"$id","topic":"$topic","text":"hello"}""")
+
     private inner class FakeGateway(
         private val denied: Boolean = false,
         private val denyAfterJoin: Boolean = false,
@@ -196,6 +273,7 @@ class PortalWriteServiceTests {
     ) : RegisterGateway {
         val calls = mutableListOf<String>()
         val postedTexts = mutableListOf<String>()
+        val postedRequestIds = mutableListOf<String>()
         var now: Long = 0
         var receipt: JsonNode = mapper.readTree("""{"messageId":"m2","commandId":"c1","requestId":"r-1"}""")
         var messages: (String) -> List<JsonNode> = { emptyList() }
@@ -228,8 +306,12 @@ class PortalWriteServiceTests {
         override fun post(topic: String, text: String, requestId: String): JsonNode {
             calls += "post:$topic"
             postedTexts += text
+            postedRequestIds += requestId
             posted = pointer("CHAT-a", "register-index-fr-snap", receipt["messageId"].textValue(), "2")
-            return receipt
+            return mapper.createObjectNode().apply {
+                receipt.fields().forEachRemaining { (name, value) -> set<JsonNode>(name, value) }
+                put("requestId", requestId)
+            }
         }
 
         override fun readMessages(topic: String): List<JsonNode> = messages(topic)

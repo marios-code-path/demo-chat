@@ -71,6 +71,55 @@ class PortalWriteService(
         success(openLine(state, key, earliest))
     }
 
+    /**
+     * Post one entry to the topic of the earliest pointer.
+     *
+     * A repeated request id adds no second entry. A post that the confirmation
+     * read never shows answers `UNCONFIRMED` with status 75.
+     */
+    fun post(request: PortalRequest, deadline: Duration): PortalReply = attempt {
+        val key = PortalWriteRules.requireKey(request.key)
+        val text = PortalWriteRules.requireText(request.text)
+        val requestId = PortalWriteRules.requireRequestId(request.requestId) ?: newRequestId()
+        val pointers = readPointers(deadline)
+        val pointer = earliestFor(pointers, key)
+            ?: throw WriteRefusal(
+                "no pointer for $key. Run register open first",
+                ShellExitStatus.FAILED.code,
+                PortalErrorCode.NOT_OPEN,
+            )
+
+        gateway.join(pointer.topic)
+        val receipt = gateway.post(pointer.topic, text, requestId)
+        val messageId = receiptText(receipt, "messageId")
+            ?: throw WriteRefusal("the post returned no message id", ShellExitStatus.NOT_CONFIRMED.code)
+        val commandId = receiptText(receipt, "commandId").orEmpty()
+        val receiptRequest = receiptText(receipt, "requestId") ?: requestId
+
+        if (!confirmed(pointer.topic, messageId)) {
+            throw WriteRefusal(
+                "no read showed message $messageId within ${confirmWindow.toMillis()} ms",
+                ShellExitStatus.NOT_CONFIRMED.code,
+                PortalErrorCode.UNCONFIRMED,
+            )
+        }
+        success(postLine(key, pointer.topic, messageId, commandId, receiptRequest))
+    }
+
+    /** Poll the topic until it shows [messageId], for at most [confirmWindow]. */
+    private fun confirmed(topic: String, messageId: String): Boolean {
+        val start = now()
+        while (true) {
+            val shown = runCatching { gateway.readMessages(topic) }.getOrDefault(emptyList())
+            if (shown.any { record -> recordText(record, "id") == messageId && recordText(record, "topic") == topic }) {
+                return true
+            }
+            val left = confirmWindow.toMillis() - (now() - start)
+            if (left <= 0) return false
+            pause(minOf(POLL_MILLIS, left))
+        }
+    }
+
     /** Read the index and apply the denial rule of `node-9/bin/register`. */
     private fun readPointers(deadline: Duration): List<Pointer> {
         val lines = gateway.readIndex(deadline)
@@ -119,6 +168,16 @@ class PortalWriteService(
             put("pointer_id", pointer.id)
         }
 
+    private fun postLine(key: String, topic: String, messageId: String, commandId: String, requestId: String): JsonNode =
+        mapper.createObjectNode().apply {
+            put("type", "post")
+            put("key", key)
+            put("topic", topic)
+            put("message_id", messageId)
+            put("command_id", commandId)
+            put("request_id", requestId)
+        }
+
     private fun success(line: JsonNode): PortalReply = PortalReply(status = 0, lines = listOf(line), complete = true)
 
     private fun failure(code: PortalErrorCode, status: Int): PortalReply =
@@ -130,7 +189,7 @@ class PortalWriteService(
         } catch (refused: PortalProtocolException) {
             failure(refused.code, if (refused.code == PortalErrorCode.INVALID_INPUT) ShellExitStatus.USAGE.code else ShellExitStatus.FAILED.code)
         } catch (refused: WriteRefusal) {
-            failure(PortalErrorCode.WRITE_FAILED, refused.status)
+            failure(refused.code, refused.status)
         } catch (_: Exception) {
             failure(PortalErrorCode.WRITE_FAILED, ShellExitStatus.FAILED.code)
         }
@@ -141,8 +200,12 @@ class PortalWriteService(
     /** One index pointer: the stored time, the message id, the key, and the topic. */
     private data class Pointer(val timestamp: String, val id: String, val key: String, val topic: String)
 
-    /** A refused write, with the shell status that it answers. */
-    private class WriteRefusal(message: String, val status: Int = ShellExitStatus.FAILED.code) : RuntimeException(message)
+    /** A refused write, with the error code and the shell status that it answers. */
+    private class WriteRefusal(
+        message: String,
+        val status: Int = ShellExitStatus.FAILED.code,
+        val code: PortalErrorCode = PortalErrorCode.WRITE_FAILED,
+    ) : RuntimeException(message)
 
     private companion object {
         const val TOPIC_LIMIT = 64
