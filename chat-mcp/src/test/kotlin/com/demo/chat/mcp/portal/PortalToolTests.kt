@@ -319,6 +319,16 @@ class PortalToolTests {
     }
 
     @Test
+    fun `an open refuses a title past 256 characters before the portal`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, OPEN, """{"key":"CHAT-a","short":"snap","title":"${"a".repeat(257)}"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(portal.received.isEmpty(), "a refused title reached the portal")
+        }
+    }
+
+    @Test
     fun `a post sends the text and the request id`() {
         withPortal("""{"status":0,"lines":[{"type":"post","message_id":"m2"}],"complete":true}""") { client, portal ->
             val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"hello","requestId":"r-1"}""")
@@ -329,6 +339,16 @@ class PortalToolTests {
             assertEquals("CHAT-a", request["key"]!!.jsonPrimitiveText())
             assertEquals("hello", request["text"]!!.jsonPrimitiveText())
             assertEquals("r-1", request["requestId"]!!.jsonPrimitiveText())
+        }
+    }
+
+    @Test
+    fun `a post refuses a request id past 128 characters before the portal`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            val reply = client.callTool(3, POST, """{"key":"CHAT-a","text":"hello","requestId":"${"r".repeat(129)}"}""")
+
+            assertTrue(client.isError(reply))
+            assertTrue(portal.received.isEmpty(), "a refused request id reached the portal")
         }
     }
 

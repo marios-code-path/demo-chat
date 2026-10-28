@@ -3,6 +3,7 @@ package com.demo.chat.test.portal
 import com.demo.chat.shell.portal.OPEN_REGISTER_ENTRY
 import com.demo.chat.shell.portal.POST_REGISTER_ENTRY
 import com.demo.chat.shell.portal.PortalErrorCode
+import com.demo.chat.shell.portal.PortalProtocol
 import com.demo.chat.shell.portal.PortalRequest
 import com.demo.chat.shell.portal.PortalWriteService
 import com.demo.chat.shell.portal.RegisterGateway
@@ -161,6 +162,28 @@ class PortalWriteServiceTests {
         assertThat(reply.lines.single()["topic"].textValue()).isEqualTo("register-index-fr-snap")
         assertThat(gateway.calls).containsExactly("join:register-index-fr-snap", "post:register-index-fr-snap")
         assertThat(gateway.postedTexts).containsExactly("hello")
+    }
+
+    @Test
+    fun `post accepts 3072 escaped quote bytes through the protocol`() {
+        val text = "\"".repeat(3072)
+        val frame = mapper.writeValueAsString(
+            mapOf(
+                "operation" to POST_REGISTER_ENTRY,
+                "index" to "register-index",
+                "key" to "CHAT-a",
+                "text" to text,
+                "requestId" to "r-1",
+            ),
+        ) + "\n"
+        val request = PortalProtocol(mapper).readRequest(frame.byteInputStream())
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+        gateway.messages = { listOf(record("m2", "register-index-fr-snap")) }
+
+        val reply = service(gateway).post(request, deadline)
+
+        assertThat(reply.status).isZero()
+        assertThat(gateway.postedTexts).containsExactly(text)
     }
 
     @Test

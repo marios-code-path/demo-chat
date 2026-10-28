@@ -14,6 +14,12 @@ object PortalWriteRules {
     /** The largest entry text, in UTF-8 bytes. */
     const val TEXT_LIMIT: Int = 3072
 
+    /** The largest title, in characters. */
+    const val TITLE_LIMIT: Int = 256
+
+    /** The largest request id, in characters. */
+    const val REQUEST_ID_LIMIT: Int = 128
+
     /** A short name is lowercase letters, digits, and dashes. */
     private val SHORT = Regex("^[a-z0-9][a-z0-9-]*$")
 
@@ -54,6 +60,7 @@ object PortalWriteRules {
     /** Answer a title that can stand in a pointer line. */
     fun requireTitle(title: String?): String {
         if (title.isNullOrEmpty()) refuse("the title is empty")
+        if (title.length > TITLE_LIMIT) refuse("the title passes $TITLE_LIMIT characters")
         if (title.contains('|')) refuse("the title holds the | delimiter")
         if (title.any { it.isISOControl() }) refuse("the title holds a control character")
         return title
@@ -67,6 +74,7 @@ object PortalWriteRules {
      */
     fun requireRequestId(requestId: String?): String? {
         if (requestId == null) return null
+        if (requestId.length > REQUEST_ID_LIMIT) refuse("the request id passes $REQUEST_ID_LIMIT characters")
         if (!REQUEST_ID.matches(requestId)) {
             refuse("the request id is not letters, digits, dot, dash, colon, or underscore")
         }

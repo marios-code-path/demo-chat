@@ -71,7 +71,7 @@ class PortalProtocolException(val code: PortalErrorCode, val reason: String = co
  *
  * The client closes its socket write side after the request.
  * Read to end of input before parsing, so a second frame cannot reach a backend read.
- * A request has at most 4096 bytes, including the newline.
+ * A request has at most 32768 bytes, including the newline.
  * A reply has at most 4194304 bytes, including the newline.
  * Invalid requests raise `INVALID_INPUT`.
  * Oversized replies raise `OUTPUT_TOO_LARGE` before any byte is written.
@@ -170,7 +170,7 @@ class PortalProtocol(private val mapper: ObjectMapper) {
     private fun invalidInput(): Nothing = throw PortalProtocolException(PortalErrorCode.INVALID_INPUT)
 
     private companion object {
-        const val REQUEST_LIMIT = 4096
+        const val REQUEST_LIMIT = 32768
         const val REPLY_LIMIT = 4_194_304
         val NEWLINE = '\n'.code.toByte()
         val NAME = Regex("[A-Za-z0-9][A-Za-z0-9-]{0,63}")

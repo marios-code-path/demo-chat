@@ -49,6 +49,12 @@ class PortalWriteRulesTests {
     }
 
     @Test
+    fun `a title accepts 256 characters and refuses 257`() {
+        assertThat(PortalWriteRules.requireTitle("a".repeat(256))).hasSize(256)
+        refuse { PortalWriteRules.requireTitle("a".repeat(257)) }
+    }
+
+    @Test
     fun `a text of 3072 bytes is accepted and 3073 is refused`() {
         assertThat(PortalWriteRules.requireText("a".repeat(3072))).hasSize(3072)
         refuse { PortalWriteRules.requireText("a".repeat(3073)) }
@@ -67,6 +73,12 @@ class PortalWriteRulesTests {
         refuse { PortalWriteRules.requireRequestId("_") }
         refuse { PortalWriteRules.requireRequestId("a b") }
         assertThat(PortalWriteRules.requireRequestId("r-1:a.b_c")).isEqualTo("r-1:a.b_c")
+    }
+
+    @Test
+    fun `a request id accepts 128 characters and refuses 129`() {
+        assertThat(PortalWriteRules.requireRequestId("r".repeat(128))).hasSize(128)
+        refuse { PortalWriteRules.requireRequestId("r".repeat(129)) }
     }
 
     @Test

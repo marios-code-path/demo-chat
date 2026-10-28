@@ -382,9 +382,11 @@ The portal socket serves the same open and post rules. The shell path stays
 the default for a login that holds a password file. The portal path serves an
 agent that holds a socket. Both paths apply the key rule, the short name
 rule, the title rule, the request id rule, the earliest pointer rule, the
-join rule, and the readback rule. The portal adds a 3072-byte text limit,
-because one portal request frame holds at most 4096 bytes. A change to one
-rule set must change the other. See `CHAT-secgyzgg`.
+join rule, and the readback rule. The portal adds a 3072-byte text limit.
+It also limits titles to 256 characters and request IDs to 128 characters.
+These limits apply to the portal only. A portal request frame holds at most
+32768 bytes, including the newline. A change to a shared rule must update
+both paths. See `CHAT-secgyzgg`.
 
 ## Import a register snapshot
 

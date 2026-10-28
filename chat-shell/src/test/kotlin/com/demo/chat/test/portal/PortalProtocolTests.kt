@@ -82,9 +82,9 @@ class PortalProtocolTests {
     fun `the request limit counts UTF-8 bytes and the newline`() {
         val largestName = "a".repeat(64)
         val body = """{"operation":"read-register","index":"$largestName"}"""
-        val atLimit = body + " ".repeat(4096 - body.toByteArray().size - 1) + "\n"
+        val atLimit = body + " ".repeat(32768 - body.toByteArray().size - 1) + "\n"
 
-        assertThat(atLimit.toByteArray()).hasSize(4096)
+        assertThat(atLimit.toByteArray()).hasSize(32768)
         assertThat(protocol.readRequest(atLimit.byteInputStream()).index).isEqualTo(largestName)
         refuse((atLimit.dropLast(1) + " \n").toByteArray())
         refuse("""{"operation":"read-register","index":"${"a".repeat(65)}"}
@@ -121,6 +121,40 @@ class PortalProtocolTests {
         val request = protocol.readRequest(frame.byteInputStream())
 
         assertThat(request.requestId).isNull()
+    }
+
+    @Test
+    fun `a post request carries 3072 escaped quote bytes`() {
+        val text = "\"".repeat(3072)
+        val frame = mapper.writeValueAsString(
+            mapOf(
+                "operation" to "post-register-entry",
+                "index" to "register-index",
+                "key" to "CHAT-a",
+                "text" to text,
+                "requestId" to "r-1",
+            ),
+        ) + "\n"
+
+        assertThat(frame.toByteArray().size).isGreaterThan(4096)
+        assertThat(protocol.readRequest(frame.byteInputStream()).text).isEqualTo(text)
+    }
+
+    @Test
+    fun `a post request fits the frame with every capped field at its limit`() {
+        val text = "\u0001".repeat(3072)
+        val frame = mapper.writeValueAsString(
+            mapOf(
+                "operation" to "post-register-entry",
+                "index" to "r".repeat(37),
+                "key" to "\"".repeat(64),
+                "text" to text,
+                "requestId" to "r".repeat(128),
+            ),
+        ) + "\n"
+
+        assertThat(frame.toByteArray().size).isLessThan(32768)
+        assertThat(protocol.readRequest(frame.byteInputStream()).text).isEqualTo(text)
     }
 
     @Test

@@ -238,7 +238,7 @@ the name mints every entry topic.
   backslash, and no control character. It holds no space at its start or
   its end. The key `-` is reserved.
 - `short` matches `[a-z0-9][a-z0-9-]*`. It names the new topic.
-- `title` is nonempty. It holds no `|` and no control character.
+- `title` is nonempty and holds at most 256 characters. It holds no `|` or control character.
 
 A successful open returns one line with `type` `open`, `state` `created` or
 `exists`, `key`, `topic`, and `pointer_id`. A repeat of an open answers
@@ -249,16 +249,17 @@ Arguments:
 
 - `key` follows the open rule.
 - `text` is nonblank and at most 3072 UTF-8 bytes.
-- `requestId` is optional. It matches `[A-Za-z0-9._:-]+` and is never `_`.
+- `requestId` is optional and holds at most 128 characters. It matches `[A-Za-z0-9._:-]+` and is never `_`.
   A retry with the same id adds no second entry.
 
 A successful post returns one line with `type` `post`, `key`, `topic`,
 `message_id`, `command_id`, and `request_id`. The tool declares
 `idempotentHint` false.
 
-Both tools refuse an unknown argument before they open a socket. A broken
-argument answers `isError` true and reads `no argument named '<name>'` or the
-broken rule.
+Both tools refuse an unknown argument before they open a socket.
+An unknown argument sets `isError` to true and reports `no argument named '<name>'`.
+An invalid value sets `isError` to true and names the broken rule.
+The portal request frame holds at most 32768 bytes, including the newline.
 
 Error codes:
 

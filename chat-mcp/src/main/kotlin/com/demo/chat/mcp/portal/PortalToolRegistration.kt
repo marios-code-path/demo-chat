@@ -50,6 +50,12 @@ private const val KEY_LIMIT: Int = 64
 /** The largest entry text, in UTF-8 bytes. It matches the portal rule. */
 private const val TEXT_LIMIT: Int = 3072
 
+/** The largest title, in characters. It matches the portal rule. */
+private const val TITLE_LIMIT: Int = 256
+
+/** The largest request id, in characters. It matches the portal rule. */
+private const val REQUEST_ID_LIMIT: Int = 128
+
 /** The fields of the tool answer. */
 private const val STATUS_FIELD: String = "status"
 private const val LINES_FIELD: String = "lines"
@@ -360,6 +366,7 @@ private fun shortArgument(short: String): String {
 /** Apply the title rule. */
 private fun titleArgument(title: String): String {
     if (title.isEmpty()) throw ToolException("the '$TITLE_ARGUMENT' argument is empty")
+    if (title.length > TITLE_LIMIT) throw ToolException("the '$TITLE_ARGUMENT' argument passes $TITLE_LIMIT characters")
     if (title.contains('|')) throw ToolException("the '$TITLE_ARGUMENT' argument holds the | delimiter")
     if (title.any { it.isISOControl() }) throw ToolException("the '$TITLE_ARGUMENT' argument holds a control character")
     return title
@@ -375,6 +382,9 @@ private fun textArgument(text: String): String {
 
 /** Apply the request id rule. */
 private fun requestIdArgument(requestId: String): String {
+    if (requestId.length > REQUEST_ID_LIMIT) {
+        throw ToolException("the '$REQUEST_ID_ARGUMENT' argument passes $REQUEST_ID_LIMIT characters")
+    }
     if (!REQUEST_ID.matches(requestId)) {
         throw ToolException("the '$REQUEST_ID_ARGUMENT' argument is not letters, digits, dot, dash, colon, or underscore")
     }
