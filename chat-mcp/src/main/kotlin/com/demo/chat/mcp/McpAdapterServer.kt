@@ -46,7 +46,7 @@ fun createMcpServer(config: AdapterConfig, http: BackendHttp): Server {
 /** Build a server that exposes the fixed register read alone. */
 fun createPortalMcpServer(config: McpLaunchConfig.PortalOnly): Server =
     newMcpServer().also {
-        registerPortalTool(it, config.portalSocket, config.registerSelector, config.registerName)
+        registerPortalTool(it, config.portalSocketSource, config.registerSelector, config.registerName)
     }
 
 /** Create the common MCP tool transport declaration. */

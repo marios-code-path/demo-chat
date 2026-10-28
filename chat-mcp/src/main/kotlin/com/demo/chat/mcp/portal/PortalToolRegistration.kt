@@ -1,6 +1,8 @@
 package com.demo.chat.mcp.portal
 
 import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.config.ConfigException
+import com.demo.chat.mcp.config.PortalSocketSource
 import com.demo.chat.mcp.error.ToolError
 import com.demo.chat.mcp.tool.ToolException
 import com.demo.chat.mcp.tool.nextCallNumber
@@ -22,6 +24,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.IOException
 import java.nio.file.Path
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -188,7 +191,7 @@ private val POST_ANNOTATIONS =
 fun registerPortalTool(server: Server, config: AdapterConfig) {
     val socket = config.portalSocket ?: return
     val selector = config.registerSelector ?: return
-    registerPortalTool(server, socket, selector, config.registerName)
+    registerPortalTool(server, PortalSocketSource.Fixed(socket), selector, config.registerName)
 }
 
 /**
@@ -196,8 +199,10 @@ fun registerPortalTool(server: Server, config: AdapterConfig) {
  *
  * The read tool needs the socket and the selector. The write tools also need
  * [registerName], because a write mints a topic name and an id gives no prefix.
+ * The socket is resolved for each call, so a file-backed source follows a
+ * live portal restart.
  */
-fun registerPortalTool(server: Server, socket: Path, selector: String, registerName: String? = null) {
+fun registerPortalTool(server: Server, source: PortalSocketSource, selector: String, registerName: String? = null) {
     server.addTool(
         Tool(
             name = READ_REGISTER_TOOL_NAME,
@@ -209,7 +214,7 @@ fun registerPortalTool(server: Server, socket: Path, selector: String, registerN
             outputSchema = READ_OUTPUT_SCHEMA,
             annotations = READ_ANNOTATIONS,
         ),
-    ) { request -> readRegister(socket, selector, request) }
+    ) { request -> readRegister(source, selector, request) }
 
     if (registerName == null) return
     server.addTool(
@@ -223,7 +228,7 @@ fun registerPortalTool(server: Server, socket: Path, selector: String, registerN
             outputSchema = READ_OUTPUT_SCHEMA,
             annotations = OPEN_ANNOTATIONS,
         ),
-    ) { request -> openEntry(socket, selector, request) }
+    ) { request -> openEntry(source, selector, request) }
     server.addTool(
         Tool(
             name = POST_REGISTER_ENTRY_TOOL_NAME,
@@ -235,7 +240,13 @@ fun registerPortalTool(server: Server, socket: Path, selector: String, registerN
             outputSchema = READ_OUTPUT_SCHEMA,
             annotations = POST_ANNOTATIONS,
         ),
-    ) { request -> postEntry(socket, selector, request) }
+    ) { request -> postEntry(source, selector, request) }
+}
+
+/** Answer a socket path that cannot be resolved as an unavailable transport. */
+private fun unavailable(tool: String, call: Long, started: Long): CallToolResult {
+    report(tool, call, started, "UNAVAILABLE", null)
+    return portalAnswer(null, emptyList(), false, "UNAVAILABLE")
 }
 
 /**
@@ -246,7 +257,7 @@ fun registerPortalTool(server: Server, socket: Path, selector: String, registerN
  * text reaches the client or stderr.
  */
 private suspend fun readRegister(
-    socket: Path,
+    source: PortalSocketSource,
     selector: String,
     request: CallToolRequest,
 ): CallToolResult {
@@ -255,7 +266,7 @@ private suspend fun readRegister(
     return try {
         refuseUnknownArguments(request, setOf(REGISTER_TOPIC_ARGUMENT))
         val topic = readTopicArgument(request)
-        val result = withContext(Dispatchers.IO) { PortalClient(socket, selector).read(topic) }
+        val result = withContext(Dispatchers.IO) { PortalClient(source.resolve(), selector).read(topic) }
         // A failed read keeps no partial line, so a caller cannot read a
         // truncated register as a full one.
         val lines = if (result.errorCode == null) result.lines else emptyList()
@@ -263,6 +274,10 @@ private suspend fun readRegister(
         portalAnswer(result.status, lines, result.complete, result.errorCode)
     } catch (failure: CancellationException) {
         throw failure
+    } catch (failure: ConfigException) {
+        unavailable(READ_REGISTER_TOOL_NAME, call, started)
+    } catch (failure: IOException) {
+        unavailable(READ_REGISTER_TOOL_NAME, call, started)
     } catch (failure: ToolException) {
         refused(READ_REGISTER_TOOL_NAME, call, started, ToolError.refused(failure.message ?: "the tool refused the request"))
     } catch (failure: Exception) {
@@ -278,7 +293,7 @@ private suspend fun readRegister(
  * this module cannot import them. A broken rule never reaches the portal.
  */
 private suspend fun openEntry(
-    socket: Path,
+    source: PortalSocketSource,
     selector: String,
     request: CallToolRequest,
 ): CallToolResult {
@@ -289,12 +304,16 @@ private suspend fun openEntry(
         val key = keyArgument(requireTextArgument(request, KEY_ARGUMENT))
         val short = shortArgument(requireTextArgument(request, SHORT_ARGUMENT))
         val title = titleArgument(requireTextArgument(request, TITLE_ARGUMENT))
-        val result = withContext(Dispatchers.IO) { PortalClient(socket, selector).open(key, short, title) }
+        val result = withContext(Dispatchers.IO) { PortalClient(source.resolve(), selector).open(key, short, title) }
         val lines = if (result.errorCode == null) result.lines else emptyList()
         report(OPEN_REGISTER_ENTRY_TOOL_NAME, call, started, result.errorCode ?: "OK", result.status)
         portalAnswer(result.status, lines, result.complete, result.errorCode)
     } catch (failure: CancellationException) {
         throw failure
+    } catch (failure: ConfigException) {
+        unavailable(OPEN_REGISTER_ENTRY_TOOL_NAME, call, started)
+    } catch (failure: IOException) {
+        unavailable(OPEN_REGISTER_ENTRY_TOOL_NAME, call, started)
     } catch (failure: ToolException) {
         refused(OPEN_REGISTER_ENTRY_TOOL_NAME, call, started, ToolError.refused(failure.message ?: "the tool refused the request"))
     } catch (failure: Exception) {
@@ -304,7 +323,7 @@ private suspend fun openEntry(
 
 /** Run one portal post and shape its answer. */
 private suspend fun postEntry(
-    socket: Path,
+    source: PortalSocketSource,
     selector: String,
     request: CallToolRequest,
 ): CallToolResult {
@@ -320,12 +339,16 @@ private suspend fun postEntry(
             } else {
                 derivedRequestId(key, text)
             }
-        val result = withContext(Dispatchers.IO) { PortalClient(socket, selector).post(key, text, requestId) }
+        val result = withContext(Dispatchers.IO) { PortalClient(source.resolve(), selector).post(key, text, requestId) }
         val lines = if (result.errorCode == null) result.lines else emptyList()
         report(POST_REGISTER_ENTRY_TOOL_NAME, call, started, result.errorCode ?: "OK", result.status)
         portalAnswer(result.status, lines, result.complete, result.errorCode)
     } catch (failure: CancellationException) {
         throw failure
+    } catch (failure: ConfigException) {
+        unavailable(POST_REGISTER_ENTRY_TOOL_NAME, call, started)
+    } catch (failure: IOException) {
+        unavailable(POST_REGISTER_ENTRY_TOOL_NAME, call, started)
     } catch (failure: ToolException) {
         refused(POST_REGISTER_ENTRY_TOOL_NAME, call, started, ToolError.refused(failure.message ?: "the tool refused the request"))
     } catch (failure: Exception) {
