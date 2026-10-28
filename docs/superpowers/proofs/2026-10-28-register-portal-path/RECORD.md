@@ -112,6 +112,9 @@ the proof. The read target was raised to 20 s for the reason given above.
   `## Proof entry`, made `register-create` mint a topic that the pointer step
   then owned by another key. The core refused the write. The refusal was
   correct. The fixture changed, and the product code did not.
-- The proof left both private directories in place after exit:
-  `/var/folders/kl/ykc9r7y56899ly09hphb8wf00000gn/T/register-portal-proof.YubK8u`
-  holds the run logs. Remove it with `rm -rf` when the review closes.
+- This run left no private directory. The proof removes its own root when
+  every check passes. Three roots remain from earlier failed runs. They hold
+  only logs. Remove them when the review closes:
+  `/var/folders/kl/ykc9r7y56899ly09hphb8wf00000gn/T/register-portal-proof.4woKX8`,
+  `/var/folders/kl/ykc9r7y56899ly09hphb8wf00000gn/T/register-portal-proof.R4VN8a`,
+  `/var/folders/kl/ykc9r7y56899ly09hphb8wf00000gn/T/register-portal-proof.ZoxcQ3`.

@@ -773,6 +773,10 @@ to one status:
 | `TIMEOUT` | 124 |
 | `UNAVAILABLE` | 1, or the fallback row above |
 
-The adapter client deadline is 35 seconds. The wrapper passes the remaining
-wrapper budget to the adapter, so the adapter stops first. The adapter reads
-the socket file on every call, so a portal restart needs no config change.
+The wrapper budget is 30 seconds, and `CHAT_REGISTER_DEADLINE_MS` overrides
+it. The adapter client deadline is 35 seconds. The wrapper waits at most the
+remaining budget, then it sends `TERM` to the adapter and later `KILL`. So the
+wrapper stops a slow call first. A reply with no status maps to `UNAVAILABLE`.
+The adapter answers `TIMEOUT` alone when `CHAT_REGISTER_DEADLINE_MS` passes
+35000. The adapter reads the socket file on every call, so a portal restart
+needs no config change.
