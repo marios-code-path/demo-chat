@@ -92,6 +92,49 @@ class PortalProtocolTests {
     }
 
     @Test
+    fun `an open request carries key short and title`() {
+        val frame = """{"operation":"open-register-entry","index":"register-index","key":"CHAT-a","short":"snap","title":"Snapshot"}""" + "\n"
+
+        val request = protocol.readRequest(frame.byteInputStream())
+
+        assertThat(request.key).isEqualTo("CHAT-a")
+        assertThat(request.short).isEqualTo("snap")
+        assertThat(request.title).isEqualTo("Snapshot")
+        assertThat(request.text).isNull()
+    }
+
+    @Test
+    fun `a post request carries key text and request id`() {
+        val frame = """{"operation":"post-register-entry","index":"register-index","key":"CHAT-a","text":"hello","requestId":"r-1"}""" + "\n"
+
+        val request = protocol.readRequest(frame.byteInputStream())
+
+        assertThat(request.key).isEqualTo("CHAT-a")
+        assertThat(request.text).isEqualTo("hello")
+        assertThat(request.requestId).isEqualTo("r-1")
+    }
+
+    @Test
+    fun `a read request refuses write fields`() {
+        refuse("""{"operation":"read-register","index":"index","key":"CHAT-a"}
+""".toByteArray())
+    }
+
+    @Test
+    fun `an open request needs exactly its three fields`() {
+        refuse("""{"operation":"open-register-entry","index":"index","key":"CHAT-a","short":"snap"}
+""".toByteArray())
+        refuse("""{"operation":"open-register-entry","index":"index","key":"CHAT-a","short":"snap","title":"S","text":"hello"}
+""".toByteArray())
+    }
+
+    @Test
+    fun `a post request refuses a non-string text`() {
+        refuse("""{"operation":"post-register-entry","index":"index","key":"CHAT-a","text":5,"requestId":"r-1"}
+""".toByteArray())
+    }
+
+    @Test
     fun `a success reply is one typed JSON frame`() {
         val output = ByteArrayOutputStream()
         val record = mapper.readTree("""{"type":"record","id":"m1"}""")
