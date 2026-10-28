@@ -41,6 +41,16 @@ class RegisterMetadataTransportTests : RSocketTestBase() {
     }
 
     @Test
+    fun `allowedNames crosses the collision request transport`() {
+        StepVerifier.create(
+            requester.route("register-probe.collision")
+                .data(RegisterCollisionRequest("room", setOf("demo-chat-fr-a")))
+                .retrieveMono(RegisterCollisionResult::class.java)
+        ).expectNext(RegisterCollisionResult(RegisterCollisionStatus.CLEAR, null, null))
+            .verifyComplete()
+    }
+
+    @Test
     fun `retrieveMono decodes every room result`() {
         val cases = listOf(
             "found" to RegisterRoomResult(RegisterRoomStatus.FOUND, "room-1"),
@@ -86,7 +96,11 @@ class RegisterMetadataTransportTests : RSocketTestBase() {
         fun collision(request: RegisterCollisionRequest): Mono<RegisterCollisionResult> = Mono.just(
             when (request.name) {
                 "clear" -> RegisterCollisionResult(RegisterCollisionStatus.CLEAR, null, null)
-                "room" -> RegisterCollisionResult(RegisterCollisionStatus.ROOM_HELD, "demo-chat-fr-a", null)
+                "room" -> if ("demo-chat-fr-a" in request.allowedNames) {
+                    RegisterCollisionResult(RegisterCollisionStatus.CLEAR, null, null)
+                } else {
+                    RegisterCollisionResult(RegisterCollisionStatus.ROOM_HELD, "demo-chat-fr-a", null)
+                }
                 else -> RegisterCollisionResult(RegisterCollisionStatus.REGISTER_HELD, null, "demo")
             }
         )

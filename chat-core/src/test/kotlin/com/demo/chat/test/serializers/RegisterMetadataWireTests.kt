@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.config.ChatJackson3Modules
+import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.RegisterCollisionRequest
 import com.demo.chat.domain.RegisterCollisionResult
 import com.demo.chat.domain.RegisterCollisionStatus
@@ -14,8 +16,12 @@ import org.junit.jupiter.api.Test
 import tools.jackson.databind.json.JsonMapper
 
 class RegisterMetadataWireTests {
-    private val jackson2 = ObjectMapper().registerModule(KotlinModule.Builder().build())
-    private val jackson3 = JsonMapper.builder().build()
+    private val jackson2 = ObjectMapper()
+        .registerModule(KotlinModule.Builder().build())
+        .registerModules(DefaultChatJacksonModules().allModules())
+    private val jackson3 = JsonMapper.builder()
+        .addModule(ChatJackson3Modules().chatJackson3Module())
+        .build()
 
     @Test
     fun `Jackson 2 round trips each register metadata type`() {
