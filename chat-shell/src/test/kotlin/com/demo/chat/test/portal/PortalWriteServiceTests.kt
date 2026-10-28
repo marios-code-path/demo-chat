@@ -210,6 +210,48 @@ class PortalWriteServiceTests {
     }
 
     @Test
+    fun `a replay answers the first receipt and stores one message`() {
+        val stored = mutableListOf<JsonNode>()
+        val receipts = mutableMapOf<String, JsonNode>()
+        val gateway = object : RegisterGateway {
+            override fun readIndex(register: String, deadline: Duration): List<JsonNode> =
+                listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1"))
+
+            override fun join(topic: String) = Unit
+
+            override fun addRoom(name: String): Unit = error("a replay cannot create a room")
+
+            override fun post(topic: String, text: String, requestId: String): JsonNode =
+                receipts.getOrPut(requestId) {
+                    val messageId = "m${stored.size + 1}"
+                    stored.add(record(messageId, topic))
+                    mapper.createObjectNode().apply {
+                        put("messageId", messageId)
+                        put("commandId", "c${stored.size}")
+                        put("requestId", requestId)
+                    }
+                }
+
+            override fun readMessages(topic: String): List<JsonNode> = stored.toList()
+        }
+        val service = PortalWriteService(gateway, mapper)
+        val request = postRequest(requestId = "auto-a7fe353f139aa685f0072f5de484a8b1")
+
+        val first = service.post(request, deadline)
+        val replay = service.post(request, deadline)
+
+        assertThat(first.status).isZero()
+        assertThat(replay.status).isZero()
+        assertThat(stored).hasSize(1)
+        assertThat(receipts).hasSize(1)
+        assertThat(first.lines).hasSize(1)
+        assertThat(replay.lines).hasSize(1)
+        assertThat(replay.lines).isEqualTo(first.lines)
+        assertThat(replay.lines.single()["message_id"].textValue()).isEqualTo("m1")
+        assertThat(replay.lines.single()["command_id"].textValue()).isEqualTo("c1")
+    }
+
+    @Test
     fun `post generates a request id when the request holds none`() {
         val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
         gateway.messages = { listOf(record("m2", "register-index-fr-snap")) }

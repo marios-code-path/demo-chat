@@ -256,6 +256,8 @@ It uses `auto-` plus the first 32 hexadecimal characters of SHA-256.
 The hash input is the UTF-8 key, one `0x00` byte, and the UTF-8 text.
 The same key and text produce the same ID and no second entry on retry.
 An explicit `requestId` overrides the derived ID. Use a new explicit ID to post identical text again.
+A replay answers the receipt of the first post. Compare `message_id` and `command_id` across replies.
+The post reply has no `state` field.
 
 A successful post returns one line with `type` `post`, `key`, `topic`,
 `message_id`, `command_id`, and `request_id`. The tool declares
