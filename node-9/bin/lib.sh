@@ -146,6 +146,28 @@ node9_register_name_error() {
     return 0
 }
 
+# node9_register_id_error ID
+# Print one reason and return 1 for an id that cannot select a register.
+# Return 0 for a safe id. An id holds letters, digits, and dashes, starts with
+# a letter or a digit, and holds at most 64 characters. The adapter applies
+# this rule to both selector keys. See CHAT-lmwuxiiq.
+node9_register_id_error() {
+    local id="${1-}"
+    if [[ -z "$id" ]]; then
+        printf 'the register id is empty.\n'
+        return 1
+    fi
+    if (( ${#id} > 64 )); then
+        printf 'the register id passes 64 characters.\n'
+        return 1
+    fi
+    if [[ ! "$id" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
+        printf 'the register id is not letters, digits, and dashes.\n'
+        return 1
+    fi
+    return 0
+}
+
 # node9_check_toggle VALUE
 # Status 0 for on or off. Otherwise print the value and return 2.
 node9_check_toggle() {

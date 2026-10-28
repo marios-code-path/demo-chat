@@ -276,6 +276,27 @@ class PortalWriteServiceTests {
     }
 
     @Test
+    fun `a failed post names its cause in the diagnostic detail`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
+        gateway.failPost = IllegalStateException("the core answered no receipt")
+
+        val reply = service(gateway).post(postRequest(), deadline)
+
+        assertThat(reply.error?.code).isEqualTo(PortalErrorCode.WRITE_FAILED)
+        assertThat(reply.detail).contains("the core answered no receipt")
+    }
+
+    @Test
+    fun `a refusal names its reason in the diagnostic detail`() {
+        val gateway = FakeGateway(index = { listOf(pointer("CHAT-b", "register-index-fr-snap", "t1", "1")) })
+
+        val reply = service(gateway).open(openRequest(), deadline)
+
+        assertThat(reply.error?.code).isEqualTo(PortalErrorCode.WRITE_FAILED)
+        assertThat(reply.detail).contains("belongs to CHAT-b")
+    }
+
+    @Test
     fun `post refuses a text past the byte limit`() {
         val gateway = FakeGateway(index = { listOf(pointer("CHAT-a", "register-index-fr-snap", "t1", "1")) })
 
@@ -341,6 +362,7 @@ class PortalWriteServiceTests {
         var now: Long = 0
         var receipt: JsonNode = mapper.readTree("""{"messageId":"m2","commandId":"c1","requestId":"r-1"}""")
         var messages: (String) -> List<JsonNode> = { emptyList() }
+        var failPost: Throwable? = null
         private var reads = 0
         private var joined = false
         private var posted: JsonNode? = null
@@ -369,6 +391,7 @@ class PortalWriteServiceTests {
 
         override fun post(topic: String, text: String, requestId: String): JsonNode {
             calls += "post:$topic"
+            failPost?.let { throw it }
             postedTexts += text
             postedRequestIds += requestId
             posted = pointer("CHAT-a", "register-index-fr-snap", receipt["messageId"].textValue(), "2")

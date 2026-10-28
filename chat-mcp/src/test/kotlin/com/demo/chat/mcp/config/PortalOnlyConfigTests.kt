@@ -22,8 +22,63 @@ class PortalOnlyConfigTests {
 
         assertTrue(config is McpLaunchConfig.PortalOnly)
         config as McpLaunchConfig.PortalOnly
-        assertEquals(Path.of("/tmp/portal.sock"), config.portalSocket)
+        assertEquals(Path.of("/tmp/portal.sock"), config.portalSocketSource.resolve())
         assertEquals("register-index", config.registerSelector)
+    }
+
+    @Test
+    fun `portal only reads the socket path from a file`() {
+        val socketFile = directory.resolve("socket")
+        Files.writeString(socketFile, "/tmp/portal.sock\n")
+        val path = directory.resolve("adapter.properties")
+        Files.writeString(path, "mode=portal-only\nportalSocketFile=$socketFile\nregisterName=register-index\n")
+
+        val config = loadMcpConfigFile(path) as McpLaunchConfig.PortalOnly
+
+        assertEquals(Path.of("/tmp/portal.sock"), config.portalSocketSource.resolve())
+    }
+
+    @Test
+    fun `portal only rejects both socket keys`() {
+        val path = directory.resolve("adapter.properties")
+        Files.writeString(
+            path,
+            "mode=portal-only\nportalSocket=/tmp/a.sock\nportalSocketFile=/tmp/b\nregisterName=r\n",
+        )
+
+        val failure = assertThrows(ConfigException::class.java) { loadMcpConfigFile(path) }
+
+        assertTrue(failure.message!!.contains("portalSocket"), failure.message)
+    }
+
+    @Test
+    fun `portal only rejects neither socket key`() {
+        val path = directory.resolve("adapter.properties")
+        Files.writeString(path, "mode=portal-only\nregisterName=r\n")
+
+        val failure = assertThrows(ConfigException::class.java) { loadMcpConfigFile(path) }
+
+        assertTrue(failure.message!!.contains("portalSocket"), failure.message)
+    }
+
+    @Test
+    fun `portal only rejects a relative path in the socket file`() {
+        val socketFile = directory.resolve("socket")
+        Files.writeString(socketFile, "portal.sock\n")
+        val path = directory.resolve("adapter.properties")
+        Files.writeString(path, "mode=portal-only\nportalSocketFile=$socketFile\nregisterName=r\n")
+
+        assertThrows(ConfigException::class.java) { loadMcpConfigFile(path) }
+    }
+
+    @Test
+    fun `portal only rejects an empty socket file`() {
+        val socketFile = directory.resolve("socket")
+        Files.writeString(socketFile, "")
+        val path = directory.resolve("adapter.properties")
+        Files.writeString(path, "mode=portal-only\nportalSocketFile=$socketFile\nregisterName=r\n")
+
+        assertThrows(ConfigException::class.java) { loadMcpConfigFile(path) }
     }
 
     @Test
@@ -48,7 +103,7 @@ class PortalOnlyConfigTests {
         val config = loadConfigForStartup(listOf("--config", path.toString()), emptyMap())
 
         assertEquals(
-            McpLaunchConfig.PortalOnly(Path.of("/tmp/portal.sock"), "register-index", "register-index"),
+            McpLaunchConfig.PortalOnly(PortalSocketSource.Fixed(Path.of("/tmp/portal.sock")), "register-index", "register-index"),
             config,
         )
     }

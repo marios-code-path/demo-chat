@@ -53,22 +53,21 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/lib.sh"
 node9_require_installed || exit 2
 
-# The register value names the index room in every shell call below. A read
-# accepts the name or the id. See CHAT-jmnjvupr.
-register="$(node9_register_value)" || exit 2
-
-# An installed copy has no repository. It takes the CLI from the caller or
-# from its own bin directory.
-if node9_installed; then
-    cli="${CHAT_SHELL_CLI:-$NODE9_DIR/bin/chat-shell-cli}"
-    if [[ ! -x "$cli" ]]; then
-        printf 'register: no shell CLI at %s. Set CHAT_SHELL_CLI.\n' "$cli" >&2
-        exit 2
+# resolve_cli  Choose the shell CLI. An installed copy has no repository, so
+# it takes the CLI from the caller or from its own bin directory. The portal
+# path needs no CLI, so it calls this function never.
+resolve_cli() {
+    if node9_installed; then
+        cli="${CHAT_SHELL_CLI:-$NODE9_DIR/bin/chat-shell-cli}"
+        if [[ ! -x "$cli" ]]; then
+            printf 'register: no shell CLI at %s. Set CHAT_SHELL_CLI.\n' "$cli" >&2
+            exit 2
+        fi
+    else
+        repo_root="$(cd "$NODE9_DIR/.." && pwd -P)"
+        cli="${CHAT_SHELL_CLI:-$repo_root/shell-scripts/chat-shell-cli}"
     fi
-else
-    repo_root="$(cd "$NODE9_DIR/.." && pwd -P)"
-    cli="${CHAT_SHELL_CLI:-$repo_root/shell-scripts/chat-shell-cli}"
-fi
+}
 secrets_dir="${NODE9_SECRETS_DIR:-$NODE9_DIR/secrets}"
 secrets_file="${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}"
 
@@ -76,6 +75,8 @@ usage() {
     printf 'usage: register read [<topic>] --as <name>\n' >&2
     printf '       register open <key> <short-name> <title> --as <name>\n' >&2
     printf '       register post <key> [--requestId <id>] --as <name>\n' >&2
+    printf '       register config --agent <agent> --project <project>\n' >&2
+    printf '           (--register <name> | --register-id <id>)\n' >&2
 }
 
 fail() {
@@ -113,11 +114,287 @@ fixed CHAT_SHELL_NODE_ID 9
 export CHAT_SHELL_KEY_TYPE=uuid
 export CHAT_SHELL_NODE_ID=9
 
+# register_config ARGS...  Write the app config that the MCP adapter reads.
+# The config names one portal socket file and one register selector. The
+# command runs no shell call. See CHAT-lmwuxiiq.
+register_config() {
+    local agent='' project='' name='' id='' reason
+    local agent_key project_key config_dir target temp
+    while (( $# )); do
+        case "$1" in
+            --agent|--project|--register|--register-id)
+                [[ $# -ge 2 && -n "$2" ]] || { usage; exit 2; }
+                case "$1" in
+                    --agent) agent="$2" ;;
+                    --project) project="$2" ;;
+                    --register) name="$2" ;;
+                    --register-id) id="$2" ;;
+                esac
+                shift 2
+                ;;
+            *)
+                usage
+                exit 2
+                ;;
+        esac
+    done
+    [[ -n "$agent" ]] || fail 'the config needs --agent.' 2
+    [[ -n "$project" ]] || fail 'the config needs --project.' 2
+    [[ "$agent" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]] \
+        || fail "the agent $agent is not letters, digits, dash, or underscore." 2
+    [[ "$project" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] \
+        || fail "the project $project is not letters, digits, dash, or underscore." 2
+    # A name wins over an id. The environment supplies either one when a flag
+    # is absent. See CHAT-lmwuxiiq.
+    [[ -n "$name" ]] || name="${NODE_9_REGISTER_TOPIC_NAME:-}"
+    [[ -n "$id" ]] || id="${NODE_9_REGISTER_TOPIC_ID:-}"
+    if [[ -z "$name" && -z "$id" ]]; then
+        fail 'set --register or --register-id, or set NODE_9_REGISTER_TOPIC_NAME or NODE_9_REGISTER_TOPIC_ID.' 2
+    fi
+    if [[ -n "$name" ]]; then
+        reason="$(node9_register_name_error "$name")" || fail "$reason" 2
+    else
+        reason="$(node9_register_id_error "$id")" || fail "$reason" 2
+    fi
+    agent_key="$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')"
+    project_key="$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')"
+    config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat"
+    target="$config_dir/mcp-portal-$agent_key-$project_key.properties"
+    temp="${target}.$$.tmp"
+    mkdir -p "$config_dir" || fail "cannot create $config_dir." 1
+    chmod 700 "$config_dir" || fail "cannot set the mode of $config_dir." 1
+    if ! (
+        umask 077
+        printf 'mode=portal-only\n'
+        if [[ -n "$name" ]]; then
+            printf 'registerName=%s\n' "$name"
+        else
+            printf 'registerId=%s\n' "$id"
+        fi
+        printf 'portalSocketFile=%s\n' \
+            "$HOME/.local/state/$project_key/portal-$agent_key/socket"
+    ) > "$temp"; then
+        rm -f "$temp"
+        fail "cannot write $temp." 1
+    fi
+    chmod 600 "$temp" || { rm -f "$temp"; fail "cannot set the mode of $temp." 1; }
+    if ! mv -f "$temp" "$target"; then
+        rm -f "$temp"
+        fail "cannot write $target." 1
+    fi
+    printf '%s\n' "$target"
+}
+
+# portal_exit_status CODE  Print the status of one portal error code. The
+# table comes from docs/MCP-ADAPTER.md. See CHAT-lmwuxiiq.
+portal_exit_status() {
+    case "$1" in
+        INVALID_INPUT) printf '2\n' ;;
+        WRITE_FAILED|NOT_OPEN|BUSY) printf '1\n' ;;
+        UNCONFIRMED) printf '75\n' ;;
+        TIMEOUT) printf '124\n' ;;
+        ADAPTER_ERROR) printf '1\n' ;;
+        *) printf '1\n' ;;
+    esac
+}
+
+# run_portal_tool TOOL ARGUMENTS  Send one MCP tool call through the adapter
+# and keep its reply. It sets portal_code, portal_status, portal_error, and
+# portal_lines. The adapter gets the remaining wrapper budget.
+portal_code=
+portal_status=
+portal_error=
+portal_complete=
+portal_lines=
+run_portal_tool() {
+    local tool="$1" arguments="$2" launcher reply budget pid timer line
+    local done_file stop_at
+    if [[ -n "${CHAT_MCP_STDIO:-}" ]]; then
+        launcher="$CHAT_MCP_STDIO"
+    elif [[ -x "$NODE9_DIR/bin/chat-mcp-stdio" ]]; then
+        launcher="$NODE9_DIR/bin/chat-mcp-stdio"
+    else
+        launcher="$(cd "$NODE9_DIR/.." && pwd -P)/shell-scripts/chat-mcp-stdio"
+    fi
+    [[ -x "$launcher" ]] || fail 'no MCP adapter. Set CHAT_MCP_STDIO.' 1
+    portal_code=
+    portal_status=
+    portal_error=
+    portal_complete=
+    portal_lines="$work/portal-lines"
+    : > "$portal_lines"
+    reply="$work/portal-reply"
+    jq -cn --arg tool "$tool" --argjson arguments "$arguments" '
+        {jsonrpc:"2.0",id:1,method:"initialize",
+         params:{protocolVersion:"2025-11-25",capabilities:{},
+                 clientInfo:{name:"register",version:"1"}}},
+        ({jsonrpc:"2.0",method:"notifications/initialized"}),
+        {jsonrpc:"2.0",id:2,method:"tools/call",
+         params:{name:$tool,arguments:$arguments}}' > "$work/portal-request" \
+        || fail 'cannot encode the portal request.' 1
+    budget="$(remaining_ms)"
+    # The adapter exits when standard input reaches end of file. So the
+    # wrapper writes the request and keeps the stream open until the id:2
+    # reply arrives, or until the budget passes. See CHAT-lmwuxiiq.
+    done_file="$work/portal-done"
+    rm -f "$done_file"
+    stop_at=$(( $(now_ms) + budget ))
+    (
+        cat "$work/portal-request"
+        while [[ ! -f "$done_file" ]]; do
+            sleep 0.05
+        done
+    ) | "$launcher" --config "$portal_config" \
+        > "$reply" 2> "$work/portal-err" &
+    pid=$!
+    while :; do
+        if grep -Fq '"id":2' "$reply" 2> /dev/null; then
+            break
+        fi
+        if ! kill -0 "$pid" 2> /dev/null; then
+            break
+        fi
+        (( $(now_ms) < stop_at )) || break
+        sleep 0.05
+    done
+    : > "$done_file"
+    if kill -0 "$pid" 2> /dev/null; then
+        (
+            sleep 0.5
+            kill -TERM -- "$pid" 2> /dev/null
+            sleep 0.2
+            kill -KILL -- "$pid" 2> /dev/null
+        ) &
+        timer=$!
+        wait "$pid" 2> /dev/null
+        kill "$timer" 2> /dev/null
+        wait "$timer" 2> /dev/null
+    else
+        wait "$pid" 2> /dev/null
+    fi
+    line="$(jq -c 'select(.id == 2)' "$reply" 2> /dev/null | head -n 1)"
+    if [[ -z "$line" ]]; then
+        portal_code='UNAVAILABLE'
+        return 0
+    fi
+    # A protocol failure carries no portal code. Reject it here, so a failed
+    # call never looks like an empty success. See CHAT-lmwuxiiq.
+    if jq -e 'has("error")' > /dev/null 2>&1 <<< "$line"; then
+        portal_code='ADAPTER_ERROR'
+        portal_error="$(jq -r '.error.message // empty' <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter answered an error'
+        return 0
+    fi
+    if ! jq -e '.result | has("structuredContent")' > /dev/null 2>&1 <<< "$line"; then
+        portal_error="$(jq -r '.result.content[0].text // empty' \
+            <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter answered no structured content'
+        portal_code='ADAPTER_ERROR'
+        return 0
+    fi
+    if jq -e '.result.isError == true' > /dev/null 2>&1 <<< "$line" \
+       && ! jq -e '.result.structuredContent.error.code // empty | length > 0' \
+            > /dev/null 2>&1 <<< "$line"; then
+        portal_code='ADAPTER_ERROR'
+        portal_error="$(jq -r '.result.content[0].text // empty' \
+            <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter refused the call'
+        return 0
+    fi
+    portal_code="$(jq -r '.result.structuredContent.error.code // empty' \
+        <<< "$line" 2> /dev/null)"
+    portal_error="$(jq -r '.result.structuredContent.error.message // empty' \
+        <<< "$line" 2> /dev/null)"
+    portal_status="$(jq -r '.result.structuredContent.status // empty' \
+        <<< "$line" 2> /dev/null)"
+    # `//` treats false as absent, so read the field by name.
+    portal_complete="$(jq -r '.result.structuredContent
+        | if has("complete") then (.complete | tostring) else "" end' \
+        <<< "$line" 2> /dev/null)"
+    jq -r '.result.structuredContent.lines[]?' <<< "$line" > "$portal_lines" \
+        2> /dev/null || : > "$portal_lines"
+}
+
+# portal_finish  Apply the last reply. A failure stops with its mapped status.
+portal_finish() {
+    if [[ -n "$portal_code" ]]; then
+        fail "${portal_error:-the portal answered $portal_code.}" \
+            "$(portal_exit_status "$portal_code")"
+    fi
+    if [[ -n "$portal_status" && "$portal_status" != '0' ]]; then
+        fail "the portal returned status $portal_status." "$portal_status"
+    fi
+    # An incomplete reply carries an error code. A reply without one is a
+    # failure, not an empty success. See CHAT-lmwuxiiq.
+    if [[ "$portal_complete" == 'false' ]]; then
+        portal_code='ADAPTER_ERROR'
+        fail 'the portal answered an incomplete reply' 1
+    fi
+    emit_typed "$portal_lines"
+}
+
+# portal_read TOPIC  Read through the portal. A transport failure sets portal
+# to 0, so the caller runs the one-shot path.
+portal_read() {
+    local topic="$1" arguments='{}'
+    [[ -z "$topic" ]] || arguments="$(jq -cn --arg topic "$topic" '{topic:$topic}')"
+    run_portal_tool chat_read_register "$arguments"
+    if [[ "$portal_code" == 'UNAVAILABLE' ]]; then
+        printf 'register: portal unavailable, using the one-shot login\n' >&2
+        portal=0
+        return 0
+    fi
+    portal_finish
+}
+
+# portal_open  Open one entry through the portal.
+portal_open() {
+    local arguments
+    arguments="$(jq -cn --arg key "$key" --arg short "$short" --arg title "$title" \
+        '{key:$key,short:$short,title:$title}')" \
+        || fail 'cannot encode the open request.' 1
+    run_portal_tool chat_open_register_entry "$arguments"
+    portal_finish
+}
+
+# portal_post  Post the entry that standard input carries through the portal.
+portal_post() {
+    local arguments
+    ( umask 077; cat > "$work/input" ) || fail 'cannot read standard input.' 2
+    if ! LC_ALL=C grep -q '[^[:space:]]' "$work/input"; then
+        fail 'the entry is empty or whitespace only.' 2
+    fi
+    if [[ -n "$request_id" ]]; then
+        [[ "$request_id" =~ ^[A-Za-z0-9._:-]+$ ]] \
+            || fail "the request id $request_id is not letters, digits, dot, dash, colon, or underscore." 2
+        [[ "$request_id" != '_' ]] \
+            || fail 'the request id _ asks for a new entry. Give the id of the uncertain post.' 2
+        arguments="$(jq -cn --arg key "$key" --rawfile text "$work/input" \
+            --arg rid "$request_id" '{key:$key,text:$text,requestId:$rid}')" \
+            || fail 'cannot encode the post request.' 1
+    else
+        arguments="$(jq -cn --arg key "$key" --rawfile text "$work/input" \
+            '{key:$key,text:$text}')" \
+            || fail 'cannot encode the post request.' 1
+    fi
+    run_portal_tool chat_post_register_entry "$arguments"
+    portal_finish
+}
+
 command_name="${1:-}"
 [[ -n "$command_name" ]] || { usage; exit 2; }
 shift
 
+# The config command writes a local file. It needs no register selector, no
+# user, and no shell CLI.
+if [[ "$command_name" == 'config' ]]; then
+    register_config "$@"
+    exit 0
+fi
+
 user=
+agent=
+project=
 topic=
 request_id=
 args=()
@@ -133,6 +410,16 @@ while (( $# )); do
             [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
             request_id="$1"
             ;;
+        --agent)
+            shift
+            [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
+            agent="$1"
+            ;;
+        --project)
+            shift
+            [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
+            project="$1"
+            ;;
         -*)
             usage
             exit 2
@@ -144,11 +431,89 @@ while (( $# )); do
     shift
 done
 
-[[ -n "$user" ]] || { usage; exit 2; }
-case "$user" in
-    Sigma|Theta|Phi|Mario) ;;
-    *) fail "unknown user $user. The users are Sigma, Theta, Phi, and Mario." 2 ;;
-esac
+# -- Portal resolution ---------------------------------------------------
+# The agent and the project select one app config. The config names the live
+# portal socket and one register selector. A missing config keeps the one-shot
+# path. See CHAT-lmwuxiiq.
+agent="${agent:-${MY_AGENT_NAME:-}}"
+project="${project:-${MY_PROJECT_NAME:-}}"
+if [[ -z "$project" && -n "${MY_PROJECT_HOME:-}" ]]; then
+    project="$(basename "$MY_PROJECT_HOME")"
+fi
+portal=0
+portal_config=
+portal_socket=
+portal_socket_file=
+portal_register=
+portal_name=
+portal_id=
+if [[ -n "$agent" && -n "$project" ]]; then
+    portal_agent="$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')"
+    portal_project="$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')"
+    portal_config="${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat/mcp-portal-$portal_agent-$portal_project.properties"
+    if [[ -f "$portal_config" ]]; then
+        portal=1
+        portal_name="$(sed -n 's/^registerName=//p' "$portal_config" | head -n 1)"
+        portal_id="$(sed -n 's/^registerId=//p' "$portal_config" | head -n 1)"
+        portal_socket_file="$(sed -n 's/^portalSocketFile=//p' "$portal_config" | head -n 1)"
+        [[ -z "$portal_name" || -z "$portal_id" ]] \
+            || fail 'the config holds both registerName and registerId. Keep one.' 1
+        [[ -n "$portal_socket_file" ]] \
+            || fail "the config $portal_config has no portalSocketFile." 1
+        portal_register="${portal_name:-$portal_id}"
+        [[ -n "$portal_register" ]] \
+            || fail "the config $portal_config has no register selector." 1
+        portal_socket="$(sed -n '1p' "$portal_socket_file" 2> /dev/null || true)"
+    fi
+fi
+
+# The environment selector must agree with the config selector. A name and an
+# id name different things, so the command never compares them.
+if (( portal )); then
+    env_name="${NODE_9_REGISTER_TOPIC_NAME:-}"
+    env_id="${NODE_9_REGISTER_TOPIC_ID:-}"
+    if [[ ( -n "$portal_name" && -n "$env_id" ) || ( -n "$portal_id" && -n "$env_name" ) ]]; then
+        fail 'cannot compare a register name with a register id. Clear one selector.' 2
+    fi
+    if [[ -n "$portal_name" && -n "$env_name" && "$portal_name" != "$env_name" ]]; then
+        fail "the config register '$portal_name' differs from the environment register '$env_name'." 2
+    fi
+    if [[ -n "$portal_id" && -n "$env_id" && "$portal_id" != "$env_id" ]]; then
+        fail "the config register '$portal_id' differs from the environment register '$env_id'." 2
+    fi
+    if [[ -n "$user" ]]; then
+        printf 'register: user selection is ignored when connected through portal\n' >&2
+    fi
+fi
+
+# A missing socket file falls back for a read. A write needs the portal.
+if (( portal )) && [[ -z "$portal_socket" || ! -e "$portal_socket" ]]; then
+    if [[ "$command_name" == 'read' ]]; then
+        printf 'register: portal unavailable, using the one-shot login\n' >&2
+        portal=0
+    else
+        fail 'portal unavailable. The socket file names no socket.' 1
+    fi
+fi
+
+if (( portal )); then
+    register="$portal_register"
+elif [[ -n "$portal_register" ]]; then
+    register="$portal_register"
+else
+    # The register value names the index room in every shell call below. A
+    # read accepts the name or the id. See CHAT-jmnjvupr.
+    register="$(node9_register_value)" || exit 2
+fi
+
+if (( ! portal )); then
+    [[ -n "$user" ]] || { usage; exit 2; }
+    case "$user" in
+        Sigma|Theta|Phi|Mario) ;;
+        *) fail "unknown user $user. The users are Sigma, Theta, Phi, and Mario." 2 ;;
+    esac
+    resolve_cli
+fi
 
 # use_credentials  Export the login, or fail with status 77. The owner
 # login reads the rendered value in secrets.env. No client copy of the
@@ -398,6 +763,10 @@ case "$command_name" in
             exit 2
         fi
         topic="${args[0]:-}"
+        if (( portal )); then
+            portal_read "$topic"
+            (( portal )) && exit 0
+        fi
         use_credentials
         if [[ -z "$topic" ]]; then
             run_shell register-read --index "$register"
@@ -419,14 +788,18 @@ case "$command_name" in
         key="${args[0]}"
         short="${args[1]}"
         title="${args[2]}"
-        # A write needs the name. It mints the entry topic, and an id gives
-        # no prefix. See CHAT-jmnjvupr.
-        name="$(node9_register_name)" || exit 2
-        register="$name"
         check_key "$key"
         [[ "$short" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
             || fail "the short name $short is not lowercase letters, digits, or dashes." 2
         check_title "$title"
+        if (( portal )); then
+            portal_open
+            exit 0
+        fi
+        # A write needs the name. It mints the entry topic, and an id gives
+        # no prefix. See CHAT-jmnjvupr.
+        name="$(node9_register_name)" || exit 2
+        register="$name"
         use_credentials
 
         read_index
@@ -494,11 +867,15 @@ case "$command_name" in
     post)
         (( ${#args[@]} == 1 )) || { usage; exit 2; }
         key="${args[0]}"
+        check_key "$key"
+        if (( portal )); then
+            portal_post
+            exit 0
+        fi
         # A write needs the name. It reads the register room by name. See
         # CHAT-jmnjvupr.
         name="$(node9_register_name)" || exit 2
         register="$name"
-        check_key "$key"
         if [[ -n "$request_id" ]]; then
             [[ "$request_id" =~ ^[A-Za-z0-9._:-]+$ ]] \
                 || fail "the request id $request_id is not letters, digits, dot, dash, colon, or underscore." 2

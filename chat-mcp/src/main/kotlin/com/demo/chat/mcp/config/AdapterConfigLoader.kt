@@ -30,7 +30,7 @@ val KNOWN_CONFIG_KEYS: Set<String> =
 
 /** The keys accepted when the adapter serves the portal tool alone. */
 private val PORTAL_ONLY_CONFIG_KEYS: Set<String> =
-    setOf("mode", "portalSocket", "registerName", "registerId")
+    setOf("mode", "portalSocket", "portalSocketFile", "registerName", "registerId")
 
 /**
  * Read the configuration file path from the process arguments.
@@ -84,13 +84,14 @@ fun loadMcpConfigFile(path: Path): McpLaunchConfig {
         null -> McpLaunchConfig.Http(loadConfig(properties, path.toAbsolutePath().normalize().parent))
         "portal-only" -> {
             rejectUnknownKeys(properties, PORTAL_ONLY_CONFIG_KEYS)
-            val socket = optionalPortalSocket(properties)
-                ?: throw ConfigException("portalSocket is required in portal-only mode")
+            val source = loadPortalSocketSource(properties)
+            // Fail the start on a bad socket file, not on the first call.
+            source.resolve()
             val name = optionalRegisterName(properties, "registerName")
             val id = optionalRegisterName(properties, "registerId")
             val selector = name ?: id
                 ?: throw ConfigException("registerName or registerId is required in portal-only mode")
-            McpLaunchConfig.PortalOnly(socket, selector, name)
+            McpLaunchConfig.PortalOnly(source, selector, name)
         }
         else -> throw ConfigException("mode must be portal-only when it is set, not '$mode'")
     }
@@ -143,6 +144,30 @@ private fun optionalPortalSocket(properties: Properties): Path? {
         }
     if (!socket.isAbsolute) throw ConfigException("portalSocket must be an absolute path: '$text'")
     return socket
+}
+
+/**
+ * Read the socket source of a portal-only configuration.
+ *
+ * Exactly one of `portalSocket` and `portalSocketFile` holds a value. A fixed
+ * path serves a test. A file-backed path follows a live portal.
+ */
+fun loadPortalSocketSource(properties: Properties): PortalSocketSource {
+    val socket = optionalPortalSocket(properties)
+    val fileText = properties.getProperty("portalSocketFile")?.trim().orEmpty()
+    if (socket != null && fileText.isNotEmpty()) {
+        throw ConfigException("portalSocket and portalSocketFile are exclusive")
+    }
+    if (socket != null) return PortalSocketSource.Fixed(socket)
+    if (fileText.isEmpty()) {
+        throw ConfigException("portalSocket or portalSocketFile is required in portal-only mode")
+    }
+    val file =
+        runCatching { Path.of(fileText) }.getOrElse {
+            throw ConfigException("portalSocketFile is not a path: '$fileText'")
+        }
+    if (!file.isAbsolute) throw ConfigException("portalSocketFile must be an absolute path: '$fileText'")
+    return PortalSocketSource.FileBacked(file)
 }
 
 /** Read one register selector. Both selector keys use the portal name rule. */

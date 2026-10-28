@@ -26,20 +26,22 @@ grep -Fq 'CHAT_PORTAL_HOST' "$fixture/usage.err"
 cat > "$fixture/bin/chat-shell-portal-tunnel" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$1" "$NODE_9_BIN" "$CHAT_PORTAL_HOST" "$CHAT_SHELL_USER" \
-    "$CHAT_PORTAL_STATE_DIR" "$CHAT_PORTAL_SOCKET_DIR"
+    "$CHAT_PORTAL_STATE_DIR" "$CHAT_PORTAL_SOCKET_DIR" "$CHAT_PORTAL_SOCKET_FILE"
 EOF
 chmod +x "$fixture/bin/chat-shell-portal-tunnel"
 
 result="$(HOME="$fixture/home" "$fixture/bin/setup-portal" Theta demo-chat)"
 expected="$(printf '%s\n' start "$fixture_bin" node2.lan Theta \
     "$fixture/home/.local/state/demo-chat/node2-portal-Theta" \
-    "/tmp/demo-chat-portal-${UID}-Theta")"
+    "/tmp/demo-chat-portal-${UID}-Theta" \
+    "$fixture/home/.local/state/demo-chat/portal-theta/socket")"
 [[ "$result" == "$expected" ]]
 
 result="$(HOME="$fixture/home" "$fixture/bin/setup-portal" Theta demo-chat stop)"
 expected="$(printf '%s\n' stop "$fixture_bin" node2.lan Theta \
     "$fixture/home/.local/state/demo-chat/node2-portal-Theta" \
-    "/tmp/demo-chat-portal-${UID}-Theta")"
+    "/tmp/demo-chat-portal-${UID}-Theta" \
+    "$fixture/home/.local/state/demo-chat/portal-theta/socket")"
 [[ "$result" == "$expected" ]]
 
 result="$(HOME="$fixture/home" "$fixture/bin/setup-portal" Theta demo-chat status)"

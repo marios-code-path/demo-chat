@@ -12,6 +12,10 @@ The tool has no user argument. The portal login selects the user.
 Do not use another user's portal.
 For one topic, call `chat_read_register` with `{"topic":"<topic-name>"}`.
 
+`node-9/bin/register config` writes the app config. The config gives
+`register read`, `open`, and `post` a portal path that needs no password
+file. A write never falls back to the password path.
+
 Check `isError`, `status`, `complete`, `error.code`, and every line with `type=warning`.
 Accept a complete read only when `isError` is not true, `status=0`, `complete=true`, and `error` is absent.
 A `duplicate-pointer` warning can occur in a complete read.

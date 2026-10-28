@@ -40,19 +40,27 @@ table says otherwise.
 | `enableSend` | Optional. `true` or `false`. The default is `false`. |
 | `enableSearch` | Optional. `true` or `false`. The default is `false`. |
 | `portalSocket` | Optional. The absolute path of the portal socket. A relative path fails the start. |
+| `portalSocketFile` | Optional. The file that holds the portal socket path. The adapter reads the file on every tool call. |
 | `registerName` | Optional. The register to read. It wins over `registerId`. |
 | `registerId` | Optional. The register to read when no name is given. |
 
 An unknown key fails the start. The adapter never accepts a credential as an
 argument.
 
-Portal-only mode accepts `mode`, `portalSocket`, and one register selector. It
+Portal-only mode accepts `mode`, one socket key, and one register selector. It
 rejects HTTP settings. It needs no backend token or topic ID. The read tool is
 registered for either selector. The write tools need `registerName`.
 
-The three portal keys form one setting. Set `portalSocket` and one selector, or
-set no portal key. A partial setting fails the start. The socket path must be
+The portal-only setting holds exactly one socket key. Set `portalSocket` or
+`portalSocketFile`, and never both. A start that sets both fails. A start that
+sets neither fails. A register selector is required. The socket path must be
 absolute. Both selectors match `[A-Za-z0-9][A-Za-z0-9-]{0,63}`.
+
+`portalSocketFile` names a file that holds one absolute path and one newline.
+The adapter reads the file on every tool call, so a portal restart needs no
+adapter restart. The adapter reads the file once at startup to fail early. A
+relative path or an empty value fails the start. A file that disappears after
+the start answers `UNAVAILABLE` on the call.
 
 `backendBaseUrl` must use `https`. The adapter permits `http` on a loopback host
 alone. That form exists for development.
@@ -80,6 +88,9 @@ mode=portal-only
 portalSocket=/run/chat/portal.sock
 registerName=register-index
 ```
+
+Replace `portalSocket` with `portalSocketFile=<path>` to read the live socket
+path from a file.
 
 The full HTTP mode still requires its backend settings and a readable token
 file at startup. A portal read does not send that token to the portal.
@@ -116,6 +127,10 @@ Both names are lowercase.
 The project name defaults to the base name of `MY_PROJECT_HOME`.
 The directory is `${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat`.
 `CHAT_MCP_CONFIG` overrides the whole path.
+`node-9/bin/register config` writes this file. The command takes `--agent`,
+`--project`, and one selector. The file names the socket file at
+`${HOME}/.local/state/<project>/portal-<agent>/socket`. Both names are lower
+case.
 Two projects that share one agent thus use two files.
 A missing project file falls back to `mcp-portal-<agent>.properties`.
 The fallback prints one stderr line.
@@ -251,10 +266,11 @@ Arguments:
 - `text` is nonblank and at most 3072 UTF-8 bytes.
 - `requestId` is optional and holds at most 128 characters. It matches `[A-Za-z0-9._:-]+` and is never `_`.
 
-When `requestId` is absent, the tool derives one from the key and text.
+When `requestId` is absent, the tool derives one from the register, the key, and the text.
 It uses `auto-` plus the first 32 hexadecimal characters of SHA-256.
-The hash input is the UTF-8 key, one `0x00` byte, and the UTF-8 text.
-The same key and text produce the same ID and no second entry on retry.
+The hash input is the UTF-8 register selector, one `0x00` byte, the UTF-8 key, one `0x00` byte, and the UTF-8 text.
+The same register, key, and text produce the same ID and no second entry on retry.
+The register is part of the input, because the core refuses a request ID that names a message in another topic.
 An explicit `requestId` overrides the derived ID. Use a new explicit ID to post identical text again.
 A replay answers the receipt of the first post. Compare `message_id` and `command_id` across replies.
 The post reply has no `state` field.
@@ -266,6 +282,9 @@ A successful post returns one line with `type` `post`, `key`, `topic`,
 Both tools refuse an unknown argument before they open a socket.
 An unknown argument sets `isError` to true and reports `no argument named '<name>'`.
 An invalid value sets `isError` to true and names the broken rule.
+These refusals carry text content alone and no structured content.
+A caller must read `isError`, and it must treat a missing structured content
+as a failure.
 The portal request frame holds at most 32768 bytes, including the newline.
 
 Error codes:
