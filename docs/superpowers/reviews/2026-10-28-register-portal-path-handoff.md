@@ -2,7 +2,8 @@
 
 Issue: `CHAT-lmwuxiiq`.
 Branch: `chat-lmwuxiiq-portal-path`.
-Range: `93a127b6..019ea8f3`, eight commits.
+Range: `93a127b6..3ad649bc`, twelve commits. The hand-off commit follows
+the code commit.
 Plan: `docs/superpowers/plans/2026-10-28-register-portal-path.md`.
 Spec: `docs/superpowers/specs/2026-10-28-register-portal-path-design.md`.
 Proof: `docs/superpowers/proofs/2026-10-28-register-portal-path/RECORD.md`.
@@ -31,6 +32,9 @@ b81f9b7c CHAT-lmwuxiiq: Read the portal socket path per call
 2dc25546 CHAT-lmwuxiiq: Document the register portal path
 3ea69f7a CHAT-lmwuxiiq: Prove the register portal path
 019ea8f3 CHAT-lmwuxiiq: Correct the proof record and the deadline prose
+8f0b20a5 CHAT-lmwuxiiq: Write the review hand-off
+912265bd CHAT-lmwuxiiq: Record the proof-root cleanup
+3ad649bc CHAT-lmwuxiiq: Reject a protocol failure in the portal reply
 ```
 
 ## Gate evidence
@@ -38,7 +42,7 @@ b81f9b7c CHAT-lmwuxiiq: Read the portal socket path per call
 | Check | Command | Result |
 |---|---|---|
 | Full build and tests | `just ci-local` | exit 0, `BUILD SUCCESS`, 451 test reports |
-| Register suites | `just check-register` | exit 0 |
+| Register suites | `just check-register` | exit 0, 118 checks |
 | Portal setup | `just check-setup-portal` | exit 0 |
 | Tunnel socket rules | `just check-chat-shell-portal-tunnel` | exit 0 |
 | Complete-read rule | `just check-chat-libs` | exit 0 |
@@ -70,7 +74,9 @@ The five shell suites ran together with exit 0. The proof printed
    `each tool call reads the socket file again` and
    `a missing socket file answers unavailable`.
 
-## Two defects the live proof found
+## Three defects, and how each was found
+
+The first two came from the live proof. The third came from the Sigma review.
 
 Both have a test that failed first.
 
@@ -84,6 +90,14 @@ Both have a test that failed first.
    The same key and text in another register made the same id, and the core
    refused it. The register selector is now part of the hash input.
    Test: `a post in another register sends a different request id`.
+3. The wrapper ignored a JSON-RPC error in the adapter reply, and it exited 0
+   with no lines. A failed read looked empty. The wrapper now answers the
+   local code `ADAPTER_ERROR` with status 1 for three shapes: a JSON-RPC
+   error, a reply with no structured content, and a refusal with no code.
+   Tests: `a_json_rpc_error_stops_the_read`,
+   `a_refusal_without_structured_content_stops`, and
+   `a_json_rpc_error_stops_the_post`. The register suite holds 118 checks
+   with no failure. Commit `3ad649bc`.
 
 ## Rulings I made
 
@@ -142,8 +156,9 @@ wrong.
 
 ## Deferred minors
 
-1. `portal_finish` ignores `complete=false` when no error code is present.
-   The portal never sends that shape. A check would add one branch.
+None open. The earlier minor, `portal_finish` ignoring `complete=false` when
+no error code is present, is closed by the `ADAPTER_ERROR` rule: an
+`isError` reply with no code now stops the command.
 
 ## Known limits
 
