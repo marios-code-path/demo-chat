@@ -41,12 +41,6 @@ jobs:
     - name: Test the portal tunnel socket rules
       run: ./shell-scripts/test-chat-shell-portal-tunnel.sh
 
-    - name: Test the complete-read rule
-      run: ./shell-scripts/test-chat-libs.sh
-
-    - name: Test the portal tunnel socket rules
-      run: ./shell-scripts/test-chat-shell-portal-tunnel.sh
-
     - name: Test the register wrapper
       run: ./shell-scripts/test-node-9-register.sh
 

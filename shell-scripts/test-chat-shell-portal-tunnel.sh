@@ -31,6 +31,9 @@ printf '%s\n' "${FAKE_PS_COMMAND:-}"
 STUB
 cat > "$bin/pgrep" <<'STUB'
 #!/usr/bin/env bash
+if [[ -n "${FAKE_PGREP_EXIT:-}" ]]; then
+    exit "$FAKE_PGREP_EXIT"
+fi
 if [[ -n "${FAKE_PORTAL_OWNER:-}" ]]; then
     printf '%s\n' "$FAKE_PORTAL_OWNER"
     exit 0
@@ -86,6 +89,26 @@ if [[ "$code" != 0 && -e "$socket" && "$(cat "$fixture/stderr")" == *'4242'* ]];
     ok 'start_refuses_a_socket_that_another_portal_owns'
 else
     bad 'start_refuses_a_socket_that_another_portal_owns' \
+        "exit $code, stderr: $(cat "$fixture/stderr")"
+fi
+
+# A probe that cannot read the process list proves nothing. The socket stays.
+: > "$socket"
+code="$(run_tunnel stop FAKE_PGREP_EXIT=3)"
+if [[ "$code" == 0 && -e "$socket" ]]; then
+    ok 'stop_keeps_a_socket_when_the_probe_fails'
+else
+    bad 'stop_keeps_a_socket_when_the_probe_fails' \
+        "exit $code, socket exists: $([[ -e "$socket" ]] && echo yes || echo no)"
+fi
+
+# A start cannot clear a path that it cannot check, so it refuses.
+: > "$socket"
+code="$(run_tunnel start FAKE_PGREP_EXIT=3)"
+if [[ "$code" != 0 && -e "$socket" && "$(cat "$fixture/stderr")" == *'cannot check'* ]]; then
+    ok 'start_refuses_a_socket_when_the_probe_fails'
+else
+    bad 'start_refuses_a_socket_when_the_probe_fails' \
         "exit $code, stderr: $(cat "$fixture/stderr")"
 fi
 

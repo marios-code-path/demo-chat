@@ -64,8 +64,12 @@ tunnel_is_running() {
 
 # Print the process that holds this socket path, when one answers.
 # A stale file holds no reader, so this check keeps another portal's socket.
+#
+# Exit 0 names an owner. Exit 1 means no process holds the path. Exit 2 means
+# the probe failed, so the path is not provably free. Only exit 1 allows a
+# removal, because a failed probe cannot clear another portal's socket.
 socket_owner() {
-    local pid
+    local pid output status=0
     [[ -e "$socket" ]] || return 1
     if [[ -s "$state/portal.pid" ]]; then
         pid="$(cat "$state/portal.pid")"
@@ -74,12 +78,13 @@ socket_owner() {
             return 0
         fi
     fi
-    if command -v pgrep >/dev/null 2>&1; then
-        pid="$(pgrep -f -- "-Dchat.shell.portal.socket=$socket" 2>/dev/null | head -n 1)" || true
-        if [[ -n "$pid" ]]; then
-            printf '%s\n' "$pid"
-            return 0
-        fi
+    command -v pgrep >/dev/null 2>&1 || return 2
+    output="$(pgrep -f -- "-Dchat.shell.portal.socket=$socket" 2>/dev/null)" || status=$?
+    (( status == 0 || status == 1 )) || return 2
+    pid="${output%%$'\n'*}"
+    if [[ -n "$pid" ]]; then
+        printf '%s\n' "$pid"
+        return 0
     fi
     return 1
 }
@@ -101,6 +106,7 @@ stop_pid() {
 }
 
 stop_all() {
+    local owner_status=0
     if [[ -s "$state/portal.pid" ]]; then
         stop_pid "$(cat "$state/portal.pid")" "-Dchat.shell.portal.socket=$socket"
         rm -f "$state/portal.pid"
@@ -110,9 +116,14 @@ stop_all() {
         rm -f "$state/tunnel.pid"
     fi
     # Remove the socket only when no process holds the path. A portal that
-    # another state directory started keeps its socket.
-    if [[ -e "$socket" ]] && ! socket_owner >/dev/null; then
-        rm -f "$socket"
+    # another state directory started keeps its socket. A failed probe keeps
+    # it too, because the path is then not provably free.
+    if [[ -e "$socket" ]]; then
+        owner_status=0
+        socket_owner >/dev/null || owner_status=$?
+        if (( owner_status == 1 )); then
+            rm -f "$socket"
+        fi
     fi
 }
 
@@ -178,9 +189,15 @@ case "$action" in
         # An operator checks an existing path before removal. A socket that a
         # live portal holds is not stale, so this start refuses it.
         if [[ -e "$socket" ]]; then
-            owner="$(socket_owner || true)"
-            [[ -z "$owner" ]] \
-                || fail "socket $socket belongs to process $owner. Use status or stop first."
+            owner=''
+            owner_status=0
+            owner="$(socket_owner)" || owner_status=$?
+            if (( owner_status == 0 )); then
+                fail "socket $socket belongs to process $owner. Use status or stop first."
+            fi
+            if (( owner_status != 1 )); then
+                fail "cannot check the owner of socket $socket. Use status or stop first."
+            fi
             rm -f "$socket"
         fi
         offset="$(choose_offset)"
