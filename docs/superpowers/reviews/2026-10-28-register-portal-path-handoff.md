@@ -2,8 +2,8 @@
 
 Issue: `CHAT-lmwuxiiq`.
 Branch: `chat-lmwuxiiq-portal-path`.
-Range: `93a127b6..3ad649bc`, twelve commits. The hand-off commit follows
-the code commit.
+Range: `93a127b6..4568eedf`, fourteen commits. The hand-off commit
+follows the code commit.
 Plan: `docs/superpowers/plans/2026-10-28-register-portal-path.md`.
 Spec: `docs/superpowers/specs/2026-10-28-register-portal-path-design.md`.
 Proof: `docs/superpowers/proofs/2026-10-28-register-portal-path/RECORD.md`.
@@ -35,6 +35,7 @@ b81f9b7c CHAT-lmwuxiiq: Read the portal socket path per call
 8f0b20a5 CHAT-lmwuxiiq: Write the review hand-off
 912265bd CHAT-lmwuxiiq: Record the proof-root cleanup
 3ad649bc CHAT-lmwuxiiq: Reject a protocol failure in the portal reply
+4568eedf CHAT-lmwuxiiq: Stop an incomplete reply with no error code
 ```
 
 ## Gate evidence
@@ -76,9 +77,10 @@ The five shell suites ran together with exit 0. The proof printed
 
 ## Three defects, and how each was found
 
-The first two came from the live proof. The third came from the Sigma review.
+The first two came from the live proof. The third and fourth came from the
+Sigma review.
 
-Both have a test that failed first.
+Each has a test that failed first.
 
 1. `PortalWriteService` answered `WRITE_FAILED` with no cause. The operator
    could not see why a write stopped. `PortalReply.detail` existed and was
@@ -96,8 +98,14 @@ Both have a test that failed first.
    error, a reply with no structured content, and a refusal with no code.
    Tests: `a_json_rpc_error_stops_the_read`,
    `a_refusal_without_structured_content_stops`, and
-   `a_json_rpc_error_stops_the_post`. The register suite holds 118 checks
+   `a_json_rpc_error_stops_the_post`. The register suite held 118 checks
    with no failure. Commit `3ad649bc`.
+4. `portal_finish` accepted `complete=false` when `isError` was absent, so an
+   incomplete reply printed nothing and exited 0. The wrapper now stops that
+   shape with status 1 and the line
+   `the portal answered an incomplete reply`. Test:
+   `an_incomplete_reply_stops_the_read`. The register suite holds 119 checks
+   with no failure. Commit `4568eedf`.
 
 ## Rulings I made
 
@@ -156,9 +164,11 @@ wrong.
 
 ## Deferred minors
 
-None open. The earlier minor, `portal_finish` ignoring `complete=false` when
-no error code is present, is closed by the `ADAPTER_ERROR` rule: an
-`isError` reply with no code now stops the command.
+None open. The minor `portal_finish` accepting `complete=false` had two
+shapes. The `isError` shape stopped in `3ad649bc`. The shape with no
+`isError` and no error code stopped in the second review fix, with its own
+test. The hand-off earlier claimed both shapes stopped, and that claim was
+wrong.
 
 ## Known limits
 
