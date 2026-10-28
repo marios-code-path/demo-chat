@@ -43,7 +43,7 @@ b81f9b7c CHAT-lmwuxiiq: Read the portal socket path per call
 | Check | Command | Result |
 |---|---|---|
 | Full build and tests | `just ci-local` | exit 0, `BUILD SUCCESS`, 451 test reports |
-| Register suites | `just check-register` | exit 0, 118 checks |
+| Register suites | `just check-register` | exit 0, 119 checks |
 | Portal setup | `just check-setup-portal` | exit 0 |
 | Tunnel socket rules | `just check-chat-shell-portal-tunnel` | exit 0 |
 | Complete-read rule | `just check-chat-libs` | exit 0 |
@@ -75,7 +75,7 @@ The five shell suites ran together with exit 0. The proof printed
    `each tool call reads the socket file again` and
    `a missing socket file answers unavailable`.
 
-## Three defects, and how each was found
+## Four defects, and how each was found
 
 The first two came from the live proof. The third and fourth came from the
 Sigma review.
@@ -99,7 +99,7 @@ Each has a test that failed first.
    Tests: `a_json_rpc_error_stops_the_read`,
    `a_refusal_without_structured_content_stops`, and
    `a_json_rpc_error_stops_the_post`. The register suite held 118 checks
-   with no failure. Commit `3ad649bc`.
+   with no failure at that commit. Commit `3ad649bc`.
 4. `portal_finish` accepted `complete=false` when `isError` was absent, so an
    incomplete reply printed nothing and exited 0. The wrapper now stops that
    shape with status 1 and the line
