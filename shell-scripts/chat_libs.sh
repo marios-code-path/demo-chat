@@ -199,7 +199,8 @@ chat_read_register() {
     if [[ "$is_error" == true ]]; then
         return 1
     fi
-    if [[ -n "$reg_status" && "$reg_status" != 0 ]]; then
+    # A complete read carries status 0. A missing status is not that value.
+    if [[ "$reg_status" != 0 ]]; then
         return 1
     fi
     if [[ "$complete" != true ]]; then

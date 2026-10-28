@@ -62,6 +62,28 @@ tunnel_is_running() {
     [[ "$command" == *"-- $host"* && "$command" == *"127.0.0.1:6890"* ]]
 }
 
+# Print the process that holds this socket path, when one answers.
+# A stale file holds no reader, so this check keeps another portal's socket.
+socket_owner() {
+    local pid
+    [[ -e "$socket" ]] || return 1
+    if [[ -s "$state/portal.pid" ]]; then
+        pid="$(cat "$state/portal.pid")"
+        if [[ "$(process_command "$pid")" == *"-Dchat.shell.portal.socket=$socket"* ]]; then
+            printf '%s\n' "$pid"
+            return 0
+        fi
+    fi
+    if command -v pgrep >/dev/null 2>&1; then
+        pid="$(pgrep -f -- "-Dchat.shell.portal.socket=$socket" 2>/dev/null | head -n 1)" || true
+        if [[ -n "$pid" ]]; then
+            printf '%s\n' "$pid"
+            return 0
+        fi
+    fi
+    return 1
+}
+
 stop_pid() {
     local pid="$1" marker="$2" command waited=0
     [[ "$pid" =~ ^[0-9]+$ ]] || return 1
@@ -87,7 +109,11 @@ stop_all() {
         stop_pid "$(cat "$state/tunnel.pid")" "-- $host"
         rm -f "$state/tunnel.pid"
     fi
-    rm -f "$socket"
+    # Remove the socket only when no process holds the path. A portal that
+    # another state directory started keeps its socket.
+    if [[ -e "$socket" ]] && ! socket_owner >/dev/null; then
+        rm -f "$socket"
+    fi
 }
 
 choose_offset() {
@@ -149,7 +175,14 @@ case "$action" in
         else
             [[ -r "$password_file" ]] || fail "cannot read password file $password_file."
         fi
-        rm -f "$socket"
+        # An operator checks an existing path before removal. A socket that a
+        # live portal holds is not stale, so this start refuses it.
+        if [[ -e "$socket" ]]; then
+            owner="$(socket_owner || true)"
+            [[ -z "$owner" ]] \
+                || fail "socket $socket belongs to process $owner. Use status or stop first."
+            rm -f "$socket"
+        fi
         offset="$(choose_offset)"
         tunnel_pid="$("$tunnel" "$host" "$offset" true)" \
             || fail 'the persistent tunnel did not start.'

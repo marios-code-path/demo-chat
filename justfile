@@ -44,6 +44,14 @@ check-setup-portal:
 check-chat-mcp-installed:
 	./shell-scripts/test-chat-mcp-installed.sh
 
+# Check the complete-read rule against a stub adapter. Starts no adapter.
+check-chat-libs:
+	./shell-scripts/test-chat-libs.sh
+
+# Check the portal tunnel socket rules against stubs. Starts no tunnel.
+check-chat-shell-portal-tunnel:
+	./shell-scripts/test-chat-shell-portal-tunnel.sh
+
 # Check the register wrapper, the import bundle, and the prepared-host import. Starts no node.
 check-register:
 	bash shell-scripts/test-node-9-register.sh
