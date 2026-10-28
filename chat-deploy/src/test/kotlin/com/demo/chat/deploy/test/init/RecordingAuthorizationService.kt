@@ -3,6 +3,7 @@ package com.demo.chat.deploy.test.init
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.service.security.AuthorizationService
+import com.demo.chat.service.security.SecondOwnerException
 import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.key.TestKeys
 import reactor.core.publisher.Flux
@@ -51,6 +52,33 @@ class RecordingAuthorizationService : AuthorizationService<Long, AuthMetadata<Lo
             removals.add(authorization.key)
         }
     }
+
+    /**
+     * The owner of [target], from the stored rows.
+     *
+     * The rule is the one of `CoreAuthorizationService`: a live wildcard row
+     * whose principal is an entity. This double stores each row as given, so a
+     * test seeds the rows that it wants.
+     */
+    override fun ownerOf(target: Key<Long>): Mono<Key<Long>> =
+        Flux.fromIterable(rows.values)
+            .filter { row ->
+                row.target == target &&
+                    row.permission == "*" &&
+                    Key.root(row.principal.root) != row.principal &&
+                    (row.expires == 0L || row.expires > System.currentTimeMillis())
+            }
+            .map { it.principal }
+            .distinct()
+            .take(2)
+            .collectList()
+            .flatMap { owners ->
+                when (owners.size) {
+                    0 -> Mono.empty()
+                    1 -> Mono.just(owners.single())
+                    else -> Mono.error(SecondOwnerException(target))
+                }
+            }
 
     override fun getStoredGrants(principal: Key<Long>, target: Key<Long>): Flux<AuthMetadata<Long>> =
         Flux.defer { Flux.fromIterable(rows.values.filter { it.principal == principal && it.target == target }) }

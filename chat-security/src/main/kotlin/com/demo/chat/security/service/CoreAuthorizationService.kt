@@ -113,6 +113,34 @@ class CoreAuthorizationService<T, Q>(
                 }
             }
 
+    /**
+     * The owner of [target], from a scan of the persistence store.
+     *
+     * **The read never uses the index.** A stored row answers even when no
+     * index row names it.
+     *
+     * The filter is the owner rule of [ownerGuard]. So an expired row and a
+     * domain root row add nothing.
+     *
+     * **The answer counts principals, not rows.** The owner guard is not
+     * atomic with its write, so one principal can store two owner rows.
+     * The scan stops at a second principal.
+     */
+    override fun ownerOf(target: Key<T>): Mono<Key<T>> =
+        authPersist.all()
+            .filter { row -> row.target == target && isOwnerRow(row) && isLive(row) }
+            .map { it.principal }
+            .distinct()
+            .take(2)
+            .collectList()
+            .flatMap { owners ->
+                when (owners.size) {
+                    0 -> Mono.empty()
+                    1 -> Mono.just(owners.single())
+                    else -> Mono.error(SecondOwnerException(target))
+                }
+            }
+
     private fun isOwnerRow(row: AuthMetadata<T>): Boolean =
         row.permission == AuthSummarizer.WILDCARD && Key.root(row.principal.root) != row.principal
 

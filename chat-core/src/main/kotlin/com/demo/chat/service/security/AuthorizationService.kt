@@ -28,6 +28,20 @@ interface AuthorizationService<T, out M : Any> {
     fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String? = null): Flux<out M>
 
     /**
+     * The principal that owns [target], or an empty answer for no owner.
+     *
+     * An owner row is a live wildcard row whose principal is an entity. An
+     * expired row and a domain root row do not count. One target holds one
+     * owner. See `CHAT-esengqpv`.
+     *
+     * **This read scans the persistence store.** It never reads the index.
+     *
+     * The answer errors with `SecondOwnerException` when two or more
+     * principals own [target]. Two rows of one principal are one owner.
+     */
+    fun ownerOf(target: Key<T>): Mono<Key<T>>
+
+    /**
      * The stored rows that name [principal] and [target] exactly.
      *
      * **This read does not summarize.** It keeps expired rows, it does not
