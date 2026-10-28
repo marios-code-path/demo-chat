@@ -115,6 +115,15 @@ class PortalProtocolTests {
     }
 
     @Test
+    fun `a post request can omit the request id`() {
+        val frame = """{"operation":"post-register-entry","index":"register-index","key":"CHAT-a","text":"hello"}""" + "\n"
+
+        val request = protocol.readRequest(frame.byteInputStream())
+
+        assertThat(request.requestId).isNull()
+    }
+
+    @Test
     fun `a read request refuses write fields`() {
         refuse("""{"operation":"read-register","index":"index","key":"CHAT-a"}
 """.toByteArray())

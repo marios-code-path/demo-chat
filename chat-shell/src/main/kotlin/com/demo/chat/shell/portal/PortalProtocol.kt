@@ -187,7 +187,7 @@ class PortalProtocol(private val mapper: ObjectMapper) {
         val REQUIRED = mapOf(
             READ_REGISTER to setOf("operation", "index"),
             OPEN_REGISTER_ENTRY to setOf("operation", "index", "key", "short", "title"),
-            POST_REGISTER_ENTRY to setOf("operation", "index", "key", "text", "requestId"),
+            POST_REGISTER_ENTRY to setOf("operation", "index", "key", "text"),
         )
     }
 }
