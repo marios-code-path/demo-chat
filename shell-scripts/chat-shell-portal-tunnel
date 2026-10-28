@@ -170,8 +170,11 @@ case "$action" in
         fi
         mkdir -p "$state" "$socket_dir"
         chmod 700 "$state" "$socket_dir"
-        if portal_is_running || tunnel_is_running; then
-            fail 'a portal or tunnel is already running. Use status or stop first.'
+        if portal_is_running; then
+            fail 'the portal is already running. Use status or stop first.'
+        fi
+        if tunnel_is_running; then
+            fail 'the tunnel is already running. Use status or stop first.'
         fi
         if [[ "${CHAT_SHELL_PASSWORD+x}" == x ]]; then
             [[ -z "${CHAT_SHELL_PASSWORD_FILE:-}" ]] \
@@ -238,12 +241,26 @@ case "$action" in
         printf 'portal and tunnel stopped\n'
         ;;
     status)
-        if portal_is_running && tunnel_is_running && [[ -S "$socket" ]]; then
-            printf 'portal and tunnel are running: socket=%s\n' "$socket"
-            exit 0
+        # Name the part that runs. A start refuses when either part runs, so a
+        # bare "not running" would send an operator back to a refused start.
+        if ! portal_is_running && ! tunnel_is_running; then
+            printf 'portal or tunnel is not running\n'
+            exit 1
         fi
-        printf 'portal or tunnel is not running\n'
-        exit 1
+        if ! portal_is_running; then
+            printf 'tunnel is running but the portal is not\n'
+            exit 1
+        fi
+        if ! tunnel_is_running; then
+            printf 'portal is running but the tunnel is not\n'
+            exit 1
+        fi
+        if [[ ! -S "$socket" ]]; then
+            printf 'portal and tunnel are running but the socket is missing: %s\n' "$socket"
+            exit 1
+        fi
+        printf 'portal and tunnel are running: socket=%s\n' "$socket"
+        exit 0
         ;;
     *)
         printf 'usage: %s [start|stop|status]\n' "$0" >&2

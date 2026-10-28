@@ -27,6 +27,15 @@ mkdir -p "$state" "$socket_dir" "$lib" "$bin"
 # The stubs answer the questions that the script asks about other processes.
 cat > "$bin/ps" <<'STUB'
 #!/usr/bin/env bash
+pid="${2:-}"
+if [[ -n "${FAKE_PS_PORTAL_PID:-}" && "$pid" == "$FAKE_PS_PORTAL_PID" ]]; then
+    printf -- '-Dchat.shell.portal.socket=%s\n' "${FAKE_PS_SOCKET:-}"
+    exit 0
+fi
+if [[ -n "${FAKE_PS_TUNNEL_PID:-}" && "$pid" == "$FAKE_PS_TUNNEL_PID" ]]; then
+    printf 'ssh -- node2.lan 127.0.0.1:6890\n'
+    exit 0
+fi
 printf '%s\n' "${FAKE_PS_COMMAND:-}"
 STUB
 cat > "$bin/pgrep" <<'STUB'
@@ -120,6 +129,75 @@ if [[ "$code" != 0 && ! -e "$socket" ]]; then
 else
     bad 'start_removes_a_stale_socket' \
         "exit $code, socket exists: $([[ -e "$socket" ]] && echo yes || echo no)"
+fi
+
+# status names the part that runs, so an operator sees a partial pair.
+# The pid files and the ps stub decide which part answers. The running pair
+# case needs a real socket file, so a helper holds one.
+start_socket_holder() {
+    python3 - "$socket" <<'PY' &
+import socket, sys, time
+
+handle = socket.socket(socket.AF_UNIX)
+handle.bind(sys.argv[1])
+handle.listen(1)
+time.sleep(60)
+PY
+    socket_holder=$!
+    local waited=0
+    while [[ ! -S "$socket" ]] && (( waited < 50 )); do
+        sleep 0.1
+        waited=$(( waited + 1 ))
+    done
+    [[ -S "$socket" ]]
+}
+
+stop_socket_holder() {
+    kill "$socket_holder" 2>/dev/null || true
+    wait "$socket_holder" 2>/dev/null || true
+    rm -f "$socket"
+}
+
+start_socket_holder || bad 'the socket helper did not start'
+printf '111\n' > "$state/portal.pid"
+printf '222\n' > "$state/tunnel.pid"
+status_env=(FAKE_PS_PORTAL_PID=111 FAKE_PS_TUNNEL_PID=222 FAKE_PS_SOCKET="$socket")
+
+code="$(run_tunnel status "${status_env[@]}")"
+if [[ "$code" == 0 && "$(cat "$fixture/stdout")" == *'portal and tunnel are running'* ]]; then
+    ok 'status_reports_a_running_pair'
+else
+    bad 'status_reports_a_running_pair' \
+        "exit $code, stdout: $(cat "$fixture/stdout")"
+fi
+
+rm -f "$state/portal.pid"
+code="$(run_tunnel status "${status_env[@]}")"
+if [[ "$code" != 0 && "$(cat "$fixture/stdout")" == *'tunnel is running but the portal is not'* ]]; then
+    ok 'status_names_a_running_tunnel'
+else
+    bad 'status_names_a_running_tunnel' \
+        "exit $code, stdout: $(cat "$fixture/stdout")"
+fi
+
+printf '111\n' > "$state/portal.pid"
+rm -f "$state/tunnel.pid"
+code="$(run_tunnel status "${status_env[@]}")"
+if [[ "$code" != 0 && "$(cat "$fixture/stdout")" == *'portal is running but the tunnel is not'* ]]; then
+    ok 'status_names_a_running_portal'
+else
+    bad 'status_names_a_running_portal' \
+        "exit $code, stdout: $(cat "$fixture/stdout")"
+fi
+
+printf '222\n' > "$state/tunnel.pid"
+stop_socket_holder
+code="$(run_tunnel status "${status_env[@]}")"
+if [[ "$code" != 0 && "$(cat "$fixture/stdout")" == *'socket'* ]]; then
+    ok 'status_names_a_missing_socket'
+else
+    bad 'status_names_a_missing_socket' \
+        "exit $code, stdout: $(cat "$fixture/stdout")"
 fi
 
 if (( failures > 0 )); then
