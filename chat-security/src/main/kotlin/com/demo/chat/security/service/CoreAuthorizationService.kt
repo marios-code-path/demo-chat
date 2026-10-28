@@ -120,13 +120,18 @@ class CoreAuthorizationService<T, Q>(
      * index row names it.
      *
      * The filter is the owner rule of [ownerGuard]. So an expired row and a
-     * domain root row add nothing. Two live entity rows break the one-owner
-     * rule and fail with [SecondOwnerException].
+     * domain root row add nothing.
+     *
+     * **The answer counts principals, not rows.** The owner guard is not
+     * atomic with its write, so one principal can store two owner rows.
+     * The scan stops at a second principal.
      */
     override fun ownerOf(target: Key<T>): Mono<Key<T>> =
         authPersist.all()
             .filter { row -> row.target == target && isOwnerRow(row) && isLive(row) }
             .map { it.principal }
+            .distinct()
+            .take(2)
             .collectList()
             .flatMap { owners ->
                 when (owners.size) {

@@ -69,6 +69,8 @@ class RecordingAuthorizationService : AuthorizationService<Long, AuthMetadata<Lo
                     (row.expires == 0L || row.expires > System.currentTimeMillis())
             }
             .map { it.principal }
+            .distinct()
+            .take(2)
             .collectList()
             .flatMap { owners ->
                 when (owners.size) {

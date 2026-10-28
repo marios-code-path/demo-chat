@@ -84,6 +84,23 @@ class OwnerOfTests {
         assertThat(service.ownerOf(TARGET).block()).isEqualTo(OWNER)
     }
 
+    /**
+     * **Two live rows of one principal are one owner.**
+     *
+     * The owner guard is not atomic with its write, so one principal can store
+     * two owner rows. The rows name one principal, so the answer is not
+     * ambiguous.
+     */
+    @Test
+    fun `two live entity rows of one principal answer that principal`() {
+        val service = service(
+            grant(OWNER, TARGET, "*"),
+            grant(OWNER, TARGET, "*")
+        )
+
+        assertThat(service.ownerOf(TARGET).block()).isEqualTo(OWNER)
+    }
+
     /** A named permission is not an owner row, even on the exact target. */
     @Test
     fun `a named permission row answers no owner`() {

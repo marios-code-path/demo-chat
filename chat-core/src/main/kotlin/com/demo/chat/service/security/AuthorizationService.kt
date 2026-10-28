@@ -36,8 +36,8 @@ interface AuthorizationService<T, out M : Any> {
      *
      * **This read scans the persistence store.** It never reads the index.
      *
-     * The answer errors with `SecondOwnerException` when two or more owner
-     * rows name [target].
+     * The answer errors with `SecondOwnerException` when two or more
+     * principals own [target]. Two rows of one principal are one owner.
      */
     fun ownerOf(target: Key<T>): Mono<Key<T>>
 
