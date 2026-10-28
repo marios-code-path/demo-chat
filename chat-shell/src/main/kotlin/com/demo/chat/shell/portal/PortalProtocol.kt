@@ -63,7 +63,8 @@ data class PortalReply(
     val detail: String? = null,
 )
 
-class PortalProtocolException(val code: PortalErrorCode) : RuntimeException(code.name)
+/** A refused request. [reason] names the broken rule and never reaches the wire. */
+class PortalProtocolException(val code: PortalErrorCode, val reason: String = code.name) : RuntimeException(reason)
 
 /**
  * Reads one newline-terminated request frame and writes one reply frame.
