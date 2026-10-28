@@ -706,3 +706,73 @@ and it never sends the shell's `_`. The shell reads `_` as a request for a
 new entry, so a retry with `_` can post a second entry. A shell failure
 before the receipt names the generated id. The generated id is a lowercase
 UUID from `uuidgen`.
+
+## The register portal path
+
+`register read`, `register open`, and `register post` take `--agent <agent>`
+and `--project <project>`. The agent defaults to `MY_AGENT_NAME`. The project
+defaults to `MY_PROJECT_NAME`, then to the base name of `MY_PROJECT_HOME`.
+The flags follow the command name.
+
+A config file selects the portal path. The file is
+`${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat/mcp-portal-<agent>-<project>.properties`.
+Both names are lower case.
+
+`register config --agent <agent> --project <project> (--register <name> |
+--register-id <id>)` writes that file. The file holds `mode=portal-only`, one
+selector, and `portalSocketFile`. The file mode is `600`. The command makes
+no shell call. A name wins over an id. The command applies the name rule or
+the id rule, so a value that the adapter refuses never reaches the file.
+
+When the config is absent, the command uses the one-shot shell path, as
+before.
+
+**The selector check.** The config selector must agree with the environment
+selector. A name and an id name different things, so the command never
+compares them.
+
+| Config | Environment | Result |
+|---|---|---|
+| name | name | An exact match passes. A difference stops with `2`. |
+| id | id | An exact match passes. A difference stops with `2`. |
+| name | id | Stops with `2`. |
+| id | name | Stops with `2`. |
+| either | absent | No check. |
+
+The mixed form writes:
+`register: cannot compare a register name with a register id. Clear one selector.`
+A proven difference writes:
+`register: the config register '<a>' differs from the environment register '<b>'.`
+A config that holds both selector keys stops with `1`.
+
+**The user selection.** The portal login selects the user. The command
+ignores `--as` on the portal path, and it writes one stderr line:
+`register: user selection is ignored when connected through portal`
+
+**The fallback table.**
+
+| Condition | Read | Write |
+|---|---|---|
+| The socket file is absent or empty. | The one-shot path runs. The command writes `register: portal unavailable, using the one-shot login`. | The command stops with status `1`. |
+| The adapter answers `UNAVAILABLE`. | The one-shot path runs, with the same line. | The command stops with status `1`. |
+| Any other error code. | The command stops. | The command stops. |
+
+A read that falls back uses the config selector, so the one-shot read needs a
+login alone.
+
+**The status mapping.** A reply without a numeric status maps one error code
+to one status:
+
+| Code | Status |
+|---|---|
+| `INVALID_INPUT` | 2 |
+| `WRITE_FAILED` | 1 |
+| `NOT_OPEN` | 1 |
+| `UNCONFIRMED` | 75 |
+| `BUSY` | 1 |
+| `TIMEOUT` | 124 |
+| `UNAVAILABLE` | 1, or the fallback row above |
+
+The adapter client deadline is 35 seconds. The wrapper passes the remaining
+wrapper budget to the adapter, so the adapter stops first. The adapter reads
+the socket file on every call, so a portal restart needs no config change.

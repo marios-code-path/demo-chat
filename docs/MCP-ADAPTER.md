@@ -40,19 +40,27 @@ table says otherwise.
 | `enableSend` | Optional. `true` or `false`. The default is `false`. |
 | `enableSearch` | Optional. `true` or `false`. The default is `false`. |
 | `portalSocket` | Optional. The absolute path of the portal socket. A relative path fails the start. |
+| `portalSocketFile` | Optional. The file that holds the portal socket path. The adapter reads the file on every tool call. |
 | `registerName` | Optional. The register to read. It wins over `registerId`. |
 | `registerId` | Optional. The register to read when no name is given. |
 
 An unknown key fails the start. The adapter never accepts a credential as an
 argument.
 
-Portal-only mode accepts `mode`, `portalSocket`, and one register selector. It
+Portal-only mode accepts `mode`, one socket key, and one register selector. It
 rejects HTTP settings. It needs no backend token or topic ID. The read tool is
 registered for either selector. The write tools need `registerName`.
 
-The three portal keys form one setting. Set `portalSocket` and one selector, or
-set no portal key. A partial setting fails the start. The socket path must be
+The portal-only setting holds exactly one socket key. Set `portalSocket` or
+`portalSocketFile`, and never both. A start that sets both fails. A start that
+sets neither fails. A register selector is required. The socket path must be
 absolute. Both selectors match `[A-Za-z0-9][A-Za-z0-9-]{0,63}`.
+
+`portalSocketFile` names a file that holds one absolute path and one newline.
+The adapter reads the file on every tool call, so a portal restart needs no
+adapter restart. The adapter reads the file once at startup to fail early. A
+relative path or an empty value fails the start. A file that disappears after
+the start answers `UNAVAILABLE` on the call.
 
 `backendBaseUrl` must use `https`. The adapter permits `http` on a loopback host
 alone. That form exists for development.
@@ -80,6 +88,9 @@ mode=portal-only
 portalSocket=/run/chat/portal.sock
 registerName=register-index
 ```
+
+Replace `portalSocket` with `portalSocketFile=<path>` to read the live socket
+path from a file.
 
 The full HTTP mode still requires its backend settings and a readable token
 file at startup. A portal read does not send that token to the portal.
@@ -116,6 +127,10 @@ Both names are lowercase.
 The project name defaults to the base name of `MY_PROJECT_HOME`.
 The directory is `${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat`.
 `CHAT_MCP_CONFIG` overrides the whole path.
+`node-9/bin/register config` writes this file. The command takes `--agent`,
+`--project`, and one selector. The file names the socket file at
+`${HOME}/.local/state/<project>/portal-<agent>/socket`. Both names are lower
+case.
 Two projects that share one agent thus use two files.
 A missing project file falls back to `mcp-portal-<agent>.properties`.
 The fallback prints one stderr line.

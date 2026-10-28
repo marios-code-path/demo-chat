@@ -259,6 +259,14 @@ The default action is `start`. The `status` and `stop` actions need no password.
 The default destination is `node2.lan`.
 Set `CHAT_PORTAL_HOST` to another host before this command when needed.
 The command prints the socket path when the portal is ready.
+The command also writes the live socket path to a small file. The file is
+`${HOME}/.local/state/<project>/portal-<agent>/socket`. Both names are lower
+case. The file holds one absolute path and one newline. Its mode is `600`, and
+its directory mode is `700`. A stop removes the file only when it names this
+socket.
+`bin/setup-portal` reads no register and sets no register variable. Run
+`register config` to write the app config that names the register and the
+socket file. See `docs/MCP-ADAPTER.md`.
 It reads `secrets/AGENT.password` by default.
 Set `CHAT_SHELL_PASSWORD_FILE` to another file, or set `CHAT_SHELL_PASSWORD` for a temporary password file.
 
