@@ -103,7 +103,9 @@ run_wrapper() {
     local name="$1"; shift
     [[ -f "$work/input" ]] || : > "$work/input"
     # shellcheck disable=SC2086
-    ( env -u CORE_PORT -u CORE_MGMT_PORT ${EXTRA_ENV:-} \
+    ( env -u CORE_PORT -u CORE_MGMT_PORT \
+      -u MY_AGENT_NAME -u MY_PROJECT_NAME -u MY_PROJECT_HOME ${EXTRA_ENV:-} \
+      XDG_CONFIG_HOME="$work/no-config" \
       CHAT_SHELL_CLI="$stub" STUB_DIR="$stub_dir" \
       NODE_9_REGISTER_TOPIC_NAME="$(register_name)" \
       NODE_9_REGISTER_TOPIC_ID="${REGISTER_ID-}" \
@@ -1171,6 +1173,232 @@ if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
     ok 'config_needs_an_agent'
 else
     bad 'config_needs_an_agent' "status=$status_of err=$(cat "$work/t_config_no_agent.err")"
+fi
+
+# -- portal path --------------------------------------------------------
+
+portal_home="$work/portal-config"
+portal_dir="$portal_home/demo-chat"
+mkdir -p "$portal_dir"
+adapter_dir="$work/adapter"
+mkdir -p "$adapter_dir"
+adapter_stub="$stub_dir/chat-mcp-stdio"
+cat > "$adapter_stub" <<'STUB'
+#!/usr/bin/env bash
+# One adapter call records its request and prints one canned reply.
+set -uo pipefail
+dir="${ADAPTER_DIR:?Set ADAPTER_DIR}"
+count=0
+[[ -f "$dir/count" ]] && count="$(cat "$dir/count")"
+count=$((count + 1))
+printf '%s\n' "$count" > "$dir/count"
+cat > "$dir/request.$count"
+cat "$dir/reply" 2> /dev/null || true
+exit "${ADAPTER_STATUS:-0}"
+STUB
+chmod +x "$adapter_stub"
+
+portal_socket_file="$work/portal-socket-file"
+portal_socket="$work/portal.sock"
+touch "$portal_socket"
+printf '%s\n' "$portal_socket" > "$portal_socket_file"
+
+adapter_calls() { [[ -f "$adapter_dir/count" ]] && cat "$adapter_dir/count" || echo 0; }
+reset_adapter() { rm -f "$adapter_dir"/count "$adapter_dir"/request.* "$adapter_dir"/reply; }
+
+write_portal_config() { printf '%s\n' "$1" > "$portal_dir/mcp-portal-theta-demo-chat.properties"; }
+
+portal_config_body() {  # REGISTER LINE
+    printf 'mode=portal-only\n%s\nportalSocketFile=%s' "$1" "$portal_socket_file"
+}
+
+run_portal() {
+    local name="$1" verb="$2"; shift 2
+    # shellcheck disable=SC2086
+    ( env -u NODE_9_REGISTER_TOPIC_NAME -u NODE_9_REGISTER_TOPIC_ID \
+      -u MY_AGENT_NAME -u MY_PROJECT_NAME -u MY_PROJECT_HOME ${EXTRA_ENV:-} \
+      CHAT_SHELL_CLI="$stub" STUB_DIR="$stub_dir" \
+      CHAT_MCP_STDIO="$adapter_stub" ADAPTER_DIR="$adapter_dir" \
+      XDG_CONFIG_HOME="$portal_home" HOME="$config_home_dir" \
+      NODE9_SECRETS_DIR="$secrets_dir" NODE9_SECRETS_FILE="$work/secrets.env" \
+      CHAT_REGISTER_DEADLINE_MS="${DEADLINE_MS:-30000}" \
+      "$wrapper" "$verb" --agent Theta --project demo-chat "$@" ) \
+        > "$work/$name.out" 2> "$work/$name.err" < "$work/input"
+    status_of=$?
+}
+
+# adapter_read_reply  One successful read result line.
+adapter_read_reply() {
+    jq -cn '{jsonrpc:"2.0",id:2,result:{structuredContent:
+        {status:0,lines:[{type:"record",id:"m1",topic:"lobby",text:"x"}],complete:true},
+        content:[{type:"text",text:"{}"}]}}'
+}
+
+# adapter_one_line_reply TYPE  One successful write result line.
+adapter_one_line_reply() {
+    jq -cn --arg type "$1" '{jsonrpc:"2.0",id:2,result:{structuredContent:
+        {status:0,lines:[({type:$type} + {key:"proof-key"})],complete:true},
+        content:[{type:"text",text:"{}"}]}}'
+}
+
+# adapter_error_reply CODE  One failed result line.
+adapter_error_reply() {
+    jq -cn --arg code "$1" '{jsonrpc:"2.0",id:2,result:{isError:true,
+        structuredContent:{error:{code:$code,message:"the portal answered"},
+        status:null,complete:false}}}'
+}
+
+# Equal names pass: the config selector matches the environment selector.
+write_portal_config "$(portal_config_body 'registerName=demo-chat-register')"
+reset_adapter; reset_stub; adapter_read_reply > "$adapter_dir/reply"
+EXTRA_ENV='NODE_9_REGISTER_TOPIC_NAME=demo-chat-register' \
+    run_portal t_portal_names read
+if [[ "$status_of" -eq 0 ]] && [[ "$(adapter_calls)" -eq 1 ]] \
+   && grep -q '"chat_read_register"' "$adapter_dir/request.1"; then
+    ok 'portal_read_uses_equal_names'
+else
+    bad 'portal_read_uses_equal_names' \
+        "status=$status_of adapter=$(adapter_calls) err=$(cat "$work/t_portal_names.err")"
+fi
+
+# The portal path needs no --as.
+if [[ "$status_of" -eq 0 ]]; then
+    ok 'portal_read_needs_no_as'
+else
+    bad 'portal_read_needs_no_as' "status=$status_of"
+fi
+
+# Equal ids pass.
+write_portal_config "$(portal_config_body 'registerId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')"
+reset_adapter; reset_stub; adapter_read_reply > "$adapter_dir/reply"
+EXTRA_ENV='NODE_9_REGISTER_TOPIC_ID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' \
+    run_portal t_portal_ids read
+if [[ "$status_of" -eq 0 ]] && [[ "$(adapter_calls)" -eq 1 ]]; then
+    ok 'portal_read_uses_equal_ids'
+else
+    bad 'portal_read_uses_equal_ids' \
+        "status=$status_of err=$(cat "$work/t_portal_ids.err")"
+fi
+
+# A config name against an environment id stops with 2 and names both.
+write_portal_config "$(portal_config_body 'registerName=demo-chat-register')"
+reset_adapter; reset_stub
+EXTRA_ENV='NODE_9_REGISTER_TOPIC_ID=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' \
+    run_portal t_portal_mixed read
+if [[ "$status_of" -eq 2 && "$(adapter_calls)" -eq 0 ]] \
+   && grep -q 'cannot compare a register name with a register id' "$work/t_portal_mixed.err"; then
+    ok 'portal_stops_on_a_mixed_selector'
+else
+    bad 'portal_stops_on_a_mixed_selector' \
+        "status=$status_of adapter=$(adapter_calls) err=$(cat "$work/t_portal_mixed.err")"
+fi
+
+# A config that holds both keys stops with 1.
+write_portal_config "$(portal_config_body 'registerName=a
+registerId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')"
+reset_adapter; reset_stub
+run_portal t_portal_both read
+if [[ "$status_of" -eq 1 && "$(adapter_calls)" -eq 0 ]]; then
+    ok 'portal_stops_on_a_config_with_both_keys'
+else
+    bad 'portal_stops_on_a_config_with_both_keys' "status=$status_of"
+fi
+
+# A missing socket file falls back for read, and the one-shot path runs.
+write_portal_config "$(printf 'mode=portal-only\nregisterName=demo-chat-register\nportalSocketFile=%s' "$work/absent-socket")"
+reset_adapter; reset_stub; stub_reply "$(message_record m1 lobby 2026-10-28T00:00:00Z x)"
+run_portal t_portal_fallback read --as Theta
+if [[ "$status_of" -eq 0 && "$(calls)" -eq 1 && "$(adapter_calls)" -eq 0 ]] \
+   && grep -q 'register: portal unavailable, using the one-shot login' "$work/t_portal_fallback.err"; then
+    ok 'a_missing_socket_falls_back_for_read'
+else
+    bad 'a_missing_socket_falls_back_for_read' \
+        "status=$status_of calls=$(calls) adapter=$(adapter_calls) err=$(cat "$work/t_portal_fallback.err")"
+fi
+
+# A missing socket file stops for open.
+reset_adapter; reset_stub
+run_portal t_portal_open_absent open proof-key proof-entry 'Proof entry' --as Theta
+if [[ "$status_of" -eq 1 && "$(calls)" -eq 0 && "$(adapter_calls)" -eq 0 ]]; then
+    ok 'a_missing_socket_stops_for_open'
+else
+    bad 'a_missing_socket_stops_for_open' \
+        "status=$status_of calls=$(calls) err=$(cat "$work/t_portal_open_absent.err")"
+fi
+
+# A transport failure stops for post, and the one-shot path never runs.
+write_portal_config "$(portal_config_body 'registerName=demo-chat-register')"
+printf '%s' "$portal_socket" > "$portal_socket_file"
+reset_adapter; reset_stub; adapter_error_reply UNAVAILABLE > "$adapter_dir/reply"
+printf 'proof text\n' > "$work/input"
+run_portal t_portal_post_transport post proof-key --as Theta
+if [[ "$status_of" -eq 1 && "$(calls)" -eq 0 ]] \
+   && ! grep -q 'one-shot login' "$work/t_portal_post_transport.err"; then
+    ok 'a_transport_failure_stops_for_post'
+else
+    bad 'a_transport_failure_stops_for_post' \
+        "status=$status_of calls=$(calls) err=$(cat "$work/t_portal_post_transport.err")"
+fi
+
+# A refused post maps INVALID_INPUT to status 2.
+reset_adapter; reset_stub; adapter_error_reply INVALID_INPUT > "$adapter_dir/reply"
+printf 'proof text\n' > "$work/input"
+run_portal t_portal_post_invalid post proof-key --as Theta
+if [[ "$status_of" -eq 2 && "$(calls)" -eq 0 ]]; then
+    ok 'a_refused_post_maps_invalid_input_to_2'
+else
+    bad 'a_refused_post_maps_invalid_input_to_2' \
+        "status=$status_of err=$(cat "$work/t_portal_post_invalid.err")"
+fi
+
+# The open call carries the key, the short name, and the title.
+reset_adapter; reset_stub; adapter_one_line_reply open > "$adapter_dir/reply"
+run_portal t_portal_open open proof-key proof-entry 'Proof entry' --as Theta
+if [[ "$status_of" -eq 0 ]] && [[ "$(adapter_calls)" -eq 1 ]] \
+   && grep -q '"chat_open_register_entry"' "$adapter_dir/request.1" \
+   && grep -q '"short":"proof-entry"' "$adapter_dir/request.1"; then
+    ok 'portal_open_calls_the_adapter'
+else
+    bad 'portal_open_calls_the_adapter' \
+        "status=$status_of adapter=$(adapter_calls) req=$(cat "$adapter_dir/request.1" 2>/dev/null)"
+fi
+
+# The post call carries the entry text.
+reset_adapter; reset_stub; adapter_one_line_reply post > "$adapter_dir/reply"
+printf 'proof entry text\n' > "$work/input"
+run_portal t_portal_post post proof-key --as Theta
+if [[ "$status_of" -eq 0 ]] && [[ "$(adapter_calls)" -eq 1 ]] \
+   && grep -q '"chat_post_register_entry"' "$adapter_dir/request.1" \
+   && grep -q 'proof entry text' "$adapter_dir/request.1"; then
+    ok 'portal_post_calls_the_adapter'
+else
+    bad 'portal_post_calls_the_adapter' \
+        "status=$status_of adapter=$(adapter_calls) req=$(cat "$adapter_dir/request.1" 2>/dev/null)"
+fi
+
+# A user selection is ignored, and the command says so.
+reset_adapter; reset_stub; adapter_read_reply > "$adapter_dir/reply"
+run_portal t_portal_as read --as Theta
+if [[ "$status_of" -eq 0 ]] \
+   && grep -q 'register: user selection is ignored when connected through portal' \
+        "$work/t_portal_as.err"; then
+    ok 'portal_warns_that_as_is_ignored'
+else
+    bad 'portal_warns_that_as_is_ignored' \
+        "status=$status_of err=$(cat "$work/t_portal_as.err")"
+fi
+
+# An absent config keeps the one-shot path, with no portal warning.
+rm -f "$portal_dir/mcp-portal-theta-demo-chat.properties"
+reset_adapter; reset_stub; stub_reply "$(message_record m1 lobby 2026-10-28T00:00:00Z x)"
+EXTRA_ENV='NODE_9_REGISTER_TOPIC_NAME=demo-chat-register' \
+    run_portal t_no_config read --as Theta
+if [[ "$status_of" -eq 0 && "$(calls)" -eq 1 && "$(adapter_calls)" -eq 0 ]] \
+   && ! grep -q 'portal' "$work/t_no_config.err"; then
+    ok 'an_absent_config_keeps_the_one_shot_path'
+else
+    bad 'an_absent_config_keeps_the_one_shot_path' \
+        "status=$status_of calls=$(calls) adapter=$(adapter_calls)"
 fi
 
 # -- Summary ------------------------------------------------------------
