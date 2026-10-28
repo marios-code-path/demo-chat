@@ -193,6 +193,7 @@ portal_exit_status() {
         WRITE_FAILED|NOT_OPEN|BUSY) printf '1\n' ;;
         UNCONFIRMED) printf '75\n' ;;
         TIMEOUT) printf '124\n' ;;
+        ADAPTER_ERROR) printf '1\n' ;;
         *) printf '1\n' ;;
     esac
 }
@@ -272,6 +273,30 @@ run_portal_tool() {
     line="$(jq -c 'select(.id == 2)' "$reply" 2> /dev/null | head -n 1)"
     if [[ -z "$line" ]]; then
         portal_code='UNAVAILABLE'
+        return 0
+    fi
+    # A protocol failure carries no portal code. Reject it here, so a failed
+    # call never looks like an empty success. See CHAT-lmwuxiiq.
+    if jq -e 'has("error")' > /dev/null 2>&1 <<< "$line"; then
+        portal_code='ADAPTER_ERROR'
+        portal_error="$(jq -r '.error.message // empty' <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter answered an error'
+        return 0
+    fi
+    if ! jq -e '.result | has("structuredContent")' > /dev/null 2>&1 <<< "$line"; then
+        portal_error="$(jq -r '.result.content[0].text // empty' \
+            <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter answered no structured content'
+        portal_code='ADAPTER_ERROR'
+        return 0
+    fi
+    if jq -e '.result.isError == true' > /dev/null 2>&1 <<< "$line" \
+       && ! jq -e '.result.structuredContent.error.code // empty | length > 0' \
+            > /dev/null 2>&1 <<< "$line"; then
+        portal_code='ADAPTER_ERROR'
+        portal_error="$(jq -r '.result.content[0].text // empty' \
+            <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter refused the call'
         return 0
     fi
     portal_code="$(jq -r '.result.structuredContent.error.code // empty' \

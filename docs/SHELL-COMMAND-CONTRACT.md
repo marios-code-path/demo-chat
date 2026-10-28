@@ -755,6 +755,8 @@ ignores `--as` on the portal path, and it writes one stderr line:
 |---|---|---|
 | The socket file is absent or empty. | The one-shot path runs. The command writes `register: portal unavailable, using the one-shot login`. | The command stops with status `1`. |
 | The adapter answers `UNAVAILABLE`. | The one-shot path runs, with the same line. | The command stops with status `1`. |
+| The adapter answers a JSON-RPC error. | The command stops with status `1`. | The command stops with status `1`. |
+| The reply holds no structured content. | The command stops with status `1`. | The command stops with status `1`. |
 | Any other error code. | The command stops. | The command stops. |
 
 A read that falls back uses the config selector, so the one-shot read needs a
@@ -772,6 +774,11 @@ to one status:
 | `BUSY` | 1 |
 | `TIMEOUT` | 124 |
 | `UNAVAILABLE` | 1, or the fallback row above |
+| `ADAPTER_ERROR` | 1 |
+
+`ADAPTER_ERROR` is a local code. The wrapper uses it for a JSON-RPC error, a
+reply with no structured content, and a refusal with no error code. The
+adapter never sends it.
 
 The wrapper budget is 30 seconds, and `CHAT_REGISTER_DEADLINE_MS` overrides
 it. The adapter client deadline is 35 seconds. The wrapper waits at most the

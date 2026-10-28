@@ -282,6 +282,9 @@ A successful post returns one line with `type` `post`, `key`, `topic`,
 Both tools refuse an unknown argument before they open a socket.
 An unknown argument sets `isError` to true and reports `no argument named '<name>'`.
 An invalid value sets `isError` to true and names the broken rule.
+These refusals carry text content alone and no structured content.
+A caller must read `isError`, and it must treat a missing structured content
+as a failure.
 The portal request frame holds at most 32768 bytes, including the newline.
 
 Error codes:

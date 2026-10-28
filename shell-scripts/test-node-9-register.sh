@@ -1353,6 +1353,51 @@ else
         "status=$status_of err=$(cat "$work/t_portal_post_invalid.err")"
 fi
 
+# A JSON-RPC error is a failure. The read never answers success, and the
+# one-shot path never runs. See CHAT-lmwuxiiq.
+write_portal_config "$(portal_config_body 'registerName=demo-chat-register')"
+printf '%s' "$portal_socket" > "$portal_socket_file"
+reset_adapter; reset_stub
+jq -cn '{jsonrpc:"2.0",id:2,error:{code:-32603,message:"the adapter failed"}}' \
+    > "$adapter_dir/reply"
+run_portal t_portal_rpc_error read --as Theta
+if [[ "$status_of" -eq 1 && "$(calls)" -eq 0 ]] \
+   && [[ ! -s "$work/t_portal_rpc_error.out" ]] \
+   && grep -q 'the adapter failed' "$work/t_portal_rpc_error.err"; then
+    ok 'a_json_rpc_error_stops_the_read'
+else
+    bad 'a_json_rpc_error_stops_the_read' \
+        "status=$status_of calls=$(calls) out=$(cat "$work/t_portal_rpc_error.out") err=$(cat "$work/t_portal_rpc_error.err")"
+fi
+
+# A tool refusal carries no structured content. It is a failure too.
+reset_adapter; reset_stub
+jq -cn '{jsonrpc:"2.0",id:2,result:{isError:true,
+    content:[{type:"text",text:"the key argument is empty"}]}}' \
+    > "$adapter_dir/reply"
+run_portal t_portal_no_structured read --as Theta
+if [[ "$status_of" -eq 1 && "$(calls)" -eq 0 ]] \
+   && grep -q 'the key argument is empty' "$work/t_portal_no_structured.err"; then
+    ok 'a_refusal_without_structured_content_stops'
+else
+    bad 'a_refusal_without_structured_content_stops' \
+        "status=$status_of calls=$(calls) err=$(cat "$work/t_portal_no_structured.err")"
+fi
+
+# A write stops on a JSON-RPC error, and it never falls back.
+printf 'proof text\n' > "$work/input"
+reset_adapter; reset_stub
+jq -cn '{jsonrpc:"2.0",id:2,error:{code:-32603,message:"the adapter failed"}}' \
+    > "$adapter_dir/reply"
+run_portal t_portal_post_rpc post proof-key --as Theta
+if [[ "$status_of" -eq 1 && "$(calls)" -eq 0 ]] \
+   && ! grep -q 'one-shot login' "$work/t_portal_post_rpc.err"; then
+    ok 'a_json_rpc_error_stops_the_post'
+else
+    bad 'a_json_rpc_error_stops_the_post' \
+        "status=$status_of calls=$(calls) err=$(cat "$work/t_portal_post_rpc.err")"
+fi
+
 # The open call carries the key, the short name, and the title.
 reset_adapter; reset_stub; adapter_one_line_reply open > "$adapter_dir/reply"
 run_portal t_portal_open open proof-key proof-entry 'Proof entry' --as Theta
