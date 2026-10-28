@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+# Keep one shell portal on a tunnel to CHAT_PORTAL_HOST.
+# setup-portal supplies paths for each agent and project.
+set -euo pipefail
+umask 077
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${CHAT_SHELL_REPO:-}" ]]; then
+    repo="$(cd "$CHAT_SHELL_REPO" && pwd)"
+else
+    repo="$(cd "$script_dir/.." && pwd)"
+fi
+if [[ -n "${NODE_9_BIN:-}" ]]; then
+    node9_bin="$(cd "$NODE_9_BIN" && pwd -P)"
+elif [[ -f "$script_dir/../.installed" ]]; then
+    node9_bin="$script_dir"
+else
+    node9_bin="$repo/node-9/bin"
+fi
+host="${CHAT_PORTAL_HOST:-}"
+[[ "$host" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
+    printf 'chat-shell-portal-tunnel: set CHAT_PORTAL_HOST to a host name.\n' >&2
+    exit 2
+}
+host_label="${host%%.*}"
+tunnel="$node9_bin/node-9-tunnel"
+tcp_check="$node9_bin/isTCPOpen"
+installed_cli="$node9_bin/chat-shell-cli"
+source_portal="$repo/shell-scripts/chat-shell-portal"
+user="${CHAT_SHELL_USER:-Sigma}"
+password_file="${CHAT_SHELL_PASSWORD_FILE:-$node9_bin/../secrets/$user.password}"
+password_temp=
+state="${CHAT_PORTAL_STATE_DIR:-${HOME:?set HOME}/.local/state/demo-chat/${host_label}-portal}"
+socket_dir="${CHAT_PORTAL_SOCKET_DIR:-/tmp/chat-portal-$UID}"
+socket="$socket_dir/p"
+runtime_lib="${CHAT_SHELL_LIB:-$node9_bin/../lib}"
+
+fail() {
+    printf 'chat-shell-portal-tunnel: %s\n' "$1" >&2
+    exit 1
+}
+
+trap 'if [[ -n "$password_temp" ]]; then rm -f "$password_temp"; fi' EXIT
+
+process_command() {
+    ps -p "$1" -o command= 2>/dev/null || true
+}
+
+portal_is_running() {
+    [[ -s "$state/portal.pid" ]] || return 1
+    local pid command
+    pid="$(cat "$state/portal.pid")"
+    command="$(process_command "$pid")"
+    [[ "$command" == *"-Dchat.shell.portal.socket=$socket"* ]]
+}
+
+tunnel_is_running() {
+    [[ -s "$state/tunnel.pid" ]] || return 1
+    local pid command
+    pid="$(cat "$state/tunnel.pid")"
+    command="$(process_command "$pid")"
+    [[ "$command" == *"-- $host"* && "$command" == *"127.0.0.1:6890"* ]]
+}
+
+# Print the process that holds this socket path, when one answers.
+# A stale file holds no reader, so this check keeps another portal's socket.
+#
+# Exit 0 names an owner. Exit 1 means no process holds the path. Exit 2 means
+# the probe failed, so the path is not provably free. Only exit 1 allows a
+# removal, because a failed probe cannot clear another portal's socket.
+socket_owner() {
+    local pid output status=0
+    [[ -e "$socket" ]] || return 1
+    if [[ -s "$state/portal.pid" ]]; then
+        pid="$(cat "$state/portal.pid")"
+        if [[ "$(process_command "$pid")" == *"-Dchat.shell.portal.socket=$socket"* ]]; then
+            printf '%s\n' "$pid"
+            return 0
+        fi
+    fi
+    command -v pgrep >/dev/null 2>&1 || return 2
+    output="$(pgrep -f -- "-Dchat.shell.portal.socket=$socket" 2>/dev/null)" || status=$?
+    (( status == 0 || status == 1 )) || return 2
+    pid="${output%%$'\n'*}"
+    if [[ -n "$pid" ]]; then
+        printf '%s\n' "$pid"
+        return 0
+    fi
+    return 1
+}
+
+stop_pid() {
+    local pid="$1" marker="$2" command waited=0
+    [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+    command="$(process_command "$pid")"
+    [[ "$command" == *"$marker"* ]] || return 0
+    kill -TERM "$pid" 2>/dev/null || return 0
+    while kill -0 "$pid" 2>/dev/null && (( waited < 25 )); do
+        sleep 0.2
+        waited=$(( waited + 1 ))
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+        command="$(process_command "$pid")"
+        [[ "$command" == *"$marker"* ]] && kill -KILL "$pid" 2>/dev/null || true
+    fi
+}
+
+stop_all() {
+    local owner_status=0
+    if [[ -s "$state/portal.pid" ]]; then
+        stop_pid "$(cat "$state/portal.pid")" "-Dchat.shell.portal.socket=$socket"
+        rm -f "$state/portal.pid"
+    fi
+    if [[ -s "$state/tunnel.pid" ]]; then
+        stop_pid "$(cat "$state/tunnel.pid")" "-- $host"
+        rm -f "$state/tunnel.pid"
+    fi
+    # Remove the socket only when no process holds the path. A portal that
+    # another state directory started keeps its socket. A failed probe keeps
+    # it too, because the path is then not provably free.
+    if [[ -e "$socket" ]]; then
+        owner_status=0
+        socket_owner >/dev/null || owner_status=$?
+        if (( owner_status == 1 )); then
+            rm -f "$socket"
+        fi
+    fi
+}
+
+choose_offset() {
+    local offset
+    if [[ -n "${CHAT_PORTAL_OFFSET:-}" ]]; then
+        offset="$CHAT_PORTAL_OFFSET"
+        [[ "$offset" =~ ^[0-9]+$ ]] && (( offset % 100 == 0 && offset <= 32700 )) \
+            || fail 'CHAT_PORTAL_OFFSET must be a multiple of 100 from 0 to 32700.'
+        "$tcp_check" "$((6890 + offset))" "$((6891 + offset))" "$((6892 + offset))" \
+            >/dev/null && { printf '%s\n' "$offset"; return; }
+        fail "ports for offset $offset are in use."
+    fi
+    for (( offset = 0; offset <= 32700; offset += 100 )); do
+        if "$tcp_check" "$((6890 + offset))" "$((6891 + offset))" "$((6892 + offset))" \
+            >/dev/null 2>&1; then
+            printf '%s\n' "$offset"
+            return
+        fi
+    done
+    fail 'no free tunnel port set is available.'
+}
+
+action="${1:-start}"
+case "$action" in
+    start)
+        [[ -x "$tunnel" && -x "$tcp_check" ]] \
+            || fail "node-9 tools are missing. Set NODE_9_BIN to their bin directory."
+        if [[ -x "$installed_cli" ]]; then
+            portal="$installed_cli"
+            portal_mode=installed
+        elif [[ -x "$source_portal" ]]; then
+            portal="$source_portal"
+            portal_mode=source
+            runtime_lib="${CHAT_SHELL_LIB:-$repo/lib}"
+        else
+            fail 'no installed shell CLI or source portal launcher is available.'
+        fi
+        if [[ "$portal_mode" == installed ]]; then
+            [[ -d "$runtime_lib" ]] || fail "the installed CLI library is missing at $runtime_lib."
+        else
+            [[ -s "$repo/chat-deploy/target/shell-cli.classpath" || -d "$runtime_lib" ]] \
+                || fail 'build the shell CLI first with just build-shell-cli.'
+        fi
+        mkdir -p "$state" "$socket_dir"
+        chmod 700 "$state" "$socket_dir"
+        if portal_is_running; then
+            fail 'the portal is already running. Use status or stop first.'
+        fi
+        if tunnel_is_running; then
+            fail 'the tunnel is already running. Use status or stop first.'
+        fi
+        if [[ "${CHAT_SHELL_PASSWORD+x}" == x ]]; then
+            [[ -z "${CHAT_SHELL_PASSWORD_FILE:-}" ]] \
+                || fail 'set CHAT_SHELL_PASSWORD or CHAT_SHELL_PASSWORD_FILE, not both.'
+            [[ -n "$CHAT_SHELL_PASSWORD" ]] || fail 'CHAT_SHELL_PASSWORD is empty.'
+            password_temp="$state/password.$$.tmp"
+            ( umask 077; printf '%s' "$CHAT_SHELL_PASSWORD" > "$password_temp" ) \
+                || fail 'cannot create the temporary password file.'
+            chmod 600 "$password_temp"
+            password_file="$password_temp"
+            unset CHAT_SHELL_PASSWORD
+        else
+            [[ -r "$password_file" ]] || fail "cannot read password file $password_file."
+        fi
+        # An operator checks an existing path before removal. A socket that a
+        # live portal holds is not stale, so this start refuses it.
+        if [[ -e "$socket" ]]; then
+            owner=''
+            owner_status=0
+            owner="$(socket_owner)" || owner_status=$?
+            if (( owner_status == 0 )); then
+                fail "socket $socket belongs to process $owner. Use status or stop first."
+            fi
+            if (( owner_status != 1 )); then
+                fail "cannot check the owner of socket $socket. Use status or stop first."
+            fi
+            rm -f "$socket"
+        fi
+        offset="$(choose_offset)"
+        tunnel_pid="$("$tunnel" "$host" "$offset" true)" \
+            || fail 'the persistent tunnel did not start.'
+        [[ "$tunnel_pid" =~ ^[0-9]+$ ]] || fail 'the tunnel returned an invalid process id.'
+        printf '%s\n' "$tunnel_pid" > "$state/tunnel.pid"
+        printf '%s\n' "$offset" > "$state/offset"
+        CORE_PORT=$((6890 + offset)) CORE_MGMT_PORT=$((6891 + offset)) \
+            CHAT_SHELL_KEY_TYPE=uuid CHAT_SHELL_NODE_ID=9 CHAT_SHELL_MODE=portal \
+            CHAT_SHELL_USER="$user" CHAT_SHELL_PASSWORD_FILE="$password_file" \
+            CHAT_SHELL_PORTAL_SOCKET="$socket" CHAT_SHELL_LOG="$state/application.log" \
+            nohup "$portal" </dev/null >>"$state/portal-output.log" 2>&1 &
+        portal_pid=$!
+        printf '%s\n' "$portal_pid" > "$state/portal.pid"
+        for _ in {1..100}; do
+            if [[ -S "$socket" ]] && portal_is_running; then
+                if [[ -n "$password_temp" ]]; then
+                    rm -f "$password_temp"
+                    password_temp=
+                fi
+                printf 'portal ready: user=%s socket=%s core_port=%s pid=%s tunnel_pid=%s\n' \
+                    "$user" "$socket" "$((6890 + offset))" "$portal_pid" "$tunnel_pid"
+                exit 0
+            fi
+            if ! kill -0 "$portal_pid" 2>/dev/null; then
+                stop_all
+                fail "the portal exited. See $state/application.log and $state/portal-output.log."
+            fi
+            sleep 0.1
+        done
+        stop_all
+        fail "the portal did not create its socket. See $state/application.log and $state/portal-output.log."
+        ;;
+    stop)
+        [[ -d "$state" ]] || exit 0
+        stop_all
+        printf 'portal and tunnel stopped\n'
+        ;;
+    status)
+        # Name the part that runs. A start refuses when either part runs, so a
+        # bare "not running" would send an operator back to a refused start.
+        if ! portal_is_running && ! tunnel_is_running; then
+            printf 'portal or tunnel is not running\n'
+            exit 1
+        fi
+        if ! portal_is_running; then
+            printf 'tunnel is running but the portal is not\n'
+            exit 1
+        fi
+        if ! tunnel_is_running; then
+            printf 'portal is running but the tunnel is not\n'
+            exit 1
+        fi
+        if [[ ! -S "$socket" ]]; then
+            printf 'portal and tunnel are running but the socket is missing: %s\n' "$socket"
+            exit 1
+        fi
+        printf 'portal and tunnel are running: socket=%s\n' "$socket"
+        exit 0
+        ;;
+    *)
+        printf 'usage: %s [start|stop|status]\n' "$0" >&2
+        exit 2
+        ;;
+esac

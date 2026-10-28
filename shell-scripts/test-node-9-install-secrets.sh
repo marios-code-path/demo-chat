@@ -147,6 +147,11 @@ stable_owner="$(dirname "$home")/vault/owner.yml"
 pass_file="$cfg_a/chat-node-9/vault-pass"
 if [[ $status -eq 0 \
       && -f "$stable_shared" && -f "$stable_owner" && -f "$pass_file" \
+      && -x "$home/bin/chat-shell-portal" \
+      && -x "$home/bin/chat-shell-portal-tunnel" \
+      && -x "$home/bin/chat-mcp-stdio" \
+      && -x "$home/bin/generate-agent-instructions" \
+      && -x "$home/bin/setup-portal" \
       && "$(mode_of "$stable_shared")" == '600' \
       && "$(mode_of "$stable_owner")" == '600' \
       && "$(mode_of "$pass_file")" == '600' \

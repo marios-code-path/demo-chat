@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    printf 'usage: %s AGENT PROJECT [start|stop|status]\n' "${0##*/}"
+    cat <<'EOF'
+AGENT selects the portal login. PROJECT names its state and socket paths.
+The default action is start. Stop and status do not need a password.
+
+Authentication:
+  CHAT_SHELL_PASSWORD_FILE  Read a password from this file.
+                            Default: NODE_9_BIN/../secrets/AGENT.password.
+  CHAT_SHELL_PASSWORD       Read a password from this environment variable.
+                            The helper writes a temporary file with mode 600.
+  Do not set both password variables.
+  SSH uses the configured identity for CHAT_PORTAL_HOST.
+
+Portal and tunnel settings:
+  CHAT_PORTAL_HOST           SSH destination. Default: node2.lan.
+  CHAT_PORTAL_OFFSET         Local port offset. Default: first free set.
+                             Use a multiple of 100 from 0 to 32700.
+  NODE_9_BIN                 Node-9 bin directory. Default: this installed bin.
+                             Source checkout default: /opt/demo-chat/node-9/bin.
+  CHAT_SHELL_LIB             Shell runtime jars. Installed default: node-9/lib.
+                             Source default: repository lib.
+  CHAT_SHELL_REPO            Source checkout for a source portal launcher.
+  CHAT_SHELL_JAVA            Java executable for the shell portal.
+  CHAT_TUNNEL_SSH            SSH executable. Default: ssh.
+  CHAT_TUNNEL_READY_SECONDS  Tunnel startup limit. Default: 10 seconds.
+
+The command sets CHAT_SHELL_USER from AGENT.
+It sets CHAT_PORTAL_STATE_DIR from PROJECT, the host label, and AGENT.
+It sets CHAT_PORTAL_SOCKET_DIR from PROJECT, the user ID, and AGENT.
+
+Example:
+  CHAT_SHELL_PASSWORD_FILE=/path/to/password-file setup-portal Mario demo-chat
+  setup-portal Mario demo-chat status
+  setup-portal Mario demo-chat stop
+EOF
+}
+
+case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+esac
+if (( $# < 2 || $# > 3 )) || [[ -z "$1" || -z "$2" ]]; then
+    usage >&2
+    exit 2
+fi
+
+action="${3:-start}"
+case "$action" in
+    start|stop|status) ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+agent="$1"
+project="$2"
+[[ "$agent" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]] || {
+    printf 'setup-portal: AGENT must contain letters, numbers, underscores, or hyphens.\n' >&2
+    exit 2
+}
+[[ "$project" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] || {
+    printf 'setup-portal: PROJECT must contain letters, numbers, underscores, or hyphens.\n' >&2
+    exit 2
+}
+host="${CHAT_PORTAL_HOST:-node2.lan}"
+[[ "$host" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
+    printf 'setup-portal: CHAT_PORTAL_HOST must be a host name.\n' >&2
+    exit 2
+}
+host_label="${host%%.*}"
+script_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+if [[ -n "${NODE_9_BIN:-}" ]]; then
+    node9_bin="$(cd "$NODE_9_BIN" && pwd -P)"
+elif [[ -f "$script_bin/../.installed" ]]; then
+    node9_bin="$script_bin"
+else
+    node9_bin=/opt/demo-chat/node-9/bin
+fi
+helper="$script_bin/chat-shell-portal-tunnel"
+if [[ ! -x "$helper" ]]; then
+    helper="$script_bin/../../shell-scripts/chat-shell-portal-tunnel"
+fi
+[[ -x "$helper" ]] || {
+    printf 'setup-portal: chat-shell-portal-tunnel is missing.\n' >&2
+    exit 1
+}
+
+NODE_9_BIN="$node9_bin" CHAT_PORTAL_HOST="$host" \
+CHAT_SHELL_USER="$agent" \
+CHAT_PORTAL_STATE_DIR="${HOME:?set HOME}/.local/state/${project}/${host_label}-portal-${agent}" \
+CHAT_PORTAL_SOCKET_DIR="/tmp/${project}-portal-${UID}-${agent}" \
+exec "$helper" "$action"
+

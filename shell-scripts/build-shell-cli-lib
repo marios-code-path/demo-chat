@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build the shell CLI runtime and stage it in one directory. See
+# Build the shell CLI and MCP runtimes and stage them in one directory. See
 # CHAT-bjqzvsoe.
 #
 #   build-shell-cli-lib <new-stage-directory>
 #
-# The stage holds every runtime jar and the file shell-cli.options. An
-# installed node-9 home takes that directory as its lib/. The launcher then
-# needs no repository, no Maven, and no ~/.m2.
+# The stage holds shell jars, MCP jars under mcp/, and shell-cli.options.
+# An installed node-9 home takes that directory as its lib/.
+# The launchers then need no repository, Maven, or ~/.m2.
 #
 # shell-cli.options holds two header lines, the key type and the node id, and
 # one JVM option on each later line. The options come from the launcher
@@ -143,6 +143,40 @@ done < <(find "$repo_root/chat-deploy/target" -maxdepth 1 -name '*.jar' \
     -not -name '*-exec.jar' -not -name '*-sources.jar' \
     -not -name '*-javadoc.jar' 2> /dev/null)
 rm -f "$tmp"/*-exec.jar
+
+# Stage the MCP adapter beside the shell runtime. The installed launcher reads
+# this directory without a source tree or a local Maven repository.
+if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
+    -pl chat-mcp -am -DskipTests install > "$tmp.mcp-build.log" 2>&1; then
+    rm -rf "$tmp"
+    printf 'build-shell-cli-lib: the MCP build failed. Its log is at %s\n' \
+        "$tmp.mcp-build.log" >&2
+    exit 1
+fi
+rm -f "$tmp.mcp-build.log"
+mkdir -p "$tmp/mcp"
+if ! "$mvn_command" -B -ntp -f "$repo_root/chat-mcp/pom.xml" \
+    dependency:copy-dependencies -DincludeScope=runtime \
+    -DoutputDirectory="$tmp/mcp" > "$tmp.mcp-copy.log" 2>&1; then
+    rm -rf "$tmp"
+    printf 'build-shell-cli-lib: the MCP dependency copy failed. Its log is at %s\n' \
+        "$tmp.mcp-copy.log" >&2
+    exit 1
+fi
+rm -f "$tmp.mcp-copy.log"
+# The MCP build writes the module jar under chat-mcp/target. A test points this
+# name at a fixture, so the suite needs no packaged module.
+mcp_target="${CHAT_MCP_TARGET_DIR:-$repo_root/chat-mcp/target}"
+mcp_main=0
+for jar in "$mcp_target"/chat-mcp-*.jar; do
+    [[ -f "$jar" ]] || continue
+    case "$jar" in *-sources.jar|*-javadoc.jar|*-tests.jar) continue ;; esac
+    cp "$jar" "$tmp/mcp/" || { rm -rf "$tmp"; fail 'cannot copy the MCP jar'; }
+    count="$(unzip -l "$jar" 2> /dev/null | grep -c 'com/demo/chat/mcp/McpAdapterMainKt.class')"
+    (( count > 0 )) && mcp_main=$(( mcp_main + 1 ))
+done
+(( mcp_main > 0 )) || { rm -rf "$tmp"; fail 'no staged MCP jar holds McpAdapterMainKt.class'; }
+chmod 644 "$tmp/mcp"/*.jar
 
 # The frozen options come from the launcher of this tree. The print hook ends
 # before any JVM start, so this call reaches no core.

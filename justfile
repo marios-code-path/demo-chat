@@ -32,6 +32,26 @@ check-image-manifest:
 check-node-9-install-secrets:
 	./shell-scripts/test-node-9-install-secrets.sh
 
+# Check a bin-only update against a fixture home. Starts no node.
+check-node-9-bin-only:
+	./shell-scripts/test-node-9-bin-only.sh
+
+# Check the portal setup launcher against stubs. Starts no portal.
+check-setup-portal:
+	./shell-scripts/test-setup-portal.sh
+
+# Check the installed MCP adapter launcher. Starts no adapter.
+check-chat-mcp-installed:
+	./shell-scripts/test-chat-mcp-installed.sh
+
+# Check the complete-read rule against a stub adapter. Starts no adapter.
+check-chat-libs:
+	./shell-scripts/test-chat-libs.sh
+
+# Check the portal tunnel socket rules against stubs. Starts no tunnel.
+check-chat-shell-portal-tunnel:
+	./shell-scripts/test-chat-shell-portal-tunnel.sh
+
 # Check the register wrapper, the import bundle, and the prepared-host import. Starts no node.
 check-register:
 	bash shell-scripts/test-node-9-register.sh
@@ -142,8 +162,17 @@ build-shell-cli:
 	    -DincludeScope=runtime -Dmdep.outputFile="$PWD/chat-deploy/target/shell-cli.classpath"
 	echo "[build-shell-cli] Done in $SECONDS s. Run shell-scripts/chat-shell-cli."
 
-# Stage the shell CLI runtime for an installed node-9 home. The stage holds
-# every runtime jar and the frozen JVM options. node-9/install calls the same
+# Build the adapter once. An MCP client runs the stdio adapter from this classpath.
+build-mcp-stdio:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	mvn -B -ntp -pl chat-mcp -am -Dmaven.test.skip=true package
+	mvn -B -ntp -pl chat-mcp dependency:build-classpath \
+	    -DincludeScope=runtime -Dmdep.outputFile="$PWD/chat-mcp/target/mcp-runtime.classpath"
+	echo '[build-mcp-stdio] Run shell-scripts/chat-mcp-stdio --config PATH.'
+
+# Stage the shell and MCP runtimes for an installed node-9 home. The stage holds
+# their runtime jars and the frozen shell JVM options. node-9/install calls the same
 # script. See CHAT-bjqzvsoe.
 build-shell-cli-lib stage:
 	#!/usr/bin/env bash

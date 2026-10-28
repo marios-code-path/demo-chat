@@ -82,7 +82,13 @@ class PortalReadService(
             ShellExitStatus.TIMEOUT -> PortalErrorCode.TIMEOUT
             else -> PortalErrorCode.READ_FAILED
         }
-        return PortalReply(status = status.code, lines = emptyList(), complete = false, error = PortalError(code))
+        return PortalReply(
+            status = status.code,
+            lines = emptyList(),
+            complete = false,
+            error = PortalError(code),
+            detail = ShellExitStatus.messageOf(error),
+        )
     }
 
     private fun invalidOutput(): Nothing = throw PortalProtocolException(PortalErrorCode.INVALID_OUTPUT)
