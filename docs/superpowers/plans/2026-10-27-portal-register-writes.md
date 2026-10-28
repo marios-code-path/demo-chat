@@ -22,6 +22,10 @@
 - The request id rule: `^[A-Za-z0-9._:-]+$`, and `_` is refused.
 - The request id limit: 128 characters.
 - The entry text limit: 3072 UTF-8 bytes.
+- The MCP tool derives an ID when `requestId` is absent.
+- The derived ID is `auto-` plus 32 SHA-256 hex characters.
+- The hash input is the UTF-8 key, one `0x00` byte, and the UTF-8 text.
+- An explicit `requestId` overrides the derived ID.
 - The confirmation window: 10000 ms.
 - The wrapper deadline: 30000 ms.
 - A refused or uncertain write returns an error and no success line.
@@ -524,6 +528,7 @@ Add two `Tool` values with their schemas:
 
 - `chat_open_register_entry` requires `key`, `short`, `title`.
 - `chat_post_register_entry` requires `key` and `text`. `requestId` is optional.
+  The MCP tool derives a stable ID when the caller omits it.
 
 Each handler calls `refuseUnknownArguments`, checks the arguments locally, then calls the client. Each answers the same `status`, `lines`, `complete`, and `error` shape as the read tool.
 
@@ -539,7 +544,9 @@ A broken rule raises `ToolException` with a message that names the argument and 
 
 Register the write tools inside `registerPortalTool(server, config)` only when `config.portalSocket` and `config.registerName` are both present.
 
-Set `readOnlyHint = false` and `openWorldHint = true` on both. Set `idempotentHint = true` on open and `false` on post.
+Set `readOnlyHint = false` and `openWorldHint = true` on both.
+Set `idempotentHint = true` on open and post.
+The MCP post tool derives a stable ID for repeated calls without an explicit ID.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 

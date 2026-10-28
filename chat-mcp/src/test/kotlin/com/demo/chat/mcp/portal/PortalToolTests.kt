@@ -283,6 +283,15 @@ class PortalToolTests {
     }
 
     @Test
+    fun `the post tool declares safe retries`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, _ ->
+            val annotations = tools(client).getValue(POST)["annotations"]!!.jsonObject
+
+            assertEquals("true", annotations["idempotentHint"]!!.jsonPrimitiveText())
+        }
+    }
+
+    @Test
     fun `an open sends the three write fields`() {
         withPortal("""{"status":0,"lines":[{"type":"open","state":"created"}],"complete":true}""") { client, portal ->
             val reply = client.callTool(3, OPEN, """{"key":"CHAT-a","short":"snap","title":"Snapshot"}""")
@@ -353,12 +362,41 @@ class PortalToolTests {
     }
 
     @Test
-    fun `a post omits an absent request id`() {
+    fun `a post derives a stable request id when it is absent`() {
         withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
             client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
 
             val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
-            assertFalse(request.containsKey("requestId"), "the request carried a request id: ${portal.received.single()}")
+            assertEquals("auto-a7fe353f139aa685f0072f5de484a8b1", request["requestId"]?.jsonPrimitiveText())
+        }
+    }
+
+    @Test
+    fun `two posts with the same key and text send the same request id`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+            client.callTool(4, POST, """{"key":"CHAT-a","text":"hello"}""")
+
+            val ids = portal.received.map { frame ->
+                (Json.parseToJsonElement(frame) as JsonObject)["requestId"]?.jsonPrimitiveText()
+            }
+            assertEquals(2, ids.size)
+            assertTrue(ids.all { it != null }, "a post carried no request id")
+            assertEquals(ids.first(), ids.last())
+        }
+    }
+
+    @Test
+    fun `two different texts send different request ids`() {
+        withPortal("""{"status":0,"lines":[],"complete":true}""") { client, portal ->
+            client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+            client.callTool(4, POST, """{"key":"CHAT-a","text":"world"}""")
+
+            val ids = portal.received.map { frame ->
+                (Json.parseToJsonElement(frame) as JsonObject)["requestId"]?.jsonPrimitiveText()
+            }
+            assertTrue(ids.all { it != null }, "a post carried no request id")
+            assertEquals(2, ids.distinct().size)
         }
     }
 

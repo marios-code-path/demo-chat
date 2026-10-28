@@ -250,11 +250,16 @@ Arguments:
 - `key` follows the open rule.
 - `text` is nonblank and at most 3072 UTF-8 bytes.
 - `requestId` is optional and holds at most 128 characters. It matches `[A-Za-z0-9._:-]+` and is never `_`.
-  A retry with the same id adds no second entry.
+
+When `requestId` is absent, the tool derives one from the key and text.
+It uses `auto-` plus the first 32 hexadecimal characters of SHA-256.
+The hash input is the UTF-8 key, one `0x00` byte, and the UTF-8 text.
+The same key and text produce the same ID and no second entry on retry.
+An explicit `requestId` overrides the derived ID. Use a new explicit ID to post identical text again.
 
 A successful post returns one line with `type` `post`, `key`, `topic`,
 `message_id`, `command_id`, and `request_id`. The tool declares
-`idempotentHint` false.
+`idempotentHint` true for repeated calls with the same arguments.
 
 Both tools refuse an unknown argument before they open a socket.
 An unknown argument sets `isError` to true and reports `no argument named '<name>'`.
@@ -272,8 +277,9 @@ Error codes:
 | `BUSY` | none | Another request holds the portal. |
 | `UNAVAILABLE` | none | The transport failed. |
 
-A refused or uncertain write answers `isError` true and no success line. A
-retry of an uncertain post sends the same `requestId`.
+A refused or uncertain write answers `isError` true and no success line.
+Retry an uncertain post with the same key and text.
+If the first call used an explicit `requestId`, use it again.
 
 Backend names are `PERSISTENCE`, `INDEX`, `VECTOR`, and `PUBSUB`.
 Backend states are `PENDING`, `SUCCEEDED`, `FAILED`, and `UNCERTAIN`.

@@ -23,6 +23,9 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.nio.file.Path
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+import java.util.HexFormat
 import kotlin.coroutines.cancellation.CancellationException
 
 /** The name of the portal read tool. */
@@ -172,7 +175,7 @@ private val POST_ANNOTATIONS =
         title = "Post a register entry",
         readOnlyHint = false,
         destructiveHint = false,
-        idempotentHint = false,
+        idempotentHint = true,
         openWorldHint = true,
     )
 
@@ -227,7 +230,7 @@ fun registerPortalTool(server: Server, socket: Path, selector: String, registerN
             title = "Post a register entry",
             description =
                 "Post one entry to the register entry of one key through the fixed portal. " +
-                    "A request id makes a retry safe.",
+                    "The tool derives a request id when none is given, so a retry is safe.",
             inputSchema = POST_INPUT_SCHEMA,
             outputSchema = READ_OUTPUT_SCHEMA,
             annotations = POST_ANNOTATIONS,
@@ -315,7 +318,7 @@ private suspend fun postEntry(
             if (request.arguments.orEmpty().containsKey(REQUEST_ID_ARGUMENT)) {
                 requestIdArgument(requireTextArgument(request, REQUEST_ID_ARGUMENT))
             } else {
-                null
+                derivedRequestId(key, text)
             }
         val result = withContext(Dispatchers.IO) { PortalClient(socket, selector).post(key, text, requestId) }
         val lines = if (result.errorCode == null) result.lines else emptyList()
@@ -328,6 +331,15 @@ private suspend fun postEntry(
     } catch (failure: Exception) {
         refused(POST_REGISTER_ENTRY_TOOL_NAME, call, started, ToolError.internalFailure())
     }
+}
+
+/** Derive one stable request id from the key and entry text. */
+private fun derivedRequestId(key: String, text: String): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.update(key.toByteArray(StandardCharsets.UTF_8))
+    digest.update(0.toByte())
+    val hash = digest.digest(text.toByteArray(StandardCharsets.UTF_8))
+    return "auto-" + HexFormat.of().formatHex(hash).take(32)
 }
 
 /** Read one required argument as text. */
