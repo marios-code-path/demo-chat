@@ -53,10 +53,6 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$script_dir/lib.sh"
 node9_require_installed || exit 2
 
-# The register value names the index room in every shell call below. A read
-# accepts the name or the id. See CHAT-jmnjvupr.
-register="$(node9_register_value)" || exit 2
-
 # An installed copy has no repository. It takes the CLI from the caller or
 # from its own bin directory.
 if node9_installed; then
@@ -76,6 +72,8 @@ usage() {
     printf 'usage: register read [<topic>] --as <name>\n' >&2
     printf '       register open <key> <short-name> <title> --as <name>\n' >&2
     printf '       register post <key> [--requestId <id>] --as <name>\n' >&2
+    printf '       register config --agent <agent> --project <project>\n' >&2
+    printf '           (--register <name> | --register-id <id>)\n' >&2
 }
 
 fail() {
@@ -113,9 +111,91 @@ fixed CHAT_SHELL_NODE_ID 9
 export CHAT_SHELL_KEY_TYPE=uuid
 export CHAT_SHELL_NODE_ID=9
 
+# register_config ARGS...  Write the app config that the MCP adapter reads.
+# The config names one portal socket file and one register selector. The
+# command runs no shell call. See CHAT-lmwuxiiq.
+register_config() {
+    local agent='' project='' name='' id='' reason
+    local agent_key project_key config_dir target temp
+    while (( $# )); do
+        case "$1" in
+            --agent|--project|--register|--register-id)
+                [[ $# -ge 2 && -n "$2" ]] || { usage; exit 2; }
+                case "$1" in
+                    --agent) agent="$2" ;;
+                    --project) project="$2" ;;
+                    --register) name="$2" ;;
+                    --register-id) id="$2" ;;
+                esac
+                shift 2
+                ;;
+            *)
+                usage
+                exit 2
+                ;;
+        esac
+    done
+    [[ -n "$agent" ]] || fail 'the config needs --agent.' 2
+    [[ -n "$project" ]] || fail 'the config needs --project.' 2
+    [[ "$agent" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]] \
+        || fail "the agent $agent is not letters, digits, dash, or underscore." 2
+    [[ "$project" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] \
+        || fail "the project $project is not letters, digits, dash, or underscore." 2
+    # A name wins over an id. The environment supplies either one when a flag
+    # is absent. See CHAT-lmwuxiiq.
+    [[ -n "$name" ]] || name="${NODE_9_REGISTER_TOPIC_NAME:-}"
+    [[ -n "$id" ]] || id="${NODE_9_REGISTER_TOPIC_ID:-}"
+    if [[ -z "$name" && -z "$id" ]]; then
+        fail 'set --register or --register-id, or set NODE_9_REGISTER_TOPIC_NAME or NODE_9_REGISTER_TOPIC_ID.' 2
+    fi
+    if [[ -n "$name" ]]; then
+        reason="$(node9_register_name_error "$name")" || fail "$reason" 2
+    else
+        reason="$(node9_register_id_error "$id")" || fail "$reason" 2
+    fi
+    agent_key="$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')"
+    project_key="$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')"
+    config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat"
+    target="$config_dir/mcp-portal-$agent_key-$project_key.properties"
+    temp="${target}.$$.tmp"
+    mkdir -p "$config_dir" || fail "cannot create $config_dir." 1
+    chmod 700 "$config_dir" || fail "cannot set the mode of $config_dir." 1
+    if ! (
+        umask 077
+        printf 'mode=portal-only\n'
+        if [[ -n "$name" ]]; then
+            printf 'registerName=%s\n' "$name"
+        else
+            printf 'registerId=%s\n' "$id"
+        fi
+        printf 'portalSocketFile=%s\n' \
+            "$HOME/.local/state/$project_key/portal-$agent_key/socket"
+    ) > "$temp"; then
+        rm -f "$temp"
+        fail "cannot write $temp." 1
+    fi
+    chmod 600 "$temp" || { rm -f "$temp"; fail "cannot set the mode of $temp." 1; }
+    if ! mv -f "$temp" "$target"; then
+        rm -f "$temp"
+        fail "cannot write $target." 1
+    fi
+    printf '%s\n' "$target"
+}
+
 command_name="${1:-}"
 [[ -n "$command_name" ]] || { usage; exit 2; }
 shift
+
+# The config command writes a local file. It needs no register selector, no
+# user, and no shell CLI.
+if [[ "$command_name" == 'config' ]]; then
+    register_config "$@"
+    exit 0
+fi
+
+# The register value names the index room in every shell call below. A read
+# accepts the name or the id. See CHAT-jmnjvupr.
+register="$(node9_register_value)" || exit 2
 
 user=
 topic=

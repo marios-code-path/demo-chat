@@ -1066,6 +1066,113 @@ else
     bad 'fixtures_are_present' "missing $fixtures"
 fi
 
+# -- register config ----------------------------------------------------
+
+# run_config NAME ARGS...  Run the wrapper with no register selector in the
+# environment and a private config home. Status lands in $status_of.
+config_home="$work/config-home"
+config_home_dir="$work/home"
+mkdir -p "$config_home_dir"
+run_config() {
+    local name="$1"; shift
+    # shellcheck disable=SC2086
+    ( env -u NODE_9_REGISTER_TOPIC_NAME -u NODE_9_REGISTER_TOPIC_ID ${EXTRA_ENV:-} \
+      XDG_CONFIG_HOME="$config_home" HOME="$config_home_dir" \
+      "$wrapper" "$@" ) > "$work/$name.out" 2> "$work/$name.err"
+    status_of=$?
+}
+
+file_mode() {
+    perl -e 'printf "%o", (stat($ARGV[0]))[2] & 07777' "$1" 2> /dev/null || true
+}
+
+reset_stub
+run_config t_config config --agent Theta --project demo-chat --register demo-chat-register
+config_file="$config_home/demo-chat/mcp-portal-theta-demo-chat.properties"
+if [[ "$status_of" -eq 0 && -f "$config_file" ]] \
+   && grep -qx 'mode=portal-only' "$config_file" \
+   && grep -qx 'registerName=demo-chat-register' "$config_file" \
+   && grep -qx "portalSocketFile=$config_home_dir/.local/state/demo-chat/portal-theta/socket" "$config_file" \
+   && [[ "$(file_mode "$config_file")" == 600 ]] \
+   && [[ "$(file_mode "$config_home/demo-chat")" == 700 ]] \
+   && [[ "$(cat "$work/t_config.out")" == "$config_file" ]] \
+   && [[ "$(calls)" -eq 0 ]]; then
+    ok 'config_writes_the_app_config'
+else
+    bad 'config_writes_the_app_config' \
+        "status=$status_of file=$(cat "$config_file" 2>/dev/null) out=$(cat "$work/t_config.out")"
+fi
+
+reset_stub
+run_config t_config_no_selector config --agent Theta --project demo-chat
+if [[ "$status_of" -eq 2 ]] \
+   && grep -q 'set --register or --register-id' "$work/t_config_no_selector.err" \
+   && [[ "$(calls)" -eq 0 ]]; then
+    ok 'config_without_a_selector_is_status_2'
+else
+    bad 'config_without_a_selector_is_status_2' \
+        "status=$status_of err=$(cat "$work/t_config_no_selector.err")"
+fi
+
+reset_stub
+rm -f "$config_file"
+run_config t_config_uppercase config --agent Theta --project demo-chat --register Demo-Chat
+if [[ "$status_of" -eq 2 && ! -e "$config_file" ]]; then
+    ok 'config_refuses_an_uppercase_name'
+else
+    bad 'config_refuses_an_uppercase_name' "status=$status_of"
+fi
+
+reset_stub
+rm -f "$config_file"
+run_config t_config_underscore config --agent Theta --project demo-chat \
+    --register-id aaaaaaaa_bbbb_cccc_dddd_eeeeeeeeeeee
+if [[ "$status_of" -eq 2 && ! -e "$config_file" ]]; then
+    ok 'config_refuses_an_underscore_id'
+else
+    bad 'config_refuses_an_underscore_id' "status=$status_of"
+fi
+
+reset_stub
+long_name="$(printf 'a%.0s' {1..38})"
+run_config t_config_long config --agent Theta --project demo-chat --register "$long_name"
+if [[ "$status_of" -eq 2 ]] \
+   && grep -q 'passes 37 characters' "$work/t_config_long.err"; then
+    ok 'config_refuses_a_38_character_name'
+else
+    bad 'config_refuses_a_38_character_name' \
+        "status=$status_of err=$(cat "$work/t_config_long.err")"
+fi
+
+reset_stub
+run_config t_config_id config --agent Theta --project demo-chat \
+    --register-id aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+if [[ "$status_of" -eq 0 ]] \
+   && grep -qx 'registerId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' "$config_file" \
+   && ! grep -q '^registerName=' "$config_file"; then
+    ok 'config_writes_a_uuid_id'
+else
+    bad 'config_writes_a_uuid_id' "status=$status_of file=$(cat "$config_file" 2>/dev/null)"
+fi
+
+reset_stub
+run_config t_config_both config --agent Theta --project demo-chat \
+    --register demo-chat-register --register-id aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+if [[ "$status_of" -eq 0 ]] \
+   && grep -qx 'registerName=demo-chat-register' "$config_file"; then
+    ok 'config_prefers_a_name_over_an_id'
+else
+    bad 'config_prefers_a_name_over_an_id' "status=$status_of file=$(cat "$config_file" 2>/dev/null)"
+fi
+
+reset_stub
+run_config t_config_no_agent config --project demo-chat --register demo-chat-register
+if [[ "$status_of" -eq 2 ]] && [[ "$(calls)" -eq 0 ]]; then
+    ok 'config_needs_an_agent'
+else
+    bad 'config_needs_an_agent' "status=$status_of err=$(cat "$work/t_config_no_agent.err")"
+fi
+
 # -- Summary ------------------------------------------------------------
 
 printf '\n%d checks, %d failures\n' "$checks" "$failures"
