@@ -205,7 +205,8 @@ portal_status=
 portal_error=
 portal_lines=
 run_portal_tool() {
-    local tool="$1" arguments="$2" launcher reply budget budget_s pid timer line
+    local tool="$1" arguments="$2" launcher reply budget pid timer line
+    local done_file stop_at
     if [[ -n "${CHAT_MCP_STDIO:-}" ]]; then
         launcher="$CHAT_MCP_STDIO"
     elif [[ -x "$NODE9_DIR/bin/chat-mcp-stdio" ]]; then
@@ -229,20 +230,45 @@ run_portal_tool() {
          params:{name:$tool,arguments:$arguments}}' > "$work/portal-request" \
         || fail 'cannot encode the portal request.' 1
     budget="$(remaining_ms)"
-    printf -v budget_s '%d.%03d' $(( budget / 1000 )) $(( budget % 1000 ))
-    "$launcher" --config "$portal_config" \
-        < "$work/portal-request" > "$reply" 2> "$work/portal-err" &
-    pid=$!
+    # The adapter exits when standard input reaches end of file. So the
+    # wrapper writes the request and keeps the stream open until the id:2
+    # reply arrives, or until the budget passes. See CHAT-lmwuxiiq.
+    done_file="$work/portal-done"
+    rm -f "$done_file"
+    stop_at=$(( $(now_ms) + budget ))
     (
-        sleep "$budget_s"
-        kill -TERM -- "$pid" 2> /dev/null
-        sleep 0.2
-        kill -KILL -- "$pid" 2> /dev/null
-    ) &
-    timer=$!
-    wait "$pid"
-    kill "$timer" 2> /dev/null
-    wait "$timer" 2> /dev/null
+        cat "$work/portal-request"
+        while [[ ! -f "$done_file" ]]; do
+            sleep 0.05
+        done
+    ) | "$launcher" --config "$portal_config" \
+        > "$reply" 2> "$work/portal-err" &
+    pid=$!
+    while :; do
+        if grep -Fq '"id":2' "$reply" 2> /dev/null; then
+            break
+        fi
+        if ! kill -0 "$pid" 2> /dev/null; then
+            break
+        fi
+        (( $(now_ms) < stop_at )) || break
+        sleep 0.05
+    done
+    : > "$done_file"
+    if kill -0 "$pid" 2> /dev/null; then
+        (
+            sleep 0.5
+            kill -TERM -- "$pid" 2> /dev/null
+            sleep 0.2
+            kill -KILL -- "$pid" 2> /dev/null
+        ) &
+        timer=$!
+        wait "$pid" 2> /dev/null
+        kill "$timer" 2> /dev/null
+        wait "$timer" 2> /dev/null
+    else
+        wait "$pid" 2> /dev/null
+    fi
     line="$(jq -c 'select(.id == 2)' "$reply" 2> /dev/null | head -n 1)"
     if [[ -z "$line" ]]; then
         portal_code='UNAVAILABLE'

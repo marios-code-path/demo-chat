@@ -1192,7 +1192,9 @@ count=0
 [[ -f "$dir/count" ]] && count="$(cat "$dir/count")"
 count=$((count + 1))
 printf '%s\n' "$count" > "$dir/count"
-cat > "$dir/request.$count"
+# The request is three lines. The adapter answers as the messages arrive, and
+# it does not wait for end of input.
+head -n 3 > "$dir/request.$count"
 cat "$dir/reply" 2> /dev/null || true
 exit "${ADAPTER_STATUS:-0}"
 STUB
@@ -1374,6 +1376,55 @@ if [[ "$status_of" -eq 0 ]] && [[ "$(adapter_calls)" -eq 1 ]] \
 else
     bad 'portal_post_calls_the_adapter' \
         "status=$status_of adapter=$(adapter_calls) req=$(cat "$adapter_dir/request.1" 2>/dev/null)"
+fi
+
+# The adapter exits when standard input reaches end of file, so the wrapper
+# must keep the stream open until the id:2 reply arrives. This stub answers
+# the initialize call at once, and it reports a closed stream as a failure.
+hold_stub="$stub_dir/chat-mcp-hold-stdio"
+cat > "$hold_stub" <<'STUB'
+#!/usr/bin/env bash
+set -uo pipefail
+dir="${ADAPTER_DIR:?Set ADAPTER_DIR}"
+count=0
+[[ -f "$dir/count" ]] && count="$(cat "$dir/count")"
+count=$((count + 1))
+printf '%s\n' "$count" > "$dir/count"
+IFS= read -r -t 2 first || true
+printf '%s\n' "$first" >> "$dir/first.$count"
+printf '{"jsonrpc":"2.0","id":1,"result":{}}\n'
+sleep 0.4
+# Drain the rest of the request. A read that times out proves an open stream.
+rc=0
+while :; do
+    IFS= read -r -t 0.2 extra
+    rc=$?
+    (( rc > 0 )) && break
+done
+if (( rc > 128 )); then
+    printf '%s\n' '{"jsonrpc":"2.0","id":2,"result":{"structuredContent":{"status":0,"lines":[{"type":"record","id":"m1","topic":"lobby","text":"x"}],"complete":true}}}'
+    exit 0
+fi
+exit 9
+STUB
+chmod +x "$hold_stub"
+reset_adapter; reset_stub
+write_portal_config "$(portal_config_body 'registerName=demo-chat-register')"
+( env -u NODE_9_REGISTER_TOPIC_NAME -u NODE_9_REGISTER_TOPIC_ID \
+  -u MY_AGENT_NAME -u MY_PROJECT_NAME -u MY_PROJECT_HOME \
+  CHAT_SHELL_CLI="$stub" STUB_DIR="$stub_dir" \
+  CHAT_MCP_STDIO="$hold_stub" ADAPTER_DIR="$adapter_dir" \
+  XDG_CONFIG_HOME="$portal_home" HOME="$config_home_dir" \
+  NODE9_SECRETS_DIR="$secrets_dir" NODE9_SECRETS_FILE="$work/secrets.env" \
+  "$wrapper" read --agent Theta --project demo-chat ) \
+    > "$work/t_portal_hold.out" 2> "$work/t_portal_hold.err" < /dev/null
+status_of=$?
+if [[ "$status_of" -eq 0 ]] && [[ "$(adapter_calls)" -eq 1 ]] \
+   && jq -e 'select(.type == "record")' "$work/t_portal_hold.out" > /dev/null 2>&1; then
+    ok 'portal_keeps_the_adapter_stream_open'
+else
+    bad 'portal_keeps_the_adapter_stream_open' \
+        "status=$status_of out=$(head -1 "$work/t_portal_hold.out") err=$(cat "$work/t_portal_hold.err")"
 fi
 
 # A user selection is ignored, and the command says so.
