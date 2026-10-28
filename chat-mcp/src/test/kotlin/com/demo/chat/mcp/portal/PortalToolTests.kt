@@ -95,13 +95,27 @@ class PortalToolTests {
     private fun config(
         backend: FakeTopicBackend,
         portal: FakePortal,
+        registerName: String = "register-index",
     ): AdapterConfig =
         testConfig(
             origin = backend.origin,
             topicIds = listOf(LongId(11)),
             portalSocket = portal.path,
-            registerName = "register-index",
+            registerName = registerName,
         )
+
+    /** Answer the request id that one derived post sends for [register]. */
+    private fun derivedIdFor(register: String): String? =
+        FakeTopicBackend().use { backend ->
+            FakePortal("""{"status":0,"lines":[],"complete":true}""").use { portal ->
+                StdioHarness(config(backend, portal, register)).use { client ->
+                    client.initialize()
+                    client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
+                    val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
+                    request["requestId"]?.jsonPrimitiveText()
+                }
+            }
+        }
 
     private fun tools(client: StdioHarness): Map<String, JsonObject> =
         client.listTools(2)["tools"]!!.jsonArray.associate { element ->
@@ -367,7 +381,7 @@ class PortalToolTests {
             client.callTool(3, POST, """{"key":"CHAT-a","text":"hello"}""")
 
             val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
-            assertEquals("auto-a7fe353f139aa685f0072f5de484a8b1", request["requestId"]?.jsonPrimitiveText())
+            assertEquals("auto-bc1aa3c82ccc3d4c04f90f0ac4afeab3", request["requestId"]?.jsonPrimitiveText())
         }
     }
 
@@ -384,6 +398,15 @@ class PortalToolTests {
             assertTrue(ids.all { it != null }, "a post carried no request id")
             assertEquals(ids.first(), ids.last())
         }
+    }
+
+    @Test
+    fun `a post in another register sends a different request id`() {
+        val first = derivedIdFor("register-index")
+        val second = derivedIdFor("register-two")
+
+        assertTrue(first != null && second != null, "a post carried no request id")
+        assertTrue(first != second, "two registers shared the request id $first")
     }
 
     @Test

@@ -337,7 +337,7 @@ private suspend fun postEntry(
             if (request.arguments.orEmpty().containsKey(REQUEST_ID_ARGUMENT)) {
                 requestIdArgument(requireTextArgument(request, REQUEST_ID_ARGUMENT))
             } else {
-                derivedRequestId(key, text)
+                derivedRequestId(selector, key, text)
             }
         val result = withContext(Dispatchers.IO) { PortalClient(source.resolve(), selector).post(key, text, requestId) }
         val lines = if (result.errorCode == null) result.lines else emptyList()
@@ -356,9 +356,17 @@ private suspend fun postEntry(
     }
 }
 
-/** Derive one stable request id from the key and entry text. */
-private fun derivedRequestId(key: String, text: String): String {
+/**
+ * Derive one stable request id from the register, the key, and the entry text.
+ *
+ * The register is part of the input. The core refuses a request id that already
+ * names a message in another topic. The same key and text in another register is
+ * another message, so the id must differ. A retry in one register keeps its id.
+ */
+private fun derivedRequestId(selector: String, key: String, text: String): String {
     val digest = MessageDigest.getInstance("SHA-256")
+    digest.update(selector.toByteArray(StandardCharsets.UTF_8))
+    digest.update(0.toByte())
     digest.update(key.toByteArray(StandardCharsets.UTF_8))
     digest.update(0.toByte())
     val hash = digest.digest(text.toByteArray(StandardCharsets.UTF_8))

@@ -266,10 +266,11 @@ Arguments:
 - `text` is nonblank and at most 3072 UTF-8 bytes.
 - `requestId` is optional and holds at most 128 characters. It matches `[A-Za-z0-9._:-]+` and is never `_`.
 
-When `requestId` is absent, the tool derives one from the key and text.
+When `requestId` is absent, the tool derives one from the register, the key, and the text.
 It uses `auto-` plus the first 32 hexadecimal characters of SHA-256.
-The hash input is the UTF-8 key, one `0x00` byte, and the UTF-8 text.
-The same key and text produce the same ID and no second entry on retry.
+The hash input is the UTF-8 register selector, one `0x00` byte, the UTF-8 key, one `0x00` byte, and the UTF-8 text.
+The same register, key, and text produce the same ID and no second entry on retry.
+The register is part of the input, because the core refuses a request ID that names a message in another topic.
 An explicit `requestId` overrides the derived ID. Use a new explicit ID to post identical text again.
 A replay answers the receipt of the first post. Compare `message_id` and `command_id` across replies.
 The post reply has no `state` field.

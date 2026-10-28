@@ -181,19 +181,33 @@ class PortalWriteService(
 
     private fun success(line: JsonNode): PortalReply = PortalReply(status = 0, lines = listOf(line), complete = true)
 
-    private fun failure(code: PortalErrorCode, status: Int): PortalReply =
-        PortalReply(status = status, lines = emptyList(), complete = false, error = PortalError(code))
+    private fun failure(code: PortalErrorCode, status: Int, detail: String? = null): PortalReply =
+        PortalReply(status = status, lines = emptyList(), complete = false, error = PortalError(code), detail = detail)
 
+    /**
+     * Run one write. A failure keeps its cause in `detail`, which reaches the
+     * portal diagnostic only. The operator needs the reason, because a write
+     * failure carries no other text. See CHAT-lmwuxiiq.
+     */
     private fun attempt(block: () -> PortalReply): PortalReply =
         try {
             block()
         } catch (refused: PortalProtocolException) {
-            failure(refused.code, if (refused.code == PortalErrorCode.INVALID_INPUT) ShellExitStatus.USAGE.code else ShellExitStatus.FAILED.code)
+            failure(
+                refused.code,
+                if (refused.code == PortalErrorCode.INVALID_INPUT) ShellExitStatus.USAGE.code else ShellExitStatus.FAILED.code,
+                refused.reason,
+            )
         } catch (refused: WriteRefusal) {
-            failure(refused.code, refused.status)
-        } catch (_: Exception) {
-            failure(PortalErrorCode.WRITE_FAILED, ShellExitStatus.FAILED.code)
+            failure(refused.code, refused.status, refused.message)
+        } catch (error: Exception) {
+            failure(PortalErrorCode.WRITE_FAILED, ShellExitStatus.FAILED.code, describe(error))
         }
+
+    /** Name the type and the message of an unexpected failure. */
+    private fun describe(error: Exception): String =
+        error.message?.takeIf { it.isNotBlank() }?.let { "${error.javaClass.simpleName}: $it" }
+            ?: error.javaClass.simpleName
 
     private fun malformed(): WriteRefusal =
         WriteRefusal("a pointer is not in the form <key> | <topic> | <metadata> | <title>")

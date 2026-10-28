@@ -112,7 +112,9 @@ run_register() {
         "$register_cmd" "$@"
 }
 
-printf '# Proof register\n\nThe portal path creates this register.\n\n## Proof entry\n\nOne entry for the portal proof.\n' \
+# The imported section key must not collide with the short name in step 6.
+# register-create mints one topic per section: <register>-fr-<key>.
+printf '# Proof register\n\nThe portal path creates this register.\n\n## Imported section\n\nOne entry for the portal proof.\n' \
     > "$fixture"
 
 # 1. Start one portal.
@@ -163,7 +165,7 @@ ok 'config_written'
 run_register read --agent Theta --project demo-chat \
     > "$proof_root/read.out" 2> "$proof_root/read.err" \
     || fail "the portal read failed. See $proof_root/read.err"
-jq -e 'select(.type == "record")' "$proof_root/read.out" > /dev/null \
+jq -e 'any(.[]; .type == "record")' --slurp "$proof_root/read.out" > /dev/null \
     || fail 'the portal read printed no record'
 ok 'portal_read=ok'
 
@@ -181,7 +183,7 @@ printf 'Proof text through the portal.\n' \
     | run_register post proof-key --agent Theta --project demo-chat \
         > "$proof_root/post.out" 2> "$proof_root/post.err" \
     || fail "the post failed. See $proof_root/post.err"
-jq -e 'select(.type == "post")' "$proof_root/post.out" > /dev/null \
+jq -e 'any(.[]; .type == "post")' --slurp "$proof_root/post.out" > /dev/null \
     || fail 'the post printed no post line'
 ok 'portal_write=ok'
 
@@ -189,8 +191,8 @@ ok 'portal_write=ok'
 run_register read --agent Theta --project demo-chat \
     > "$proof_root/read2.out" 2> "$proof_root/read2.err" \
     || fail "the second read failed. See $proof_root/read2.err"
-jq -e 'select(.type == "record") | .text | test("proof-key")' \
-    "$proof_root/read2.out" > /dev/null \
+jq -e 'any(.[]; .type == "record" and (.text | test("proof-key")))' \
+    --slurp "$proof_root/read2.out" > /dev/null \
     || fail 'the second read holds no pointer'
 ok 'portal_readback=ok'
 
@@ -236,5 +238,7 @@ grep -q 'register: portal unavailable, using the one-shot login' \
     || fail 'the fallback read called no shell'
 ok 'fallback=ok'
 
+# The proof root goes at exit, so print the ownership record for RECORD.md.
+sed 's/^/ownership: /' "$proof_root/ownership.txt"
 printf 'portal_read=ok portal_write=ok fallback=ok\n'
 printf 'register=%s\n' "$register_name"
