@@ -1384,6 +1384,21 @@ else
         "status=$status_of calls=$(calls) err=$(cat "$work/t_portal_no_structured.err")"
 fi
 
+# An incomplete reply with no error code is a failure. The wrapper never
+# reports it as an empty success. See CHAT-lmwuxiiq.
+reset_adapter; reset_stub
+jq -cn '{jsonrpc:"2.0",id:2,result:{structuredContent:
+    {status:0,lines:[],complete:false},content:[{type:"text",text:"{}"}]}}' \
+    > "$adapter_dir/reply"
+run_portal t_portal_incomplete read --as Theta
+if [[ "$status_of" -eq 1 && "$(calls)" -eq 0 ]] \
+   && [[ ! -s "$work/t_portal_incomplete.out" ]]; then
+    ok 'an_incomplete_reply_stops_the_read'
+else
+    bad 'an_incomplete_reply_stops_the_read' \
+        "status=$status_of calls=$(calls) out=$(cat "$work/t_portal_incomplete.out") err=$(cat "$work/t_portal_incomplete.err")"
+fi
+
 # A write stops on a JSON-RPC error, and it never falls back.
 printf 'proof text\n' > "$work/input"
 reset_adapter; reset_stub

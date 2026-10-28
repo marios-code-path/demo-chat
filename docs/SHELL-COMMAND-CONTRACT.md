@@ -757,6 +757,7 @@ ignores `--as` on the portal path, and it writes one stderr line:
 | The adapter answers `UNAVAILABLE`. | The one-shot path runs, with the same line. | The command stops with status `1`. |
 | The adapter answers a JSON-RPC error. | The command stops with status `1`. | The command stops with status `1`. |
 | The reply holds no structured content. | The command stops with status `1`. | The command stops with status `1`. |
+| The reply is incomplete and holds no error code. | The command stops with status `1`. | The command stops with status `1`. |
 | Any other error code. | The command stops. | The command stops. |
 
 A read that falls back uses the config selector, so the one-shot read needs a
@@ -777,8 +778,8 @@ to one status:
 | `ADAPTER_ERROR` | 1 |
 
 `ADAPTER_ERROR` is a local code. The wrapper uses it for a JSON-RPC error, a
-reply with no structured content, and a refusal with no error code. The
-adapter never sends it.
+reply with no structured content, a refusal with no error code, and an
+incomplete reply with no error code. The adapter never sends it.
 
 The wrapper budget is 30 seconds, and `CHAT_REGISTER_DEADLINE_MS` overrides
 it. The adapter client deadline is 35 seconds. The wrapper waits at most the

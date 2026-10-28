@@ -204,6 +204,7 @@ portal_exit_status() {
 portal_code=
 portal_status=
 portal_error=
+portal_complete=
 portal_lines=
 run_portal_tool() {
     local tool="$1" arguments="$2" launcher reply budget pid timer line
@@ -219,6 +220,7 @@ run_portal_tool() {
     portal_code=
     portal_status=
     portal_error=
+    portal_complete=
     portal_lines="$work/portal-lines"
     : > "$portal_lines"
     reply="$work/portal-reply"
@@ -305,6 +307,10 @@ run_portal_tool() {
         <<< "$line" 2> /dev/null)"
     portal_status="$(jq -r '.result.structuredContent.status // empty' \
         <<< "$line" 2> /dev/null)"
+    # `//` treats false as absent, so read the field by name.
+    portal_complete="$(jq -r '.result.structuredContent
+        | if has("complete") then (.complete | tostring) else "" end' \
+        <<< "$line" 2> /dev/null)"
     jq -r '.result.structuredContent.lines[]?' <<< "$line" > "$portal_lines" \
         2> /dev/null || : > "$portal_lines"
 }
@@ -317,6 +323,12 @@ portal_finish() {
     fi
     if [[ -n "$portal_status" && "$portal_status" != '0' ]]; then
         fail "the portal returned status $portal_status." "$portal_status"
+    fi
+    # An incomplete reply carries an error code. A reply without one is a
+    # failure, not an empty success. See CHAT-lmwuxiiq.
+    if [[ "$portal_complete" == 'false' ]]; then
+        portal_code='ADAPTER_ERROR'
+        fail 'the portal answered an incomplete reply' 1
     fi
     emit_typed "$portal_lines"
 }
