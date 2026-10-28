@@ -2,6 +2,7 @@ package com.demo.chat.mcp
 
 import com.demo.chat.mcp.client.JdkBackendHttp
 import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.config.McpLaunchConfig
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -32,10 +33,17 @@ private const val DEFAULT_TIMEOUT_MILLIS: Long = 15_000
  * An MCP client and one adapter, joined by two pipes.
  *
  * The client writes JSON-RPC frames to the adapter and reads the frames that
- * answer them. The adapter is the production server, so the tool surface is
- * exercised through the real transport.
+ * answer them. The harness uses the production server for HTTP or portal-only mode.
+ * Both modes use the real stdio transport.
  */
-class StdioHarness(config: AdapterConfig) : AutoCloseable {
+class StdioHarness private constructor(
+    private val adapterConfig: AdapterConfig?,
+    private val portalConfig: McpLaunchConfig.PortalOnly?,
+) : AutoCloseable {
+    constructor(config: AdapterConfig) : this(config, null)
+
+    constructor(config: McpLaunchConfig.PortalOnly) : this(null, config)
+
     private val toServer = PipedOutputStream()
     private val serverInput = PipedInputStream(toServer, PIPE_BYTES)
     private val fromServer = PipedOutputStream()
@@ -50,10 +58,9 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
      * The one transport that this adapter owns.
      *
      * The production adapter owns one transport for its process and closes it
-     * at shutdown. The harness follows that rule, so a case exercises the real
-     * transport over a real loopback backend.
+     * at shutdown. The harness follows that rule in both modes.
      */
-    private val http = JdkBackendHttp(config.backendBaseUrl)
+    private val http = adapterConfig?.let { JdkBackendHttp(it.backendBaseUrl) }
 
     init {
         val reader =
@@ -71,7 +78,11 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
         reader.isDaemon = true
         reader.start()
 
-        val server = createMcpServer(config, http)
+        val server = if (adapterConfig != null) {
+            createMcpServer(adapterConfig, requireNotNull(http))
+        } else {
+            createPortalMcpServer(requireNotNull(portalConfig))
+        }
         val transport = StdioServerTransport(serverInput.asSource().buffered(), fromServer.asSink().buffered())
         scope.launch { server.createSession(transport) }
     }
@@ -168,7 +179,7 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
         scope.cancel()
         runCatching { toServer.close() }
         runCatching { fromServer.close() }
-        http.close()
+        http?.close()
     }
 }
 
