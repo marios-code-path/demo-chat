@@ -41,7 +41,8 @@ fun lstatSocketIdentity(path: Path): SocketIdentity? =
 class PortalStartupException(message: String) : RuntimeException(message)
 
 /**
- * Serves one read-only portal request per Unix socket connection.
+ * Serves one portal request per Unix socket connection. A read reads the
+ * register. An open and a post write it.
  *
  * The parent directory must be private to the process account.
  * The portal refuses every existing socket path, including a stale socket.
@@ -54,7 +55,7 @@ class PortalStartupException(message: String) : RuntimeException(message)
 class PortalSocketServer(
     private val socket: Path,
     private val protocol: PortalProtocol,
-    private val read: (PortalRequest, Duration) -> PortalReply,
+    private val handle: (PortalRequest, Duration) -> PortalReply,
     private val deadline: Duration,
     private val halt: (Int) -> Unit,
     private val diagnostics: PrintWriter,
@@ -171,7 +172,7 @@ class PortalSocketServer(
         if (terminal.get()) return
 
         val reply = try {
-            read(request, remainingSince(acceptedAt))
+            handle(request, remainingSince(acceptedAt))
         } catch (_: Exception) {
             if (!terminal.get()) failing(client, PortalErrorCode.UNAVAILABLE, null, replied)
             return
@@ -186,7 +187,7 @@ class PortalSocketServer(
         if (failure != null) {
             failing(client, failure, null, replied)
         } else if (reply.error != null) {
-            diagnostic(reply.error.code, reply.status)
+            diagnostic(reply.error.code, reply.status, reply.detail)
         }
     }
 
@@ -295,10 +296,15 @@ class PortalSocketServer(
         runCatching { protocol.writeReply(Channels.newOutputStream(client), reply) }
     }
 
-    private fun diagnostic(code: PortalErrorCode, status: Int?) {
-        diagnostics.println("portal: ${code.name} status=${status ?: "none"}")
+    private fun diagnostic(code: PortalErrorCode, status: Int?, detail: String? = null) {
+        val head = "portal: ${code.name} status=${status ?: "none"}"
+        diagnostics.println(if (detail == null) head else "$head detail=${oneLine(detail)}")
         diagnostics.flush()
     }
+
+    /** Collapse the cause to one bounded line, so a stack text cannot forge a second diagnostic. */
+    private fun oneLine(detail: String): String =
+        detail.replace(WHITESPACE, " ").trim().take(DETAIL_LIMIT)
 
     private fun closeQuietly(target: AutoCloseable?) {
         runCatching { target?.close() }
@@ -340,6 +346,8 @@ class PortalSocketServer(
         const val HARD_STOP_MILLIS = 1000L
         const val DRAIN_MILLIS = 200L
         const val DRAIN_LIMIT = 4096
+        const val DETAIL_LIMIT = 200
+        val WHITESPACE = Regex("\\s+")
         val SHARED_PERMISSIONS = setOf(
             PosixFilePermission.GROUP_READ,
             PosixFilePermission.GROUP_WRITE,

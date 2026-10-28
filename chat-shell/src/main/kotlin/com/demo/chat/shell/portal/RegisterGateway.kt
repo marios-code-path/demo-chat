@@ -10,8 +10,8 @@ import java.time.Duration
  * Each call maps to one shell command. See CHAT-secgyzgg.
  */
 interface RegisterGateway {
-    /** Read the pointer index. A denied index answers a `denied-index` warning line. */
-    fun readIndex(deadline: Duration): List<JsonNode>
+    /** Read the pointer index of [register]. A denied index answers a `denied-index` warning line. */
+    fun readIndex(register: String, deadline: Duration): List<JsonNode>
 
     /** Join one room by name. */
     fun join(topic: String)

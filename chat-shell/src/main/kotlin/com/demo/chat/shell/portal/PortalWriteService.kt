@@ -14,7 +14,6 @@ import java.util.UUID
  * error and no success line. See CHAT-secgyzgg.
  */
 class PortalWriteService(
-    private val register: String,
     private val gateway: RegisterGateway,
     private val mapper: ObjectMapper,
     private val confirmWindow: Duration = Duration.ofSeconds(10),
@@ -30,10 +29,11 @@ class PortalWriteService(
      * answers `exists` with the winner's pointer.
      */
     fun open(request: PortalRequest, deadline: Duration): PortalReply = attempt {
+        val register = request.index
         val key = PortalWriteRules.requireKey(request.key)
         val short = PortalWriteRules.requireShort(request.short)
         val title = PortalWriteRules.requireTitle(request.title)
-        val pointers = readPointers(deadline)
+        val pointers = readPointers(register, deadline)
 
         earliestFor(pointers, key)?.let { pointer ->
             gateway.join(pointer.topic)
@@ -53,7 +53,7 @@ class PortalWriteService(
             gateway.addRoom(newTopic)
         } catch (_: Exception) {
             // A concurrent open may have added the pointer first.
-            val after = readPointers(deadline)
+            val after = readPointers(register, deadline)
             val winner = earliestFor(after, key)
                 ?: throw WriteRefusal("the topic create of $newTopic failed")
             return@attempt success(openLine("exists", key, winner))
@@ -64,7 +64,7 @@ class PortalWriteService(
         val postedId = receiptText(receipt, "messageId")
             ?: throw WriteRefusal("the pointer post returned no message id", ShellExitStatus.NOT_CONFIRMED.code)
 
-        val after = readPointers(deadline)
+        val after = readPointers(register, deadline)
         val earliest = earliestFor(after, key)
             ?: throw WriteRefusal("the index readback does not show pointer $postedId", ShellExitStatus.NOT_CONFIRMED.code)
         val state = if (earliest.id == postedId) "created" else "exists"
@@ -78,10 +78,11 @@ class PortalWriteService(
      * read never shows answers `UNCONFIRMED` with status 75.
      */
     fun post(request: PortalRequest, deadline: Duration): PortalReply = attempt {
+        val register = request.index
         val key = PortalWriteRules.requireKey(request.key)
         val text = PortalWriteRules.requireText(request.text)
         val requestId = PortalWriteRules.requireRequestId(request.requestId) ?: newRequestId()
-        val pointers = readPointers(deadline)
+        val pointers = readPointers(register, deadline)
         val pointer = earliestFor(pointers, key)
             ?: throw WriteRefusal(
                 "no pointer for $key. Run register open first",
@@ -121,17 +122,17 @@ class PortalWriteService(
     }
 
     /** Read the index and apply the denial rule of `node-9/bin/register`. */
-    private fun readPointers(deadline: Duration): List<Pointer> {
-        val lines = gateway.readIndex(deadline)
-        if (lines.none(::isDenial)) return parse(lines)
+    private fun readPointers(register: String, deadline: Duration): List<Pointer> {
+        val lines = gateway.readIndex(register, deadline)
+        if (lines.none(::isDenial)) return parse(register, lines)
         gateway.join(register)
-        val again = gateway.readIndex(deadline)
+        val again = gateway.readIndex(register, deadline)
         if (again.any(::isDenial)) throw WriteRefusal("the register index was denied")
-        return parse(again)
+        return parse(register, again)
     }
 
-    /** Split the index records into pointers of this register. */
-    private fun parse(lines: List<JsonNode>): List<Pointer> =
+    /** Split the index records into pointers of one register. */
+    private fun parse(register: String, lines: List<JsonNode>): List<Pointer> =
         lines.filter { isRecord(it) && recordText(it, "topic") == register }.map { line ->
             val id = recordText(line, "id") ?: throw malformed()
             val timestamp = recordText(line, "timestamp") ?: throw malformed()

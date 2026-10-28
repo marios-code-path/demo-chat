@@ -1,5 +1,7 @@
 package com.demo.chat.test.portal
 
+import com.demo.chat.shell.portal.OPEN_REGISTER_ENTRY
+import com.demo.chat.shell.portal.POST_REGISTER_ENTRY
 import com.demo.chat.shell.portal.PortalError
 import com.demo.chat.shell.portal.PortalErrorCode
 import com.demo.chat.shell.portal.PortalProtocol
@@ -90,13 +92,13 @@ class PortalSocketServerTests {
     private inner class Running(
         val deadline: Duration = Duration.ofSeconds(2),
         val identityOf: (Path) -> SocketIdentity? = ::lstatSocketIdentity,
-        val read: (PortalRequest, Duration) -> PortalReply = { _, _ -> okReply() },
+        val handle: (PortalRequest, Duration) -> PortalReply = { _, _ -> okReply() },
         val diagnostics: PrintWriter = writer(),
     ) : AutoCloseable {
         val path = socket()
         val halts = CopyOnWriteArrayList<Int>()
         private val executor = Executors.newSingleThreadExecutor()
-        val server = PortalSocketServer(path, protocol, read, deadline, { halts += it }, diagnostics, identityOf)
+        val server = PortalSocketServer(path, protocol, handle, deadline, { halts += it }, diagnostics, identityOf)
 
         init {
             server.bind()
@@ -220,7 +222,7 @@ class PortalSocketServerTests {
     fun `an oversized reply gets output too large`() {
         val huge = mapper.createObjectNode().put("type", "record").put("text", "x".repeat(4_194_304))
 
-        Running(read = { _, _ -> PortalReply(0, listOf(huge), true) }).use { running ->
+        Running(handle = { _, _ -> PortalReply(0, listOf(huge), true) }).use { running ->
             val frame = frameOf(exchange(running.path, request))
 
             assertThat(frame["status"].isNull).isTrue()
@@ -235,7 +237,7 @@ class PortalSocketServerTests {
         val release = CountDownLatch(1)
         val reads = AtomicInteger()
 
-        Running(read = { _, _ ->
+        Running(handle = { _, _ ->
             reads.incrementAndGet()
             started.countDown()
             release.await()
@@ -258,7 +260,7 @@ class PortalSocketServerTests {
     fun `sequential requests each receive a reply`() {
         val reads = AtomicInteger()
 
-        Running(read = { _, _ ->
+        Running(handle = { _, _ ->
             reads.incrementAndGet()
             okReply()
         }).use { running ->
@@ -275,7 +277,7 @@ class PortalSocketServerTests {
     fun `a protocol failure does not suppress the next reply`() {
         val reads = AtomicInteger()
 
-        Running(read = { _, _ ->
+        Running(handle = { _, _ ->
             reads.incrementAndGet()
             okReply()
         }).use { running ->
@@ -399,5 +401,65 @@ class PortalSocketServerTests {
         val text = captured.toString(StandardCharsets.UTF_8)
         assertThat(text).contains("INVALID_INPUT")
         assertThat(text).doesNotContain("secret-marker")
+    }
+
+    @Test
+    fun `a failed read names its cause on the one diagnostic line`() {
+        val captured = ByteArrayOutputStream()
+        val diagnostics = PrintWriter(captured, true, StandardCharsets.UTF_8)
+        val failed = PortalReply(
+            status = 1,
+            lines = emptyList(),
+            complete = false,
+            error = PortalError(PortalErrorCode.READ_FAILED),
+            detail = "the index topic is missing\nsecond line",
+        )
+
+        Running(handle = { _, _ -> failed }, diagnostics = diagnostics).use { running ->
+            exchange(running.path, request)
+        }
+
+        val lines = captured.toString(StandardCharsets.UTF_8).lines().filter { it.isNotBlank() }
+        assertThat(lines).containsExactly("portal: READ_FAILED status=1 detail=the index topic is missing second line")
+    }
+
+    @Test
+    fun `the server serves an open request`() {
+        val open = mapper.readTree("""{"type":"open","state":"created","key":"CHAT-a","topic":"register-index-fr-snap","pointer_id":"m1"}""")
+
+        Running(handle = { request, _ ->
+            if (request.operation == OPEN_REGISTER_ENTRY) PortalReply(0, listOf(open), true)
+            else PortalReply(2, emptyList(), false, PortalError(PortalErrorCode.INVALID_INPUT))
+        }).use { running ->
+            val frame = frameOf(
+                exchange(
+                    running.path,
+                    """{"operation":"open-register-entry","index":"register-index","key":"CHAT-a","short":"snap","title":"Snapshot"}""" + "\n",
+                ),
+            )
+
+            assertThat(frame["status"].intValue()).isZero()
+            assertThat(frame["lines"][0]["type"].textValue()).isEqualTo("open")
+        }
+    }
+
+    @Test
+    fun `the server serves a post request`() {
+        val post = mapper.readTree("""{"type":"post","key":"CHAT-a","topic":"register-index-fr-snap","message_id":"m2"}""")
+
+        Running(handle = { request, _ ->
+            if (request.operation == POST_REGISTER_ENTRY) PortalReply(0, listOf(post), true)
+            else PortalReply(2, emptyList(), false, PortalError(PortalErrorCode.INVALID_INPUT))
+        }).use { running ->
+            val frame = frameOf(
+                exchange(
+                    running.path,
+                    """{"operation":"post-register-entry","index":"register-index","key":"CHAT-a","text":"hello","requestId":"r-1"}""" + "\n",
+                ),
+            )
+
+            assertThat(frame["status"].intValue()).isZero()
+            assertThat(frame["lines"][0]["type"].textValue()).isEqualTo("post")
+        }
     }
 }

@@ -245,7 +245,6 @@ class PortalWriteServiceTests {
 
     private fun service(gateway: FakeGateway): PortalWriteService =
         PortalWriteService(
-            register = "register-index",
             gateway = gateway,
             mapper = mapper,
             pause = { gateway.advance(it) },
@@ -285,7 +284,7 @@ class PortalWriteServiceTests {
             now += millis
         }
 
-        override fun readIndex(deadline: Duration): List<JsonNode> {
+        override fun readIndex(register: String, deadline: Duration): List<JsonNode> {
             reads += 1
             val readable = !(denied && joined && !denyAfterJoin)
             val lines = if (readable) index(reads).toMutableList() else mutableListOf()
