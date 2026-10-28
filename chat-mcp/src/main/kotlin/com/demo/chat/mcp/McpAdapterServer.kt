@@ -4,6 +4,7 @@ import com.demo.chat.mcp.client.BackendHttp
 import com.demo.chat.mcp.client.TopicClient
 import com.demo.chat.mcp.client.MessagingClient
 import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.config.McpLaunchConfig
 import com.demo.chat.mcp.portal.registerPortalTool
 import com.demo.chat.mcp.tool.TopicToolService
 import com.demo.chat.mcp.tool.registerTopicTools
@@ -35,17 +36,26 @@ const val MCP_SERVER_VERSION: String = "0.0.1"
  * this function, and no caller could close it.
  */
 fun createMcpServer(config: AdapterConfig, http: BackendHttp): Server {
-    val server =
-        Server(
-            Implementation(name = MCP_SERVER_NAME, version = MCP_SERVER_VERSION),
-            ServerOptions(
-                capabilities = ServerCapabilities(
-                    tools = ServerCapabilities.Tools(listChanged = true),
-                ),
-            ),
-        )
+    val server = newMcpServer()
     registerTopicTools(server, TopicToolService(config, TopicClient(config, http)))
     registerMessagingTools(server, MessagingToolService(config, MessagingClient(config, http)), config.enableSend)
     registerPortalTool(server, config)
     return server
 }
+
+/** Build a server that exposes the fixed register read alone. */
+fun createPortalMcpServer(config: McpLaunchConfig.PortalOnly): Server =
+    newMcpServer().also {
+        registerPortalTool(it, config.portalSocket, config.registerSelector, config.registerName)
+    }
+
+/** Create the common MCP tool transport declaration. */
+private fun newMcpServer(): Server =
+    Server(
+        Implementation(name = MCP_SERVER_NAME, version = MCP_SERVER_VERSION),
+        ServerOptions(
+            capabilities = ServerCapabilities(
+                tools = ServerCapabilities.Tools(listChanged = true),
+            ),
+        ),
+    )
