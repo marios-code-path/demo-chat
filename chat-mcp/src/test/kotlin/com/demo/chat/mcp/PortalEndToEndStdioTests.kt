@@ -28,6 +28,9 @@ import java.util.concurrent.atomic.AtomicInteger
 /** The tool under test. */
 private const val TOOL: String = "chat_read_register"
 
+/** The write tool of the end-to-end proof. */
+private const val OPEN_TOOL: String = "chat_open_register_entry"
+
 /** The reply of a complete empty read. */
 private const val DEFAULT_REPLY: String = """{"status":0,"lines":[],"complete":true}"""
 
@@ -193,6 +196,29 @@ class PortalEndToEndStdioTests {
             assertEquals("TIMEOUT", structured["error"]!!.jsonObject["code"]!!.jsonPrimitiveText())
             assertEquals("false", structured["complete"]!!.jsonPrimitiveText())
             assertTrue(structured["lines"]!!.jsonArray.isEmpty(), "a failed read kept partial lines")
+        }
+    }
+
+    @Test
+    fun `an open reaches the portal and returns its line`() {
+        val reply =
+            """{"status":0,"lines":[{"type":"open","state":"created","key":"CHAT-a",""" +
+                """"topic":"register-index-fr-snap","pointer_id":"m1"}],"complete":true}"""
+
+        withPath(listOf(reply)) { client, portal ->
+            val answer = client.callTool(3, OPEN_TOOL, """{"key":"CHAT-a","short":"snap","title":"Snapshot"}""")
+
+            assertFalse(client.isError(answer))
+            val line = client.structuredOf(answer)["lines"]!!.jsonArray.single().jsonObject
+            assertEquals("open", line["type"]!!.jsonPrimitiveText())
+            assertEquals("created", line["state"]!!.jsonPrimitiveText())
+
+            val request = Json.parseToJsonElement(portal.received.single()) as JsonObject
+            assertEquals("open-register-entry", request["operation"]!!.jsonPrimitiveText())
+            assertEquals("register-index", request["index"]!!.jsonPrimitiveText())
+            assertEquals("CHAT-a", request["key"]!!.jsonPrimitiveText())
+            assertEquals("snap", request["short"]!!.jsonPrimitiveText())
+            assertEquals("Snapshot", request["title"]!!.jsonPrimitiveText())
         }
     }
 
