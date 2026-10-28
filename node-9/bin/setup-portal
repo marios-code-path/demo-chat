@@ -90,5 +90,6 @@ NODE_9_BIN="$node9_bin" CHAT_PORTAL_HOST="$host" \
 CHAT_SHELL_USER="$agent" \
 CHAT_PORTAL_STATE_DIR="${HOME:?set HOME}/.local/state/${project}/${host_label}-portal-${agent}" \
 CHAT_PORTAL_SOCKET_DIR="/tmp/${project}-portal-${UID}-${agent}" \
+CHAT_PORTAL_SOCKET_FILE="${HOME}/.local/state/$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')/portal-$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')/socket" \
 exec "$helper" "$action"
 

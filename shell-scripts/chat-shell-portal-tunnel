@@ -33,6 +33,7 @@ password_temp=
 state="${CHAT_PORTAL_STATE_DIR:-${HOME:?set HOME}/.local/state/demo-chat/${host_label}-portal}"
 socket_dir="${CHAT_PORTAL_SOCKET_DIR:-/tmp/chat-portal-$UID}"
 socket="$socket_dir/p"
+socket_file="${CHAT_PORTAL_SOCKET_FILE:-}"
 runtime_lib="${CHAT_SHELL_LIB:-$node9_bin/../lib}"
 
 fail() {
@@ -123,6 +124,13 @@ stop_all() {
         socket_owner >/dev/null || owner_status=$?
         if (( owner_status == 1 )); then
             rm -f "$socket"
+        fi
+    fi
+    # Publish no path for a portal that no longer runs. A file that names
+    # another socket belongs to another portal, so it stays.
+    if [[ -n "$socket_file" && -f "$socket_file" ]]; then
+        if [[ "$(sed -n '1p' "$socket_file")" == "$socket" ]]; then
+            rm -f "$socket_file"
         fi
     fi
 }
@@ -221,6 +229,11 @@ case "$action" in
                 if [[ -n "$password_temp" ]]; then
                     rm -f "$password_temp"
                     password_temp=
+                fi
+                if [[ -n "$socket_file" ]]; then
+                    mkdir -p "$(dirname "$socket_file")"
+                    chmod 700 "$(dirname "$socket_file")"
+                    ( umask 077; printf '%s\n' "$socket" > "$socket_file" )
                 fi
                 printf 'portal ready: user=%s socket=%s core_port=%s pid=%s tunnel_pid=%s\n' \
                     "$user" "$socket" "$((6890 + offset))" "$portal_pid" "$tunnel_pid"

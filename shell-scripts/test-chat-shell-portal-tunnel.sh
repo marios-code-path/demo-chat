@@ -28,6 +28,10 @@ mkdir -p "$state" "$socket_dir" "$lib" "$bin"
 cat > "$bin/ps" <<'STUB'
 #!/usr/bin/env bash
 pid="${2:-}"
+if [[ -n "${FAKE_PS_PORTAL_ANY:-}" ]]; then
+    printf -- '-Dchat.shell.portal.socket=%s\n' "${FAKE_PS_SOCKET:-}"
+    exit 0
+fi
 if [[ -n "${FAKE_PS_PORTAL_PID:-}" && "$pid" == "$FAKE_PS_PORTAL_PID" ]]; then
     printf -- '-Dchat.shell.portal.socket=%s\n' "${FAKE_PS_SOCKET:-}"
     exit 0
@@ -198,6 +202,84 @@ if [[ "$code" != 0 && "$(cat "$fixture/stdout")" == *'socket'* ]]; then
 else
     bad 'status_names_a_missing_socket' \
         "exit $code, stdout: $(cat "$fixture/stdout")"
+fi
+
+# A successful start publishes the live socket path.
+portal_repo="$fixture/portal-repo"
+mkdir -p "$portal_repo/shell-scripts" "$portal_repo/chat-deploy/target"
+printf 'fixture-classpath\n' > "$portal_repo/chat-deploy/target/shell-cli.classpath"
+cat > "$portal_repo/shell-scripts/chat-shell-portal" <<'STUB'
+#!/usr/bin/env bash
+set -uo pipefail
+[[ -z "${FAIL_PORTAL:-}" ]] || exit 1
+socket="${CHAT_SHELL_PORTAL_SOCKET:-}"
+[[ -n "$socket" ]] || exit 2
+perl -MIO::Socket::UNIX -e 'my $s = IO::Socket::UNIX->new(Type => SOCK_STREAM, Local => $ARGV[0], Listen => 1) or die $!; $SIG{TERM} = sub { exit 0 }; sleep 60' "$socket" &
+child=$!
+trap 'kill "$child" 2>/dev/null' TERM INT
+wait "$child"
+STUB
+chmod +x "$portal_repo/shell-scripts/chat-shell-portal"
+
+proof_state="$fixture/proof-state/node2-portal-theta"
+proof_socket_dir="$fixture/proof-sockets"
+proof_socket="$proof_socket_dir/p"
+proof_file="$fixture/proof/portal-theta/socket"
+mkdir -p "$(dirname "$proof_file")"
+run_proof() {
+    local action="$1" code=0
+    shift
+    env PATH="$bin:/usr/bin:/bin" HOME="$fixture" NODE_9_BIN="$bin" \
+        CHAT_SHELL_REPO="$portal_repo" CHAT_PORTAL_HOST=node2.lan \
+        CHAT_SHELL_USER=theta CHAT_SHELL_PASSWORD=fixture-secret \
+        CHAT_PORTAL_STATE_DIR="$proof_state" CHAT_PORTAL_SOCKET_DIR="$proof_socket_dir" \
+        CHAT_PORTAL_SOCKET_FILE="$proof_file" \
+        FAKE_PS_REQUIRE_ALIVE=1 FAKE_PS_PORTAL_ANY=1 FAKE_PS_SOCKET="$proof_socket" \
+        "$@" "$tunnel_script" "$action" > "$fixture/proof.out" 2>&1 || code=$?
+    printf '%s' "$code"
+}
+
+code="$(run_proof start)"
+if [[ "$code" == 0 && "$(cat "$proof_file" 2>/dev/null)" == "$proof_socket" ]]; then
+    ok 'start_publishes_the_socket_file'
+else
+    bad 'start_publishes_the_socket_file' \
+        "exit $code, file: $(cat "$proof_file" 2>/dev/null), output: $(cat "$fixture/proof.out")"
+fi
+proof_mode="$(perl -e 'printf "%o", (stat($ARGV[0]))[2] & 07777' "$proof_file" 2>/dev/null || true)"
+if [[ "$proof_mode" == 600 ]]; then
+    ok 'the_socket_file_is_private'
+else
+    bad 'the_socket_file_is_private' "mode $proof_mode"
+fi
+
+code="$(run_proof stop)"
+if [[ "$code" == 0 && ! -e "$proof_file" ]]; then
+    ok 'stop_removes_the_socket_file'
+else
+    bad 'stop_removes_the_socket_file' \
+        "exit $code, file exists: $([[ -e "$proof_file" ]] && echo yes || echo no)"
+fi
+
+# A file that names another socket belongs to another portal.
+printf '/tmp/other-portal/p\n' > "$proof_file"
+rm -f "$proof_state/portal.pid" "$proof_state/tunnel.pid"
+code="$(run_proof stop)"
+if [[ "$code" == 0 && -f "$proof_file" ]]; then
+    ok 'stop_keeps_a_socket_file_for_another_socket'
+else
+    bad 'stop_keeps_a_socket_file_for_another_socket' \
+        "exit $code, file exists: $([[ -e "$proof_file" ]] && echo yes || echo no)"
+fi
+rm -f "$proof_file"
+
+# A failed start writes no socket file.
+code="$(run_proof start FAIL_PORTAL=1)"
+if [[ "$code" != 0 && ! -e "$proof_file" ]]; then
+    ok 'a_failed_start_writes_no_socket_file'
+else
+    bad 'a_failed_start_writes_no_socket_file' \
+        "exit $code, file exists: $([[ -e "$proof_file" ]] && echo yes || echo no)"
 fi
 
 if (( failures > 0 )); then
