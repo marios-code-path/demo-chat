@@ -113,6 +113,29 @@ class CoreAuthorizationService<T, Q>(
                 }
             }
 
+    /**
+     * The owner of [target], from a scan of the persistence store.
+     *
+     * **The read never uses the index.** A stored row answers even when no
+     * index row names it.
+     *
+     * The filter is the owner rule of [ownerGuard]. So an expired row and a
+     * domain root row add nothing. Two live entity rows break the one-owner
+     * rule and fail with [SecondOwnerException].
+     */
+    override fun ownerOf(target: Key<T>): Mono<Key<T>> =
+        authPersist.all()
+            .filter { row -> row.target == target && isOwnerRow(row) && isLive(row) }
+            .map { it.principal }
+            .collectList()
+            .flatMap { owners ->
+                when (owners.size) {
+                    0 -> Mono.empty()
+                    1 -> Mono.just(owners.single())
+                    else -> Mono.error(SecondOwnerException(target))
+                }
+            }
+
     private fun isOwnerRow(row: AuthMetadata<T>): Boolean =
         row.permission == AuthSummarizer.WILDCARD && Key.root(row.principal.root) != row.principal
 
