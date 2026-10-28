@@ -4,9 +4,10 @@
 #   install [--prefix DIR] [--dry-run] [--skip-cli]
 #           (--vault-source DIR | --import-state DIR
 #            | --local-secrets | --keep-secrets)
+#   install [--prefix DIR] [--dry-run] --bin-only
 #
-# DIR defaults to /opt/demo-chat/node-9. Exactly one secrets choice is
-# required, so every install states where its secret state comes from.
+# DIR defaults to /opt/demo-chat/node-9. A full install requires one
+# secrets choice. A bin-only update requires an existing installed home.
 #
 #   --vault-source DIR  copy vault-pass, shared.yml and owner.yml from a
 #                       complete bundle. The vaults stay outside the home,
@@ -40,6 +41,7 @@ vault_source=''
 import_state=''
 dry_run=false
 skip_cli=false
+bin_only=false
 
 # The Java floor of the shell CLI runtime. pom.xml sets the same value.
 java_floor=25
@@ -55,6 +57,7 @@ legacy_shared_size="${NODE9_INSTALL_LEGACY_SIZE:-1463}"
 usage() {
     printf 'usage: install [--prefix DIR] [--dry-run] [--skip-cli]\n' >&2
     printf '       (--vault-source DIR | --import-state DIR | --local-secrets | --keep-secrets)\n' >&2
+    printf '   or: install [--prefix DIR] [--dry-run] --bin-only\n' >&2
 }
 
 # choice_error  Name the four choices. The count check calls it.
@@ -103,21 +106,35 @@ while (( $# )); do
         --keep-secrets) set_choice keep-secrets ;;
         --dry-run) dry_run=true ;;
         --skip-cli) skip_cli=true ;;
+        --bin-only) bin_only=true ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; fail "unknown argument: $1" 2 ;;
     esac
     shift
 done
 
-[[ -n "$choice" ]] || { choice_error; exit 2; }
+if [[ "$bin_only" == true ]]; then
+    [[ -z "$choice" && "$skip_cli" == false ]] \
+        || fail '--bin-only cannot combine with a secrets choice or --skip-cli.' 2
+else
+    [[ -n "$choice" ]] || { choice_error; exit 2; }
+fi
 
 [[ "$prefix" == /* ]] || fail "the prefix must be an absolute path, got '$prefix'." 2
 
 # The code files. The installer itself stays in the source tree.
 code_files=(node-9.env compose.yaml compose.vector-disk.yaml userinit.yml advertise.yml)
 code_dirs=(bin schema ansible)
+shell_scripts=(chat-shell-cli chat-shell-portal chat-shell-portal-tunnel \
+    chat-mcp-stdio generate-agent-instructions)
 # The state names. A re-run never touches them.
 state_dirs=(data secrets images)
+for script in "${shell_scripts[@]}"; do
+    [[ -x "$src/../shell-scripts/$script" ]] \
+        || fail "the $script launcher is missing beside node-9." 2
+done
+[[ -x "$src/bin/setup-portal" ]] \
+    || fail 'the setup-portal launcher is missing from node-9/bin.' 2
 
 # nearest_existing PATH  Print the nearest ancestor of PATH that exists.
 nearest_existing() {
@@ -140,6 +157,41 @@ fi
 if [[ -d "$prefix" && ! -f "$prefix/.installed" ]] \
    && [[ -n "$(ls -A "$prefix")" ]]; then
     fail "$prefix is not empty and has no .installed marker." 2
+fi
+
+if [[ "$bin_only" == true ]]; then
+    [[ -f "$prefix/.installed" ]] \
+        || fail '--bin-only requires an existing installed home.' 2
+    [[ -d "$prefix/bin" && ! -L "$prefix/bin" ]] \
+        || fail '--bin-only requires a plain bin directory in the installed home.' 2
+    if [[ "$dry_run" == true ]]; then
+        printf 'mode: bin-only\n'
+        printf 'source: %s/bin\n' "$src"
+        printf 'target: %s/bin\n' "$prefix"
+        printf 'launchers: %s\n' "${shell_scripts[*]}"
+        exit 0
+    fi
+
+    bin_stage="$(mktemp -d "$prefix/.bin-install-XXXXXX")" \
+        || fail 'cannot create a bin stage.' 1
+    cp -R "$src/bin" "$bin_stage/bin" \
+        || fail 'cannot stage node-9/bin.' 1
+    for script in "${shell_scripts[@]}"; do
+        cp "$src/../shell-scripts/$script" "$bin_stage/bin/$script" \
+            || fail "cannot stage $script." 1
+    done
+    chmod 755 "$bin_stage"/bin/* \
+        || fail 'cannot set launcher permissions in the bin stage.' 1
+    mv "$prefix/bin" "$bin_stage/bin.previous" \
+        || fail 'cannot move the installed bin directory.' 1
+    if ! mv "$bin_stage/bin" "$prefix/bin"; then
+        mv "$bin_stage/bin.previous" "$prefix/bin" \
+            || fail 'cannot restore the installed bin directory.' 1
+        fail 'cannot install the new bin directory.' 1
+    fi
+    rm -rf "$bin_stage"
+    printf 'node-9 install: bin installed in %s/bin\n' "$prefix"
+    exit 0
 fi
 
 # The seven keys that a complete plaintext set holds.
@@ -436,6 +488,7 @@ if [[ "$dry_run" == 'true' ]]; then
     printf 'prefix: %s\n' "$prefix"
     printf 'choice: %s\n' "$choice"
     printf 'code: %s %s\n' "${code_files[*]}" "${code_dirs[*]}"
+    printf 'launchers: %s\n' "${shell_scripts[*]}"
     printf 'java: %s\n' "$java_version"
     if [[ "$skip_cli" == 'true' ]]; then
         printf 'lib: skipped\n'
@@ -519,8 +572,10 @@ for dir in "${code_dirs[@]}"; do
     rm -rf "${prefix:?}/$dir"
     cp -R "$src/$dir" "$prefix/$dir" || fail "cannot copy $dir." 1
 done
-cp "$src/../shell-scripts/chat-shell-cli" "$prefix/bin/chat-shell-cli" \
-    || fail 'cannot copy the shell CLI launcher.' 1
+for script in "${shell_scripts[@]}"; do
+    cp "$src/../shell-scripts/$script" "$prefix/bin/$script" \
+        || fail "cannot copy $script." 1
+done
 rm -f "$prefix/ansible/vault/owner.yml"
 chmod 755 "$prefix"/bin/*
 

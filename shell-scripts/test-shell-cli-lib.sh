@@ -264,12 +264,23 @@ exit 0
 STUB
 chmod +x "$stub_bin/mvn"
 
+# The MCP stage reads a packaged module jar beside the source tree. A fixture
+# holds one jar with the main class entry, so the suite needs no built module.
+mcp_target="$work/mcp-target"
+mkdir -p "$mcp_target"
+mcp_fixture="$(mktemp -d)"
+mkdir -p "$mcp_fixture/com/demo/chat/mcp"
+: > "$mcp_fixture/com/demo/chat/mcp/McpAdapterMainKt.class"
+( cd "$mcp_fixture" && zip -q -r "$mcp_target/chat-mcp-0.0.1.jar" com )
+rm -rf "$mcp_fixture"
+
 # run_stage DIR [extra env]  Run the stage script with the stubs.
 run_stage() {
     local dir="$1"
     shift
     rm -f "$work/mvn-calls" "$work/mvn-env"
     out="$(env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" \
+        CHAT_MCP_TARGET_DIR="$mcp_target" \
         MVN_ENV="$work/mvn-env" \
         JAVA_ARGS="$work/stage-java-args" "$@" "$stager" "$dir" 2>&1)"
     status=$?
@@ -457,6 +468,17 @@ else
         "exit $status, output: $out"
 fi
 
+# A target with no adapter jar leaves no stage. The installed launcher needs
+# the main class, so a stage without it cannot start the adapter.
+mkdir -p "$work/empty-mcp-target"
+run_stage "$work/stage-no-mcp" CHAT_MCP_TARGET_DIR="$work/empty-mcp-target"
+if [[ $status -ne 0 && ! -e "$work/stage-no-mcp" ]]; then
+    ok 'stage_refuses_a_target_without_the_adapter'
+else
+    bad 'stage_refuses_a_target_without_the_adapter' \
+        "exit $status, output: $out"
+fi
+
 # -- The install ---------------------------------------------------------
 
 installer="$repo_root/node-9/install"
@@ -507,6 +529,7 @@ run_install() {
     done
     rm -f "$work/mvn-calls"
     out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+        CHAT_MCP_TARGET_DIR="$mcp_target" \
         XDG_CONFIG_HOME="$work/install-config" "${env_pairs[@]}" \
         bash "$installer" --prefix "$prefix" --vault-source "$install_bundle" \
         "${args[@]+"${args[@]}"}" 2>&1)"
@@ -539,6 +562,8 @@ elif [[ ! -f "$work/home-one/lib/one.jar" ]]; then
     lib_case='the home holds no lib/one.jar'
 elif [[ ! -f "$work/home-one/lib/shell-cli.options" ]]; then
     lib_case='the home holds no frozen options'
+elif [[ ! -f "$work/home-one/lib/mcp/chat-mcp-0.0.1.jar" ]]; then
+    lib_case='the home holds no MCP adapter jar'
 elif [[ ! -x "$work/home-one/bin/chat-shell-cli" ]]; then
     lib_case='the home holds no executable shell CLI launcher'
 elif [[ ! -f "$work/home-one/.installed" ]]; then
@@ -677,6 +702,7 @@ chmod +x "$work/alt-tools/alt-mvn" "$work/alt-tools/alt-java"
 # names point at a working pair, so a call through the path cannot succeed.
 rm -f "$work/mvn-calls"
 out="$(env PATH="/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+    CHAT_MCP_TARGET_DIR="$mcp_target" \
     XDG_CONFIG_HOME="$work/install-config" \
     NODE9_MVN="$work/alt-tools/alt-mvn" NODE9_JAVA="$work/alt-tools/alt-java" \
     bash "$installer" --prefix "$work/home-alt-tools" \
@@ -756,6 +782,7 @@ fi
 run_install "$work/home-gap"
 printf 'old\n' > "$work/home-gap/lib/old-marker"
 out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
+    CHAT_MCP_TARGET_DIR="$mcp_target" \
     XDG_CONFIG_HOME="$work/install-config" NODE9_INSTALL_FAIL_LIB_MOVE=1 \
     bash "$installer" --prefix "$work/home-gap" \
     --vault-source "$install_bundle" 2>&1)"
