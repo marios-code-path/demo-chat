@@ -22,6 +22,7 @@ A `duplicate-pointer` warning can occur in a complete read.
 Report a failed MCP call, a missing tool, a null or nonzero status, or `complete=false` to the user.
 Report any `error.code` to the user.
 Report `denied-index`, `denied-topic`, and other non-duplicate warnings to the user.
+A read joins a denied topic once before it reports `denied-topic`.
 Treat these results as incomplete. Do not treat them as empty.
 Do not use a direct register command as a fallback.
 
