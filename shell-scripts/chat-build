@@ -33,6 +33,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
@@ -563,6 +564,23 @@ class BuildContext:
         self.tls_dir: str | None = args.tls
         self.jwk_path: str | None = getattr(args, "jwk", None)
         self.agents: list[tuple[str, str]] = parse_agents(getattr(args, "agent", []) or [])
+        self.agent_jwks: dict[str, str] = {}
+        for value in getattr(args, "agent_jwks_uri", []) or []:
+            if self.service.name != "authserv":
+                raise SystemExit("chat-build: --agent-jwks-uri requires authserv")
+            client_id, separator, uri = value.partition("=")
+            try:
+                parsed_uri = urlsplit(uri)
+                valid_uri = (parsed_uri.scheme == "https" and parsed_uri.hostname is not None
+                             and parsed_uri.username is None and parsed_uri.password is None
+                             and not parsed_uri.fragment and not any(char.isspace() for char in uri))
+            except ValueError:
+                valid_uri = False
+            if not separator or not client_id or not valid_uri:
+                raise SystemExit("chat-build: --agent-jwks-uri needs CLIENT_ID=HTTPS_URI")
+            if client_id in self.agent_jwks or client_id not in dict(self.agents):
+                raise SystemExit("chat-build: --agent-jwks-uri needs one registered agent client id")
+            self.agent_jwks[client_id] = uri
         self.agent_scope: str = getattr(args, "agent_scope", "chat.mcp")
         # Expanded and never resolved, for the reason given at the --jwk flag.
         # main() refuses an empty or relative value. See CHAT-eesnvnad.
@@ -737,6 +755,8 @@ class BuildContext:
             for i, (client_id, handle) in enumerate(self.agents):
                 flags += [f"-Dapp.oauth2.agents[{i}].client-id={client_id}",
                           f"-Dapp.oauth2.agents[{i}].username={handle}"]
+                if client_id in self.agent_jwks:
+                    flags.append(f"-Dapp.oauth2.agents[{i}].jwk-set-uri={self.agent_jwks[client_id]}")
             return flags + [f"-Dapp.oauth2.agent-scope={self.agent_scope}"]
         flags = []
         if self.service.name == "core":
@@ -1234,6 +1254,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--agent", action="append", default=[], metavar="CLIENT_ID=HANDLE",
                         help="an agent: the OAuth client id and the chat user handle. "
                              "Repeat it for each agent")
+    parser.add_argument("--agent-jwks-uri", action="append", default=[], metavar="CLIENT_ID=HTTPS_URI",
+                        help="authserv only: public JWKS URI for one private_key_jwt agent")
     parser.add_argument("--index-root", metavar="DIR", default=None,
                         help="core only: keep the Lucene indexes in files under DIR, "
                              "an absolute path. Without it they stay in memory")

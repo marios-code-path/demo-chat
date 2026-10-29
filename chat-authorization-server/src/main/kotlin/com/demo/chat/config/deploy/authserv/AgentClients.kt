@@ -5,6 +5,7 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.oauth2.core.AuthorizationGrantType
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
@@ -25,6 +26,9 @@ import java.util.Base64
 object AgentClients {
 
     val TOKEN_TIME_TO_LIVE: Duration = Duration.ofSeconds(300)
+
+    /** The one JWS algorithm the token endpoint accepts for a client assertion. */
+    val ASSERTION_ALGORITHM: SignatureAlgorithm = SignatureAlgorithm.RS256
     private const val SECRET_BYTES = 32
     private const val BCRYPT_PREFIX = "{bcrypt}"
     private val random = SecureRandom()
@@ -52,15 +56,45 @@ object AgentClients {
             )
             .build()
 
+    fun buildPrivateKeyJwt(clientId: String, scope: String, jwkSetUri: String): RegisteredClient =
+        RegisteredClient.withId(clientId)
+            .clientId(clientId)
+            .clientAuthenticationMethod(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .scope(scope)
+            .clientSettings(
+                ClientSettings.builder()
+                    .requireAuthorizationConsent(false)
+                    .jwkSetUrl(jwkSetUri)
+                    // The library sets no default. Without this setting the
+                    // token endpoint refuses every assertion, because it can
+                    // build no signature verifier. See CHAT-wdvjqtpb.
+                    .tokenEndpointAuthenticationSigningAlgorithm(ASSERTION_ALGORITHM)
+                    .build()
+            )
+            .tokenSettings(
+                TokenSettings.builder()
+                    .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                    .accessTokenTimeToLive(TOKEN_TIME_TO_LIVE)
+                    .build()
+            )
+            .build()
+
     /** The agent shape fields in which [row] differs. An empty answer means the shape holds. */
-    fun differences(row: RegisteredClient, scope: String): List<String> = buildList {
+    fun differences(row: RegisteredClient, scope: String, jwkSetUri: String? = null): List<String> = buildList {
         if (row.authorizationGrantTypes != setOf(AuthorizationGrantType.CLIENT_CREDENTIALS)) add("grant")
-        if (row.clientAuthenticationMethods != setOf(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)) {
+        val method = if (jwkSetUri == null) ClientAuthenticationMethod.CLIENT_SECRET_BASIC else ClientAuthenticationMethod.PRIVATE_KEY_JWT
+        if (row.clientAuthenticationMethods != setOf(method)) {
             add("authentication method")
         }
         if (row.scopes != setOf(scope)) add("scope")
         if (row.clientSettings.isRequireAuthorizationConsent) add("consent")
-        if (row.clientSecret?.startsWith(BCRYPT_PREFIX) != true) add("secret prefix")
+        if (jwkSetUri == null && row.clientSecret?.startsWith(BCRYPT_PREFIX) != true) add("secret prefix")
+        if (jwkSetUri != null && row.clientSecret != null) add("secret")
+        if (jwkSetUri != null && row.clientSettings.jwkSetUrl != jwkSetUri) add("JWK Set URI")
+        if (jwkSetUri != null && row.clientSettings.tokenEndpointAuthenticationSigningAlgorithm != ASSERTION_ALGORITHM) {
+            add("signing algorithm")
+        }
         if (row.tokenSettings.accessTokenFormat != OAuth2TokenFormat.SELF_CONTAINED) add("token format")
         if (row.tokenSettings.accessTokenTimeToLive != TOKEN_TIME_TO_LIVE) add("token lifetime")
     }
@@ -94,9 +128,10 @@ object AgentClients {
     }
 
     /** One agent client and its raw secret, before the server holds it. */
-    data class Issued(val agent: AgentClientProperties.AgentClient, val client: RegisteredClient, val secret: String)
+    data class Issued(val agent: AgentClientProperties.AgentClient, val client: RegisteredClient, val secret: String?)
 
     fun issue(agent: AgentClientProperties.AgentClient, scope: String): Issued {
+        agent.jwkSetUri?.let { return Issued(agent, buildPrivateKeyJwt(agent.clientId, scope, it), null) }
         val secret = generateSecret()
         return Issued(agent, build(agent.clientId, scope, secret), secret)
     }
@@ -106,8 +141,10 @@ object AgentClients {
      * after the repository holds the client, so that a failed save prints no
      * secret.
      */
-    fun announce(issued: Issued, out: (String) -> Unit = ::println) =
-        out("Generated secret for agent client '${issued.agent.clientId}' (${issued.agent.username}): ${issued.secret}")
+    fun announce(issued: Issued, out: (String) -> Unit = ::println) {
+        if (issued.secret != null) out("Generated secret for agent client '${issued.agent.clientId}' (${issued.agent.username}): ${issued.secret}")
+        else out("Registered private_key_jwt agent client '${issued.agent.clientId}' (${issued.agent.username}).")
+    }
 
     /**
      * Save an absent agent client, keep a matching one, and refuse any other
@@ -129,14 +166,15 @@ object AgentClients {
                 announce(issued, out)
                 return@forEach
             }
-            val drift = differences(row, scope)
+            val drift = differences(row, scope, agent.jwkSetUri)
             if (drift.isNotEmpty()) {
                 throw ChatException(
                     "The stored client '${agent.clientId}' is not an agent client. It differs in " +
                         "${drift.joinToString()}. Delete the row, and the next start registers it again."
                 )
             }
-            out("Agent client '${agent.clientId}' (${agent.username}) is registered. Its secret is unchanged.")
+            if (agent.jwkSetUri == null) out("Agent client '${agent.clientId}' (${agent.username}) is registered. Its secret is unchanged.")
+            else out("Private_key_jwt agent client '${agent.clientId}' (${agent.username}) is registered.")
         }
     }
 }

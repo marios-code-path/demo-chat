@@ -57,6 +57,31 @@ Request a new token after a restart. The `client-init` profile saves a client
 once and prints its secret once. A lost secret has no recovery path: delete the
 client row, and the next start registers it again.
 
+An agent can register a public JWKS URI with
+`--agent-jwks-uri CLIENT_ID=https://agent.example/jwks`. This client uses
+`private_key_jwt`. The agent keeps the private key. The authorization server
+reads only the public JWKS. Pass `--agent CLIENT_ID=HANDLE` for the same client.
+The agent signs each assertion with RS256. Each assertion has `iss` and `sub` equal to the
+client ID, `aud` equal to the authorization server token endpoint, and a short
+`exp`. It carries a unique `jti` and a matching `kid` in the JOSE header.
+The server rejects a second use of one `jti` for one client until the assertion expires. The server also rejects an assertion with no `jti`. The server remembers at most 10,000 unexpired assertions. At that limit it refuses a new assertion.
+
+A stored secret client does not change authentication methods automatically.
+The server rejects that row at start. Delete the old client row before
+registering the same client ID with a JWKS URI.
+
+Send the signed assertion with this request:
+
+```sh
+curl -sS -X POST https://AUTH_SERVER/oauth2/token \
+  -d grant_type=client_credentials -d "client_id=$CLIENT_ID" -d scope=chat.mcp \
+  -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
+  --data-urlencode "client_assertion=$CLIENT_ASSERTION"
+```
+
+Use the returned `access_token` as the agent bearer token. Create another
+assertion when the access token expires.
+
 Do not use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent client id. It is
 the id of `app.oauth2.client`, and the start refuses a shared client id.
 

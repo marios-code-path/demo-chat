@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
+import org.springframework.security.oauth2.server.authorization.authentication.JwtClientAssertionDecoderFactory
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
@@ -24,18 +26,70 @@ class AgentClientsTests {
 
     @Test
     fun `an agent client has the agent shape`() {
-        val client = AgentClients.build("client-a", "chat.mcp", "raw-secret")
+        val client = AgentClients.buildPrivateKeyJwt("client-a", "chat.mcp", "https://agents.example/client-a/jwks")
 
         assertThat(client.id).isEqualTo("client-a")
         assertThat(client.clientId).isEqualTo("client-a")
         assertThat(client.authorizationGrantTypes).containsExactly(AuthorizationGrantType.CLIENT_CREDENTIALS)
-        assertThat(client.clientAuthenticationMethods).containsExactly(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+        assertThat(client.clientAuthenticationMethods).containsExactly(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
         assertThat(client.scopes).containsExactly("chat.mcp")
         assertThat(client.clientSettings.isRequireAuthorizationConsent).isFalse()
+        assertThat(client.clientSecret).isNull()
+        assertThat(client.clientSettings.jwkSetUrl).isEqualTo("https://agents.example/client-a/jwks")
+        assertThat(client.clientSettings.tokenEndpointAuthenticationSigningAlgorithm)
+            .isEqualTo(SignatureAlgorithm.RS256)
+        assertThat(client.tokenSettings.accessTokenFormat).isEqualTo(OAuth2TokenFormat.SELF_CONTAINED)
+        assertThat(client.tokenSettings.accessTokenTimeToLive).isEqualTo(Duration.ofSeconds(300))
+        assertThat(AgentClients.differences(client, "chat.mcp", "https://agents.example/client-a/jwks")).isEmpty()
+    }
+
+    @Test
+    fun `a secret agent keeps its original client shape`() {
+        val client = AgentClients.build("client-a", "chat.mcp", "raw-secret")
+
+        assertThat(client.clientAuthenticationMethods).containsExactly(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
         assertThat(client.clientSecret).startsWith("{bcrypt}")
+        assertThat(client.clientSettings.jwkSetUrl).isNull()
         assertThat(client.tokenSettings.accessTokenFormat).isEqualTo(OAuth2TokenFormat.SELF_CONTAINED)
         assertThat(client.tokenSettings.accessTokenTimeToLive).isEqualTo(Duration.ofSeconds(300))
         assertThat(AgentClients.differences(client, "chat.mcp")).isEmpty()
+    }
+
+    @Test
+    fun `the token endpoint builds a verifier for a private key agent`() {
+        val client = AgentClients.buildPrivateKeyJwt("client-a", "chat.mcp", "https://agents.example/client-a/jwks")
+
+        // A client with no signing algorithm gets invalid_client at the token
+        // endpoint, and no other test calls this factory. See CHAT-wdvjqtpb.
+        JwtClientAssertionDecoderFactory().createDecoder(client)
+    }
+
+    @Test
+    fun `a private key agent receives no generated secret`() {
+        val agent = AgentClientProperties.AgentClient().apply {
+            clientId = "client-a"
+            username = "Agent"
+            jwkSetUri = "https://agents.example/client-a/jwks"
+        }
+        val issued = AgentClients.issue(agent, "chat.mcp")
+
+        assertThat(issued.secret).isNull()
+        assertThat(issued.client.clientAuthenticationMethods)
+            .containsExactly(ClientAuthenticationMethod.PRIVATE_KEY_JWT)
+        assertThat(issued.client.clientSettings.jwkSetUrl).isEqualTo(agent.jwkSetUri)
+    }
+
+    @Test
+    fun `a private key agent requires an HTTPS JWKS URI`() {
+        val agent = AgentClientProperties.AgentClient().apply {
+            clientId = "client-a"
+            username = "Agent"
+            jwkSetUri = "http://agents.example/jwks"
+        }
+        val props = AgentClientProperties().apply { agentScope = "chat.mcp"; agents = listOf(agent) }
+
+        assertThatThrownBy { props.requireValid() }
+            .hasMessage("app.oauth2.agents[0].jwk-set-uri must be an HTTPS URI.")
     }
 
     @Test

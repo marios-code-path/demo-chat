@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.session.SessionRegistryImpl
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
+import org.springframework.security.oauth2.server.authorization.authentication.JwtClientAssertionAuthenticationProvider
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 import org.springframework.security.web.session.HttpSessionEventPublisher
@@ -40,10 +41,18 @@ class DefaultSecurityConfig(
 
     @Bean fun httpSessionEvenPublisher() = HttpSessionEventPublisher()
 
+    /** One cache for the life of the server. See `CHAT-wdvjqtpb`. */
+    @Bean
+    fun assertionReplayCache(): AssertionReplayCache = AssertionReplayCache()
+
     @Throws(Exception::class)
     @Bean
     @Order(1)
-    fun authorizationServerSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun authorizationServerSecurityFilterChain(
+        http: HttpSecurity,
+        replayCache: AssertionReplayCache,
+    ): SecurityFilterChain {
+        val assertionDecoders = ReplayRejectingDecoderFactory(replayCache)
         // Security 7 removed OAuth2AuthorizationServerConfiguration
         // .applyDefaultSecurity, and it offers no static replacement. The
         // three calls below are what that method did, read from the
@@ -57,6 +66,14 @@ class DefaultSecurityConfig(
         // resolves lazily, so this matches the earlier order of effect.
         val authorizationServer = OAuth2AuthorizationServerConfigurer()
             .oidc(Customizer.withDefaults())
+            .clientAuthentication { clientAuthentication ->
+                // The default provider verifies the signature. Swap its
+                // decoder for one that also refuses a repeated jti.
+                clientAuthentication.authenticationProviders { providers ->
+                    providers.filterIsInstance<JwtClientAssertionAuthenticationProvider>()
+                        .forEach { it.setJwtDecoderFactory(assertionDecoders) }
+                }
+            }
 
         http.securityMatcher(authorizationServer.endpointsMatcher)
             .with(authorizationServer, Customizer.withDefaults())
