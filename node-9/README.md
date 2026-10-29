@@ -168,9 +168,10 @@ client on the host cannot reach it. See CHAT-yexqiyie.
 ## Install outside the source tree
 
 Run `node-9/install --prefix /opt/demo-chat/node-9`. The prefix defaults to
-that path. Run node 9 from the installed copy, not from a work tree. A work
-tree holds its own `data/`, `secrets/` and `secrets.env`, so removing it
-removes node 9's state.
+that path. **The path is permanent, and it is the same on every host.** One
+installed home serves every project. Run node 9 from the installed copy, not
+from a work tree. A work tree holds its own `data/`, `secrets/` and
+`secrets.env`, so removing it removes node 9's state.
 
 Every install states exactly one secrets choice:
 
@@ -211,6 +212,20 @@ plaintext: pending
 
 The values are `vault-source`, `import-state`, `local`, or `kept`, and the
 plaintext state is `pending` or `complete`.
+
+The marker also records the commit of the jar set:
+
+```
+source-commit: 19493801...
+lib-commit: 19493801...
+lib-dirty: false
+```
+
+`source-commit` names the commit of the installer source tree. `lib-commit`
+names the proven commit of the jars in `lib/`. The two values can differ. A
+`--skip-cli` run stages no jar, and `lib-commit` then names the commit of the
+kept set. `lib-dirty` is `true` when the build tree held an uncommitted
+change. See `CHAT-gwrrazjg`.
 
 A source tree refuses to run. `start`, `stop`, `setup-secrets`, `register`,
 `register-create`, `load-images` and `save-images` stop with status 2 unless
@@ -273,6 +288,31 @@ Set `CHAT_SHELL_PASSWORD_FILE` to another file, or set `CHAT_SHELL_PASSWORD` for
 The install builds both jar sets on demand. It needs Java 25 or later and
 Maven. It stops with status 2 and names the missing command when either one
 is absent. The earlier shell set measured 149 jars and about 66 MB.
+
+Every Maven build step runs `clean`. So no earlier `target/` directory
+reaches `lib/`. The two copy-only steps add no `clean`. A `clean` there would
+remove the module jar that the next step reads.
+
+The build then proves the jar set. The root `pom.xml` applies
+`git-commit-id-maven-plugin` to every module. So each module jar holds
+`git.properties`. The build reads `git.commit.id` from every staged chat jar.
+It compares each value with the commit of the working tree. A mismatch stops
+the build, and the stage never moves. The installed home then keeps its
+earlier runtime. The proof writes the commit and the dirty flag into
+`lib/shell-cli.options` and into `.installed`.
+
+A dirty working tree is allowed. The proof covers the commit alone. It cannot
+show that an uncommitted change reached a jar.
+
+The install prints one line for each phase. Each line carries the phase time.
+A full install has six phases, and the build adds six phases of its own. Full
+Maven output goes to the build log. The install names that log before the
+build starts. A failed phase prints the last 40 lines of its log.
+
+One measurement of 2026-10-29 shows the need for the proof. The installed
+`lib/` held jars of `653b5e6`. The module target directories held `0cae0c1`.
+The working tree was at `19493801`. The install reported success, because the
+dependency copy reads each sibling module from `~/.m2`. See `CHAT-gwrrazjg`.
 
 `--skip-cli` does not build or replace `lib/`. A new home has no `lib/`, and its
 marker records `cli: skipped`. An existing home keeps its jar set, and its

@@ -308,6 +308,21 @@ scope.
 profile and it is always active for this service. The Spring profile alone
 selects the repository.
 
+To run the JDBC repository, select both Spring profiles:
+
+    ./chat-build authserv --run --notls --node-id 8 \
+      --profile jdbc --profile client-init --key-type long \
+      --jwk "$PWD/encrypt-keys/server_keycert.jwk"
+
+`jdbc` selects the JDBC client, authorization, and consent repositories.
+`client-init` writes each configured client and each agent client into the
+database.
+
+Flyway migrates the schema when the server starts.
+An existing database needs a baseline before that start.
+Follow `docs/AUTHSERV-JDBC-MIGRATION.md`.
+The recipe `just deploy-authserv` sets both profiles.
+
 The token lives 300 seconds. The audience equals the client id.
 
 `docs/MCP-CREDENTIAL-ISSUANCE.md` carries the full procedure for the MCP

@@ -58,4 +58,4 @@ pgdb/data/
 /.envrc
 /.st-shell.zsh
 /agentgateway.yml
-
+/.claude_env
