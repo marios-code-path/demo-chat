@@ -4,7 +4,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.core.annotation.Order
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
@@ -41,18 +43,25 @@ class DefaultSecurityConfig(
 
     @Bean fun httpSessionEvenPublisher() = HttpSessionEventPublisher()
 
-    /** One cache for the life of the server. See `CHAT-wdvjqtpb`. */
+    /** A deployed server keeps the replay record. See `CHAT-wdvjqtpb`. */
     @Bean
-    fun assertionReplayCache(): AssertionReplayCache = AssertionReplayCache()
+    @Profile("jdbc")
+    fun jdbcAssertionReplayStore(template: JdbcTemplate): AssertionReplayStore =
+        JdbcAssertionReplayStore(template)
+
+    /** Without a database the record lives in the process. */
+    @Bean
+    @Profile("!jdbc")
+    fun memoryAssertionReplayStore(): AssertionReplayStore = AssertionReplayCache()
 
     @Throws(Exception::class)
     @Bean
     @Order(1)
     fun authorizationServerSecurityFilterChain(
         http: HttpSecurity,
-        replayCache: AssertionReplayCache,
+        replayStore: AssertionReplayStore,
     ): SecurityFilterChain {
-        val assertionDecoders = ReplayRejectingDecoderFactory(replayCache)
+        val assertionDecoders = ReplayRejectingDecoderFactory(replayStore)
         // Security 7 removed OAuth2AuthorizationServerConfiguration
         // .applyDefaultSecurity, and it offers no static replacement. The
         // three calls below are what that method did, read from the

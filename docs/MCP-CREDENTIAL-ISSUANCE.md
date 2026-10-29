@@ -64,7 +64,11 @@ reads only the public JWKS. Pass `--agent CLIENT_ID=HANDLE` for the same client.
 The agent signs each assertion with RS256. Each assertion has `iss` and `sub` equal to the
 client ID, `aud` equal to the authorization server token endpoint, and a short
 `exp`. It carries a unique `jti` and a matching `kid` in the JOSE header.
-The server rejects a second use of one `jti` for one client until the assertion expires. The server also rejects an assertion with no `jti`. The server remembers at most 10,000 unexpired assertions. At that limit it refuses a new assertion.
+The server rejects a second use of one `jti` for one client until the assertion expires. The server also rejects an assertion with no `jti`.
+
+The `jdbc` profile stores each used `jti` in the `oauth2_client_assertion_jti` table. A restart and a second replica read that table. Create the table from `sql-scripts/oauth2-client-assertion-jti-schema.sql` before the first start.
+
+The `memory` profile keeps the record in the process only. A restart clears it. That profile holds at most 10,000 unexpired assertions and refuses a new assertion at that limit.
 
 A stored secret client does not change authentication methods automatically.
 The server rejects that row at start. Delete the old client row before

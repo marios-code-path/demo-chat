@@ -17,16 +17,23 @@ import java.util.concurrent.ConcurrentHashMap
  * assertion, because a silent drop would let a replay through. Only an
  * assertion with a valid signature reaches the cache, so a flood needs a
  * trusted key.
+ *
+ * This store lives in the process. A restart drops it. Use
+ * [JdbcAssertionReplayStore] when a restart must keep the record.
  */
-class AssertionReplayCache(private val maxEntries: Int = MAX_ENTRIES) {
+class AssertionReplayCache(private val maxEntries: Int = MAX_ENTRIES) : AssertionReplayStore {
 
     private val entries = ConcurrentHashMap<String, Instant>()
 
     /**
      * Answer true on the first use of [jti] for [clientId]. Answer false on a
      * repeat, on an expired assertion, and at the cache limit.
+     *
+     * The lock keeps the size check and the insert one step. Without it,
+     * parallel claims can pass the check together and pass the limit.
      */
-    fun claim(clientId: String, jti: String, expiresAt: Instant): Boolean {
+    @Synchronized
+    override fun claim(clientId: String, jti: String, expiresAt: Instant): Boolean {
         val now = Instant.now()
         if (!expiresAt.isAfter(now)) return false
         if (entries.size >= maxEntries) purgeExpired(now)
@@ -52,7 +59,7 @@ class AssertionReplayCache(private val maxEntries: Int = MAX_ENTRIES) {
  * never reaches the cache.
  */
 class ReplayRejectingDecoderFactory(
-    private val cache: AssertionReplayCache,
+    private val cache: AssertionReplayStore,
     private val delegate: JwtDecoderFactory<RegisteredClient> = JwtClientAssertionDecoderFactory(),
 ) : JwtDecoderFactory<RegisteredClient> {
 
