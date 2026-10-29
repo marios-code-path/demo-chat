@@ -3,20 +3,21 @@
 #
 # The installers register one MCP server with one client. They need two paths.
 # A source tree holds neither the MCP runtime nor a register command that
-# runs, so the installed home wins when it exists.
+# runs, so an installed home wins when one exists.
 #
-# Call mcp_install_resolve with the repository root. It sets MCP_REGISTER,
-# MCP_LAUNCHER, and MCP_CONFIG for one agent, project, and register.
+# **The installed home is permanent:** /opt/demo-chat/node-9 on every host.
+# Node 9 serves every project from that one home, and the project enters only
+# the config name and the server name. NODE9_HOME names another home.
+#
+# Call mcp_install_resolve with the repository root. It sets MCP_REGISTER and
+# MCP_LAUNCHER.
 
 # mcp_install_resolve REPO_ROOT  Set the register command and the launcher.
 mcp_install_resolve() {
-    local repo_root="$1" home="${NODE9_HOME:-}"
-    if [[ -z "$home" ]]; then
-        if [[ -f /opt/demo-chat/node-9/.installed ]]; then
-            home=/opt/demo-chat/node-9
-        else
-            home="$repo_root/node-9"
-        fi
+    local repo_root="$1"
+    local home="${NODE9_HOME:-/opt/demo-chat/node-9}"
+    if [[ ! -f "$home/.installed" ]]; then
+        home="$repo_root/node-9"
     fi
     MCP_REGISTER="$home/bin/register"
     if [[ -x "$home/bin/chat-mcp-stdio" ]]; then

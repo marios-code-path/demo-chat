@@ -168,9 +168,10 @@ client on the host cannot reach it. See CHAT-yexqiyie.
 ## Install outside the source tree
 
 Run `node-9/install --prefix /opt/demo-chat/node-9`. The prefix defaults to
-that path. Run node 9 from the installed copy, not from a work tree. A work
-tree holds its own `data/`, `secrets/` and `secrets.env`, so removing it
-removes node 9's state.
+that path. **The path is permanent, and it is the same on every host.** One
+installed home serves every project. Run node 9 from the installed copy, not
+from a work tree. A work tree holds its own `data/`, `secrets/` and
+`secrets.env`, so removing it removes node 9's state.
 
 Every install states exactly one secrets choice:
 
@@ -212,6 +213,20 @@ plaintext: pending
 The values are `vault-source`, `import-state`, `local`, or `kept`, and the
 plaintext state is `pending` or `complete`.
 
+The marker also records the commit of the jar set:
+
+```
+source-commit: 19493801...
+lib-commit: 19493801...
+lib-dirty: false
+```
+
+`source-commit` names the commit of the installer source tree. `lib-commit`
+names the proven commit of the jars in `lib/`. The two values can differ. A
+`--skip-cli` run stages no jar, and `lib-commit` then names the commit of the
+kept set. `lib-dirty` is `true` when the build tree held an uncommitted
+change. See `CHAT-gwrrazjg`.
+
 A source tree refuses to run. `start`, `stop`, `setup-secrets`, `register`,
 `register-create`, `load-images` and `save-images` stop with status 2 unless
 the `.installed` marker is present. `NODE9_ALLOW_SOURCE_TREE=1` overrides the stop. Use it to
@@ -244,7 +259,8 @@ there, then run `start` from the installed copy.
 ## The installed shell CLI
 
 An installed home runs the shell CLI from `lib/`. That directory holds every
-runtime jar and the file `shell-cli.options`. The home then needs no
+runtime jar and the file `shell-cli.options`. The install builds this client
+runtime alone. See "Build the server image" below for the server artifact. The home then needs no
 repository, no Maven, and no `~/.m2`. See `CHAT-bjqzvsoe`.
 
 The install also copies `chat-shell-portal`, `chat-shell-portal-tunnel`, `chat-mcp-stdio`, and
@@ -273,6 +289,31 @@ Set `CHAT_SHELL_PASSWORD_FILE` to another file, or set `CHAT_SHELL_PASSWORD` for
 The install builds both jar sets on demand. It needs Java 25 or later and
 Maven. It stops with status 2 and names the missing command when either one
 is absent. The earlier shell set measured 149 jars and about 66 MB.
+
+Every Maven build step runs `clean`. So no earlier `target/` directory
+reaches `lib/`. The two copy-only steps add no `clean`. A `clean` there would
+remove the module jar that the next step reads.
+
+The build then proves the jar set. The root `pom.xml` applies
+`git-commit-id-maven-plugin` to every module. So each module jar holds
+`git.properties`. The build reads `git.commit.id` from every staged chat jar.
+It compares each value with the commit of the working tree. A mismatch stops
+the build, and the stage never moves. The installed home then keeps its
+earlier runtime. The proof writes the commit and the dirty flag into
+`lib/shell-cli.options` and into `.installed`.
+
+A dirty working tree is allowed. The proof covers the commit alone. It cannot
+show that an uncommitted change reached a jar.
+
+The install prints one line for each phase. Each line carries the phase time.
+A full install has six phases, and the build adds six phases of its own. Full
+Maven output goes to the build log. The install names that log before the
+build starts. A failed phase prints the last 40 lines of its log.
+
+One measurement of 2026-10-29 shows the need for the proof. The installed
+`lib/` held jars of `653b5e6`. The module target directories held `0cae0c1`.
+The working tree was at `19493801`. The install reported success, because the
+dependency copy reads each sibling module from `~/.m2`. See `CHAT-gwrrazjg`.
 
 `--skip-cli` does not build or replace `lib/`. A new home has no `lib/`, and its
 marker records `cli: skipped`. An existing home keeps its jar set, and its
@@ -313,6 +354,58 @@ node-9/install --keep-secrets             # rebuild and install all code
 node-9/install --keep-secrets --skip-cli  # keep lib while updating code
 node-9/install --bin-only                 # update bin alone
 ```
+
+## Build the server image
+
+`node-9/install` builds the shell CLI runtime alone. It builds no server.
+
+The deployable server artifact of node 9 is one container image.
+`node-9.env` names it as `CORE_IMAGE`:
+
+```
+CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1
+```
+
+The three other compose services use upstream images. A pull brings
+`cassandra`, `redis`, and `hashicorp/consul`.
+
+Run `just build-node-9-image` to build the image. Add `--dry-run` to print
+the plan and to build nothing. The run has four phases. Each phase prints a
+start line and an end line, and each end line carries the phase time.
+
+1. The module build installs `chat-deploy-cassandra` and every module that
+   it needs. The step runs `clean`.
+2. The image build calls `chat-build` with the flag set of node 9.
+3. The jar proof reads `git.properties` from the boot jar. It covers
+   `BOOT-INF/classes` and every `com.demo` jar under `BOOT-INF/lib`.
+4. The image proof reads `/workspace/BOOT-INF/classes/git.properties` from
+   the image. `docker create` makes a container record, and `docker cp`
+   reads the file. No process starts, because the Paketo image holds no
+   shell.
+
+Each commit must equal the commit of the working tree. A mismatch stops the
+run. A dirty tree is allowed, and the run records the dirty flag. The proof
+covers the commit alone. It cannot show that an uncommitted change reached
+a jar.
+
+The creation time of the image proves nothing. A buildpack sets a fixed
+time of `1980-01-01` for a reproducible image. The run reports that time as
+a record alone.
+
+One measurement of 2026-10-29 gives the shape of a pass. The run took 37 s.
+It proved 14 jars in the boot jar, and it proved the image.
+
+`node-9/bin/start` holds the same two build steps. It runs them from a
+source tree alone, and only when the image is absent. An installed home
+refuses to build. It exits with status 4, and it asks for
+`node-9/bin/load-images`. So an installed host takes the image through
+`save-images` and `load-images`, and it builds none. See `CHAT-gwrrazjg`.
+
+`CHAT_IMAGE_MANIFEST` reaches `chat-build` without a change. `chat-build`
+then appends one record of the image to that JSON manifest.
+
+Run `just check-build-node-9-image` for the offline checks. They build no
+image, and they start no container.
 
 ## Move to another host
 

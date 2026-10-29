@@ -30,6 +30,15 @@
 # The installer refuses a prefix inside a git work tree. It refuses a
 # non-empty prefix that has no marker. It refuses a symlink at a stable
 # vault file or at the vault password.
+#
+# A full install prints one line for each phase. Each line carries the phase
+# time. The shell CLI build prints its own phase lines, and the build log
+# keeps a copy of them. A dry run prints no phase line. See CHAT-gwrrazjg.
+#
+# The build always runs clean, so the staged jar set comes from a new
+# compile. build-shell-cli-lib then proves the stamp of every staged chat jar
+# against the commit of the working tree. The marker records that proven
+# commit as lib-commit, and the dirty flag as lib-dirty.
 set -uo pipefail
 
 src="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,6 +91,14 @@ fail() {
     printf 'node-9 install: %s\n' "$1" >&2
     exit "${2:-1}"
 }
+
+# status TEXT  Print one progress line. chat-deploy uses the same idiom. The
+# local variable named status below holds a target state, and the two names
+# carry no relation.
+status() { printf 'node-9 install: %s\n' "$1"; }
+
+# The phase count of a full install. See CHAT-gwrrazjg.
+total_phases=6
 
 while (( $# )); do
     case "$1" in
@@ -533,6 +550,13 @@ fi
 
 umask 022
 
+status "[1/$total_phases] preflight done. Prefix $prefix, secrets $choice, java $java_version"
+
+# The proven stamp of the staged jar set. The marker reads these two values.
+# An empty commit means that this run staged no jar set.
+lib_commit=''
+lib_dirty=''
+
 # The jar set is built before any copy. A failed build then leaves the
 # earlier home whole, with its code, its jar set, and its marker. The stage
 # sits beside the prefix, so one rename completes it.
@@ -551,18 +575,32 @@ if [[ "$skip_cli" != 'true' ]]; then
     build_env=()
     [[ -n "${NODE9_JAVA:-}" ]] && build_env+=("NODE9_JAVA=$java_command")
     [[ -n "${NODE9_MVN:-}" ]] && build_env+=("NODE9_MVN=$mvn_command")
+    status "[2/$total_phases] shell CLI build. Its log is at $stage_parent/build.log"
+    build_started=$SECONDS
+    # tee sends the phase lines of the build to the terminal, and it keeps a
+    # copy in the log. An earlier version wrote the log alone, so a long build
+    # printed nothing. See CHAT-gwrrazjg.
     if ! env "${build_env[@]+"${build_env[@]}"}" \
-        "$src/../shell-scripts/build-shell-cli-lib" "$lib_stage" \
-        > "$stage_parent/build.log" 2>&1; then
+        "$src/../shell-scripts/build-shell-cli-lib" "$lib_stage" 2>&1 \
+        | tee "$stage_parent/build.log"; then
         printf 'node-9 install: the shell CLI build failed. Its log is at %s\n' \
             "$stage_parent/build.log" >&2
         exit 1
     fi
-    printf 'node-9 install: %s\n' "$(tail -1 "$stage_parent/build.log")"
+    # The build wrote the proven stamp into the options header.
+    lib_commit="$(sed -n 's/^# source-commit //p' "$lib_stage/shell-cli.options" \
+        | head -1)"
+    lib_dirty="$(sed -n 's/^# source-dirty //p' "$lib_stage/shell-cli.options" \
+        | head -1)"
+    status "[2/$total_phases] shell CLI build done in $((SECONDS - build_started)) s"
     rm -f "$stage_parent/build.log"
+else
+    status "[2/$total_phases] shell CLI build skipped"
 fi
 
 mkdir -p "$prefix" || fail "cannot create $prefix." 1
+
+status "[3/$total_phases] code copy"
 
 # Replace the code. A directory is replaced whole, so a removed file goes.
 for file in "${code_files[@]}"; do
@@ -578,6 +616,8 @@ for script in "${shell_scripts[@]}"; do
 done
 rm -f "$prefix/ansible/vault/owner.yml"
 chmod 755 "$prefix"/bin/*
+
+status "[4/$total_phases] jar set swap"
 
 # The jar set replaces the earlier one whole, so a dependency that left the
 # build leaves the home. lib/ is code, not state.
@@ -607,6 +647,8 @@ if [[ -n "$lib_stage" ]]; then
     rm -rf "$old_lib"
     rmdir "$stage_parent" 2> /dev/null
 fi
+
+status "[5/$total_phases] state directories and secrets"
 
 # State directories. Create alone. Never change a present one.
 for dir in "${state_dirs[@]}"; do
@@ -689,11 +731,29 @@ case "$choice" in
     keep-secrets) marker_secrets=kept; marker_plaintext=complete ;;
 esac
 
+status "[6/$total_phases] marker"
+
+# A kept jar set carries its own proven stamp. The marker reports that stamp,
+# so a reader never takes the commit of the installer for the commit of the
+# jars. See CHAT-gwrrazjg.
+if [[ -z "$lib_commit" && -f "$prefix/lib/shell-cli.options" ]]; then
+    lib_commit="$(sed -n 's/^# source-commit //p' "$prefix/lib/shell-cli.options" \
+        | head -1)"
+    lib_dirty="$(sed -n 's/^# source-dirty //p' "$prefix/lib/shell-cli.options" \
+        | head -1)"
+fi
+
 # The marker goes last. Its presence means the copy is complete.
 {
     printf 'installed-at: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    # source-commit names the commit of the installer source tree. It does not
+    # name the commit of the jar set. lib-commit names the jar set.
     printf 'source-commit: %s\n' \
         "$(git -C "$src" rev-parse HEAD 2>/dev/null || printf unknown)"
+    if [[ -n "$lib_commit" ]]; then
+        printf 'lib-commit: %s\n' "$lib_commit"
+        printf 'lib-dirty: %s\n' "${lib_dirty:-unknown}"
+    fi
     # The line reports the home, not the flag. --skip-cli on a home that
     # already holds a jar set keeps that set, and a reader of "skipped" would
     # otherwise expect no runtime. See the branch review of 2026-10-22.

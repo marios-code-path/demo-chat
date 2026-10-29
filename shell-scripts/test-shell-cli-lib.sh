@@ -248,10 +248,16 @@ if [[ -n "$out" ]]; then
     mkdir -p "$out"
     # One real jar holds the main class entry, because the stage script checks
     # for it. The other is a plain file, which is enough for a count.
+    #
+    # The jar also holds git.properties, because the stage script proves the
+    # commit of every staged chat jar. STUB_COMMIT selects the stamp, so one
+    # case can stage a jar of another commit. See CHAT-gwrrazjg.
     stage_tmp="$(mktemp -d)"
     mkdir -p "$stage_tmp/com/demo/chat"
     : > "$stage_tmp/com/demo/chat/ShellCliKt.class"
-    ( cd "$stage_tmp" && zip -q -r "$out/chat-shell-0.0.1.jar" com )
+    printf 'git.commit.id=%s\n' "${STUB_COMMIT:?Set STUB_COMMIT}" \
+        > "$stage_tmp/git.properties"
+    ( cd "$stage_tmp" && zip -q -r "$out/chat-shell-0.0.1.jar" com git.properties )
     rm -rf "$stage_tmp"
     printf 'jar one\n' > "$out/one.jar"
     printf 'jar two\n' > "$out/two.jar"
@@ -264,6 +270,10 @@ exit 0
 STUB
 chmod +x "$stub_bin/mvn"
 
+# The commit of the working tree. The stage script proves every staged chat
+# jar against this value, so each fixture jar carries it. See CHAT-gwrrazjg.
+tree_commit="$(git -C "$repo_root" rev-parse HEAD)"
+
 # The MCP stage reads a packaged module jar beside the source tree. A fixture
 # holds one jar with the main class entry, so the suite needs no built module.
 mcp_target="$work/mcp-target"
@@ -271,8 +281,20 @@ mkdir -p "$mcp_target"
 mcp_fixture="$(mktemp -d)"
 mkdir -p "$mcp_fixture/com/demo/chat/mcp"
 : > "$mcp_fixture/com/demo/chat/mcp/McpAdapterMainKt.class"
-( cd "$mcp_fixture" && zip -q -r "$mcp_target/chat-mcp-0.0.1.jar" com )
+printf 'git.commit.id=%s\n' "$tree_commit" > "$mcp_fixture/git.properties"
+( cd "$mcp_fixture" && zip -q -r "$mcp_target/chat-mcp-0.0.1.jar" com git.properties )
 rm -rf "$mcp_fixture"
+
+# The stage script copies the chat-deploy module jar from a target directory.
+# A fixture replaces that directory. So the suite never stages a jar of the
+# real build tree, and no case depends on the state of that tree.
+deploy_target="$work/deploy-target"
+mkdir -p "$deploy_target"
+deploy_fixture="$(mktemp -d)"
+mkdir -p "$deploy_fixture/com/demo/chat"
+printf 'git.commit.id=%s\n' "$tree_commit" > "$deploy_fixture/git.properties"
+( cd "$deploy_fixture" && zip -q -r "$deploy_target/chat-deploy-0.0.1.jar" com git.properties )
+rm -rf "$deploy_fixture"
 
 # run_stage DIR [extra env]  Run the stage script with the stubs.
 run_stage() {
@@ -281,6 +303,8 @@ run_stage() {
     rm -f "$work/mvn-calls" "$work/mvn-env"
     out="$(env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" \
         CHAT_MCP_TARGET_DIR="$mcp_target" \
+        CHAT_DEPLOY_TARGET_DIR="$deploy_target" \
+        STUB_COMMIT="$tree_commit" \
         MVN_ENV="$work/mvn-env" \
         JAVA_ARGS="$work/stage-java-args" "$@" "$stager" "$dir" 2>&1)"
     status=$?
@@ -336,6 +360,69 @@ if [[ "$out" == *'jars'* && "$out" == *'bytes'* ]]; then
     ok 'stage_names_its_jar_count'
 else
     bad 'stage_names_its_jar_count' "output: $out"
+fi
+
+# Every Maven build step runs clean. A copy-only step adds no clean, because
+# a clean would remove the module jar that the next step reads.
+clean_case='ok'
+clean_steps="$(grep -c 'clean' "$work/mvn-calls")"
+if (( clean_steps != 3 )); then
+    clean_case="$clean_steps of the Maven calls run clean, and 3 must run it"
+elif ! grep -q 'chat-mcp/pom.xml' "$work/mvn-calls"; then
+    clean_case='the calls name no MCP dependency copy'
+elif grep 'chat-mcp/pom.xml' "$work/mvn-calls" | grep -q 'clean'; then
+    clean_case='the MCP dependency copy runs clean, and it must not'
+fi
+if [[ "$clean_case" == 'ok' ]]; then
+    ok 'stage_builds_clean'
+else
+    bad 'stage_builds_clean' "$clean_case"
+fi
+
+# The run prints one line for each phase, so a long build never stays silent.
+phase_case='ok'
+for name in 'module build' 'dependency copy' 'MCP build' \
+    'MCP dependency copy' 'git stamp proof' 'options freeze'; do
+    [[ "$out" == *"$name"* ]] || phase_case="the output names no $name phase"
+done
+[[ "$out" == *'[6/6]'* ]] || phase_case='the output names no sixth phase'
+if [[ "$phase_case" == 'ok' ]]; then
+    ok 'stage_prints_a_line_for_each_phase'
+else
+    bad 'stage_prints_a_line_for_each_phase' "$phase_case: $out"
+fi
+
+# The proof records the commit of the working tree in the options header.
+proof_case='ok'
+if ! grep -qx -- "# source-commit $tree_commit" \
+    "$work/stage-one/shell-cli.options"; then
+    proof_case="the options record $(grep '^# source-commit' "$work/stage-one/shell-cli.options")"
+elif ! grep -qE '^# source-dirty (true|false)$' \
+    "$work/stage-one/shell-cli.options"; then
+    proof_case='the options record no dirty flag'
+fi
+if [[ "$proof_case" == 'ok' ]]; then
+    ok 'stage_records_the_proven_commit'
+else
+    bad 'stage_records_the_proven_commit' "$proof_case"
+fi
+
+# A jar of another commit stops the build. The stage must not appear, so the
+# installed home keeps its earlier runtime.
+run_stage "$work/stage-stale" \
+    STUB_COMMIT=0123456789abcdef0123456789abcdef01234567
+stale_case='ok'
+if [[ $status -eq 0 ]]; then
+    stale_case='the stage script reported success for a stale jar'
+elif [[ -e "$work/stage-stale" ]]; then
+    stale_case='the stale run left a stage directory'
+elif [[ "$out" != *'not fresh'* ]]; then
+    stale_case="the output names no stale jar: $out"
+fi
+if [[ "$stale_case" == 'ok' ]]; then
+    ok 'stage_refuses_a_jar_of_another_commit'
+else
+    bad 'stage_refuses_a_jar_of_another_commit' "$stale_case"
 fi
 
 if [[ ! -f "$work/stage-one/shell-cli.options" ]]; then
@@ -530,6 +617,8 @@ run_install() {
     rm -f "$work/mvn-calls"
     out="$(env PATH="$install_bin:/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
         CHAT_MCP_TARGET_DIR="$mcp_target" \
+        CHAT_DEPLOY_TARGET_DIR="$deploy_target" \
+        STUB_COMMIT="$tree_commit" \
         XDG_CONFIG_HOME="$work/install-config" "${env_pairs[@]}" \
         bash "$installer" --prefix "$prefix" --vault-source "$install_bundle" \
         "${args[@]+"${args[@]}"}" 2>&1)"
@@ -689,7 +778,11 @@ if [[ -n "$out" ]]; then
     stage_tmp="$(mktemp -d)"
     mkdir -p "$stage_tmp/com/demo/chat"
     : > "$stage_tmp/com/demo/chat/ShellCliKt.class"
-    ( cd "$stage_tmp" && zip -q -r "$out/chat-shell-0.0.1.jar" com )
+    # The stage script proves the commit of every staged chat jar, so this
+    # stub stamps its jar as the main mvn stub does. See CHAT-gwrrazjg.
+    printf 'git.commit.id=%s\n' "${STUB_COMMIT:?Set STUB_COMMIT}" \
+        > "$stage_tmp/git.properties"
+    ( cd "$stage_tmp" && zip -q -r "$out/chat-shell-0.0.1.jar" com git.properties )
     rm -rf "$stage_tmp"
     printf 'jar one\n' > "$out/one.jar"
 fi
@@ -703,6 +796,8 @@ chmod +x "$work/alt-tools/alt-mvn" "$work/alt-tools/alt-java"
 rm -f "$work/mvn-calls"
 out="$(env PATH="/usr/bin:/bin" MVN_CALLS="$work/mvn-calls" \
     CHAT_MCP_TARGET_DIR="$mcp_target" \
+    CHAT_DEPLOY_TARGET_DIR="$deploy_target" \
+    STUB_COMMIT="$tree_commit" \
     XDG_CONFIG_HOME="$work/install-config" \
     NODE9_MVN="$work/alt-tools/alt-mvn" NODE9_JAVA="$work/alt-tools/alt-java" \
     bash "$installer" --prefix "$work/home-alt-tools" \
@@ -819,6 +914,58 @@ if [[ "$marker_case" == 'ok' ]]; then
     ok 'skip_cli_marker_tells_the_truth_about_an_existing_lib'
 else
     bad 'skip_cli_marker_tells_the_truth_about_an_existing_lib' "$marker_case"
+fi
+
+# A full install prints one line for each of its six phases. An earlier
+# version printed nothing while the build ran. See CHAT-gwrrazjg.
+run_install "$work/home-phases"
+install_phase_case='ok'
+if [[ $status -ne 0 ]]; then
+    install_phase_case="exit $status, output: $out"
+else
+    for name in preflight 'shell CLI build' 'code copy' 'jar set swap' \
+        'state directories and secrets' marker; do
+        [[ "$out" == *"$name"* ]] \
+            || install_phase_case="the output names no $name phase"
+    done
+    [[ "$out" == *'[6/6]'* ]] \
+        || install_phase_case='the output names no sixth phase'
+fi
+if [[ "$install_phase_case" == 'ok' ]]; then
+    ok 'install_prints_a_line_for_each_phase'
+else
+    bad 'install_prints_a_line_for_each_phase' "$install_phase_case"
+fi
+
+# The marker records the proven commit of the jar set. source-commit names
+# the installer source tree alone, and a reader needs both names.
+stamp_case='ok'
+if [[ ! -f "$work/home-phases/.installed" ]]; then
+    stamp_case='the home holds no marker'
+elif ! grep -qx -- "lib-commit: $tree_commit" "$work/home-phases/.installed"; then
+    stamp_case="the marker records $(grep '^lib-commit:' "$work/home-phases/.installed")"
+elif ! grep -qE '^lib-dirty: (true|false)$' "$work/home-phases/.installed"; then
+    stamp_case='the marker records no dirty flag'
+fi
+if [[ "$stamp_case" == 'ok' ]]; then
+    ok 'install_marker_records_the_jar_set_commit'
+else
+    bad 'install_marker_records_the_jar_set_commit' "$stamp_case"
+fi
+
+# A kept jar set keeps its stamp in the marker. --skip-cli stages no jar, and
+# the marker must still name the commit of the jars in the home.
+run_install "$work/home-phases" -- --skip-cli --prefix "$work/home-phases"
+keep_stamp_case='ok'
+if [[ $status -ne 0 ]]; then
+    keep_stamp_case="exit $status, output: $out"
+elif ! grep -qx -- "lib-commit: $tree_commit" "$work/home-phases/.installed"; then
+    keep_stamp_case="the marker records $(grep '^lib-commit:' "$work/home-phases/.installed")"
+fi
+if [[ "$keep_stamp_case" == 'ok' ]]; then
+    ok 'skip_cli_marker_keeps_the_jar_set_commit'
+else
+    bad 'skip_cli_marker_keeps_the_jar_set_commit' "$keep_stamp_case"
 fi
 
 if ((failures > 0)); then
