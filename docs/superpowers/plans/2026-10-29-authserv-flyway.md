@@ -51,3 +51,13 @@ Add a Kubernetes Job example that uses operator-supplied credentials.
 Document the database snapshot and application rollback path.
 Run the full authorization server module tests, `git diff --check`, and `drift check`.
 Open a pull request and wait for full CI and repository owner approval before merge.
+
+## 6. Correct the live deployment path
+
+Add `shell-scripts/test-authserv-launch.sh`.
+Check that `just deploy-authserv` passes `jdbc` and `client-init` to both `chat-build` calls.
+Stub Docker with two Consul container IDs.
+Check that `chat-build` selects one running container.
+Run both checks before the fixes and record their failures.
+Update `justfile`, `shell-scripts/chat-build`, and `shell-scripts/README-chat-build.md`.
+Run the new test, `test-flags.sh`, `test-key-type-required.sh`, and `drift check`.

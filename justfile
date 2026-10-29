@@ -305,7 +305,7 @@ deploy-authserv jwk *flags:
 	done
 	# chat-build states the key type rule. This check runs before every other step.
 	CONSUL_HOST=127.0.0.1 ./shell-scripts/chat-build authserv --build --notls --node-id 8 \
-	    --consul ${key_args[@]+"${key_args[@]}"} --dry-run > /dev/null
+	    --consul --profile jdbc --profile client-init ${key_args[@]+"${key_args[@]}"} --dry-run > /dev/null
 	status "Checking credentials and JWK file."
 	CHAT_SERVICE_PASSWORD="${CHAT_SERVICE_PASSWORD:-}"
 	SPRING_DATASOURCE_USERNAME="${SPRING_DATASOURCE_USERNAME:-}"
@@ -405,7 +405,7 @@ deploy-authserv jwk *flags:
 	env CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host" \
 	    DOCKER_CONFIG="$build_docker_config" conda run -n base \
 	    ./shell-scripts/chat-build authserv --build --notls --node-id 8 --consul \
-	    ${key_args[@]+"${key_args[@]}"}
+	    --profile jdbc --profile client-init ${key_args[@]+"${key_args[@]}"}
 	status "The authserv Docker image build is complete."
 	status "Starting the authserv container."
 	docker compose -f "$compose_file" up -d authserv
