@@ -22,8 +22,7 @@ class JdbcAssertionReplayStore(
 ) : AssertionReplayStore {
 
     init {
-        // An existing database does not run the initialization scripts again.
-        // Check for the table before a JWKS agent sends an assertion.
+        // Check the table after Flyway runs and before an agent sends an assertion.
         if (requireTable) verifyTable()
     }
 
@@ -48,8 +47,8 @@ class JdbcAssertionReplayStore(
             template.queryForList("SELECT client_id FROM oauth2_client_assertion_jti WHERE 1 = 0")
         } catch (missing: DataAccessException) {
             throw ChatException(
-                "The table oauth2_client_assertion_jti is absent. Create it from " +
-                    "sql-scripts/oauth2-client-assertion-jti-schema.sql. See CHAT-wdvjqtpb."
+                "The table oauth2_client_assertion_jti is absent. Check " +
+                    "src/main/resources/db/migration/V2__client_assertion_replay.sql."
             )
         }
     }

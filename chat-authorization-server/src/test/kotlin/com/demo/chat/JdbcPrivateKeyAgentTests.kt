@@ -31,7 +31,8 @@ import java.util.UUID
  * Test a private key agent with the JDBC stores. See `CHAT-wdvjqtpb`.
  *
  * This test starts the `jdbc` profile.
- * It runs the four deployment schema files on H2 in PostgreSQL mode.
+ * Flyway creates the schema on H2 in PostgreSQL mode by default.
+ * Set CHAT_AUTHSERV_TEST_JDBC_URL to use an isolated PostgreSQL database.
  * The test reads the replay and client rows after it requests a token.
  */
 @SpringBootTest(
@@ -76,23 +77,28 @@ class JdbcPrivateKeyAgentTests {
         @DynamicPropertySource
         fun database(registry: DynamicPropertyRegistry) {
             AuthorizationServerTestSigningKey.register(registry)
-            registry.add("spring.datasource.url") { DATABASE }
-            registry.add("spring.datasource.username") { "sa" }
-            registry.add("spring.datasource.password") { "" }
-            registry.add("spring.sql.init.mode") { "always" }
-            registry.add("spring.sql.init.schema-locations") {
-                listOf(
-                    "oauth2-registered-client-schema.sql",
-                    "oauth2-authorization-schema.sql",
-                    "oauth2-authorization-consent-schema.sql",
-                    "oauth2-client-assertion-jti-schema.sql",
-                ).joinToString(",") { "file:sql-scripts/$it" }
+            registry.add("spring.datasource.url") { testDatabaseUrl() }
+            registry.add("spring.datasource.username") { System.getenv("CHAT_AUTHSERV_TEST_JDBC_USER") ?: "sa" }
+            registry.add("spring.datasource.password") { System.getenv("CHAT_AUTHSERV_TEST_JDBC_PASSWORD") ?: "" }
+        }
+
+        private fun testDatabaseUrl(): String {
+            val url = System.getenv("CHAT_AUTHSERV_TEST_JDBC_URL") ?: return DATABASE
+            require(url.substringBefore('?').substringAfterLast('/').startsWith("authserv_jwt_replay_")) {
+                "CHAT_AUTHSERV_TEST_JDBC_URL must name an authserv_jwt_replay_ test database."
             }
+            return url
         }
     }
 
     @Test
     fun `a signed assertion receives a token once`() {
+        assertThat(jdbc.queryForList(
+            "SELECT \"version\" FROM \"flyway_schema_history\" " +
+                "WHERE \"success\" = true AND \"version\" IS NOT NULL ORDER BY \"installed_rank\"",
+            String::class.java,
+        ))
+            .containsExactly("1", "2")
         val key = RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate()
         val jwks = JWKSet(key.toPublicJWK()).toString().toByteArray(StandardCharsets.UTF_8)
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

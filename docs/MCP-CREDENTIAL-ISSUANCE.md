@@ -72,15 +72,9 @@ The server also rejects an assertion without `jti`.
 With `jdbc`, the server stores each used `jti` in the `oauth2_client_assertion_jti` table.
 After a restart, each server reads the same table.
 
-Docker Compose runs the files in `sql-scripts` only when it creates a database volume.
-For an existing volume, create the replay table before the first start with a JWKS agent:
-
-```sh
-psql -h DB_HOST -U DB_USER -d authserver \
-  -f chat-authorization-server/sql-scripts/oauth2-client-assertion-jti-schema.sql
-```
-
-The server refuses to start if a JWKS agent is configured and the table is absent.
+Flyway creates the replay table for new JDBC databases.
+For an existing database, follow [the JDBC migration guide](AUTHSERV-JDBC-MIGRATION.md) before the first start with the new image.
+The server refuses to start if a JWKS agent is configured and the replay table is absent.
 
 With `memory`, the server stores replay records in its process. A restart clears the records.
 The cache holds at most 10,000 unexpired assertions. At that limit, it refuses a new assertion.
