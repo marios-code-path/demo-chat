@@ -66,6 +66,22 @@ else
     bad 'dry_run_starts_nothing' "the stub ssh ran"
 fi
 
+run_tunnel --dry-run --authserv node2.lan 100 non-persistent true
+if [[ $status -eq 0 && "$out" == *'-L 127.0.0.1:9100:127.0.0.1:9000'* \
+      && "$out" == *'ports 6990 6991 6992 9100'* \
+      && "$out" == *'http://127.0.0.1:9100/oauth2/token'* ]]; then
+    ok 'authserv_dry_run_names_forward_and_url'
+else
+    bad 'authserv_dry_run_names_forward_and_url' "exit $status, output: $out, error: $err"
+fi
+
+run_tunnel --help
+if [[ $status -eq 0 && "$err" == *'[--authserv]'* ]]; then
+    ok 'usage_names_authserv'
+else
+    bad 'usage_names_authserv' "exit $status, error: $err"
+fi
+
 # -- A command flag reaches the command ----------------------------------
 
 # A client command holds its own flags, for example
@@ -88,6 +104,13 @@ if [[ $status -eq 2 && "$err" == *'--dry-run'* && ! -f "$pidfile" ]]; then
     ok 'trailing_dry_run_exits_2'
 else
     bad 'trailing_dry_run_exits_2' "exit $status, output: $out, error: $err"
+fi
+
+run_tunnel node2.lan 100 non-persistent true --authserv
+if [[ $status -eq 2 && "$err" == *'--authserv'* ]]; then
+    ok 'trailing_authserv_exits_2'
+else
+    bad 'trailing_authserv_exits_2' "exit $status, error: $err"
 fi
 
 # A mistyped option is the same case as a trailing one.
@@ -192,6 +215,56 @@ else
     bad 'ssh_carries_the_tunnel_flags' "args: $(cat "$argsfile" 2> /dev/null)"
 fi
 
+# The selected forward reports its URL before the local command runs.
+run_tunnel --authserv node2.lan 100 non-persistent true
+if [[ $status -eq 0 && "$err" == *'http://127.0.0.1:9100/oauth2/token'* ]]; then
+    ok 'direct_authserv_call_names_url'
+else
+    bad 'direct_authserv_call_names_url' "exit $status, error: $err"
+fi
+
+# Selected readiness uses a fixed nc result, regardless of host listeners.
+mkdir -p "$work/nc-accept" "$work/nc-authserv-reject" "$work/nc-all-reject"
+cat > "$work/nc-accept/nc" <<'STUB'
+#!/usr/bin/env bash
+case "${@: -1}" in 6990|6991|6992|9100) exit 0 ;; *) exit 1 ;; esac
+STUB
+cat > "$work/nc-authserv-reject/nc" <<'STUB'
+#!/usr/bin/env bash
+case "${@: -1}" in 6990|6991|6992) exit 0 ;; *) exit 1 ;; esac
+STUB
+cat > "$work/nc-all-reject/nc" <<'STUB'
+#!/usr/bin/env bash
+exit 1
+STUB
+chmod +x "$work/nc-accept/nc" "$work/nc-authserv-reject/nc" "$work/nc-all-reject/nc"
+
+out="$(PATH="$work/nc-accept:$PATH" CHAT_TUNNEL_SSH="$stub" CHAT_TUNNEL_READY_SECONDS=1 \
+    STUB_SSH_PIDFILE="$pidfile" STUB_SSH_ARGSFILE="$argsfile" \
+    "$tool" --authserv node2.lan 100 non-persistent bash -c 'printf LOCAL-COMMAND-RAN' \
+    2> "$work/stderr")"
+status=$?
+err="$(cat "$work/stderr")"
+if [[ $status -eq 0 && "$out" == 'LOCAL-COMMAND-RAN' \
+      && "$err" == *'http://127.0.0.1:9100/oauth2/token'* ]]; then
+    ok 'authserv_ready_runs_command'
+else
+    bad 'authserv_ready_runs_command' "exit $status, output: $out, error: $err"
+fi
+
+out="$(PATH="$work/nc-authserv-reject:$PATH" CHAT_TUNNEL_SSH="$stub" CHAT_TUNNEL_READY_SECONDS=1 \
+    STUB_SSH_PIDFILE="$pidfile" STUB_SSH_ARGSFILE="$argsfile" \
+    "$tool" --authserv node2.lan 100 non-persistent bash -c 'printf LOCAL-COMMAND-RAN' \
+    2> "$work/stderr")"
+status=$?
+err="$(cat "$work/stderr")"
+if [[ $status -eq 1 && "$err" == *'6990 6991 6992 9100'* \
+      && "$out" != *'LOCAL-COMMAND-RAN'* ]]; then
+    ok 'authserv_unready_names_four_ports'
+else
+    bad 'authserv_unready_names_four_ports' "exit $status, output: $out, error: $err"
+fi
+
 # -- A failed tunnel keeps the ssh text ----------------------------------
 
 # The stub prints one marker and exits. The tool must show that text.
@@ -201,7 +274,7 @@ echo 'SSH-FAILURE-MARKER' >&2
 exit 255
 STUB
 chmod +x "$work/bad-ssh"
-out="$(CHAT_TUNNEL_SSH="$work/bad-ssh" CHAT_TUNNEL_READY_SECONDS=1 \
+out="$(PATH="$work/nc-all-reject:$PATH" CHAT_TUNNEL_SSH="$work/bad-ssh" CHAT_TUNNEL_READY_SECONDS=1 \
     "$tool" node2.lan 100 non-persistent true 2> "$work/stderr")"
 status=$?
 err="$(cat "$work/stderr")"
@@ -212,7 +285,7 @@ else
 fi
 
 # Persistent mode must not print a pid for a tunnel that never started.
-out="$(CHAT_TUNNEL_SSH="$work/bad-ssh" CHAT_TUNNEL_READY_SECONDS=1 \
+out="$(PATH="$work/nc-all-reject:$PATH" CHAT_TUNNEL_SSH="$work/bad-ssh" CHAT_TUNNEL_READY_SECONDS=1 \
     "$tool" node2.lan 400 persistent 2> "$work/stderr")"
 status=$?
 err="$(cat "$work/stderr")"
@@ -234,10 +307,21 @@ else
     bad 'persistent_prints_a_live_pid' "exit $status, output: $out"
 fi
 
+stop_persistent
+run_tunnel --authserv node2.lan 200 persistent
+persistent_pid="$(printf '%s' "$out" | tr -d '[:space:]')"
+if [[ $status -eq 0 && "$persistent_pid" =~ ^[0-9]+$ \
+      && "$err" == *'http://127.0.0.1:9200/oauth2/token'* ]] \
+   && kill -0 "$persistent_pid" 2> /dev/null; then
+    ok 'persistent_authserv_prints_pid_and_url'
+else
+    bad 'persistent_authserv_prints_pid_and_url' "exit $status, output: $out, error: $err"
+fi
+
 # -- Result --------------------------------------------------------------
 
 if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 20
+printf '%d checks, 0 failures\n' 27
