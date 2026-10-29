@@ -3,17 +3,17 @@ package com.demo.chat.config.deploy.authserv
 import java.time.Instant
 
 /**
- * The memory of used client assertions. See `CHAT-wdvjqtpb`.
+ * Store used client assertions. See `CHAT-wdvjqtpb`.
  *
- * A store answers true on the first use of one `jti` for one client. A
- * restart or a second replica must keep that answer, so a deployed server
- * needs a store outside the process.
+ * Return true for the first use of a `jti` by one client.
+ * A deployed server must keep the record after a restart.
+ * All server replicas must share the record.
  */
 interface AssertionReplayStore {
 
     /**
-     * Answer true on the first use of [jti] for [clientId]. Answer false on a
-     * repeat and on an expired assertion.
+     * Return true for the first use of [jti] by [clientId].
+     * Return false for a repeat or an expired assertion.
      */
     fun claim(clientId: String, jti: String, expiresAt: Instant): Boolean
 }

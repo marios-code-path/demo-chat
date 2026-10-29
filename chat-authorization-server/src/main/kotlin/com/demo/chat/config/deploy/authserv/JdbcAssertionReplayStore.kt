@@ -8,12 +8,13 @@ import java.sql.Timestamp
 import java.time.Instant
 
 /**
- * Remembers used client assertions in the `oauth2_client_assertion_jti`
- * table. A restart keeps the table, so a captured assertion stays refused.
+ * Store used client assertions in the `oauth2_client_assertion_jti` table.
+ * The table keeps records after a restart.
+ * The server refuses a repeated assertion until its record expires.
  * See `CHAT-wdvjqtpb`.
  *
- * The primary key on `(client_id, jti)` makes the claim atomic. Two servers
- * may race, and only one insert holds.
+ * The primary key on `(client_id, jti)` makes each claim atomic.
+ * If two servers insert the same key, only one insert succeeds.
  */
 class JdbcAssertionReplayStore(
     private val template: JdbcTemplate,
@@ -21,15 +22,15 @@ class JdbcAssertionReplayStore(
 ) : AssertionReplayStore {
 
     init {
-        // An existing database does not run the init scripts again. Fail the
-        // start, and name the file, before an agent meets a broken request.
+        // An existing database does not run the initialization scripts again.
+        // Check for the table before a JWKS agent sends an assertion.
         if (requireTable) verifyTable()
     }
 
     override fun claim(clientId: String, jti: String, expiresAt: Instant): Boolean {
         val now = Instant.now()
         if (!expiresAt.isAfter(now)) return false
-        // Keep the table small. An expired row may take the same jti again.
+        // Delete expired rows. An agent can then use the same jti again.
         template.update("DELETE FROM oauth2_client_assertion_jti WHERE expires_at < ?", Timestamp.from(now))
         return try {
             template.update(

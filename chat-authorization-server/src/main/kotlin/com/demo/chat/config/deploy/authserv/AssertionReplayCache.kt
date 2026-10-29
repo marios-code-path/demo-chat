@@ -10,27 +10,28 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Remembers the `jti` of each accepted client assertion until it expires.
- * A repeat of one `jti` for one client is a replay. See `CHAT-wdvjqtpb`.
+ * Store the `jti` of each accepted client assertion until it expires.
+ * A second use of a `jti` for one client is a replay. See `CHAT-wdvjqtpb`.
  *
- * The cache holds a fixed maximum. At the maximum it refuses the new
- * assertion, because a silent drop would let a replay through. Only an
- * assertion with a valid signature reaches the cache, so a flood needs a
- * trusted key.
+ * The cache holds at most [MAX_ENTRIES] records.
+ * At that limit, it refuses a new assertion.
+ * Removing a record before expiry would allow a replay.
+ * The decoder checks signatures before it uses this cache.
+ * An agent needs a trusted key to fill the cache.
  *
- * This store lives in the process. A restart drops it. Use
- * [JdbcAssertionReplayStore] when a restart must keep the record.
+ * This cache lives in the server process. A restart clears it.
+ * Use [JdbcAssertionReplayStore] to keep records after a restart.
  */
 class AssertionReplayCache(private val maxEntries: Int = MAX_ENTRIES) : AssertionReplayStore {
 
     private val entries = ConcurrentHashMap<String, Instant>()
 
     /**
-     * Answer true on the first use of [jti] for [clientId]. Answer false on a
-     * repeat, on an expired assertion, and at the cache limit.
+     * Return true for the first use of [jti] by [clientId].
+     * Return false for a repeat, an expired assertion, or a full cache.
      *
-     * The lock keeps the size check and the insert one step. Without it,
-     * parallel claims can pass the check together and pass the limit.
+     * The lock makes the size check and insert one operation.
+     * Without the lock, concurrent claims could exceed the limit.
      */
     @Synchronized
     override fun claim(clientId: String, jti: String, expiresAt: Instant): Boolean {
@@ -54,9 +55,9 @@ class AssertionReplayCache(private val maxEntries: Int = MAX_ENTRIES) : Assertio
 }
 
 /**
- * A decoder factory that refuses a repeated client assertion. The wrapped
- * factory checks the signature and the claims first, so a forged assertion
- * never reaches the cache.
+ * Refuse a client assertion when its `jti` was used before.
+ * The wrapped factory checks the signature and claims first.
+ * A forged assertion cannot reach the replay store.
  */
 class ReplayRejectingDecoderFactory(
     private val cache: AssertionReplayStore,
@@ -68,10 +69,10 @@ class ReplayRejectingDecoderFactory(
         return JwtDecoder { assertion ->
             val jwt: Jwt = decoder.decode(assertion)
             val jti = jwt.getClaimAsString("jti")
-            if (jti.isNullOrBlank()) throw JwtException("The client assertion carries no jti.")
-            val expiresAt = jwt.expiresAt ?: throw JwtException("The client assertion carries no exp.")
+            if (jti.isNullOrBlank()) throw JwtException("The client assertion has no jti.")
+            val expiresAt = jwt.expiresAt ?: throw JwtException("The client assertion has no exp.")
             if (!cache.claim(client.clientId, jti, expiresAt)) {
-                throw JwtException("The client assertion jti was already used.")
+                throw JwtException("The client assertion jti was used before.")
             }
             jwt
         }

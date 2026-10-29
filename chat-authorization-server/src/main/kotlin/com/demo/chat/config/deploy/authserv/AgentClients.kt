@@ -27,7 +27,7 @@ object AgentClients {
 
     val TOKEN_TIME_TO_LIVE: Duration = Duration.ofSeconds(300)
 
-    /** The one JWS algorithm the token endpoint accepts for a client assertion. */
+    /** The token endpoint accepts RS256 for a client assertion. */
     val ASSERTION_ALGORITHM: SignatureAlgorithm = SignatureAlgorithm.RS256
     private const val SECRET_BYTES = 32
     private const val BCRYPT_PREFIX = "{bcrypt}"
@@ -66,9 +66,9 @@ object AgentClients {
                 ClientSettings.builder()
                     .requireAuthorizationConsent(false)
                     .jwkSetUrl(jwkSetUri)
-                    // The library sets no default. Without this setting the
-                    // token endpoint refuses every assertion, because it can
-                    // build no signature verifier. See CHAT-wdvjqtpb.
+                    // The library sets no default signing algorithm.
+                    // Set RS256 so the token endpoint can verify the assertion.
+                    // See CHAT-wdvjqtpb.
                     .tokenEndpointAuthenticationSigningAlgorithm(ASSERTION_ALGORITHM)
                     .build()
             )

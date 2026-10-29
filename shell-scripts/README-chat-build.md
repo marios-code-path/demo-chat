@@ -387,7 +387,7 @@ not make one cheaper to add.
 | `--native` | Rejected — GraalVM native builds are still unsupported. |
 | `--jwk PATH` | The JWK file that the deployment trusts. Absolute. Required with `--agent` on `core` and `rest`, and to run `authserv`. |
 | `--agent CLIENT_ID=HANDLE` | One agent. Repeat it for each agent. See below. |
-| `--agent-jwks-uri CLIENT_ID=HTTPS_URI` | Authserv uses this public JWKS URI for `private_key_jwt`. Repeat for each key client. |
+| `--agent-jwks-uri CLIENT_ID=HTTPS_URI` | Authserv reads this public JWKS for `private_key_jwt`. Repeat for each agent that uses a key. |
 | `--agent-scope SCOPE` | The one scope of every agent token. Defaults to `chat.mcp`. |
 | `--index-root DIR` | `core` only. Keep the Lucene indexes in files under `DIR`. See below. |
 | `--vector embedded` | Select the embedded vector store for `core --cassandra`. Requires `--embedding openai`. |

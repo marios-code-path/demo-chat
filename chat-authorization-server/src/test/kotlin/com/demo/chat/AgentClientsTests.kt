@@ -59,8 +59,8 @@ class AgentClientsTests {
     fun `the token endpoint builds a verifier for a private key agent`() {
         val client = AgentClients.buildPrivateKeyJwt("client-a", "chat.mcp", "https://agents.example/client-a/jwks")
 
-        // A client with no signing algorithm gets invalid_client at the token
-        // endpoint, and no other test calls this factory. See CHAT-wdvjqtpb.
+        // Without a signing algorithm, the token endpoint returns invalid_client.
+        // This test creates the decoder factory. See CHAT-wdvjqtpb.
         JwtClientAssertionDecoderFactory().createDecoder(client)
     }
 

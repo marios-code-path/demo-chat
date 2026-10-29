@@ -28,11 +28,11 @@ import java.util.Date
 import java.util.UUID
 
 /**
- * The private key agent against the JDBC stores. See `CHAT-wdvjqtpb`.
+ * Test a private key agent with the JDBC stores. See `CHAT-wdvjqtpb`.
  *
- * This is the only test that boots the `jdbc` profile. It runs the real
- * schema files on H2 in PostgreSQL mode, so the replay table and the
- * client row come from the same SQL that a deployment uses.
+ * This test starts the `jdbc` profile.
+ * It runs the four deployment schema files on H2 in PostgreSQL mode.
+ * The test reads the replay and client rows after it requests a token.
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -51,7 +51,7 @@ import java.util.UUID
         "app.service.composite.auth=true",
         "app.rsocket.transport.security.type=unprotected",
         "app.oauth2.agent-scope=chat.mcp",
-        // A JWKS agent makes the jdbc store require the replay table.
+        // A JWKS agent requires the replay table.
         "app.oauth2.agents[0].client-id=jdbc-agent",
         "app.oauth2.agents[0].username=Agent",
         "app.oauth2.agents[0].jwk-set-uri=https://agents.example/jwks",
@@ -122,7 +122,7 @@ class JdbcPrivateKeyAgentTests {
             assertThat(first.first).describedAs("first response: ${first.second}").isEqualTo(200)
             assertThat(first.second["access_token"]).isNotNull()
 
-            // The row proves that the JDBC store answered, not the memory one.
+            // The replay row proves that the JDBC store handled the request.
             assertThat(
                 jdbc.queryForObject(
                     "SELECT count(*) FROM oauth2_client_assertion_jti WHERE client_id = ?",

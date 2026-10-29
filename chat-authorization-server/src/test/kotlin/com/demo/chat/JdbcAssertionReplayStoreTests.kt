@@ -73,7 +73,7 @@ class JdbcAssertionReplayStoreTests {
     fun `a claim survives a restart`() {
         assertThat(store.claim("client-a", "jti-1", later)).isTrue()
 
-        // A new connection stands for a new process on the same database.
+        // A new connection represents a new process on the same database.
         val afterRestart = JdbcAssertionReplayStore(JdbcTemplate(DriverManagerDataSource(url, "sa", "")))
 
         assertThat(afterRestart.claim("client-a", "jti-1", later)).isFalse()

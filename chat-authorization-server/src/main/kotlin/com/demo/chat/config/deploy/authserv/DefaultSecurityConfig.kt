@@ -43,18 +43,17 @@ class DefaultSecurityConfig(
 
     @Bean fun httpSessionEvenPublisher() = HttpSessionEventPublisher()
 
-    /** A deployed server keeps the replay record. See `CHAT-wdvjqtpb`. */
+    /** The JDBC store keeps replay records after a restart. See `CHAT-wdvjqtpb`. */
     @Bean
     @Profile("jdbc")
     fun jdbcAssertionReplayStore(
         template: JdbcTemplate,
         agentProperties: AgentClientProperties,
     ): AssertionReplayStore =
-        // Only a private-key agent needs the table, so only that deployment
-        // must hold it before the first start.
+        // Require the replay table when a private key agent is configured.
         JdbcAssertionReplayStore(template, requireTable = agentProperties.agents.any { it.jwkSetUri != null })
 
-    /** Without a database the record lives in the process. */
+    /** Without JDBC, replay records remain in the server process. */
     @Bean
     @Profile("!jdbc")
     fun memoryAssertionReplayStore(): AssertionReplayStore = AssertionReplayCache()
@@ -81,8 +80,8 @@ class DefaultSecurityConfig(
         val authorizationServer = OAuth2AuthorizationServerConfigurer()
             .oidc(Customizer.withDefaults())
             .clientAuthentication { clientAuthentication ->
-                // The default provider verifies the signature. Swap its
-                // decoder for one that also refuses a repeated jti.
+                // The default provider verifies the signature.
+                // This decoder also refuses a repeated jti.
                 clientAuthentication.authenticationProviders { providers ->
                     providers.filterIsInstance<JwtClientAssertionAuthenticationProvider>()
                         .forEach { it.setJwtDecoderFactory(assertionDecoders) }

@@ -57,33 +57,39 @@ Request a new token after a restart. The `client-init` profile saves a client
 once and prints its secret once. A lost secret has no recovery path: delete the
 client row, and the next start registers it again.
 
-An agent can register a public JWKS URI with
-`--agent-jwks-uri CLIENT_ID=https://agent.example/jwks`. This client uses
-`private_key_jwt`. The agent keeps the private key. The authorization server
-reads only the public JWKS. Pass `--agent CLIENT_ID=HANDLE` for the same client.
-The agent signs each assertion with RS256. Each assertion has `iss` and `sub` equal to the
-client ID, `aud` equal to the authorization server token endpoint, and a short
-`exp`. It carries a unique `jti` and a matching `kid` in the JOSE header.
-The server rejects a second use of one `jti` for one client until the assertion expires. The server also rejects an assertion with no `jti`.
+Register the agent with `--agent CLIENT_ID=HANDLE`.
+Add `--agent-jwks-uri CLIENT_ID=https://agent.example/jwks` for `private_key_jwt`.
+The agent keeps its private key. The server reads the public JWKS from that URI.
 
-The `jdbc` profile stores each used `jti` in the `oauth2_client_assertion_jti` table. A restart and a second replica read that table.
+The agent signs a short-lived assertion with RS256.
+Set `iss` and `sub` to the client ID.
+Set `aud` to the authorization server token endpoint.
+Set a short `exp` and a unique `jti`.
+Set the JOSE header `kid` to the matching public key ID.
+The server records each `jti`. It rejects a second use before the assertion expires.
+The server also rejects an assertion without `jti`.
 
-Docker Compose runs the files in `sql-scripts` only on a new database volume. An existing database needs one step before the first start with a JWKS agent:
+With `jdbc`, the server stores each used `jti` in the `oauth2_client_assertion_jti` table.
+After a restart, each server reads the same table.
+
+Docker Compose runs the files in `sql-scripts` only when it creates a database volume.
+For an existing volume, create the replay table before the first start with a JWKS agent:
 
 ```sh
 psql -h DB_HOST -U DB_USER -d authserver \
   -f chat-authorization-server/sql-scripts/oauth2-client-assertion-jti-schema.sql
 ```
 
-The server refuses to start when an agent has a JWKS URI and the table is absent.
+The server refuses to start if a JWKS agent is configured and the table is absent.
 
-The `memory` profile keeps the record in the process only. A restart clears it. That profile holds at most 10,000 unexpired assertions and refuses a new assertion at that limit.
+With `memory`, the server stores replay records in its process. A restart clears the records.
+The cache holds at most 10,000 unexpired assertions. At that limit, it refuses a new assertion.
 
-A stored secret client does not change authentication methods automatically.
-The server rejects that row at start. Delete the old client row before
-registering the same client ID with a JWKS URI.
+A stored secret client keeps its authentication method.
+The server refuses startup when you configure that client with a JWKS URI.
+Delete the old client row. The next start registers the client with the new method.
 
-Send the signed assertion with this request:
+Send the signed assertion in this request:
 
 ```sh
 curl -sS -X POST https://AUTH_SERVER/oauth2/token \
@@ -92,8 +98,8 @@ curl -sS -X POST https://AUTH_SERVER/oauth2/token \
   --data-urlencode "client_assertion=$CLIENT_ASSERTION"
 ```
 
-Use the returned `access_token` as the agent bearer token. Create another
-assertion when the access token expires.
+Use the returned `access_token` as the agent bearer token.
+Create a new assertion when the access token expires.
 
 Do not use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent client id. It is
 the id of `app.oauth2.client`, and the start refuses a shared client id.
