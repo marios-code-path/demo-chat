@@ -1,0 +1,250 @@
+#!/usr/bin/env bash
+# Build the node 9 core service image. See CHAT-gwrrazjg.
+#
+#   build-node-9-image [--dry-run]
+#
+# node-9/install builds the shell CLI runtime alone. This script builds the
+# deployable server artifact of node 9. That artifact is one container image,
+# and node-9/node-9.env names it as CORE_IMAGE. The three other compose
+# services use upstream images, and a pull brings them.
+#
+# node-9/bin/start holds the same two build steps. It runs them from a source
+# tree alone, and only when the image is absent. An installed home refuses to
+# build, and it asks for node-9/bin/load-images. So the build had no name of
+# its own, and no caller could run it on purpose.
+#
+# The run has four phases. Each phase prints a start line and an end line.
+# Each end line carries the phase time. Full Maven output goes to a log file.
+# A failed phase names its log, and it prints the last 40 lines of that log.
+#
+# The module build runs clean. So no earlier target directory reaches the
+# image.
+#
+# One phase then proves the jars inside the image. The root pom.xml applies
+# git-commit-id-maven-plugin to every module, so each module jar holds
+# git.properties. The phase reads that file from BOOT-INF/classes of the boot
+# jar. It reads the file from every com.demo jar under BOOT-INF/lib as well.
+# Each commit must equal the commit of the working tree. A dirty tree is
+# allowed, and the run records the dirty flag. The proof cannot show that an
+# uncommitted change reached a jar.
+#
+# The last phase proves the image itself. docker create makes a container
+# record, and it starts no process. docker cp then reads
+# /workspace/BOOT-INF/classes/git.properties from the image layers. That
+# commit must equal the commit of the working tree. A docker run cannot read
+# the file, because the Paketo image holds no shell.
+#
+# The creation time of the image proves nothing. A buildpack sets a fixed
+# time of 1980-01-01 for a reproducible image. So the phase reports the time
+# as a record alone.
+#
+# CHAT_IMAGE_MANIFEST reaches chat-build without a change. chat-build then
+# appends one record of the image to that JSON manifest.
+#
+# NODE9_MVN names another mvn. Maven selects its own JDK through JAVA_HOME,
+# as node-9/bin/start leaves it. NODE9_CHAT_BUILD and
+# CHAT_DEPLOY_CASSANDRA_TARGET_DIR are test hooks of the offline suite.
+set -uo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+fail() {
+    printf 'build-node-9-image: %s\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+# status TEXT  Print one progress line. chat-deploy uses the same idiom.
+status() { printf 'build-node-9-image: %s\n' "$1"; }
+
+dry_run=false
+while (( $# )); do
+    case "$1" in
+        --dry-run) dry_run=true ;;
+        -h|--help)
+            printf 'usage: build-node-9-image [--dry-run]\n' >&2
+            exit 0
+            ;;
+        *) fail "unknown argument: $1" 2 ;;
+    esac
+    shift
+done
+
+mvn_command="${NODE9_MVN:-mvn}"
+chat_build="${NODE9_CHAT_BUILD:-$repo_root/shell-scripts/chat-build}"
+node9_env="$repo_root/node-9/node-9.env"
+[[ -f "$node9_env" ]] || fail "no node-9 environment file at $node9_env" 2
+[[ -x "$chat_build" ]] || fail "no chat-build script at $chat_build" 2
+
+# CORE_IMAGE is the one name that node-9/bin/start looks up. The build must
+# produce that exact reference, or a start cannot find the image.
+core_image="$(sed -n 's/^CORE_IMAGE=//p' "$node9_env" | head -1)"
+[[ -n "$core_image" ]] \
+    || fail "$node9_env names no CORE_IMAGE" 2
+
+# The flag set of node 9. node-9/bin/start passes the same flags and the same
+# four environment names. A change here must reach that script as well.
+build_flags=(core --cassandra --index lucene --pubsub redis-pubsub --notls
+    --node-id 9 --key-type uuid --vector embedded --embedding openai
+    --init users,rootkeys --consul --build)
+build_names=(IMAGE_REPO_PREFIX=node-9 CONSUL_HOST=consul CONSUL_PORT=8500
+    CASSANDRA_CONTACT_POINTS=cassandra)
+
+if [[ "$dry_run" == 'true' ]]; then
+    printf 'image: %s\n' "$core_image"
+    printf 'module build: %s -pl chat-deploy-cassandra -am -Pregister-consul -Dmaven.test.skip=true clean install\n' \
+        "$mvn_command"
+    printf 'image build: %s %s %s\n' "${build_names[*]}" "$chat_build" \
+        "${build_flags[*]}"
+    printf 'proof: BOOT-INF of the boot jar against the commit of the working tree\n'
+    printf 'proof: the git.properties of %s against the same commit\n' \
+        "$core_image"
+    exit 0
+fi
+
+command -v "$mvn_command" > /dev/null 2>&1 \
+    || fail "no mvn at $mvn_command. The image build needs Maven." 2
+command -v docker > /dev/null 2>&1 \
+    || fail 'no docker command. The image build needs Docker.' 2
+command -v unzip > /dev/null 2>&1 \
+    || fail 'no unzip command. The jar proof needs it.' 2
+
+tree_commit="$(git -C "$repo_root" rev-parse HEAD 2> /dev/null)"
+[[ -n "$tree_commit" ]] \
+    || fail 'cannot read the commit of the working tree.'
+if [[ -n "$(git -C "$repo_root" status --porcelain 2> /dev/null)" ]]; then
+    tree_dirty=true
+else
+    tree_dirty=false
+fi
+
+log_dir="$(mktemp -d "${TMPDIR:-/tmp}/build-node-9-image-XXXXXX")" \
+    || fail 'no temporary directory for the logs.'
+
+# A stale Docker Hub login makes the image build fail, so the build takes an
+# empty Docker configuration. CHAT_BUILD_DOCKER_CONFIG names another one, as
+# chat-deploy allows.
+docker_config=''
+if [[ -n "${CHAT_BUILD_DOCKER_CONFIG:-}" ]]; then
+    docker_config="$CHAT_BUILD_DOCKER_CONFIG"
+else
+    docker_config="$log_dir/docker-config"
+    mkdir -p "$docker_config"
+    printf '{}\n' > "$docker_config/config.json"
+fi
+
+total_phases=4
+phase=0
+
+# run_phase NAME LOG COMMAND...  Run one phase and write its output to LOG.
+run_phase() {
+    local name="$1" log="$2" started=$SECONDS rc=0
+    shift 2
+    phase=$((phase + 1))
+    status "[$phase/$total_phases] $name"
+    "$@" > "$log" 2>&1 || rc=$?
+    if (( rc != 0 )); then
+        status "$name failed after $((SECONDS - started)) s. Its log is at $log" >&2
+        tail -n 40 "$log" >&2
+        exit 1
+    fi
+    status "[$phase/$total_phases] $name done in $((SECONDS - started)) s"
+}
+
+# The module build installs chat-deploy-cassandra and every module that it
+# needs. clean removes each earlier target directory first.
+run_phase 'module build' "$log_dir/module-build.log" \
+    "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
+    -pl chat-deploy-cassandra -am -Pregister-consul \
+    -Dmaven.test.skip=true clean install
+
+# The image build repackages the module and calls the buildpack builder.
+# spring-boot:build-image forks the package lifecycle, so the boot jar comes
+# from the compile of the step above.
+run_phase 'image build' "$log_dir/image-build.log" \
+    env DOCKER_CONFIG="$docker_config" "${build_names[@]}" \
+    "$chat_build" "${build_flags[@]}"
+
+# -- The jar proof -------------------------------------------------------
+phase=$((phase + 1))
+status "[$phase/$total_phases] jar proof"
+proof_started=$SECONDS
+deploy_target="${CHAT_DEPLOY_CASSANDRA_TARGET_DIR:-$repo_root/chat-deploy-cassandra/target}"
+boot_jar=''
+while IFS= read -r candidate; do
+    boot_jar="$candidate"
+    break
+done < <(find "$deploy_target" -maxdepth 1 -name '*-exec.jar' 2> /dev/null)
+[[ -n "$boot_jar" ]] \
+    || fail "no boot jar under $deploy_target. The image build staged none."
+
+# jar_stamp FILE  Print the commit of one git.properties stream.
+jar_stamp() {
+    sed -nE 's/^git\.commit\.id=([0-9a-f]+).*/\1/p' | head -1
+}
+
+module_commit="$(unzip -p "$boot_jar" BOOT-INF/classes/git.properties \
+    2> /dev/null | jar_stamp)"
+[[ -n "$module_commit" ]] \
+    || fail "${boot_jar##*/} holds no git.properties in BOOT-INF/classes. No proof covers the image."
+[[ "$module_commit" == "$tree_commit" ]] \
+    || fail "${boot_jar##*/} comes from commit $module_commit, and the working tree is at $tree_commit. The image is not fresh."
+
+proved=1
+nested_dir="$log_dir/nested"
+mkdir -p "$nested_dir"
+while IFS= read -r entry; do
+    [[ -n "$entry" ]] || continue
+    unzip -o -q -d "$nested_dir" "$boot_jar" "$entry" \
+        || fail "cannot read $entry from ${boot_jar##*/}."
+    nested_commit="$(unzip -p "$nested_dir/$entry" git.properties \
+        2> /dev/null | jar_stamp)"
+    [[ -n "$nested_commit" ]] \
+        || fail "${entry##*/} inside the image holds no git.properties stamp."
+    [[ "$nested_commit" == "$tree_commit" ]] \
+        || fail "${entry##*/} inside the image comes from commit $nested_commit, and the working tree is at $tree_commit. The image is not fresh."
+    proved=$((proved + 1))
+done < <(unzip -Z1 "$boot_jar" 'BOOT-INF/lib/chat-*.jar' 2> /dev/null)
+
+status "[$phase/$total_phases] jar proof done in $((SECONDS - proof_started)) s. $proved jars at $tree_commit, dirty $tree_dirty"
+if [[ "$tree_dirty" == 'true' ]]; then
+    status 'the working tree is dirty. The proof covers the commit alone.'
+fi
+
+# -- The image proof -----------------------------------------------------
+phase=$((phase + 1))
+status "[$phase/$total_phases] image proof"
+image_started=$SECONDS
+
+# CORE_IMAGE is the one reference that node-9/bin/start looks up. An absent
+# image here means that the build tagged another reference.
+image_line="$(docker image inspect \
+    --format '{{.Id}} {{.Architecture}} {{.Created}}' "$core_image" 2> /dev/null)"
+[[ -n "$image_line" ]] \
+    || fail "docker holds no image $core_image. The build tagged another reference."
+read -r image_id image_arch image_created <<< "$image_line"
+[[ -n "$image_id" && -n "$image_arch" ]] \
+    || fail "the image query of $core_image gives no id and architecture."
+
+# docker create makes a container record alone, and it starts no process.
+# The removal runs before the comparison, so no record stays behind.
+container_id="$(docker create "$core_image" 2> /dev/null)"
+[[ -n "$container_id" ]] \
+    || fail "cannot create a container record of $core_image."
+image_stamp="$log_dir/image-git.properties"
+copy_status=0
+docker cp "$container_id:/workspace/BOOT-INF/classes/git.properties" - \
+    2> /dev/null | tar -xO > "$image_stamp" || copy_status=$?
+docker rm -f "$container_id" > /dev/null 2>&1
+(( copy_status == 0 )) \
+    || fail "cannot read /workspace/BOOT-INF/classes/git.properties from $core_image."
+image_commit="$(jar_stamp < "$image_stamp")"
+[[ -n "$image_commit" ]] \
+    || fail "$core_image holds no git.commit.id. No proof covers the image."
+[[ "$image_commit" == "$tree_commit" ]] \
+    || fail "$core_image holds commit $image_commit, and the working tree is at $tree_commit. The image is not fresh."
+
+status "[$phase/$total_phases] image proof done in $((SECONDS - image_started)) s"
+status "image $core_image, id $image_id, architecture $image_arch"
+status "commit $tree_commit, dirty $tree_dirty, $proved jars proved in the boot jar"
+status "a buildpack sets the creation time $image_created, so that time proves nothing"
+status "logs stay in $log_dir"

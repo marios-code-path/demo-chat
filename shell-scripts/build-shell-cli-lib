@@ -15,6 +15,22 @@
 #
 # A failed build leaves no stage directory. The work happens in a temporary
 # directory beside the target, and one rename completes it.
+#
+# The build prints one line for each phase. Each line carries the phase time.
+# Full Maven output goes to a log file. A failed phase names its log, and it
+# prints the last 40 lines of that log. See CHAT-gwrrazjg.
+#
+# Every Maven build step runs clean. So no earlier target directory reaches
+# the stage. The copy-only steps add no clean, because a clean would remove
+# the module jar that the next step reads.
+#
+# The root pom.xml applies git-commit-id-maven-plugin to every module. So
+# each module jar holds git.properties. One phase reads that file from every
+# staged chat jar. It compares each git.commit.id with the commit of the
+# working tree. A mismatch stops the build before the stage moves. So an
+# installed jar set cannot be older than the working tree. A dirty tree is
+# allowed, and the proof records the dirty flag. The proof cannot show that
+# an uncommitted change reached a jar.
 set -uo pipefail
 
 # The node-9 values of the frozen options. See node-9/node-9.env.
@@ -24,6 +40,33 @@ node_id=9
 fail() {
     printf 'build-shell-cli-lib: %s\n' "$1" >&2
     exit "${2:-1}"
+}
+
+# status TEXT  Print one progress line. chat-deploy uses the same idiom.
+status() { printf 'build-shell-cli-lib: %s\n' "$1"; }
+
+# The phase count of a complete run. Each phase prints a start line and an
+# end line, so a long run never stays silent. See CHAT-gwrrazjg.
+total_phases=6
+phase=0
+
+# run_phase NAME LOG COMMAND...  Run one phase and write its output to LOG.
+# A failed phase names the log, prints the end of the log, and removes the
+# stage. The log stays outside the stage, so a failure keeps it.
+run_phase() {
+    local name="$1" log="$2" started=$SECONDS rc=0
+    shift 2
+    phase=$((phase + 1))
+    status "[$phase/$total_phases] $name"
+    "$@" > "$log" 2>&1 || rc=$?
+    if (( rc != 0 )); then
+        status "$name failed after $((SECONDS - started)) s. Its log is at $log" >&2
+        tail -n 40 "$log" >&2
+        rm -rf "$tmp"
+        exit 1
+    fi
+    status "[$phase/$total_phases] $name done in $((SECONDS - started)) s"
+    rm -f "$log"
 }
 
 (( $# == 1 )) || fail 'use <new-stage-directory>' 2
@@ -108,62 +151,54 @@ tmp="$(mktemp -d "$parent/.shell-cli-lib-XXXXXX")" \
 # reach chat-deploy through its profiles alone, so -am without a profile never
 # adds them, and the copy step then finds no chat-shell jar. node3 reported
 # that too: "could not be resolved: com.demo:chat-shell:jar:0.0.1".
-if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
+# The step runs clean. So no earlier target directory of these modules
+# reaches the local repository. See CHAT-gwrrazjg.
+run_phase 'module build' "$tmp.reactor.log" \
+    "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
     -pl chat-deploy,chat-shell,chat-shell-host,chat-client-rsocket -am \
-    -DskipTests \
-    install > "$tmp.reactor.log" 2>&1; then
-    rm -rf "$tmp"
-    printf 'build-shell-cli-lib: the module build failed. Its log is at %s\n' \
-        "$tmp.reactor.log" >&2
-    exit 1
-fi
-rm -f "$tmp.reactor.log"
+    -DskipTests clean install
 
 # The dependency copy follows. It runs on chat-deploy alone, so the stage holds
 # the runtime set of that module and nothing of another module.
-if ! "$mvn_command" -B -ntp -f "$repo_root/chat-deploy/pom.xml" \
+# clean runs first. So the module jar of this step comes from a new compile.
+# The step reads each sibling module from the local repository, and the
+# module build above refreshed that repository.
+run_phase 'dependency copy' "$tmp.log" \
+    "$mvn_command" -B -ntp -f "$repo_root/chat-deploy/pom.xml" \
     -Pdeploy,shell,shell-host,client-backend -Dmaven.test.skip=true \
-    package dependency:copy-dependencies -DincludeScope=runtime \
-    -DoutputDirectory="$tmp" > "$tmp.log" 2>&1; then
-    rm -rf "$tmp"
-    printf 'build-shell-cli-lib: the Maven build failed. Its log is at %s\n' \
-        "$tmp.log" >&2
-    exit 1
-fi
-rm -f "$tmp.log"
+    clean package dependency:copy-dependencies -DincludeScope=runtime \
+    -DoutputDirectory="$tmp"
 
 # The plain module jar of chat-deploy joins the dependencies. The Spring Boot
 # repackage of that module, chat-deploy-*-exec.jar, stays out. That file holds
 # every dependency again under BOOT-INF, so it adds 63 MB and no plain
 # classpath can read it. The main class itself comes from chat-shell-*.jar,
 # which the dependency copy already staged.
+# The dependency copy writes the module jar under chat-deploy/target. A test
+# points this name at a fixture, so the suite needs no packaged module.
+# CHAT_MCP_TARGET_DIR below serves the same purpose for the MCP module.
+deploy_target="${CHAT_DEPLOY_TARGET_DIR:-$repo_root/chat-deploy/target}"
 while IFS= read -r jar; do
     cp "$jar" "$tmp/" || { rm -rf "$tmp"; fail 'cannot copy the module jar'; }
-done < <(find "$repo_root/chat-deploy/target" -maxdepth 1 -name '*.jar' \
+done < <(find "$deploy_target" -maxdepth 1 -name '*.jar' \
     -not -name '*-exec.jar' -not -name '*-sources.jar' \
     -not -name '*-javadoc.jar' 2> /dev/null)
 rm -f "$tmp"/*-exec.jar
 
 # Stage the MCP adapter beside the shell runtime. The installed launcher reads
 # this directory without a source tree or a local Maven repository.
-if ! "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
-    -pl chat-mcp -am -DskipTests install > "$tmp.mcp-build.log" 2>&1; then
-    rm -rf "$tmp"
-    printf 'build-shell-cli-lib: the MCP build failed. Its log is at %s\n' \
-        "$tmp.mcp-build.log" >&2
-    exit 1
-fi
-rm -f "$tmp.mcp-build.log"
+# This step runs after the chat-deploy module jar copy above. So its clean
+# removes no jar that this script still needs.
+run_phase 'MCP build' "$tmp.mcp-build.log" \
+    "$mvn_command" -B -ntp -f "$repo_root/pom.xml" \
+    -pl chat-mcp -am -DskipTests clean install
 mkdir -p "$tmp/mcp"
-if ! "$mvn_command" -B -ntp -f "$repo_root/chat-mcp/pom.xml" \
+# This step adds no clean. The MCP build above wrote the module jar under
+# chat-mcp/target, and the staging step below reads that jar.
+run_phase 'MCP dependency copy' "$tmp.mcp-copy.log" \
+    "$mvn_command" -B -ntp -f "$repo_root/chat-mcp/pom.xml" \
     dependency:copy-dependencies -DincludeScope=runtime \
-    -DoutputDirectory="$tmp/mcp" > "$tmp.mcp-copy.log" 2>&1; then
-    rm -rf "$tmp"
-    printf 'build-shell-cli-lib: the MCP dependency copy failed. Its log is at %s\n' \
-        "$tmp.mcp-copy.log" >&2
-    exit 1
-fi
-rm -f "$tmp.mcp-copy.log"
+    -DoutputDirectory="$tmp/mcp"
 # The MCP build writes the module jar under chat-mcp/target. A test points this
 # name at a fixture, so the suite needs no packaged module.
 mcp_target="${CHAT_MCP_TARGET_DIR:-$repo_root/chat-mcp/target}"
@@ -178,8 +213,55 @@ done
 (( mcp_main > 0 )) || { rm -rf "$tmp"; fail 'no staged MCP jar holds McpAdapterMainKt.class'; }
 chmod 644 "$tmp/mcp"/*.jar
 
+# -- The git stamp proof -------------------------------------------------
+#
+# Each module jar holds git.properties, because the root pom.xml applies
+# git-commit-id-maven-plugin to every module. The proof compares the stamp of
+# each staged chat jar with the commit of the working tree.
+#
+# The proof runs before the rename. So a stale jar set leaves no stage, and
+# the installed home keeps its earlier runtime.
+#
+# A measurement of 2026-10-29 shows the need. The installed lib/ held jars of
+# 653b5e6, the target directories held 0cae0c1, and the working tree was at
+# 19493801. The install reported success. See CHAT-gwrrazjg.
+phase=$((phase + 1))
+status "[$phase/$total_phases] git stamp proof"
+stamp_started=$SECONDS
+tree_commit="$(git -C "$repo_root" rev-parse HEAD 2> /dev/null)"
+[[ -n "$tree_commit" ]] \
+    || { rm -rf "$tmp"; fail 'cannot read the commit of the working tree.'; }
+if [[ -n "$(git -C "$repo_root" status --porcelain 2> /dev/null)" ]]; then
+    tree_dirty=true
+else
+    tree_dirty=false
+fi
+stamped=0
+for jar in "$tmp"/chat-*.jar "$tmp"/mcp/chat-*.jar; do
+    [[ -f "$jar" ]] || continue
+    jar_commit="$(unzip -p "$jar" git.properties 2> /dev/null \
+        | sed -nE 's/^git\.commit\.id=([0-9a-f]+).*/\1/p' | head -1)"
+    if [[ -z "$jar_commit" ]]; then
+        rm -rf "$tmp"
+        fail "${jar##*/} holds no git.properties stamp. No proof covers the jar set."
+    fi
+    if [[ "$jar_commit" != "$tree_commit" ]]; then
+        rm -rf "$tmp"
+        fail "${jar##*/} comes from commit $jar_commit, and the working tree is at $tree_commit. The build is not fresh."
+    fi
+    stamped=$((stamped + 1))
+done
+(( stamped > 0 )) \
+    || { rm -rf "$tmp"; fail 'the stage holds no chat module jar. No stamp proves the stage.'; }
+status "[$phase/$total_phases] git stamp proof done in $((SECONDS - stamp_started)) s. $stamped jars at $tree_commit, dirty $tree_dirty"
+if [[ "$tree_dirty" == 'true' ]]; then
+    status 'the working tree is dirty. The proof covers the commit alone.'
+fi
+
 # The frozen options come from the launcher of this tree. The print hook ends
 # before any JVM start, so this call reaches no core.
+phase=$((phase + 1))
+status "[$phase/$total_phases] options freeze"
 if ! options="$(CORE_PORT=6890 CORE_MGMT_PORT=6891 \
     CHAT_SHELL_JAVA="$java_command" \
     CHAT_SHELL_KEY_TYPE="$key_type" CHAT_SHELL_NODE_ID="$node_id" \
@@ -196,6 +278,10 @@ rm -f "$tmp.options-err"
     printf '# key-type %s\n' "$key_type"
     printf '# node-id %s\n' "$node_id"
     printf '# java %s\n' "$java_path"
+    # The proven stamp of the staged jar set. node-9/install copies these two
+    # values into the .installed marker. See CHAT-gwrrazjg.
+    printf '# source-commit %s\n' "$tree_commit"
+    printf '# source-dirty %s\n' "$tree_dirty"
     printf '%s\n' "$options"
 } > "$tmp/shell-cli.options"
 
@@ -218,5 +304,5 @@ fi
 jars="$(find "$stage" -maxdepth 1 -name '*.jar' | grep -c .)"
 bytes="$(find "$stage" -maxdepth 1 -type f -exec wc -c {} + \
     | awk 'END { print $1 }')"
-printf 'build-shell-cli-lib: %s jars, %s bytes in %s\n' "$jars" "$bytes" \
-    "$stage"
+printf 'build-shell-cli-lib: %s jars, %s bytes in %s at commit %s, dirty %s\n' \
+    "$jars" "$bytes" "$stage" "$tree_commit" "$tree_dirty"

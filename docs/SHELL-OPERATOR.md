@@ -1,19 +1,51 @@
-# Chat-Shell one-off operations
+# Demo Chat Operator Tips
 
-Per Theta:
+This document helps to understand how and when to use commands.
 
-The command
+## What is Node-9?
 
+Node-9 is the canned 'data plane' used to prove and store
+proof and evidence of progress. It is inter-project, or at least MOSTLY
+inter-project - the agents seem to have some other idea about
+that which I am trying to solve.
+
+The fixed (for now) specification for node-9 deployment is as follows:
+
+Persistence: Cassandra
+Index: Lucene
+PubSub: Redis
+Vector: OpenAI
+Discovery: Consul
+Protocol: RSocket
+
+## Installing Node-9
+
+Installing node-9 builds then copies a demo-chat deployment over to /opt/demo-chat/node-9.
+
+```bash
+node-9/install 
+# use --bin-only to ONLY refresh bin
+```
+
+## Node-9 Tunnels
+
+The command:
+
+```bash
 CORE_PORT=6890 ROOTKEY_SOURCE_URI=http://127.0.0.1:6891 \
-  node-9/bin/node-9-tunnel node2.lan 0 non-persistent \
-  just launch-shell 1 --key-type uuid
+node-9/bin/node-9-tunnel node2.lan 0 non-persistent \
+just launch-shell 1 --key-type uuid
+````
 
 Verified with --dry-run:
 
+```
 node-9-tunnel: ssh -N ... -L 127.0.0.1:6890:127.0.0.1:6890 -L 127.0.0.1:6891:127.0.0.1:6891 -L 127.0.0.1:6892:127.0.0.1:6892 -- node2.lan
 node-9-tunnel: wait up to 10 seconds for ports 6890 6891 6892
 node-9-tunnel: run just launch-shell 1 --key-type uuid
 node-9-tunnel: stop the tunnel after the command exits
+
+```
 
 Why each part
 
@@ -32,3 +64,114 @@ kill <tunnel-pid>
 Build once, after a pull: just build-shell. The launch runs spring-boot:run, so it needs the installed jars. Add --build to the launch to do both.
 
 Login: the interactive prompt signs in with the shell's login command. The environment form (CHAT_SHELL_USER with CHAT_SHELL_PASSWORD_FILE) applies to one-shot and portal modes, and a wrong password gives status 77.
+
+
+### Open a MCP-bound portal
+
+To open a portal:
+
+```bash
+
+CHAT_SHELL_PASSWORD_FILE=MY_PASSWORD_FILE /opt/demo-chat/node-9/bin/setup-portal AGENT PROJECT START|STOP|STATUS
+
+```
+The domain socket is in place at ~/.local/state/demo-chat/portal-${AGENT}/socket
+
+### Configuring the agent
+
+Configure Codex / Claude for use by running from a project's root:
+
+```bash
+cd ~/my_project
+shell-scripts/[claude|codex]-mcp-install.sh AGENT PROJECT REGISTER_TOPIC_NAME JAVA_BIN SCOPE
+# Example
+shell-scripts/claud-mcp-install.sh clawd my-project my-project-register $JAVA_HOME/bin/java local
+```
+
+This will store an agent/project specific MCP configuration in ~/.config/demo-chat.
+
+### Register command-line wrapper - operation
+
+Some nomenclature:
+
+"Key" represents a thread in the register. It must be  1–64 chars, no |, no backslash, no control chars, no leading/trailing space.
+
+
+| Arg        | What it is                                     | Rules                                                                    |
+|------------|------------------------------------------------|--------------------------------------------------------------------------|
+| key        | Thread identity. Lookup only.                  | Rule above.                                                              |
+| short-name | Topic suffix. Becomes RegisterName-fr-shortname | Lowercase [a-z0-9-], starts alnum. Must be unique. Topic ≤64 chars total |
+| title      | Human label, stored as field 4 of pointer. | Non-empty, no Pipe, no control chars. 256 max on portal.                 |   
+
+### Create a register
+
+.. see other MD file
+
+### Open a register
+
+```bash
+register open MY_IDENTIFIER snoo 'A Wodnerful Project Title'
+```
+
+Example return on the re-open of a same key → {"type":"open","state":"exists",...}. No write. Idempotent.
+
+How to post
+
+Body goes on stdin. There is no --text flag and no body argument.
+
+
+```bash
+/opt/demo-chat/node-9/bin/register open CHAT-cmkbobvi my-topic "My topic title" --as Theta
+printf '%s\n' 'first entry body' | /opt/demo-chat/node-9/bin/register post CHAT-cmkbobvi --as Theta
+```
+
+### Register read
+
+```bash
+read -r -d '' BODY <<'EOF'
+Stage 3 note.
+Second line.
+EOF
+printf '%s\n' "$BODY" \
+| /opt/demo-chat/node-9/bin/register post CHAT-cmkbobvi --as Theta
+```
+
+Post needs the pointer to exist. Without it: register returns 'no pointer for <key>. Run register open first.'
+
+Optional retry guard: '--requestId ID'. The register cli wrapper makes one for you. On status 75 the error line gives the id. Repeat it verbatim to avoid a duplicate entry.
+
+Complete commands
+
+One-shot login path (reads node-9/secrets/Theta.password):
+
+REG=/opt/demo-chat/node-9/bin/register
+
+$REG open CHAT-cmkbobvi register-docs "Register docs" --as Theta
+
+printf '%s\n' 'Entry body here.' | $REG post CHAT-cmkbobvi --as Theta
+
+Portal path (agent holds socket, no password file). Pass both --agent and --project:
+
+REG=/opt/demo-chat/node-9/bin/register
+
+$REG open CHAT-cmkbobvi register-docs "Register docs" \
+--agent theta --project demo-chat --as Theta
+
+### Posting to register
+
+```bash 
+printf '%s\n' 'Entry body here.' \
+| $REG post CHAT-cmkbobvi --agent theta --project demo-chat --as Theta
+```
+
+Gotchas
+
+- node-9/bin/register refuses to run from the source tree. Use /opt/demo-chat/node-9/bin/register, or set NODE9_ALLOW_SOURCE_TREE=1.
+- One --agent without --project silently falls back to one-shot login. Pass both or neither.
+- post text must contain a non-space character. Whitespace-only body → status 2.
+- Output: one JSON object per line. Success is type=post with key, topic, message_id.
+
+
+## References
+
+... link to other markdown files and their nature ...
