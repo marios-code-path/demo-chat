@@ -69,3 +69,9 @@ Use the existing authserv tests for assertion validation and replay behavior.
 This design covers the tunnel adaptation that the user approved.
 Two-agent acceptance, negative assertion cases, and credential guide changes remain in `CHAT-anegybnr`.
 Those tasks need a separate reviewed plan before implementation.
+
+## Deployment follow-up
+
+After this design was approved, authserv deployment found a host port conflict on 5432.
+The same branch removes the Postgres host port mapping from the authserv Compose service.
+Authserv still reaches Postgres through `authserv-postgres:5432` on the Docker network.
