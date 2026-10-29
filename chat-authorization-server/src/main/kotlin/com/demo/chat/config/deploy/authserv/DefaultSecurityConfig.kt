@@ -46,8 +46,13 @@ class DefaultSecurityConfig(
     /** A deployed server keeps the replay record. See `CHAT-wdvjqtpb`. */
     @Bean
     @Profile("jdbc")
-    fun jdbcAssertionReplayStore(template: JdbcTemplate): AssertionReplayStore =
-        JdbcAssertionReplayStore(template)
+    fun jdbcAssertionReplayStore(
+        template: JdbcTemplate,
+        agentProperties: AgentClientProperties,
+    ): AssertionReplayStore =
+        // Only a private-key agent needs the table, so only that deployment
+        // must hold it before the first start.
+        JdbcAssertionReplayStore(template, requireTable = agentProperties.agents.any { it.jwkSetUri != null })
 
     /** Without a database the record lives in the process. */
     @Bean

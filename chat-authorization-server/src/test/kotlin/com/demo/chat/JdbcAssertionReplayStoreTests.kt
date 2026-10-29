@@ -1,7 +1,9 @@
 package com.demo.chat
 
 import com.demo.chat.config.deploy.authserv.JdbcAssertionReplayStore
+import com.demo.chat.domain.ChatException
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.jdbc.core.JdbcTemplate
@@ -32,6 +34,22 @@ class JdbcAssertionReplayStoreTests {
             """.trimIndent(),
         )
         store = JdbcAssertionReplayStore(template)
+    }
+
+    @Test
+    fun `a required table that is absent fails the start`() {
+        val empty = JdbcTemplate(DriverManagerDataSource("jdbc:h2:mem:empty-${System.nanoTime()}", "sa", ""))
+
+        assertThatThrownBy { JdbcAssertionReplayStore(empty, requireTable = true) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("oauth2_client_assertion_jti")
+    }
+
+    @Test
+    fun `an absent table is allowed when nothing requires it`() {
+        val empty = JdbcTemplate(DriverManagerDataSource("jdbc:h2:mem:empty-${System.nanoTime()}", "sa", ""))
+
+        JdbcAssertionReplayStore(empty)
     }
 
     @Test
