@@ -56,5 +56,6 @@ node_modules/
 pgdb/data/
 /.codex
 /.envrc
+/.st-shell.zsh
 /agentgateway.yml
 

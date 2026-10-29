@@ -5,6 +5,13 @@
 #   register read <topic> --as <name>      One topic, oldest first.
 #   register open <key> <short> <title> --as <name>   Stage 3, task 4.
 #   register post <key> [--requestId <id>] --as <name>   Stage 3, task 5.
+#   register config --agent <agent> --project <project>
+#       (--register <name> | --register-id <id>)
+#
+# read, open, and post also take --agent <agent> and --project <project>.
+# Both select the app config, which routes the call through the portal.
+# Without both, the command uses the one-shot login. That login reads
+# <node-9-dir>/secrets/<name>.password. It does not read CHAT_SHELL_PASSWORD.
 #
 # A key is opaque text that names one topic. This project passes an fp issue
 # ID. The tool does not know where a key comes from. A pointer line holds
@@ -72,11 +79,18 @@ secrets_dir="${NODE9_SECRETS_DIR:-$NODE9_DIR/secrets}"
 secrets_file="${NODE9_SECRETS_FILE:-$NODE9_DIR/secrets.env}"
 
 usage() {
-    printf 'usage: register read [<topic>] --as <name>\n' >&2
-    printf '       register open <key> <short-name> <title> --as <name>\n' >&2
-    printf '       register post <key> [--requestId <id>] --as <name>\n' >&2
+    printf 'usage: register read [<topic>] [--agent <agent>] [--project <project>] --as <name>\n' >&2
+    printf '       register open <key> <short-name> <title> [--agent <agent>] [--project <project>]\n' >&2
+    printf '           --as <name>\n' >&2
+    printf '       register post <key> [--requestId <id>] [--agent <agent>] [--project <project>]\n' >&2
+    printf '           --as <name>\n' >&2
     printf '       register config --agent <agent> --project <project>\n' >&2
     printf '           (--register <name> | --register-id <id>)\n' >&2
+    printf '\n' >&2
+    printf 'The agent and the project select the portal path for read, open, and post.\n' >&2
+    printf 'The command uses the one-shot login when either one is absent.\n' >&2
+    printf 'The one-shot login reads <node-9-dir>/secrets/<name>.password.\n' >&2
+    printf 'It does not read CHAT_SHELL_PASSWORD.\n' >&2
 }
 
 fail() {
