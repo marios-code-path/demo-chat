@@ -31,7 +31,8 @@ import java.util.UUID
  * Test a private key agent with the JDBC stores. See `CHAT-wdvjqtpb`.
  *
  * This test starts the `jdbc` profile.
- * Flyway creates the schema on H2 in PostgreSQL mode.
+ * Flyway creates the schema on H2 in PostgreSQL mode by default.
+ * Set CHAT_AUTHSERV_TEST_JDBC_URL to use an isolated PostgreSQL database.
  * The test reads the replay and client rows after it requests a token.
  */
 @SpringBootTest(
@@ -76,9 +77,17 @@ class JdbcPrivateKeyAgentTests {
         @DynamicPropertySource
         fun database(registry: DynamicPropertyRegistry) {
             AuthorizationServerTestSigningKey.register(registry)
-            registry.add("spring.datasource.url") { DATABASE }
-            registry.add("spring.datasource.username") { "sa" }
-            registry.add("spring.datasource.password") { "" }
+            registry.add("spring.datasource.url") { testDatabaseUrl() }
+            registry.add("spring.datasource.username") { System.getenv("CHAT_AUTHSERV_TEST_JDBC_USER") ?: "sa" }
+            registry.add("spring.datasource.password") { System.getenv("CHAT_AUTHSERV_TEST_JDBC_PASSWORD") ?: "" }
+        }
+
+        private fun testDatabaseUrl(): String {
+            val url = System.getenv("CHAT_AUTHSERV_TEST_JDBC_URL") ?: return DATABASE
+            require(url.substringBefore('?').substringAfterLast('/').startsWith("authserv_jwt_replay_")) {
+                "CHAT_AUTHSERV_TEST_JDBC_URL must name an authserv_jwt_replay_ test database."
+            }
+            return url
         }
     }
 

@@ -60,3 +60,12 @@ Run the check before the fix and record its failure.
 Update `justfile` and `shell-scripts/README-chat-build.md`.
 Run the new test, `test-flags.sh`, `test-key-type-required.sh`, and `drift check`.
 Track the Consul lookup separately in `CHAT-tadyqccf`.
+
+## 7. Verify assertion replay on PostgreSQL
+
+Use a separate PostgreSQL database.
+Set `CHAT_AUTHSERV_TEST_JDBC_URL`, `CHAT_AUTHSERV_TEST_JDBC_USER`, and `CHAT_AUTHSERV_TEST_JDBC_PASSWORD`.
+Run `JdbcPrivateKeyAgentTests` with the `jdbc` Maven profile.
+Check that the first assertion returns 200 and the replay returns 401.
+Check that PostgreSQL stores one replay row and one registered client row.
+Remove the separate test database after the check.
