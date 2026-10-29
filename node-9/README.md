@@ -259,7 +259,8 @@ there, then run `start` from the installed copy.
 ## The installed shell CLI
 
 An installed home runs the shell CLI from `lib/`. That directory holds every
-runtime jar and the file `shell-cli.options`. The home then needs no
+runtime jar and the file `shell-cli.options`. The install builds this client
+runtime alone. See "Build the server image" below for the server artifact. The home then needs no
 repository, no Maven, and no `~/.m2`. See `CHAT-bjqzvsoe`.
 
 The install also copies `chat-shell-portal`, `chat-shell-portal-tunnel`, `chat-mcp-stdio`, and
@@ -353,6 +354,58 @@ node-9/install --keep-secrets             # rebuild and install all code
 node-9/install --keep-secrets --skip-cli  # keep lib while updating code
 node-9/install --bin-only                 # update bin alone
 ```
+
+## Build the server image
+
+`node-9/install` builds the shell CLI runtime alone. It builds no server.
+
+The deployable server artifact of node 9 is one container image.
+`node-9.env` names it as `CORE_IMAGE`:
+
+```
+CORE_IMAGE=node-9/cassandra-core-service-rsocket:0.0.1
+```
+
+The three other compose services use upstream images. A pull brings
+`cassandra`, `redis`, and `hashicorp/consul`.
+
+Run `just build-node-9-image` to build the image. Add `--dry-run` to print
+the plan and to build nothing. The run has four phases. Each phase prints a
+start line and an end line, and each end line carries the phase time.
+
+1. The module build installs `chat-deploy-cassandra` and every module that
+   it needs. The step runs `clean`.
+2. The image build calls `chat-build` with the flag set of node 9.
+3. The jar proof reads `git.properties` from the boot jar. It covers
+   `BOOT-INF/classes` and every `com.demo` jar under `BOOT-INF/lib`.
+4. The image proof reads `/workspace/BOOT-INF/classes/git.properties` from
+   the image. `docker create` makes a container record, and `docker cp`
+   reads the file. No process starts, because the Paketo image holds no
+   shell.
+
+Each commit must equal the commit of the working tree. A mismatch stops the
+run. A dirty tree is allowed, and the run records the dirty flag. The proof
+covers the commit alone. It cannot show that an uncommitted change reached
+a jar.
+
+The creation time of the image proves nothing. A buildpack sets a fixed
+time of `1980-01-01` for a reproducible image. The run reports that time as
+a record alone.
+
+One measurement of 2026-10-29 gives the shape of a pass. The run took 37 s.
+It proved 14 jars in the boot jar, and it proved the image.
+
+`node-9/bin/start` holds the same two build steps. It runs them from a
+source tree alone, and only when the image is absent. An installed home
+refuses to build. It exits with status 4, and it asks for
+`node-9/bin/load-images`. So an installed host takes the image through
+`save-images` and `load-images`, and it builds none. See `CHAT-gwrrazjg`.
+
+`CHAT_IMAGE_MANIFEST` reaches `chat-build` without a change. `chat-build`
+then appends one record of the image to that JSON manifest.
+
+Run `just check-build-node-9-image` for the offline checks. They build no
+image, and they start no container.
 
 ## Move to another host
 

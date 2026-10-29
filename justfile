@@ -36,6 +36,10 @@ check-node-9-install-secrets:
 check-node-9-bin-only:
 	./shell-scripts/test-node-9-bin-only.sh
 
+# Check the node 9 image build against stubs. Builds no image.
+check-build-node-9-image:
+	./shell-scripts/test-build-node-9-image.sh
+
 # Check the portal setup launcher against stubs. Starts no portal.
 check-setup-portal:
 	./shell-scripts/test-setup-portal.sh
@@ -178,6 +182,18 @@ build-shell-cli-lib stage:
 	#!/usr/bin/env bash
 	set -euo pipefail
 	shell-scripts/build-shell-cli-lib {{quote(stage)}}
+
+# Build the node 9 core service image, which is the deployable server artifact of
+# node 9. node-9/node-9.env names it as CORE_IMAGE. node-9/install builds the shell
+# CLI runtime alone, and it builds no server. The module build runs clean. The run
+# then proves the commit of every jar inside the image. --dry-run prints the plan.
+# node-9/bin/start holds the same two steps, and it runs them from a source tree
+# alone. See CHAT-gwrrazjg.
+[positional-arguments]
+build-node-9-image *flags:
+	#!/usr/bin/env bash
+	set -euo pipefail
+	shell-scripts/build-node-9-image "$@"
 
 # Flags go to chat-build. The shell key type must match the core: use --key-type uuid for a uuid core.
 # --build runs build-shell first. The recipe keeps it, because chat-build --build builds an image.
