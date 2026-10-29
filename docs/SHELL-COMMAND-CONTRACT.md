@@ -94,9 +94,9 @@ entry is younger than `--maxAgeHours`. A pointer reads `<key> | <topic-name> |
 not know where a key comes from. A topic that two pointers name is read once. A pointer that
 does not follow the form fails the read, and so does any read that fails with
 an error other than a denial. A pointer whose key holds a backslash also fails
-the read. **A denied topic prints one warning line and the
-read continues**, because an agent is not a member of every topic that the
-index names. The warning holds `type`, `kind`, `topic`, and the reason. A
+the read. **A denied topic joins the room once, and the read reads it once
+more.** A second denial prints one warning line and the read continues. The
+warning holds `type`, `kind`, `topic`, and the reason. A
 denied index prints one warning line and no records. An empty
 index prints nothing. The hard limit is 30 seconds. In the shell modes it runs
 from the launch of the process, so the JVM start counts. `main` arms a watchdog
@@ -572,8 +572,9 @@ fixed:
   of the earliest pointer alone, and prints one warning for each later
   pointer. An archive pointer uses `-` as its key, and it is never a
   duplicate.
-- **A denied topic.** The read prints one warning with `kind` set to
-  `denied-topic`, and it keeps every topic that the caller can read. A denied
+- **A denied topic.** The read joins the room once as the caller, and it reads
+  the room once more. A second denial prints one warning with `kind` set to
+  `denied-topic`, and the read keeps every topic that it can read. A denied
   index prints one warning with `kind` set to `denied-index`, and no record.
   The status is `0`, and the read did not show the whole register. This rule
   covers `read` alone. `open` and `post` stop on a denied index.
