@@ -239,6 +239,15 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!--
+            The jdbc profile is a Maven profile, so a plain test run has no
+            JdbcTemplate. The jdbc endpoint test needs one.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- The JDBC replay store needs a database that enforces a key. -->
         <dependency>
             <groupId>com.h2database</groupId>
