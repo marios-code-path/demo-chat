@@ -57,6 +57,50 @@ Request a new token after a restart. The `client-init` profile saves a client
 once and prints its secret once. A lost secret has no recovery path: delete the
 client row, and the next start registers it again.
 
+Register the agent with `--agent CLIENT_ID=HANDLE`.
+Add `--agent-jwks-uri CLIENT_ID=https://agent.example/jwks` for `private_key_jwt`.
+The agent keeps its private key. The server reads the public JWKS from that URI.
+
+The agent signs a short-lived assertion with RS256.
+Set `iss` and `sub` to the client ID.
+Set `aud` to the authorization server token endpoint.
+Set a short `exp` and a unique `jti`.
+Set the JOSE header `kid` to the matching public key ID.
+The server records each `jti`. It rejects a second use before the assertion expires.
+The server also rejects an assertion without `jti`.
+
+With `jdbc`, the server stores each used `jti` in the `oauth2_client_assertion_jti` table.
+After a restart, each server reads the same table.
+
+Docker Compose runs the files in `sql-scripts` only when it creates a database volume.
+For an existing volume, create the replay table before the first start with a JWKS agent:
+
+```sh
+psql -h DB_HOST -U DB_USER -d authserver \
+  -f chat-authorization-server/sql-scripts/oauth2-client-assertion-jti-schema.sql
+```
+
+The server refuses to start if a JWKS agent is configured and the table is absent.
+
+With `memory`, the server stores replay records in its process. A restart clears the records.
+The cache holds at most 10,000 unexpired assertions. At that limit, it refuses a new assertion.
+
+A stored secret client keeps its authentication method.
+The server refuses startup when you configure that client with a JWKS URI.
+Delete the old client row. The next start registers the client with the new method.
+
+Send the signed assertion in this request:
+
+```sh
+curl -sS -X POST https://AUTH_SERVER/oauth2/token \
+  -d grant_type=client_credentials -d "client_id=$CLIENT_ID" -d scope=chat.mcp \
+  -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
+  --data-urlencode "client_assertion=$CLIENT_ASSERTION"
+```
+
+Use the returned `access_token` as the agent bearer token.
+Create a new assertion when the access token expires.
+
 Do not use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent client id. It is
 the id of `app.oauth2.client`, and the start refuses a shared client id.
 

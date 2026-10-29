@@ -18,6 +18,7 @@ class AgentClientProperties {
     class AgentClient {
         var clientId: String = ""
         var username: String = ""
+        var jwkSetUri: String? = null
     }
 
     fun requireValid(): List<AgentClient> {
@@ -28,6 +29,11 @@ class AgentClientProperties {
         agents.forEachIndexed { index, agent ->
             if (agent.clientId.isBlank()) throw ChatException("app.oauth2.agents[$index].client-id is required.")
             if (agent.username.isBlank()) throw ChatException("app.oauth2.agents[$index].username is required.")
+            agent.jwkSetUri?.let { uri ->
+                if (runCatching { java.net.URI(uri) }.getOrNull()?.let { it.scheme == "https" && it.host != null && it.userInfo == null && it.fragment == null } != true) {
+                    throw ChatException("app.oauth2.agents[$index].jwk-set-uri must be an HTTPS URI.")
+                }
+            }
         }
         agents.groupBy { it.clientId }.filterValues { it.size > 1 }.keys.firstOrNull()?.let {
             throw ChatException("app.oauth2.agents names client id '$it' twice.")
