@@ -1,1 +1,0 @@
-kubectl create configmap sql-files --from-file=./sql-scripts/oauth2-authorization-consent-schema.sql --from-file=./sql-scripts/oauth2-authorization-schema.sql --from-file=./sql-scripts/oauth2-registered-client-schema.sql --from-file=./sql-scripts/oauth2-client-assertion-jti-schema.sql

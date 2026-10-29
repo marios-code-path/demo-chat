@@ -92,7 +92,7 @@ The deployment guide must include both CLI commands and the table checks.
 Update `docs/MCP-CREDENTIAL-ISSUANCE.md` to remove its old `psql` schema command.
 
 Keep the startup check in `JdbcAssertionReplayStore` as a backstop.
-Update its failure message to name `db/migration/V2__client_assertion_replay.sql`.
+Update its failure message to name `src/main/resources/db/migration/V2__client_assertion_replay.sql`.
 This check detects an incorrect baseline or a missing replay table.
 
 The application fails startup if Flyway cannot apply a migration.

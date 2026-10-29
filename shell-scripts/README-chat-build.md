@@ -224,6 +224,8 @@ Create an authorization signing key once:
 just generate-authserv-jwk
 ```
 
+For an existing JDBC database, complete [the Flyway baseline](../docs/AUTHSERV-JDBC-MIGRATION.md) first.
+
 Set `CHAT_SERVICE_PASSWORD`, `SPRING_DATASOURCE_USERNAME`, and
 `SPRING_DATASOURCE_PASSWORD`. Start the authserv container with:
 

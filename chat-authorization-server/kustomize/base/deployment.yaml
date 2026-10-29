@@ -24,10 +24,3 @@ spec:
               value: "password"
           ports:
             - containerPort: 5432
-          volumeMounts:
-            - name: sql-files
-              mountPath: /docker-entrypoint-initdb.d
-      volumes:
-        - name: sql-files
-          configMap:
-            name: sql-files

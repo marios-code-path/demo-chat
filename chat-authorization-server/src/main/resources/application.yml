@@ -5,6 +5,8 @@ app:
     required: false
 
 spring:
+  flyway:
+    baseline-on-migrate: false
   datasource:
     url: jdbc:postgresql://localhost:5432/authserver
     driver-class-name: org.postgresql.Driver
