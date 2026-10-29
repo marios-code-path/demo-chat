@@ -182,6 +182,66 @@ class PubSubCommands<T : Any>(
             "text" to body(message),
         ))
 
+    /**
+     * The newest entry of the topic that [name] calls, if it is younger than
+     * [cutoff]. A denied read joins the room once as the logged-in user and
+     * reads once more. A second denial answers null and adds one warning.
+     *
+     * The join follows decision 38, which joins a denied index once before
+     * `open` and `post` read it again. The register member set comes from
+     * `secrets.env`, and `register-create` and `register-import` join every
+     * member. A live `open` through the portal holds one login, so it joins
+     * the creator alone and leaves a topic that no other agent reads. This
+     * join repairs that topic for the reader. See CHAT-qsvzikuf.
+     */
+    private fun newestEntry(
+        name: String,
+        cutoff: Instant,
+        warnings: MutableList<String>,
+    ): Pair<MessageTopic<T>, Message<T, String>>? {
+        val room = try {
+            rooms.room(name)
+        } catch (error: Exception) {
+            if (denial(error) == null) throw error
+            warnings += deniedLine("denied-topic", name)
+            return null
+        }
+        return try {
+            newestEntryOf(room, cutoff)
+        } catch (error: Exception) {
+            if (denial(error) == null) throw error
+            joinQuietly(room.key.id)
+            try {
+                newestEntryOf(room, cutoff)
+            } catch (second: Exception) {
+                if (denial(second) == null) throw second
+                warnings += deniedLine("denied-topic", name)
+                null
+            }
+        }
+    }
+
+    /** The newest message of [room] after [cutoff], if it has one. */
+    private fun newestEntryOf(
+        room: MessageTopic<T>,
+        cutoff: Instant,
+    ): Pair<MessageTopic<T>, Message<T, String>>? =
+        storedMessages(room).lastOrNull()?.takeIf { it.key.timestamp.isAfter(cutoff) }?.let { room to it }
+
+    /**
+     * Join one room as the logged-in user. A refused join leaves the denial to
+     * the read that follows, which answers the warning.
+     */
+    private fun joinQuietly(roomId: T) {
+        try {
+            compositeServices.topicService()
+                .joinRoom(MembershipRequest(identity("_"), roomId))
+                .block()
+        } catch (_: Exception) {
+            // The second read reports the denial.
+        }
+    }
+
     /** The stored messages of a room, oldest first. Equal times order by message id. */
     private fun storedMessages(room: MessageTopic<T>): List<Message<T, String>> =
         messageService.listMessages(ByIdRequest(room.key.id)).collectList().block().orEmpty()
@@ -197,10 +257,10 @@ class PubSubCommands<T : Any>(
      * a key comes from. It never reads the metadata field or the title.
      * A topic that two pointers name is read once. A pointer that does not
      * follow the form fails the read, and so does any read that fails with an
-     * error other than a denial. **A denied topic prints a warning line and
-     * the read continues**, because an agent is not a member of every topic
-     * that the index names. A denied index prints one warning line and no
-     * records.
+     * error other than a denial. **A denied topic joins the room once, and the
+     * read reads it once more.** A second denial prints a warning line and the
+     * read continues. The join repairs a topic that a live `open` created for
+     * its creator alone. A denied index prints one warning line and no records.
      *
      * **[limit] is the hard limit of owner decision 20.** At the limit the
      * read ends with a [ShellExit] of status [ShellExitStatus.TIMEOUT]. The
@@ -260,16 +320,7 @@ class PubSubCommands<T : Any>(
         val topicNames = pointers.filter { it.key == "-" || kept[it.key] === it }.map { it.topic }.distinct()
 
         val cutoff = now.minus(maxAge)
-        val entries = topicNames.mapNotNull { name ->
-            try {
-                val room = rooms.room(name)
-                storedMessages(room).lastOrNull()?.takeIf { it.key.timestamp.isAfter(cutoff) }?.let { room to it }
-            } catch (error: Exception) {
-                if (denial(error) == null) throw error
-                warnings += deniedLine("denied-topic", name)
-                null
-            }
-        }
+        val entries = topicNames.mapNotNull { name -> newestEntry(name, cutoff, warnings) }
 
         val handles = HashMap<T, String>()
         fun handle(sender: T) = handles.getOrPut(sender) { handleOf(sender) }

@@ -1,6 +1,7 @@
 package com.demo.chat.test.commands
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
@@ -22,6 +23,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.shell.core.InputReader
 import org.springframework.shell.core.command.CommandContext
@@ -33,6 +36,7 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.time.Duration
 import java.time.Instant
+import java.util.Optional
 
 /**
  * `register-read` is the session-start read of the topic register: the whole
@@ -51,6 +55,7 @@ class PubSubRegisterReadTests {
     private val mapper = ObjectMapper()
 
     private fun commands(): PubSubCommands<Long> {
+        ShellStateConfiguration.loggedInUser = Optional.of(11L)
         given(beans.messageService()).willReturn(messages)
         given(beans.userService()).willReturn(users)
         given(beans.topicService()).willReturn(topics)
@@ -169,6 +174,41 @@ class PubSubRegisterReadTests {
     }
 
     @Test
+    fun `a denied topic joins the room once and reads it once more`() {
+        room("register-index", 100)
+        room("topic-a", 101)
+        stored(100, Triple(1, hours(1), "CHAT-1 | topic-a | task | A"))
+        given(messages.listMessages(ByIdRequest(101)))
+            .willReturn(Flux.error(AccessDeniedException))
+            .willReturn(Flux.just(message(101, 11, "a entry")))
+        given(topics.joinRoom(MembershipRequest(11L, 101L))).willReturn(Mono.empty<Void>())
+
+        val lines = read(commands())
+
+        assertThat(lines.map { it["topic"] }).containsExactly("register-index", "topic-a")
+        assertThat(lines.last()).containsEntry("type", "record").containsEntry("text", "a entry")
+        verify(topics).joinRoom(MembershipRequest(11L, 101L))
+    }
+
+    @Test
+    fun `a topic denied after the join keeps one warning`() {
+        room("register-index", 100)
+        room("topic-a", 101)
+        stored(100, Triple(1, hours(1), "CHAT-1 | topic-a | task | A"))
+        given(messages.listMessages(ByIdRequest(101))).willReturn(Flux.error(AccessDeniedException))
+        given(topics.joinRoom(MembershipRequest(11L, 101L))).willReturn(Mono.empty<Void>())
+
+        val lines = read(commands())
+
+        assertThat(lines.map { it["type"] }).containsExactly("record", "warning")
+        assertThat(lines.last()).containsEntry("kind", "denied-topic")
+        verify(topics, times(1)).joinRoom(MembershipRequest(11L, 101L))
+    }
+
+    private fun message(room: Long, id: Long, text: String): Message<Long, String> =
+        Message.create(SimpleMessageKey(id, 7L, 11L, room, now.minus(hours(1))), text, true)
+
+    @Test
     fun `a denied index prints one warning and no records`() {
         given(topics.getRoomByName(ByStringRequest("register-index")))
             .willReturn(Mono.error(CoreAuthorizationRefusal(RuntimeException("Access Denied"))))
@@ -211,6 +251,7 @@ class PubSubRegisterReadTests {
     @AfterEach
     fun disarm() {
         LaunchDeadline.active = null
+        ShellStateConfiguration.loggedInUser = Optional.empty()
     }
 
     /** The shell modes give a StreamInput, so the limit counts from the launch of the process. */
