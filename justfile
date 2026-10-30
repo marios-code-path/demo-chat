@@ -402,10 +402,8 @@ deploy-authserv jwk *flags:
 	    fi
 	    sleep 1
 	done
-	container_consul_host="$consul_host"
-	if [[ "$consul_host" == 127.0.0.1 || "$consul_host" == localhost ]]; then
-	    container_consul_host=host.docker.internal
-	fi
+	container_consul_host="${AUTHSERV_CONTAINER_CONSUL_HOST:-consul}"
+	container_consul_port="${AUTHSERV_CONTAINER_CONSUL_PORT:-8500}"
 	if [[ -n "${CHAT_BUILD_DOCKER_CONFIG:-}" ]]; then
 	    build_docker_config="$CHAT_BUILD_DOCKER_CONFIG"
 	else
@@ -419,7 +417,7 @@ deploy-authserv jwk *flags:
 	    -Dmaven.test.skip=true -Dkotlin.compiler.daemon=false install
 	status "Building the authserv Docker image. Maven will report build progress."
 	env CONDA_NO_PLUGINS=true CONSUL_HOST="$container_consul_host" \
-	    DOCKER_CONFIG="$build_docker_config" conda run -n base \
+	    CONSUL_PORT="$container_consul_port" DOCKER_CONFIG="$build_docker_config" conda run -n base \
 	    ./shell-scripts/chat-build authserv --build --notls --node-id 8 --consul \
 	    --profile jdbc --profile client-init ${key_args[@]+"${key_args[@]}"}
 	status "The authserv Docker image build is complete."
