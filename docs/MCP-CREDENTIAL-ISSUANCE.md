@@ -192,23 +192,34 @@ start then fails:
     The stored client '<id>' is not an agent client. It differs in JWK Set URI.
     Delete the row, and the next start registers it again.
 
-Delete that row first, then recreate the container:
-
-```sh
-docker compose -f chat-authorization-server/docker-compose.yaml exec -T postgres \
-  psql -U "$SPRING_DATASOURCE_USERNAME" -d authserver \
-  -c "DELETE FROM oauth2_registered_client WHERE client_id = '<id>'"
-```
-
-The agent cannot use its old key after that delete, and it cannot use the new
-key until the next start finishes. So plan the delete and the recreate together.
-
 **A removed agent keeps its client.** The reconciliation reads the listed
 agents alone. An id that leaves the mapping keeps its stored client, and that
-client still receives tokens. Delete its row to withdraw it.
+client still receives tokens.
 
 `AgentClientsTests` records all three limits. With `--profile memory` the
 repository holds no row across a restart, so none of them applies.
+
+### Both repairs need an app function that does not exist
+
+The failure message above names a row delete. This document gives no SQL
+command for it. `CHAT-tkabpfxm` stops CQL, SQL and direct backend access that
+stands in for an app call, and it asks for one focused issue per gap.
+
+`CHAT-vepxpmlk` is that issue. It covers the missing function: update or
+remove one registered agent client. Its acceptance covers a changed JWKS URI, a
+withdrawn agent, the refusal of a client row that is not an agent client, and
+the access rule for a function that decides which key authenticates as an
+agent.
+
+Two proposals stand against the two needs:
+
+| Need | Proposal | State |
+|---|---|---|
+| A changed JWKS URI | `docs/superpowers/specs/2026-10-30-agent-jwks-uri-update-design.md` | awaiting owner approval |
+| A withdrawn agent | none | `CHAT-vepxpmlk` holds the scope |
+
+Until one lands, ask the repository owner before you change or withdraw a
+stored agent client. Do not reach the row with `psql`.
 
 An unset `AUTHSERV_AGENTS_JSON` gives an empty value, which Spring Boot
 ignores. A deployment that registers no agent therefore needs no change.

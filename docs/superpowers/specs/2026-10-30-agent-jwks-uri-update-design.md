@@ -30,9 +30,10 @@ The refusal has a reason. Commit `CHAT-uizwrxmf` added `requireRowFree` for it.
 A save against another client's row takes that client's secret, scopes and settings.
 The blanket refusal keeps one row for one client.
 
-The current repair costs the agent its access twice.
-The delete removes the old key, and the next start restores nothing until it finishes.
-The guide states that cost today.
+The documented repair is a row delete, and no app function performs one.
+`CHAT-tkabpfxm` stops a direct SQL stand-in for an app call.
+`CHAT-vepxpmlk` holds the missing function, for an update and for a removal.
+This design removes the need for that function in the URI case alone.
 
 ## Decision
 
@@ -104,7 +105,9 @@ This design covers the JWK Set URI alone.
 
 It does not withdraw an agent that leaves the mapping.
 The reconciliation reads the listed agents alone, and that limit stays.
-A removal still needs the stored row deleted. The guide states that.
+`CHAT-vepxpmlk` holds the missing app function for a removal.
+That issue sits under the audit in `CHAT-tkabpfxm`, which stops a direct SQL repair.
+So a removal needs owner review until that function lands.
 
 It does not change `requireRowFree`, the replay store, the token lifetime, or the scope rule.
 It does not change core or rest.

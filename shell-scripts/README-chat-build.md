@@ -460,8 +460,11 @@ otherwise.
 A recreate of the container adds a new agent. It does not change the JWKS URI
 of an agent that the store already holds, because the `client-init`
 reconciliation counts a different URI as drift and fails the start. It also
-does not withdraw an agent that leaves the mapping. Both cases need the stored
-client row deleted first. See `docs/MCP-CREDENTIAL-ISSUANCE.md`, under
+does not withdraw an agent that leaves the mapping.
+
+Neither case has an app function yet. `CHAT-vepxpmlk` holds that gap, under the
+audit in `CHAT-tkabpfxm`. Ask the repository owner before you change or
+withdraw a stored agent client. See `docs/MCP-CREDENTIAL-ISSUANCE.md`, under
 `What a recreate can and cannot change`.
 
 `--agent-json` joins the goal group, so it cannot combine with `--run` or
