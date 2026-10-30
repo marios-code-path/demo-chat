@@ -1,6 +1,7 @@
 # Agent tokens through the node-9 tunnel
 
 Issue: `CHAT-anegybnr`
+Status: draft until the node-9 extraction prerequisites land
 
 This guide describes token requests for agents that authenticate with `private_key_jwt`.
 The tunnel forwards the token request to authserv on the node-9 host.
@@ -12,16 +13,18 @@ The agent signs its own assertion. The tunnel does not handle the private key.
 2. Keep each private JWK with its agent, outside the repository.
 3. Publish each public JWK in an HTTPS JWKS document.
 4. Make each JWKS URI reachable from authserv on the node-9 host.
-5. Register each client ID with `--agent CLIENT_ID=HANDLE` and `--agent-jwks-uri CLIENT_ID=HTTPS_URI`.
+5. Register each client ID with an agent handle and its HTTPS JWKS URI.
 6. Register the same client IDs and handles with core and REST.
 7. Start authserv with a working JDBC replay store for a deployed server.
 
-Repeat both authserv flags for each agent. The `--agent-jwks-uri` value selects
-`private_key_jwt` for that agent. An agent without that flag uses a client secret.
+The node-9 authserv wrapper in `CHAT-vnljyxpl` must pass `--agent` and
+`--agent-jwks-uri` for each agent. That wrapper does not exist yet.
+The current demo-chat `just deploy-authserv` accepts only `--key-type`.
+It cannot register these agents. Use this request procedure only after registration works.
 Authserv uses its own JWK to sign access tokens. Do not use an agent key for that purpose.
 
-Read [credential issuance](MCP-CREDENTIAL-ISSUANCE.md) for client registration and JDBC migration.
-Read [the shell operator guide](SHELL-OPERATOR.md#authserv-on-the-associated-node-9-host) for tunnel modes.
+The demo-chat project defines the general credential and JDBC migration contracts.
+This guide owns the node-9 tunnel steps. It must work after node-9 becomes a separate repository.
 
 ## Create an assertion
 
@@ -55,27 +58,35 @@ http://127.0.0.1:9100/oauth2/token
 
 Set `CLIENT_ID` to the client ID used in the assertion.
 Set `ASSERTION_FILE` to a file that holds only the signed compact JWT.
-Set `RESPONSE_FILE` and `CREDENTIAL_FILE` to paths outside the repository.
-Restrict access to all three files.
+Set `CREDENTIAL_FILE` to an absolute path outside the repository.
+Restrict access to the assertion file and credential directory.
+Run this command from the node-9 repository root.
 
 ```sh
-set -e
-umask 077
-node-9/bin/node-9-tunnel --authserv node2.lan 100 non-persistent \
-  curl --fail-with-body -sS \
-    -d grant_type=client_credentials \
-    -d "client_id=$CLIENT_ID" \
-    -d scope=chat.mcp \
-    -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
-    --data-urlencode "client_assertion@$ASSERTION_FILE" \
-    http://127.0.0.1:9100/oauth2/token > "$RESPONSE_FILE"
-jq -er '.access_token' "$RESPONSE_FILE" > "$CREDENTIAL_FILE"
-chmod 600 "$CREDENTIAL_FILE"
+(
+  set -eu
+  umask 077
+  credential_dir=$(dirname "$CREDENTIAL_FILE")
+  candidate=$(mktemp "$credential_dir/.credential.XXXXXX")
+  trap 'rm -f "$candidate"' EXIT
+  response=$(bin/node-9-tunnel --authserv node2.lan 100 non-persistent \
+    curl --fail-with-body -sS \
+      -d grant_type=client_credentials \
+      -d "client_id=$CLIENT_ID" \
+      -d scope=chat.mcp \
+      -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
+      --data-urlencode "client_assertion@$ASSERTION_FILE" \
+      http://127.0.0.1:9100/oauth2/token)
+  printf '%s' "$response" \
+    | jq -er '.access_token | select(type == "string" and length > 0)' > "$candidate"
+  chmod 600 "$candidate"
+  mv -f "$candidate" "$CREDENTIAL_FILE"
+)
 ```
 
-The response file holds JSON with an `access_token` when authserv accepts the assertion.
-The credential file holds only that token. Point the adapter's `credentialFile` at its path.
-Do not paste the response into an issue, log, or repository file.
+The response must contain a nonempty string `access_token`.
+The credential file keeps its old token when the request or response fails.
+Point the adapter's `credentialFile` at this path.
 The adapter reads that file on each request. It needs no restart after a token replacement.
 
 For an automatically selected offset, use `node-9-remote --authserv`.
@@ -89,7 +100,7 @@ Use one persistent tunnel session for both agents. Record its reported offset.
 The local token port is `9000 + OFFSET`.
 
 ```sh
-node-9/bin/node-9-remote --authserv node2.lan persistent
+bin/node-9-remote --authserv node2.lan persistent
 ```
 
 Create a distinct assertion for each registered client ID.
@@ -104,6 +115,6 @@ that a repeated assertion returns HTTP 401 with `invalid_client`.
 
 ## Current evidence
 
-The tunnel and remote offline suites passed during the `CHAT-anegybnr` implementation.
+The `CHAT-anegybnr` issue record reports passing tunnel and remote offline suites.
 The issue record reports no live two-agent token check through the tunnel.
 Do not treat this guide as evidence that the live acceptance check passed.
