@@ -7,6 +7,7 @@ import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.crypto.RSASSASigner
 import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jwt.JWTClaimsSet
 import com.nimbusds.jwt.SignedJWT
@@ -38,6 +39,10 @@ import java.util.UUID
  *
  * Each agent client takes a generated secret, which the start prints once.
  * The output capture reads it back.
+ *
+ * A private key agent sends a signed client assertion instead of a secret.
+ * The cases below cover two distinct key pairs and each refused assertion.
+ * See `CHAT-anegybnr`.
  */
 @ExtendWith(OutputCaptureExtension::class)
 @SpringBootTest(
@@ -108,33 +113,65 @@ class AccessTokenClaimsTests {
     private fun accessToken(output: CapturedOutput, clientId: String): String =
         tokenBody(output, clientId)["access_token"] as String
 
-    @Test
-    fun `a signed private key assertion receives an agent access token`() {
-        val key = RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate()
-        val jwks = JWKSet(key.toPublicJWK()).toString().toByteArray(StandardCharsets.UTF_8)
+    private fun newAgentKey(): RSAKey =
+        RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate()
+
+    /** A loopback JWKS endpoint for [key]. The caller stops the server. */
+    private fun jwksServer(key: RSAKey): HttpServer {
+        val body = JWKSet(key.toPublicJWK()).toString().toByteArray(StandardCharsets.UTF_8)
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/jwks") { exchange ->
             exchange.responseHeaders.add("Content-Type", "application/json")
-            exchange.sendResponseHeaders(200, jwks.size.toLong())
-            exchange.responseBody.use { it.write(jwks) }
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
         }
         server.start()
+        return server
+    }
+
+    /** Registers [clientId] against the JWKS that [server] publishes. */
+    private fun savePrivateKeyAgent(clientId: String, server: HttpServer): String {
+        registeredClients.save(
+            AgentClients.buildPrivateKeyJwt(
+                clientId,
+                "chat.mcp",
+                "http://127.0.0.1:${server.address.port}/jwks",
+            )
+        )
+        return clientId
+    }
+
+    /** One client assertion. Each default holds a valid value. */
+    private fun assertionOf(
+        signingKey: RSAKey,
+        clientId: String,
+        audience: String = "http://localhost:$port/oauth2/token",
+        issuedAt: Date = Date(),
+        expiresAt: Date = Date(issuedAt.time + 60_000),
+        notBefore: Date? = null,
+    ): String {
+        val claims = JWTClaimsSet.Builder()
+            .issuer(clientId).subject(clientId)
+            .audience(audience)
+            .issueTime(issuedAt).expirationTime(expiresAt)
+            .jwtID(UUID.randomUUID().toString())
+        notBefore?.let { claims.notBeforeTime(it) }
+        val assertion = SignedJWT(
+            JWSHeader.Builder(JWSAlgorithm.RS256).keyID(signingKey.keyID).build(),
+            claims.build(),
+        )
+        assertion.sign(RSASSASigner(signingKey))
+        return assertion.serialize()
+    }
+
+    @Test
+    fun `a signed private key assertion receives an agent access token`() {
+        val key = newAgentKey()
+        val server = jwksServer(key)
         try {
-            val clientId = "private-agent-${UUID.randomUUID()}"
-            registeredClients.save(
-                AgentClients.buildPrivateKeyJwt(clientId, "chat.mcp", "http://127.0.0.1:${server.address.port}/jwks")
-            )
-            val now = Date()
-            val assertion = SignedJWT(
-                JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build(),
-                JWTClaimsSet.Builder()
-                    .issuer(clientId).subject(clientId)
-                    .audience("http://localhost:$port/oauth2/token")
-                    .issueTime(now).expirationTime(Date(now.time + 60_000))
-                    .jwtID(UUID.randomUUID().toString()).build(),
-            )
-            assertion.sign(RSASSASigner(key))
-            val response = tokenRequest(clientId, assertion.serialize())
+            val clientId = savePrivateKeyAgent("private-agent-${UUID.randomUUID()}", server)
+
+            val response = tokenRequest(clientId, assertionOf(key, clientId))
 
             assertThat(response.first).describedAs("token response: ${response.second}").isEqualTo(200)
             val accessToken = response.second["access_token"] as String
@@ -144,37 +181,146 @@ class AccessTokenClaimsTests {
         }
     }
 
+    /**
+     * Two agents hold distinct key pairs. Each agent receives a token for its
+     * own client id. This is the first acceptance item of `CHAT-anegybnr`.
+     */
+    @Test
+    fun `two agents with distinct keys each receive their own token`() {
+        val firstKey = newAgentKey()
+        val secondKey = newAgentKey()
+        val firstServer = jwksServer(firstKey)
+        val secondServer = jwksServer(secondKey)
+        try {
+            assertThat(firstKey.keyID).isNotEqualTo(secondKey.keyID)
+            val firstId = savePrivateKeyAgent("pair-one-${UUID.randomUUID()}", firstServer)
+            val secondId = savePrivateKeyAgent("pair-two-${UUID.randomUUID()}", secondServer)
+
+            val firstReply = tokenRequest(firstId, assertionOf(firstKey, firstId))
+            val secondReply = tokenRequest(secondId, assertionOf(secondKey, secondId))
+
+            assertThat(firstReply.first).describedAs("first response: ${firstReply.second}").isEqualTo(200)
+            assertThat(secondReply.first).describedAs("second response: ${secondReply.second}").isEqualTo(200)
+            val firstClaims = SignedJWT.parse(firstReply.second["access_token"] as String).jwtClaimsSet
+            val secondClaims = SignedJWT.parse(secondReply.second["access_token"] as String).jwtClaimsSet
+            assertThat(firstClaims.getStringClaim("client_id")).isEqualTo(firstId)
+            assertThat(secondClaims.getStringClaim("client_id")).isEqualTo(secondId)
+            assertThat(firstClaims.getStringListClaim("scope")).containsExactly("chat.mcp")
+            assertThat(secondClaims.getStringListClaim("scope")).containsExactly("chat.mcp")
+        } finally {
+            firstServer.stop(0)
+            secondServer.stop(0)
+        }
+    }
+
+    @Test
+    fun `an assertion from an unknown client is refused`() {
+        val key = newAgentKey()
+        val clientId = "unknown-agent-${UUID.randomUUID()}"
+
+        val reply = tokenRequest(clientId, assertionOf(key, clientId))
+
+        assertThat(reply.first).describedAs("unknown client response: ${reply.second}").isEqualTo(401)
+        assertThat(reply.second["error"]).isEqualTo("invalid_client")
+    }
+
+    /**
+     * The second key carries the registered key id. The endpoint selects the
+     * published JWK and the signature check fails.
+     */
+    @Test
+    fun `an assertion from another key is refused`() {
+        val registeredKey = newAgentKey()
+        val otherKey = RSAKeyGenerator(2048).keyID(registeredKey.keyID).generate()
+        val server = jwksServer(registeredKey)
+        try {
+            val clientId = savePrivateKeyAgent("wrong-key-agent-${UUID.randomUUID()}", server)
+
+            val reply = tokenRequest(clientId, assertionOf(otherKey, clientId))
+
+            assertThat(reply.first).describedAs("wrong key response: ${reply.second}").isEqualTo(401)
+            assertThat(reply.second["error"]).isEqualTo("invalid_client")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun `an assertion for another audience is refused`() {
+        val key = newAgentKey()
+        val server = jwksServer(key)
+        try {
+            val clientId = savePrivateKeyAgent("wrong-audience-agent-${UUID.randomUUID()}", server)
+
+            val reply = tokenRequest(
+                clientId,
+                assertionOf(key, clientId, audience = "http://localhost:$port/oauth2/other-token"),
+            )
+
+            assertThat(reply.first).describedAs("wrong audience response: ${reply.second}").isEqualTo(401)
+            assertThat(reply.second["error"]).isEqualTo("invalid_client")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun `an expired assertion is refused`() {
+        val key = newAgentKey()
+        val server = jwksServer(key)
+        try {
+            val clientId = savePrivateKeyAgent("expired-agent-${UUID.randomUUID()}", server)
+            val issuedAt = Date(System.currentTimeMillis() - 600_000)
+
+            val reply = tokenRequest(
+                clientId,
+                assertionOf(key, clientId, issuedAt = issuedAt, expiresAt = Date(issuedAt.time + 60_000)),
+            )
+
+            assertThat(reply.first).describedAs("expired response: ${reply.second}").isEqualTo(401)
+            assertThat(reply.second["error"]).isEqualTo("invalid_client")
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
+    fun `an assertion before its not-before time is refused`() {
+        val key = newAgentKey()
+        val server = jwksServer(key)
+        try {
+            val clientId = savePrivateKeyAgent("early-agent-${UUID.randomUUID()}", server)
+            val now = System.currentTimeMillis()
+
+            val reply = tokenRequest(
+                clientId,
+                assertionOf(
+                    key,
+                    clientId,
+                    expiresAt = Date(now + 900_000),
+                    notBefore = Date(now + 600_000),
+                ),
+            )
+
+            assertThat(reply.first).describedAs("not-before response: ${reply.second}").isEqualTo(401)
+            assertThat(reply.second["error"]).isEqualTo("invalid_client")
+        } finally {
+            server.stop(0)
+        }
+    }
+
     @Test
     fun `a repeated client assertion is refused`() {
-        val key = RSAKeyGenerator(2048).keyID(UUID.randomUUID().toString()).generate()
-        val jwks = JWKSet(key.toPublicJWK()).toString().toByteArray(StandardCharsets.UTF_8)
-        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        server.createContext("/jwks") { exchange ->
-            exchange.responseHeaders.add("Content-Type", "application/json")
-            exchange.sendResponseHeaders(200, jwks.size.toLong())
-            exchange.responseBody.use { it.write(jwks) }
-        }
-        server.start()
+        val key = newAgentKey()
+        val server = jwksServer(key)
         try {
-            val clientId = "replay-agent-${UUID.randomUUID()}"
-            registeredClients.save(
-                AgentClients.buildPrivateKeyJwt(clientId, "chat.mcp", "http://127.0.0.1:${server.address.port}/jwks")
-            )
-            val now = Date()
-            val assertion = SignedJWT(
-                JWSHeader.Builder(JWSAlgorithm.RS256).keyID(key.keyID).build(),
-                JWTClaimsSet.Builder()
-                    .issuer(clientId).subject(clientId)
-                    .audience("http://localhost:$port/oauth2/token")
-                    .issueTime(now).expirationTime(Date(now.time + 60_000))
-                    .jwtID(UUID.randomUUID().toString()).build(),
-            )
-            assertion.sign(RSASSASigner(key))
+            val clientId = savePrivateKeyAgent("replay-agent-${UUID.randomUUID()}", server)
+            val assertion = assertionOf(key, clientId)
 
-            val first = tokenRequest(clientId, assertion.serialize())
+            val first = tokenRequest(clientId, assertion)
             assertThat(first.first).describedAs("first response: ${first.second}").isEqualTo(200)
 
-            val second = tokenRequest(clientId, assertion.serialize())
+            val second = tokenRequest(clientId, assertion)
             assertThat(second.first).describedAs("replay response: ${second.second}").isEqualTo(401)
             assertThat(second.second["error"]).isEqualTo("invalid_client")
         } finally {
