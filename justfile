@@ -380,6 +380,10 @@ deploy-authserv jwk *flags:
 	fi
 	compose_file=chat-authorization-server/docker-compose.yaml
 	export AUTHSERV_JWK_PATH="$jwk"
+	# The agent client mapping belongs to the launch, not to the image. The
+	# recipe passes the operator value through and sets no default. Print one
+	# with `chat-build authserv --agent-json`. See CHAT-vidnpywh.
+	export AUTHSERV_AGENTS_JSON="${AUTHSERV_AGENTS_JSON:-}"
 	export AUTHSERV_UID="$jwk_owner_uid"
 	export AUTHSERV_GID="$(id -g)"
 	status "Starting the Postgres container."

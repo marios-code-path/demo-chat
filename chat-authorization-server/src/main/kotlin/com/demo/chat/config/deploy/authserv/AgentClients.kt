@@ -147,9 +147,14 @@ object AgentClients {
     }
 
     /**
-     * Save an absent agent client, keep a matching one, and refuse any other
-     * row. A refused row fails the start. The operator deletes it, and the
-     * next start registers it again.
+     * Save an absent agent client, keep a matching one, update a changed JWKS
+     * URI, and refuse any other row. A refused row fails the start.
+     *
+     * The JWKS URI update derives from the stored row, so it keeps that row id
+     * and every setting that it does not change. A client rebuilt from the
+     * mapping would carry a row id equal to the client id, which could write a
+     * second row or reach another client's row. See `CHAT-uizwrxmf` and
+     * `CHAT-vidnpywh`.
      */
     fun reconcile(
         repository: RegisteredClientRepository,
@@ -167,6 +172,26 @@ object AgentClients {
                 return@forEach
             }
             val drift = differences(row, scope, agent.jwkSetUri)
+            if (drift == listOf("JWK Set URI")) {
+                // The URI is the only difference, so the row stays this
+                // client's row and one setting changes. Read the old URI
+                // before the save, because the save replaces the row.
+                val previousUri = row.clientSettings.jwkSetUrl
+                repository.save(
+                    RegisteredClient.from(row)
+                        .clientSettings(
+                            ClientSettings.withSettings(row.clientSettings.settings)
+                                .jwkSetUrl(agent.jwkSetUri)
+                                .build()
+                        )
+                        .build()
+                )
+                out(
+                    "Private_key_jwt agent client '${agent.clientId}' (${agent.username}) " +
+                        "changed its JWKS URI from '$previousUri' to '${agent.jwkSetUri}'."
+                )
+                return@forEach
+            }
             if (drift.isNotEmpty()) {
                 throw ChatException(
                     "The stored client '${agent.clientId}' is not an agent client. It differs in " +

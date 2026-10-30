@@ -79,6 +79,9 @@ CASES=(
   "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
   "core-agent-brackets|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 0f3a7c21-1b2d-4e5f-8a9b-1c2d3e4f5a6b=Bot_1 --agent 9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b=Bot1"
   "core-build-image|core --memory --build --notls --long --node-id 0"
+  # core keeps its baked agent mapping. Only authserv refuses the flag with
+  # --build. See CHAT-vidnpywh.
+  "core-build-image-agent|core --memory --build --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent"
   "core-cassandra-vector-embedded|core --cassandra --build --notls --key-type uuid --node-id 0 --vector embedded --embedding openai"
   # Lucene index files. See CHAT-eesnvnad.
   "core-redis-index-root|core --redis --run --notls --long --node-id 0 --index-root /var/lib/chat/lucene"
@@ -98,6 +101,15 @@ CASES=(
   "authserv-consul|authserv --consul --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
 )
 
+# --agent-json prints the agent launch JSON and exits, so these cases take no
+# --dry-run and compare standard output against golden/<name>.json.
+# See CHAT-vidnpywh.
+#
+# name | chat-build arguments
+JSON_CASES=(
+  "authserv-agent-json|authserv --agent-json --notls --long --node-id 0 --agent a=Agent --agent b=Claude --agent-jwks-uri a=https://example.test/a/jwks"
+)
+
 # Each case must exit with the code and print the text. See CHAT-frcrctdp.
 # name | chat-build arguments | expected exit | expected text
 REFUSALS=(
@@ -112,6 +124,22 @@ REFUSALS=(
   "refuse-shape|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent Agent|1|CLIENT_ID=HANDLE"
   "refuse-no-jwk|rest --run --notls --long --node-id 0 --agent a=Agent|1|--agent requires --jwk PATH"
   "refuse-service|gateway --run --notls --long --node-id 0 --agent a=Agent|1|--agent requires the core, rest or authserv service"
+  # An agent mapping names a runtime identity, so an image must not hold it.
+  # See CHAT-vidnpywh.
+  "refuse-agent-build|authserv --build --notls --long --node-id 0 --agent a=Agent|1|--agent cannot be baked into an image"
+  "refuse-agent-jwks-build|authserv --build --notls --long --node-id 0 --agent a=Agent --agent-jwks-uri a=https://example.test/jwks|1|--agent cannot be baked into an image"
+  # --agent-json names one service and needs one agent. The goal group refuses
+  # the pair with --build, so argparse owns that exit code. See CHAT-vidnpywh.
+  "refuse-agent-json-service|core --memory --agent-json --notls --long --node-id 0 --agent a=Agent|1|--agent-json requires the authserv service"
+  "refuse-agent-json-no-agent|authserv --agent-json --notls --long --node-id 0|1|--agent-json needs at least one --agent"
+  "refuse-agent-json-build|authserv --agent-json --build --notls --long --node-id 0 --agent a=Agent|2|not allowed with argument"
+  # One --agent-jwks-uri rule serves the launch path and the --agent-json mode.
+  # The last two cases prove the mode uses that same rule. See CHAT-vidnpywh.
+  "refuse-agent-jwks-service|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Agent --agent-jwks-uri a=https://example.test/jwks|1|--agent-jwks-uri requires authserv"
+  "refuse-agent-jwks-http|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Agent --agent-jwks-uri a=http://example.test/jwks|1|--agent-jwks-uri needs CLIENT_ID=HTTPS_URI"
+  "refuse-agent-jwks-unregistered|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Agent --agent-jwks-uri z=https://example.test/jwks|1|--agent-jwks-uri needs one registered agent client id"
+  "refuse-agent-json-jwks-http|authserv --agent-json --notls --long --node-id 0 --agent a=Agent --agent-jwks-uri a=http://example.test/jwks|1|--agent-jwks-uri needs CLIENT_ID=HTTPS_URI"
+  "refuse-agent-json-jwks-unregistered|authserv --agent-json --notls --long --node-id 0 --agent a=Agent --agent-jwks-uri z=https://example.test/jwks|1|--agent-jwks-uri needs one registered agent client id"
   # --index-root. See CHAT-eesnvnad.
   "refuse-index-root-empty|core --redis --run --notls --long --node-id 0 --index-root=|1|--index-root must not be empty"
   "refuse-index-root-relative|core --redis --run --notls --long --node-id 0 --index-root lucene|1|--index-root must be an absolute path: lucene"
@@ -239,6 +267,56 @@ for entry in "${REFUSALS[@]}"; do
     else
         echo "FAIL  $name — exit $code, want $want_exit and \"$want_text\""
         echo "$out" | sed 's/^/        /'
+        fail=$((fail + 1))
+    fi
+done
+
+for entry in "${JSON_CASES[@]}"; do
+    name="${entry%%|*}"
+    args="${entry#*|}"
+
+    [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && continue
+
+    # The mode writes the JSON to standard output alone, so standard error
+    # goes to its own file and never joins the compared text.
+    err_file="$(mktemp)"
+    # shellcheck disable=SC2086
+    actual="$(HOME="$GOLDEN_HOME" "$CHAT_BUILD" $args 2>"$err_file")"
+    code=$?
+    if [ "$code" -ne 0 ]; then
+        echo "FAIL  $name — chat-build exited $code"
+        sed 's/^/        /' "$err_file"
+        rm -f "$err_file"
+        fail=$((fail + 1))
+        continue
+    fi
+    rm -f "$err_file"
+
+    file="$GOLDEN/$name.json"
+
+    if [ "$UPDATE" -eq 1 ]; then
+        if [ -f "$file" ] && [ "$actual" = "$(cat "$file")" ]; then
+            echo "same  $name"
+        else
+            echo "$actual" > "$file"
+            echo "wrote $name"
+            updated=$((updated + 1))
+        fi
+        continue
+    fi
+
+    if [ ! -f "$file" ]; then
+        echo "FAIL  $name — no golden at ${file#"$DIR"/}; run --update to create it"
+        fail=$((fail + 1))
+        continue
+    fi
+
+    if [ "$actual" = "$(cat "$file")" ]; then
+        echo "ok    $name"
+        pass=$((pass + 1))
+    else
+        echo "FAIL  $name — JSON differs from golden"
+        diff <(cat "$file") <(echo "$actual") | sed 's/^/        /'
         fail=$((fail + 1))
     fi
 done

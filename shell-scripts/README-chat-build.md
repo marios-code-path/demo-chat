@@ -387,7 +387,7 @@ not make one cheaper to add.
 | `--debug` | RSocket frame logging plus a JDWP agent on `DEBUG_PORT`. |
 | `--init PHASES` | Comma-separated: `users`, `rootkeys`. |
 | `--profile NAME` | Additional Spring profile. Repeatable. |
-| `--run` / `--build` | `spring-boot:run` (default) or `spring-boot:build-image`. |
+| `--run` / `--build` / `--agent-json` | `spring-boot:run` (default), `spring-boot:build-image`, or print the agent launch JSON and exit. |
 | `--image-manifest PATH` | Record the image after a successful `--build`. |
 | `--bake` | Pass options via the env file rather than inheriting them. |
 | `--env-file PATH` | Where to write the env file. |
@@ -397,6 +397,7 @@ not make one cheaper to add.
 | `--agent CLIENT_ID=HANDLE` | One agent. Repeat it for each agent. See below. |
 | `--agent-jwks-uri CLIENT_ID=HTTPS_URI` | Authserv reads this public JWKS for `private_key_jwt`. Repeat for each agent that uses a key. |
 | `--agent-scope SCOPE` | The one scope of every agent token. Defaults to `chat.mcp`. |
+| `--agent-json` | `authserv` only. Print the agent launch JSON and exit. See below. |
 | `--index-root DIR` | `core` only. Keep the Lucene indexes in files under `DIR`. See below. |
 | `--vector embedded` | Select the embedded vector store for `core --cassandra`. Requires `--embedding openai`. |
 | `--embedding openai` | Select the OpenAI-compatible provider for `core --cassandra`. Requires `--vector embedded`. |
@@ -423,9 +424,57 @@ the two lists.
   without case.
 - `--agent` on a service other than `core`, `rest` or `authserv`.
 - `--agent` on `core` or `rest` without `--jwk`.
+- `--agent` or `--agent-jwks-uri` with `authserv --build`. See below.
 
 The removed flags `--agent-client-id` and `--agent-username` exit 2 and name
 `--agent`.
+
+**An authserv image holds no agent.** An agent mapping names a runtime
+identity. `--build` writes every emitted property into the image environment,
+so one image would serve one agent set. `authserv --build` therefore refuses
+`--agent` and `--agent-jwks-uri` with exit 1. See `CHAT-vidnpywh`.
+
+`--agent-json` prints the mapping instead. The deployment passes that value at
+launch:
+
+```sh
+agents_json="$(./shell-scripts/chat-build authserv --agent-json \
+  --notls --node-id 8 --key-type long \
+  --agent 'CLIENT_ID=HANDLE' --agent-jwks-uri 'CLIENT_ID=HTTPS_URI')" \
+  && export AUTHSERV_AGENTS_JSON="$agents_json"
+just deploy-authserv "$PWD/encrypt-keys/authserv.jwk" --key-type long
+```
+
+The export runs only when `chat-build` succeeds. `export VAR="$(command)"`
+reports the status of `export`, so it hides a failed command.
+
+The recipe passes `AUTHSERV_AGENTS_JSON` to the container as
+`SPRING_APPLICATION_JSON`. That source ranks above the system properties that
+an image bakes, and a launch list replaces a baked list. An unset variable
+gives an empty value, which Spring Boot ignores.
+
+**The recipe serves a first deployment alone.** It exits with status 0 when
+authserv already answers its health endpoint, and it rebuilds the image
+otherwise.
+
+A recreate of the container adds a new agent. It also changes the JWKS URI of
+an agent that the store already holds, because the `client-init` reconciliation
+updates the stored client when the URI is its only difference. The start prints
+the old URI and the new one.
+
+A recreate does not repair any other drift, and it does not withdraw an agent
+that leaves the mapping. Neither case has an app function yet. `CHAT-vepxpmlk`
+holds that gap, under the audit in `CHAT-tkabpfxm`. Ask the repository owner
+before you repair either case. See `docs/MCP-CREDENTIAL-ISSUANCE.md`, under
+`What a recreate can and cannot change`.
+
+`--agent-json` joins the goal group, so it cannot combine with `--run` or
+`--build`. It refuses a service other than `authserv` with exit 1, and it
+refuses an empty agent list with exit 1.
+
+`core` and `rest` keep their `--build` behavior and still bake their mapping.
+They bind `app.security.agents` and `app.init.initial-users`, so their move
+needs its own design.
 
 **Lucene index files.** `--index-root DIR` sets `app.index.lucene.root`.
 Without it, the Lucene indexes stay in memory. `chat-build` expands `~`, then

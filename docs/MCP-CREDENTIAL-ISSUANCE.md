@@ -124,6 +124,124 @@ a row id that the store holds for another client.
 Wait until the log prints `Started ChatAppKt`. The token endpoint answers 404
 before that line.
 
+#### A container deployment registers its agents at launch
+
+The command above runs the server from the source tree, and `--agent` reaches
+that process. A container deployment is different. `--build` writes every
+emitted property into the image environment, so an image would carry one agent
+set. `authserv --build` therefore refuses `--agent` and `--agent-jwks-uri` with
+exit 1. See `CHAT-vidnpywh`.
+
+Print the mapping first. The export runs only when `chat-build` succeeds,
+because `export VAR="$(command)"` reports the status of `export` and hides a
+failed command.
+
+```sh
+agents_json="$(./shell-scripts/chat-build authserv --agent-json \
+  --notls --node-id 8 --key-type long \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
+  --agent-jwks-uri 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=https://agent.example/jwks)" \
+  && export AUTHSERV_AGENTS_JSON="$agents_json"
+```
+
+**For a first deployment**, start the recipe with that variable set:
+
+```sh
+just deploy-authserv "$PWD/encrypt-keys/authserv.jwk" --key-type long
+```
+
+The recipe passes the value to the container as `SPRING_APPLICATION_JSON`. That
+source ranks above the system properties that an image bakes, and a launch list
+replaces a baked list. So one image serves any agent set.
+
+**For a changed mapping, the recipe does nothing.** It exits with status 0 when
+authserv already answers its health endpoint. When authserv does not answer, it
+rebuilds the image with Maven, which a mapping change does not need. Recreate
+the container instead:
+
+```sh
+export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
+export SPRING_DATASOURCE_USERNAME='<the authserv database user>'
+export SPRING_DATASOURCE_PASSWORD='<the authserv database password>'
+export AUTHSERV_JWK_PATH="$PWD/encrypt-keys/authserv.jwk"
+export AUTHSERV_UID="$(id -u)" AUTHSERV_GID="$(id -g)"
+# Each value below must match the running deployment. The compose file
+# otherwise takes its default, and the recreate moves the ports or the network.
+export AUTHSERV_HTTP_PORT=9000      # default 9000
+export AUTHSERV_MGMT_PORT=9001      # default 9001
+export CHAT_NETWORK=docker_chatnet  # default docker_chatnet
+docker compose -f chat-authorization-server/docker-compose.yaml \
+  up -d --no-deps --force-recreate authserv
+```
+
+`--no-deps` leaves the Postgres container alone.
+
+### What a recreate can and cannot change
+
+The `client-init` profile reconciles the mapping at each start, and
+`deploy-authserv` activates that profile. The reconciliation reads one stored
+client per listed agent.
+
+**A new agent works.** The store holds no client for that id, so the start
+saves one. A recreate is enough.
+
+**A changed JWKS URI works.** The reconciliation updates the stored client when
+the URI is its only difference from the mapping. The start prints one line:
+
+    Private_key_jwt agent client '<id>' (<handle>) changed its JWKS URI
+    from '<old>' to '<new>'.
+
+Read that line in the start log to confirm the change. The update keeps the
+stored row and every other setting of that client. See `CHAT-vidnpywh`.
+
+The agent must publish its new JWKS before the recreate. The server reads the
+URI at each token request, so an unreachable URI refuses the assertion.
+
+**Any other difference still fails the start.** A stored client that disagrees
+in two fields, or in one field other than the URI, fails with this message:
+
+    The stored client '<id>' is not an agent client. It differs in <fields>.
+    Delete the row, and the next start registers it again.
+
+A stored secret client against a mapping with a JWKS URI is one such case.
+
+**A removed agent keeps its client.** The reconciliation reads the listed
+agents alone. An id that leaves the mapping keeps its stored client, and that
+client still receives tokens.
+
+`AgentClientsTests` records each behavior above. With `--profile memory` the
+repository holds no row across a restart, so none of it applies.
+
+### The remaining repairs need an app function that does not exist
+
+The failure message above names a row delete. This document gives no SQL
+command for it. `CHAT-tkabpfxm` stops CQL, SQL and direct backend access that
+stands in for an app call, and it asks for one focused issue per gap.
+
+`CHAT-vepxpmlk` is that issue. It covers the missing function: update or
+remove one registered agent client. Its acceptance covers a withdrawn agent,
+the refusal of a client row that is not an agent client, and the access rule
+for a function that decides which key authenticates as an agent.
+
+| Need | State |
+|---|---|
+| A changed JWKS URI | the reconciliation applies it, so no function is needed |
+| Any other drift | `CHAT-vepxpmlk` holds the scope |
+| A withdrawn agent | `CHAT-vepxpmlk` holds the scope |
+
+Ask the repository owner before you repair either remaining case. Do not reach
+the row with `psql`.
+
+An unset `AUTHSERV_AGENTS_JSON` gives an empty value, which Spring Boot
+ignores. A deployment that registers no agent therefore needs no change.
+
+`--agent-json` refuses a service other than `authserv` with exit 1. It refuses
+an empty agent list with exit 1. It cannot combine with `--run` or `--build`.
+
+**The core and REST keep the old behavior.** They still accept `--agent` with
+`--build`, and they still bake their mapping. They bind `app.security.agents`
+and `app.init.initial-users`, so their move needs its own design.
+
 ### Step 2: request the token
 
 ```sh

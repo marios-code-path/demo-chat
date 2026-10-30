@@ -546,6 +546,48 @@ def parse_agents(values: list[str]) -> list[tuple[str, str]]:
     return agents
 
 
+def parse_agent_jwks(values: list[str] | None, service_name: str,
+                     agents: list[tuple[str, str]]) -> dict[str, str]:
+    """Parse each --agent-jwks-uri value. Exit 1 with a message on a refused value."""
+    jwks: dict[str, str] = {}
+    registered = dict(agents)
+    for value in values or []:
+        if service_name != "authserv":
+            raise SystemExit("chat-build: --agent-jwks-uri requires authserv")
+        client_id, separator, uri = value.partition("=")
+        try:
+            parsed_uri = urlsplit(uri)
+            valid_uri = (parsed_uri.scheme == "https" and parsed_uri.hostname is not None
+                         and parsed_uri.username is None and parsed_uri.password is None
+                         and not parsed_uri.fragment and not any(char.isspace() for char in uri))
+        except ValueError:
+            valid_uri = False
+        if not separator or not client_id or not valid_uri:
+            raise SystemExit("chat-build: --agent-jwks-uri needs CLIENT_ID=HTTPS_URI")
+        if client_id in jwks or client_id not in registered:
+            raise SystemExit("chat-build: --agent-jwks-uri needs one registered agent client id")
+        jwks[client_id] = uri
+    return jwks
+
+
+def agent_launch_json(agents: list[tuple[str, str]], jwks: dict[str, str],
+                      scope: str) -> str:
+    """The launch JSON of the agent properties. See CHAT-vidnpywh.
+
+    The deployment passes this object as SPRING_APPLICATION_JSON. That source
+    ranks above the JVM system properties that an image bakes, and a launch
+    list replaces a baked list. So the image holds no agent identity.
+    """
+    entries: list[dict[str, str]] = []
+    for client_id, handle in agents:
+        entry = {"client-id": client_id, "username": handle}
+        if client_id in jwks:
+            entry["jwk-set-uri"] = jwks[client_id]
+        entries.append(entry)
+    return json.dumps({"app": {"oauth2": {"agents": entries, "agent-scope": scope}}},
+                      indent=2, sort_keys=True)
+
+
 class BuildContext:
     """Resolves features against a service and composes the Maven invocation."""
 
@@ -564,23 +606,8 @@ class BuildContext:
         self.tls_dir: str | None = args.tls
         self.jwk_path: str | None = getattr(args, "jwk", None)
         self.agents: list[tuple[str, str]] = parse_agents(getattr(args, "agent", []) or [])
-        self.agent_jwks: dict[str, str] = {}
-        for value in getattr(args, "agent_jwks_uri", []) or []:
-            if self.service.name != "authserv":
-                raise SystemExit("chat-build: --agent-jwks-uri requires authserv")
-            client_id, separator, uri = value.partition("=")
-            try:
-                parsed_uri = urlsplit(uri)
-                valid_uri = (parsed_uri.scheme == "https" and parsed_uri.hostname is not None
-                             and parsed_uri.username is None and parsed_uri.password is None
-                             and not parsed_uri.fragment and not any(char.isspace() for char in uri))
-            except ValueError:
-                valid_uri = False
-            if not separator or not client_id or not valid_uri:
-                raise SystemExit("chat-build: --agent-jwks-uri needs CLIENT_ID=HTTPS_URI")
-            if client_id in self.agent_jwks or client_id not in dict(self.agents):
-                raise SystemExit("chat-build: --agent-jwks-uri needs one registered agent client id")
-            self.agent_jwks[client_id] = uri
+        self.agent_jwks: dict[str, str] = parse_agent_jwks(
+            getattr(args, "agent_jwks_uri", []), self.service.name, self.agents)
         self.agent_scope: str = getattr(args, "agent_scope", "chat.mcp")
         # Expanded and never resolved, for the reason given at the --jwk flag.
         # main() refuses an empty or relative value. See CHAT-eesnvnad.
@@ -1231,6 +1258,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                       help="run locally via spring-boot:run (default)")
     goal.add_argument("--build", action="store_true",
                       help="build a container image via spring-boot:build-image")
+    goal.add_argument("--agent-json", action="store_true",
+                      help="authserv only: print the agent launch JSON and exit")
     parser.add_argument("--image-manifest", default=os.environ.get("CHAT_IMAGE_MANIFEST", ""),
                         metavar="PATH",
                         help="with --build, append the image to this JSON manifest. One path "
@@ -1253,7 +1282,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                         help="path to the JWK file trusted by the deployment")
     parser.add_argument("--agent", action="append", default=[], metavar="CLIENT_ID=HANDLE",
                         help="an agent: the OAuth client id and the chat user handle. "
-                             "Repeat it for each agent")
+                             "Repeat it for each agent. authserv --build refuses it, "
+                             "because an image must hold no agent identity")
     parser.add_argument("--agent-jwks-uri", action="append", default=[], metavar="CLIENT_ID=HTTPS_URI",
                         help="authserv only: public JWKS URI for one private_key_jwt agent")
     parser.add_argument("--index-root", metavar="DIR", default=None,
@@ -1382,6 +1412,25 @@ def main() -> int:
               file=sys.stderr)
         return 1
 
+    # The mode prints the mapping and exits. It comes before the --jwk rules,
+    # because it starts no server and needs no signing key. See CHAT-vidnpywh.
+    if args.agent_json:
+        if args.service != "authserv":
+            print("chat-build: --agent-json requires the authserv service",
+                  file=sys.stderr)
+            return 1
+        if not args.agent:
+            print("chat-build: --agent-json needs at least one --agent. "
+                  "The mode prints the agent mapping, and an empty mapping names nothing.",
+                  file=sys.stderr)
+            return 1
+        json_agents = parse_agents(args.agent)
+        print(agent_launch_json(
+            json_agents,
+            parse_agent_jwks(args.agent_jwks_uri, args.service, json_agents),
+            args.agent_scope))
+        return 0
+
     if args.service == "authserv":
         # --build bakes the launch options into the image, and a host path
         # would not exist inside a container. So the key is required to run
@@ -1390,6 +1439,17 @@ def main() -> int:
             print("chat-build: --jwk cannot be baked into an image. "
                   "A host path does not exist inside the container. "
                   "Supply app.oauth2.jwk.path when you run the image.",
+                  file=sys.stderr)
+            return 1
+        # An agent mapping names a runtime identity, and the image build writes
+        # it into the image environment. One image would then serve one agent
+        # set. --agent-json prints the mapping, and the deployment passes it at
+        # launch. See CHAT-vidnpywh.
+        if args.build and (args.agent or args.agent_jwks_uri):
+            print("chat-build: --agent cannot be baked into an image. "
+                  "An agent mapping names a runtime identity, not a build input. "
+                  "Print it with 'chat-build authserv --agent-json', and pass the "
+                  "result through AUTHSERV_AGENTS_JSON when you start the image.",
                   file=sys.stderr)
             return 1
         if not args.build and not args.jwk:
