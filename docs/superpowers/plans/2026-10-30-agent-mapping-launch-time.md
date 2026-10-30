@@ -265,7 +265,9 @@ Run each check and record its result:
 2. `shell-scripts/test-authserv-profile.sh` passes.
 3. `just build-partial chat-authorization-server unit` reports zero failures.
 4. `bash docs/superpowers/proofs/2026-10-30-agent-mapping-precedence/precedence.sh` still reports 0 failures for seven cases.
-5. `bash -n shell-scripts/chat-build` is not valid for Python, so run `python3 -m py_compile shell-scripts/chat-build`.
+5. `bash -n shell-scripts/chat-build` is not valid for Python. Parse the file instead:
+   `python3 -I -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' shell-scripts/chat-build`.
+   Do not use `python3 -m py_compile`. It writes `shell-scripts/__pycache__`, and no rule ignores that path.
 6. `bash -n shell-scripts/test-flags.sh` and `bash -n shell-scripts/test-authserv-profile.sh` pass.
 7. `git diff master...HEAD --check` reports nothing.
 8. `drift check` exits 0.
