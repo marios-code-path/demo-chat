@@ -165,13 +165,50 @@ export SPRING_DATASOURCE_USERNAME='<the authserv database user>'
 export SPRING_DATASOURCE_PASSWORD='<the authserv database password>'
 export AUTHSERV_JWK_PATH="$PWD/encrypt-keys/authserv.jwk"
 export AUTHSERV_UID="$(id -u)" AUTHSERV_GID="$(id -g)"
+# Each value below must match the running deployment. The compose file
+# otherwise takes its default, and the recreate moves the ports or the network.
+export AUTHSERV_HTTP_PORT=9000      # default 9000
+export AUTHSERV_MGMT_PORT=9001      # default 9001
+export CHAT_NETWORK=docker_chatnet  # default docker_chatnet
 docker compose -f chat-authorization-server/docker-compose.yaml \
   up -d --no-deps --force-recreate authserv
 ```
 
-A changed JWKS URI therefore needs this recreate, and no new image. The compose
-file reads every variable above, so each one must hold the value that the
-running deployment uses. `--no-deps` leaves the Postgres container alone.
+`--no-deps` leaves the Postgres container alone.
+
+### What a recreate can and cannot change
+
+The `client-init` profile reconciles the mapping at each start, and
+`deploy-authserv` activates that profile. The reconciliation reads one stored
+client per listed agent. Its behavior sets three limits.
+
+**A new agent works.** The store holds no client for that id, so the start
+saves one. A recreate is enough.
+
+**A changed JWKS URI does not work.** The reconciliation compares the stored
+client against the mapping, and a different `jwk-set-uri` counts as drift. The
+start then fails:
+
+    The stored client '<id>' is not an agent client. It differs in JWK Set URI.
+    Delete the row, and the next start registers it again.
+
+Delete that row first, then recreate the container:
+
+```sh
+docker compose -f chat-authorization-server/docker-compose.yaml exec -T postgres \
+  psql -U "$SPRING_DATASOURCE_USERNAME" -d authserver \
+  -c "DELETE FROM oauth2_registered_client WHERE client_id = '<id>'"
+```
+
+The agent cannot use its old key after that delete, and it cannot use the new
+key until the next start finishes. So plan the delete and the recreate together.
+
+**A removed agent keeps its client.** The reconciliation reads the listed
+agents alone. An id that leaves the mapping keeps its stored client, and that
+client still receives tokens. Delete its row to withdraw it.
+
+`AgentClientsTests` records all three limits. With `--profile memory` the
+repository holds no row across a restart, so none of them applies.
 
 An unset `AUTHSERV_AGENTS_JSON` gives an empty value, which Spring Boot
 ignores. A deployment that registers no agent therefore needs no change.

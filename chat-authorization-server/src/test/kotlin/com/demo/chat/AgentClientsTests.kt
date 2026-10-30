@@ -176,6 +176,49 @@ class AgentClientsTests {
         assertThat(out).containsExactly("Agent client 'client-a' (Agent) is registered. Its secret is unchanged.")
     }
 
+    /**
+     * The reconciliation limits that a launch-time mapping meets. See
+     * `CHAT-vidnpywh`. These cases record the behavior of today. They make no
+     * claim that the behavior is right.
+     */
+    @Test
+    fun `a changed JWKS URI is drift, so a relaunch alone cannot apply it`() {
+        val stored = AgentClients.buildPrivateKeyJwt(
+            "client-a", "chat.mcp", "https://agents.example/old/jwks")
+
+        assertThat(AgentClients.differences(stored, "chat.mcp", "https://agents.example/new/jwks"))
+            .containsExactly("JWK Set URI")
+    }
+
+    @Test
+    fun `a changed JWKS URI fails the start and names the repair`() {
+        val repository = Mockito.mock(RegisteredClientRepository::class.java)
+        Mockito.`when`(repository.findByClientId("client-a")).thenReturn(
+            AgentClients.buildPrivateKeyJwt("client-a", "chat.mcp", "https://agents.example/old/jwks"))
+        val keyed = AgentClientProperties.AgentClient().apply {
+            clientId = "client-a"
+            username = "Agent"
+            jwkSetUri = "https://agents.example/new/jwks"
+        }
+
+        assertThatThrownBy { AgentClients.reconcile(repository, listOf(keyed), "chat.mcp") {} }
+            .hasMessage(
+                "The stored client 'client-a' is not an agent client. It differs in JWK Set URI. " +
+                    "Delete the row, and the next start registers it again.")
+    }
+
+    @Test
+    fun `an agent that leaves the mapping keeps its stored client`() {
+        val repository = Mockito.mock(RegisteredClientRepository::class.java)
+        val out = mutableListOf<String>()
+
+        AgentClients.reconcile(repository, emptyList(), "chat.mcp") { out += it }
+
+        Mockito.verify(repository, Mockito.never()).save(Mockito.any())
+        Mockito.verifyNoMoreInteractions(repository)
+        assertThat(out).describedAs("reconcile reads no row it was not given").isEmpty()
+    }
+
     @Test
     fun `a failed save prints no secret`() {
         val repository = Mockito.mock(RegisteredClientRepository::class.java)
