@@ -12,7 +12,7 @@ The authserv compose service owns the `SPRING_APPLICATION_JSON` passthrough.
 **Tools:** Python, Bash, `shell-scripts/test-flags.sh`, Kotlin tests, `docker compose config`, and `drift`.
 
 **Basis:** [Approved design](../specs/2026-10-30-agent-mapping-launch-time-design.md), commit `94ade97c`.
-Approved on 2026-10-30. The approval covers the design and planning. It does not cover implementation.
+Approved on 2026-10-30. The owner approved this plan at `db38d81a` for implementation on 2026-10-30.
 [Precedence proof](../proofs/2026-10-30-agent-mapping-precedence/RECORD.md), seven cases, 0 failures.
 
 ## One accepted deviation from the first approved design
