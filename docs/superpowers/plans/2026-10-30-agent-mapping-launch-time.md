@@ -272,6 +272,31 @@ Run each check and record its result:
 7. `git diff master...HEAD --check` reports nothing.
 8. `drift check` exits 0.
 
+## Evidence level of each acceptance item
+
+`CHAT-vidnpywh` holds this acceptance item:
+
+> One authserv image serves two different agent sets across two launches. No rebuild occurs between them.
+
+**Offline evidence alone supports that item.** Nothing here starts a container.
+
+What the offline work proves:
+
+1. `SPRING_APPLICATION_JSON` ranks above the JVM system properties that an image bakes.
+2. A launch agent list replaces a baked agent list, and an empty launch value changes nothing.
+3. `AgentClientProperties` binds the emitted JSON, and the launch value wins over a baked one.
+4. The authserv compose service passes the operator value to the container.
+5. `chat-build authserv --build` refuses an agent mapping, so no image takes one.
+
+What no test here proves:
+
+1. One built image, started twice with two different mappings, serves both agent sets.
+2. No rebuild occurs between those two launches.
+
+Those two statements need a launch test on a host that runs Docker.
+Keep the acceptance item marked as offline evidence until such a test runs.
+`CHAT-vnljyxpl` owns the live work, and it depends on this issue.
+
 ## Out of scope
 
 This plan starts no container and registers no live agent.

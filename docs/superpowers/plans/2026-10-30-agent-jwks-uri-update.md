@@ -120,9 +120,12 @@ Read the old URI from `row` before the save, because the save replaces the row.
 4. Update the class KDoc that calls the three cases a record of today's behavior.
    One of them now records the new behavior.
 5. Run the focused class. Every case must pass.
-   The class should hold 26 cases, which is 17 plus the nine of Task 1.
+   The class holds 25 cases, which is 17 plus the nine of Task 1, less the one that step 2 removes.
 6. Run `just build-partial chat-authorization-server unit`.
-   It should report 97 tests, which is 88 plus nine. Report the real count.
+   It reports 96 tests, which is 88 plus nine, less that same one. Report the real count.
+
+   An earlier revision of this plan expected 26 and 97. That arithmetic counted the
+   nine new cases and missed the removal in step 2. The measured counts are 25 and 96.
 
 ## Task 3: Update the operator documents
 
