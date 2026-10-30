@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # Open one ssh tunnel to a node-9 host.
 #
-#   node-9-tunnel [--dry-run] HOST OFFSET MODE [COMMAND...]
+#   node-9-tunnel [--dry-run] [--authserv] HOST OFFSET MODE [COMMAND...]
 #
 # HOST names the remote host. OFFSET is a nonnegative multiple of 100. The
-# tunnel forwards three ports: 6890, 6891, and 6892 plus OFFSET. Each local
-# port reaches the same port on the remote loopback interface.
+# tunnel forwards three ports: 6890, 6891, and 6892 plus OFFSET. With
+# --authserv, it also forwards remote port 9000 to local port 9000 plus
+# OFFSET. Each local port reaches the remote loopback interface.
 #
 # MODE is one of four words. `non-persistent` and `false` are the same mode.
 # `persistent` and `true` are the same mode.
 #
 # COMMAND takes every word after MODE. A word that starts with a dash belongs
 # to COMMAND. So `register read --as Theta` needs no `--`.
-# The option --dry-run goes before HOST. A `--` word is a separator.
+# The options --dry-run and --authserv go before HOST. A `--` word is a separator.
 #
 # non-persistent  The tunnel lives while COMMAND runs. The command starts
-#                 after the three local ports answer. The tunnel closes after
+#                 after the required local ports answer. The tunnel closes after
 #                 the command exits. The status is the status of COMMAND.
 # persistent      The tunnel stays after this program exits. The program
 #                 prints the process id. COMMAND is not accepted.
@@ -33,10 +34,11 @@
 set -uo pipefail
 
 usage() {
-    printf 'usage: node-9-tunnel [--dry-run] HOST OFFSET MODE [COMMAND...]\n' >&2
+    printf 'usage: node-9-tunnel [--dry-run] [--authserv] HOST OFFSET MODE [COMMAND...]\n' >&2
 }
 
 dry_run=0
+authserv=0
 positional=()
 # The host, the offset, and the mode are the fixed operands. An option of this
 # tool goes before them, because every later word belongs to COMMAND. A
@@ -48,6 +50,7 @@ while (( $# )); do
     if (( parsing )); then
         case "$1" in
             --dry-run) dry_run=1; shift; continue ;;
+            --authserv) authserv=1; shift; continue ;;
             -h|--help) usage; exit 0 ;;
             --) parsing=0; literal=1; shift; continue ;;
             --*) usage; exit 2 ;;
@@ -63,7 +66,7 @@ while (( $# )); do
         # Without this rule a trailing --dry-run runs the command live.
         # See CHAT-uhdbljkr.
         case "$1" in
-            --dry-run|-h|--help)
+            --dry-run|--authserv|-h|--help)
                 printf 'node-9-tunnel: the option %s belongs before the host.\n' \
                     "$1" >&2
                 exit 2
@@ -125,6 +128,9 @@ fi
 local_rsocket=$(( 6890 + offset ))
 local_management=$(( 6891 + offset ))
 local_registry=$(( 6892 + offset ))
+local_authserv=$(( 9000 + offset ))
+required_ports=("$local_rsocket" "$local_management" "$local_registry")
+(( authserv )) && required_ports+=("$local_authserv")
 
 ssh_bin="${CHAT_TUNNEL_SSH:-ssh}"
 ready_seconds="${CHAT_TUNNEL_READY_SECONDS:-10}"
@@ -139,14 +145,14 @@ ssh_args=(
     -L "127.0.0.1:$local_rsocket:127.0.0.1:6890"
     -L "127.0.0.1:$local_management:127.0.0.1:6891"
     -L "127.0.0.1:$local_registry:127.0.0.1:6892"
-    --
-    "$host"
 )
+(( authserv )) && ssh_args+=(-L "127.0.0.1:$local_authserv:127.0.0.1:9000")
+ssh_args+=(-- "$host")
 
-# tunnel_ready  True when all three local ports answer.
+# tunnel_ready  True when all required local ports answer.
 tunnel_ready() {
     local port
-    for port in "$local_rsocket" "$local_management" "$local_registry"; do
+    for port in "${required_ports[@]}"; do
         nc -z -w 1 127.0.0.1 "$port" > /dev/null 2>&1 || return 1
     done
     return 0
@@ -170,8 +176,11 @@ if (( dry_run )); then
     printf 'node-9-tunnel: mode %s\n' "$( (( persistent )) && printf persistent || printf non-persistent )"
     printf 'node-9-tunnel: %s %s\n' "$ssh_bin" "${ssh_args[*]}"
     if (( ! persistent )); then
-        printf 'node-9-tunnel: wait up to %s seconds for ports %s %s %s\n' \
-            "$ready_seconds" "$local_rsocket" "$local_management" "$local_registry"
+        printf 'node-9-tunnel: wait up to %s seconds for ports %s\n' \
+            "$ready_seconds" "${required_ports[*]}"
+        if (( authserv )); then
+            printf 'node-9-tunnel: authserv at http://127.0.0.1:%s/oauth2/token\n' "$local_authserv"
+        fi
         printf 'node-9-tunnel: run %s\n' "${command_args[*]}"
         printf 'node-9-tunnel: stop the tunnel after the command exits\n'
     else
@@ -202,9 +211,13 @@ tunnel_pid=$!
 if ! wait_for_tunnel; then
     # The ssh text is the exact cause. Print it before the summary line.
     [[ -s "$ssh_log" ]] && cat "$ssh_log" >&2
-    printf 'node-9-tunnel: the tunnel did not answer on ports %s %s %s.\n' \
-        "$local_rsocket" "$local_management" "$local_registry" >&2
+    printf 'node-9-tunnel: the tunnel did not answer on ports %s.\n' \
+        "${required_ports[*]}" >&2
     exit 1
+fi
+
+if (( authserv )); then
+    printf 'node-9-tunnel: authserv at http://127.0.0.1:%s/oauth2/token\n' "$local_authserv" >&2
 fi
 
 if (( persistent )); then

@@ -22,7 +22,9 @@ cat > "$tcp_stub" <<'STUB'
 #!/usr/bin/env bash
 [[ -n "${STUB_CHECK_STATUS:-}" ]] && exit "$STUB_CHECK_STATUS"
 [[ "${STUB_ALL_BUSY:-0}" == '1' ]] && exit 1
+printf '%s\n' "$*" >> "${STUB_TCP_CALLS:?}"
 for port in "$@"; do
+    [[ "$port" == "${STUB_CHECK_REFUSE_PORT:-}" ]] && exit 2
     for busy in ${STUB_BUSY:-}; do
         [[ "$port" == "$busy" ]] && exit 1
     done
@@ -37,12 +39,15 @@ cat > "$tunnel_stub" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${STUB_TUNNEL_ARGS:?}"
 printf '%s\n' "${CORE_PORT-}" "${CORE_MGMT_PORT-}" > "${STUB_TUNNEL_ENV:?}"
+printf '%s\n' "${AUTHSERV_PORT-unset}" > "${STUB_AUTHSERV_ENV:?}"
 exit "${STUB_TUNNEL_STATUS:-0}"
 STUB
 chmod +x "$tunnel_stub"
 
 argsfile="$work/tunnel.args"
 envfile="$work/tunnel.env"
+authenvfile="$work/authserv.env"
+tcpcalls="$work/tcp.calls"
 
 # The stub settings are exported, so every child sees them. A test sets one
 # value and resets it after the call.
@@ -50,15 +55,18 @@ export STUB_BUSY=''
 export STUB_ALL_BUSY=0
 export STUB_TUNNEL_STATUS=0
 export STUB_CHECK_STATUS=''
+export STUB_CHECK_REFUSE_PORT=''
 
 # run_remote [ARGS...]  Run the tool against the two stubs.
 run_remote() {
     out="$(CHAT_REMOTE_TCP_CHECK="$tcp_stub" CHAT_REMOTE_TUNNEL="$tunnel_stub" \
         STUB_TUNNEL_ARGS="$argsfile" STUB_TUNNEL_ENV="$envfile" \
+        STUB_AUTHSERV_ENV="$authenvfile" STUB_TCP_CALLS="$tcpcalls" \
         "$tool" "$@" 2> "$work/stderr")"
     status=$?
     err="$(cat "$work/stderr")"
     args="$(cat "$argsfile" 2> /dev/null || true)"
+    auth_port="$(cat "$authenvfile" 2> /dev/null || true)"
     if [[ -f "$envfile" ]]; then
         env_ports="$(tr '\n' ' ' < "$envfile")"
     else
@@ -75,17 +83,90 @@ if [[ $status -eq 0 && "$args" == 'node2.lan 0 non-persistent curl -s http://127
 else
     bad 'free_base_takes_offset_0' "exit $status, args: $args"
 fi
+base_env_ports="$env_ports"
+base_err="$err"
 
-if [[ "$env_ports" == '6890 6891 ' ]]; then
-    ok 'base_ports_reach_the_command'
+# Authserv selection must reserve the fourth port at each offset.
+rm -f "$argsfile" "$envfile" "$authenvfile"
+: > "$tcpcalls"
+STUB_BUSY='9000'
+run_remote --authserv node2.lan non-persistent true
+STUB_BUSY=''
+if [[ $status -eq 0 && "$args" == '--authserv node2.lan 100 non-persistent true' \
+      && "$auth_port" == '9100' \
+      && "$(cat "$tcpcalls")" == *$'9000\n'* \
+      && "$(cat "$tcpcalls")" == *'9100'* ]]; then
+    ok 'authserv_busy_base_selects_offset_100'
 else
-    bad 'base_ports_reach_the_command' "ports: $env_ports"
+    bad 'authserv_busy_base_selects_offset_100' "exit $status, args: $args, port: $auth_port"
 fi
 
-if [[ "$err" == *'registry 127.0.0.1:6892'* ]]; then
+unset AUTHSERV_PORT
+rm -f "$argsfile" "$envfile" "$authenvfile"
+: > "$tcpcalls"
+STUB_BUSY='9000'
+run_remote node2.lan non-persistent true
+STUB_BUSY=''
+if [[ $status -eq 0 && "$args" == 'node2.lan 0 non-persistent true' \
+      && "$auth_port" == 'unset' && "$(cat "$tcpcalls")" != *'9000'* ]]; then
+    ok 'authserv_flag_off_keeps_three_port_check'
+else
+    bad 'authserv_flag_off_keeps_three_port_check' "exit $status, args: $args, port: $auth_port"
+fi
+
+rm -f "$argsfile" "$envfile" "$authenvfile"
+run_remote --dry-run --authserv node2.lan non-persistent true
+if [[ $status -eq 0 && "$args" == '--dry-run --authserv node2.lan 0 non-persistent true' \
+      && "$auth_port" == '9000' ]]; then
+    ok 'authserv_dry_run_reaches_tunnel'
+else
+    bad 'authserv_dry_run_reaches_tunnel' "exit $status, args: $args, port: $auth_port"
+fi
+
+rm -f "$argsfile" "$envfile" "$authenvfile"
+run_remote --authserv node2.lan persistent
+if [[ $status -eq 0 && "$args" == '--authserv node2.lan 0 persistent' \
+      && "$err" == *'offset 0'* ]]; then
+    ok 'authserv_persistent_keeps_offset_report'
+else
+    bad 'authserv_persistent_keeps_offset_report' "exit $status, args: $args, error: $err"
+fi
+
+run_remote --help
+if [[ $status -eq 0 && "$err" == *'[--authserv]'* ]]; then
+    ok 'usage_names_authserv'
+else
+    bad 'usage_names_authserv' "exit $status, error: $err"
+fi
+
+rm -f "$argsfile"
+run_remote node2.lan non-persistent true --authserv
+if [[ $status -eq 2 && "$err" == *'--authserv'* && ! -f "$argsfile" ]]; then
+    ok 'trailing_authserv_exits_2'
+else
+    bad 'trailing_authserv_exits_2' "exit $status, error: $err"
+fi
+
+rm -f "$argsfile"
+STUB_CHECK_REFUSE_PORT='9000'
+run_remote --authserv node2.lan non-persistent true
+STUB_CHECK_REFUSE_PORT=''
+if [[ $status -eq 2 && "$err" == *'port check failed'* && ! -f "$argsfile" ]]; then
+    ok 'authserv_port_check_refusal_exits_2'
+else
+    bad 'authserv_port_check_refusal_exits_2' "exit $status, error: $err"
+fi
+
+if [[ "$base_env_ports" == '6890 6891 ' ]]; then
+    ok 'base_ports_reach_the_command'
+else
+    bad 'base_ports_reach_the_command' "ports: $base_env_ports"
+fi
+
+if [[ "$base_err" == *'registry 127.0.0.1:6892'* ]]; then
     ok 'registry_line_names_the_endpoint'
 else
-    bad 'registry_line_names_the_endpoint' "error: $err"
+    bad 'registry_line_names_the_endpoint' "error: $base_err"
 fi
 
 # -- A busy base set -----------------------------------------------------
@@ -250,4 +331,4 @@ if (( failures > 0 )); then
     printf '%d failures\n' "$failures"
     exit 1
 fi
-printf '%d checks, 0 failures\n' 17
+printf '%d checks, 0 failures\n' 24

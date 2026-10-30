@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # Run one local command against a remote node-9 with no manual port work.
 #
-#   node-9-remote [--dry-run] HOST MODE [COMMAND...]
+#   node-9-remote [--dry-run] [--authserv] HOST MODE [COMMAND...]
 #
 # The command takes every word after MODE. A word that starts with a dash
 # belongs to the command. So `register read --as Theta` needs no `--`.
-# The option --dry-run goes before HOST. A `--` word is a separator.
+# The options --dry-run and --authserv go before HOST. A `--` word is a separator.
 #
 # The command finds a free offset, opens the tunnel, and runs the command.
 #
 #   1. Start with offset 0.
 #   2. Check 6890, 6891, and 6892 plus the offset on local loopback.
+#      With --authserv, also check 9000 plus the offset.
 #   3. A free set ends the search.
 #   4. Otherwise add 100 to the offset and repeat. Stop at 32768.
 #   5. Export CORE_PORT and CORE_MGMT_PORT for the command.
+#      With --authserv, export AUTHSERV_PORT for the command.
 #   6. Run node-9-tunnel HOST OFFSET MODE COMMAND...
 #
 # The registry endpoint of the target is 127.0.0.1:6892 plus the offset.
@@ -35,10 +37,11 @@ tcp_check="${CHAT_REMOTE_TCP_CHECK:-$script_dir/isTCPOpen}"
 tunnel="${CHAT_REMOTE_TUNNEL:-$script_dir/node-9-tunnel}"
 
 usage() {
-    printf 'usage: node-9-remote [--dry-run] HOST MODE [COMMAND...]\n' >&2
+    printf 'usage: node-9-remote [--dry-run] [--authserv] HOST MODE [COMMAND...]\n' >&2
 }
 
 dry_run=0
+authserv=0
 positional=()
 # The host and the mode are the fixed operands. An option of this tool goes
 # before them, because every later word belongs to COMMAND. A command option,
@@ -50,6 +53,7 @@ while (( $# )); do
     if (( parsing )); then
         case "$1" in
             --dry-run) dry_run=1; shift; continue ;;
+            --authserv) authserv=1; shift; continue ;;
             -h|--help) usage; exit 0 ;;
             --) parsing=0; literal=1; shift; continue ;;
             --*) usage; exit 2 ;;
@@ -65,7 +69,7 @@ while (( $# )); do
         # Without this rule a trailing --dry-run runs the command live.
         # See CHAT-uhdbljkr.
         case "$1" in
-            --dry-run|-h|--help)
+            --dry-run|--authserv|-h|--help)
                 printf 'node-9-remote: the option %s belongs before the host.\n' \
                     "$1" >&2
                 exit 2
@@ -124,6 +128,10 @@ find_offset() {
         # shellcheck disable=SC2086
         "$tcp_check" $ports > /dev/null 2>&1
         status=$?
+        if (( status == 0 && authserv )); then
+            "$tcp_check" "$((9000 + offset))" > /dev/null 2>&1
+            status=$?
+        fi
         if (( status == 0 )); then
             printf '%s\n' "$offset"
             return 0
@@ -151,9 +159,11 @@ ports="$(offset_ports "$offset")"
 read -r core_port core_mgmt_port registry_port <<< "$ports"
 export CORE_PORT="$core_port"
 export CORE_MGMT_PORT="$core_mgmt_port"
+(( authserv )) && export AUTHSERV_PORT="$((9000 + offset))"
 
 tunnel_args=()
 (( dry_run )) && tunnel_args+=(--dry-run)
+(( authserv )) && tunnel_args+=(--authserv)
 tunnel_args+=("$host" "$offset" "$mode")
 if (( ${#command_args[@]} > 0 )); then
     tunnel_args+=("${command_args[@]}")

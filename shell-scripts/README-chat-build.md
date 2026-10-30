@@ -239,6 +239,7 @@ image and starts the container on `${CHAT_NETWORK:-docker_chatnet}`. Compose mou
 `/run/secrets/authserv.jwk`. The recipe requires the current user to own the
 JWK file. The container runs with that user's UID so it can read the key.
 The image starts with the `jdbc` and `client-init` Spring profiles.
+Compose does not publish the Postgres host port. A host-run authserv needs a reachable PostgreSQL URL.
 The recipe prints its current phase and sends a progress update every ten
 seconds while it waits for Postgres or authserv health.
 
