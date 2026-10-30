@@ -131,11 +131,33 @@ Core and rest keep their present agent behavior.
 
 1. Record the current `docker compose config` output for the authserv service.
    Use `CHAT_NETWORK` and every variable that the current recipe sets.
-   Keep that text as the control value.
-2. Add two cases to `shell-scripts/test-authserv-profile.sh` before any code change.
-   The first case sets the operator variable and expects `SPRING_APPLICATION_JSON` in `docker compose config`.
-   The second case leaves the variable unset and expects the recorded control text.
-   Run the script. The first case must fail. Record that evidence.
+   Parse the `services.authserv.environment` mapping out of that output.
+   Keep that mapping as the control value. Do not keep the whole text.
+
+   The change adds one key with an empty value, so the whole text must change.
+   Measured on 2026-10-30: compose renders `${AUTHSERV_AGENTS_JSON:-}` as `SPRING_APPLICATION_JSON: ""`.
+   An exact text control would therefore fail by construction.
+   The control must compare effective behavior instead.
+
+2. Add three cases to `shell-scripts/test-authserv-profile.sh` before any code change.
+
+   Case A sets the operator variable to a one-agent JSON value.
+   It parses the rendered environment mapping.
+   It expects `SPRING_APPLICATION_JSON` to equal that JSON value exactly.
+
+   Case B leaves the operator variable unset.
+   It parses the rendered environment mapping.
+   It expects `SPRING_APPLICATION_JSON` to be present and to hold an empty value.
+   It expects every other key and value to equal the control mapping from step 1.
+   It expects no key of the control mapping to be absent.
+
+   Case C leaves the operator variable unset.
+   It expects the rendered `services.authserv` keys outside `environment` to equal the control.
+   This keeps the image, the ports, the volumes, the networks, and the user unchanged.
+
+   Use `docker compose config` and parse the result. Do not compare raw text.
+   Run the script. Case A must fail now. Record that evidence.
+   Case B and case C must pass before the change, because the control holds the old mapping.
 3. Add `SPRING_APPLICATION_JSON: ${AUTHSERV_AGENTS_JSON:-}` to the `environment` block of the authserv service.
    Put it after `APP_OAUTH2_JWK_PATH` at line 25, so one block holds every application property.
    An unset variable gives an empty value. Spring Boot ignores an empty value.
@@ -143,7 +165,12 @@ Core and rest keep their present agent behavior.
    The recipe passes the operator value through and sets no default.
    The recipe must not call `--agent-json` itself, because this issue does not own agent selection.
 5. Run `shell-scripts/test-authserv-profile.sh`. Every case must pass.
-   The control case must still match the recorded text.
+   After the change, case B must report the new key with an empty value.
+   Case B must report every other key unchanged.
+   Case C must report no change outside the environment block.
+6. An empty value must change no bound property.
+   Proof case 7 measures that result for two baked agents.
+   Task 4 case 6 repeats it against `AgentClientProperties`.
 
 ## Task 4: Prove the binding against `AgentClientProperties`
 

@@ -65,8 +65,12 @@ The bound list then held the launch agent alone, and no baked value reached it.
 | --- | --- | --- |
 | 2 | 1 | the launch agent alone |
 | 2 | none | both baked agents |
+| 2 | one empty value | both baked agents |
 
-Row two shows the control case. An operator who sets no launch value keeps the current behavior.
+Rows two and three show the control cases.
+An operator who sets no launch value keeps the current behavior.
+An empty value gives the same result, because Spring Boot ignores a blank value.
+Compose renders an unset operator variable as an empty value, so row three is the deployed control.
 
 The measurement used `Binder` and `Bindable.listOf`.
 It used a probe class that holds the `AgentClientProperties.AgentClient` shape.
@@ -131,10 +135,17 @@ This leaves the identity in the image and blocks `CHAT-vnljyxpl`.
 
 ## Failure behavior
 
-The output mode with no `--agent` value exits 2 and names the missing flag.
-The output mode with a service other than authserv exits 2 and names authserv.
-`authserv --build` with `--agent` exits 2 and names the output mode.
-`authserv --build` with `--agent-jwks-uri` exits 2 and names the output mode.
+The output mode with no `--agent` value exits 1 and names the missing flag.
+The output mode with a service other than authserv exits 1 and names authserv.
+`authserv --build` with `--agent` exits 1 and names the output mode.
+`authserv --build` with `--agent-jwks-uri` exits 1 and names the output mode.
+
+Exit 1 is the code for a refused flag combination.
+`shell-scripts/chat-build:1389` refuses `authserv --build --jwk` with exit 1.
+`shell-scripts/chat-build:1458` refuses `core --build --index-root` with exit 1.
+Exit 2 serves an argument shape error and a missing key type.
+The owner accepted exit 1 on 2026-10-30.
+The argparse goal group refuses `--agent-json --build`, and that case keeps exit 2.
 Each of those messages names the authserv service.
 `core --build` and `rest --build` keep their present behavior with `--agent`.
 Each refusal writes its message to standard error.
@@ -144,7 +155,7 @@ Each existing refusal in `shell-scripts/test-flags.sh` keeps its present status 
 
 Add a failing check before each code change.
 
-1. A `test-flags.sh` case proves `--build --agent` exits 2 with the new message.
+1. A `test-flags.sh` case proves `authserv --build --agent` exits 1 with the new message.
 2. A `test-flags.sh` case proves the output mode prints the expected JSON for two agents.
 3. A golden file holds that JSON, as `shell-scripts/golden/` holds the flag files today.
 4. A Kotlin test binds `AgentClientProperties` from the golden JSON through `SPRING_APPLICATION_JSON`.

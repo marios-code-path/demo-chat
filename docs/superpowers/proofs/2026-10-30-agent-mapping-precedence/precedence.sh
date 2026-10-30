@@ -3,6 +3,7 @@
 # A baked agent property arrives as -Dapp.oauth2.* in JAVA_TOOL_OPTIONS.
 # The script compares SPRING_APPLICATION_JSON against a plain variable.
 # It also proves that a launch list replaces a baked list.
+# It proves that an empty launch value changes nothing.
 # It writes only inside one private root. It changes no repository file.
 # See CHAT-vidnpywh.
 set -euo pipefail
@@ -144,6 +145,11 @@ fi
 echo "[precedence] Case 6: two baked agents with no launch JSON."
 out6="$(list_probe "${baked_pair[@]}")"
 expect "case 6" "count" "2" "$out6" || failures=$((failures + 1))
+
+echo "[precedence] Case 7: an empty launch value against two baked agents."
+out7="$(SPRING_APPLICATION_JSON= list_probe "${baked_pair[@]}")"
+expect "case 7" "count" "2" "$out7" || failures=$((failures + 1))
+expect "case 7" "agent" "baked-one|BakedOne|null" "$out7" || failures=$((failures + 1))
 
 echo "[precedence] Failures: $failures"
 exit $((failures > 0))

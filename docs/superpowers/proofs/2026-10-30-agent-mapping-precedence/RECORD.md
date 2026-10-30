@@ -18,12 +18,17 @@ A launch-time channel must beat that baked value.
 4. `SPRING_APPLICATION_JSON` binds an indexed agent list.
 5. A launch agent list replaces a baked agent list. It does not merge with it.
 6. A baked agent list survives when no launch value exists.
+7. A baked agent list survives when the launch value is empty.
 
 Result 2 is the reason to reject plain environment variables. An old image
 would win over the launch value, and the operator would see no error.
 
 Result 5 is the behavior the design needs. An image that holds two old agents
 must not add them to the launch agent set.
+
+Result 7 is the deployed control. Compose renders an unset operator variable
+as an empty value, measured on 2026-10-30 as `SPRING_APPLICATION_JSON: ""`. So
+the control case cannot compare raw text, and it must compare behavior.
 
 ## Command
 
@@ -46,7 +51,7 @@ component that reads `SPRING_APPLICATION_JSON`.
 input and one baked `-Dapp.oauth2.agent-scope` value.
 
 `ListProbe` binds `app.oauth2.agents` with `Binder` and `Bindable.listOf`. It
-prints the bound agent count and each bound agent. Cases 5 and 6 give it two
+prints the bound agent count and each bound agent. Cases 5, 6 and 7 give it two
 baked agents through `-Dapp.oauth2.agents[0]` and `-Dapp.oauth2.agents[1]`.
 
 ## Measured result, 2026-10-30
@@ -71,10 +76,11 @@ the baked path carries no agent list unless the build adds one.
 | --- | --- | --- | --- |
 | 5 | 2 | 1 | count 1, `launch-one` alone |
 | 6 | 2 | none | count 2, both baked agents |
+| 7 | 2 | one empty value | count 2, both baked agents |
 
 Case 5 also checked every printed line for the text `baked-`. No line held it.
 
-The run reported 0 failures for all six cases.
+The run reported 0 failures for all seven cases.
 
 ## Limits
 
