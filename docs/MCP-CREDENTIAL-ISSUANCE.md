@@ -1,5 +1,9 @@
 # MCP adapter credential issuance
 
+For an agent that uses `private_key_jwt` through node-9, follow the
+[agent JWK tunnel guide](AGENT-JWK-TUNNEL-GUIDE.md).
+The secret-client procedure below records the earlier deployment route.
+
 This document tells an operator how the adapter credential file gets its value.
 Issue `CHAT-rvcrzxvw` carries the work.
 
