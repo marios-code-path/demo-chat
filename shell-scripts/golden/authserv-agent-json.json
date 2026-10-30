@@ -1,0 +1,18 @@
+{
+  "app": {
+    "oauth2": {
+      "agent-scope": "chat.mcp",
+      "agents": [
+        {
+          "client-id": "a",
+          "jwk-set-uri": "https://example.test/a/jwks",
+          "username": "Agent"
+        },
+        {
+          "client-id": "b",
+          "username": "Claude"
+        }
+      ]
+    }
+  }
+}
