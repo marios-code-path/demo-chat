@@ -133,13 +133,29 @@ CONTROL_ENVIRONMENT = {
     "SPRING_DATASOURCE_URL": "jdbc:postgresql://authserv-postgres:5432/authserver",
     "SPRING_DATASOURCE_USERNAME": "test",
 }
-# Control 2. Every other key of the service, with the launch inputs that this
-# script supplies. The volume source holds a work path, so the case checks the
-# target and the read-only flag alone.
-CONTROL_KEYS = sorted([
-    "command", "depends_on", "entrypoint", "extra_hosts", "image",
-    "networks", "ports", "user", "volumes",
-])
+# Control 2. The complete service mapping outside the environment block, with
+# the launch inputs that this script supplies. The volume source holds a work
+# path, so the caller passes that path in. A compose release that adds a field
+# fails this case on purpose, and a reader then decides whether the field
+# belongs.
+def control_rest(jwk_source):
+    return {
+        "command": None,
+        "depends_on": {"postgres": {"condition": "service_started", "required": True}},
+        "entrypoint": None,
+        "extra_hosts": ["host.docker.internal=host-gateway"],
+        "image": "chat-authserv:0.0.1",
+        "networks": {"chatnet": None},
+        "ports": [
+            {"host_ip": "127.0.0.1", "mode": "ingress", "protocol": "tcp",
+             "published": "9000", "target": 9000},
+            {"host_ip": "127.0.0.1", "mode": "ingress", "protocol": "tcp",
+             "published": "9001", "target": 9001},
+        ],
+        "user": "501:20",
+        "volumes": [{"read_only": True, "source": jwk_source,
+                     "target": "/run/secrets/authserv.jwk", "type": "bind"}],
+    }
 
 
 def check(condition, message):
@@ -164,28 +180,17 @@ if mode in ("set", "unset"):
         check(environment.get("SPRING_APPLICATION_JSON") == "",
               "an unset variable gave %r" % environment.get("SPRING_APPLICATION_JSON"))
 elif mode == "rest":
-    check(sorted(k for k in service if k != "environment") == CONTROL_KEYS,
-          "the service keys outside environment changed to %s"
-          % sorted(k for k in service if k != "environment"))
-    check(service.get("image") == "chat-authserv:0.0.1",
-          "the image changed to %r" % service.get("image"))
-    check(service.get("user") == "501:20", "the user changed to %r" % service.get("user"))
-    check(service.get("command") is None, "the command changed")
-    check(service.get("entrypoint") is None, "the entrypoint changed")
-    check(list(service.get("depends_on", {})) == ["postgres"], "depends_on changed")
-    check(list(service.get("networks", {})) == ["chatnet"], "the networks changed")
-    check(service.get("extra_hosts") == ["host.docker.internal=host-gateway"],
-          "extra_hosts changed")
-    published = [(p.get("host_ip"), p.get("published"), p.get("target"))
-                 for p in service.get("ports", [])]
-    check(published == [("127.0.0.1", "9000", 9000), ("127.0.0.1", "9001", 9001)],
-          "the ports changed to %s" % published)
-    volumes = service.get("volumes", [])
-    check(len(volumes) == 1, "the volume count changed to %d" % len(volumes))
-    if volumes:
-        check(volumes[0].get("target") == "/run/secrets/authserv.jwk",
-              "the volume target changed")
-        check(volumes[0].get("read_only") is True, "the volume lost read_only")
+    expected = control_rest(sys.argv[2])
+    actual = {key: value for key, value in service.items() if key != "environment"}
+    for key in sorted(set(expected) | set(actual)):
+        if key not in actual:
+            failures.append("control 2 lost the key %s" % key)
+        elif key not in expected:
+            failures.append("control 2 gained the key %s = %s"
+                            % (key, json.dumps(actual[key], sort_keys=True)))
+        elif actual[key] != expected[key]:
+            failures.append("control 2 differs at %s: %s"
+                            % (key, json.dumps(actual[key], sort_keys=True)))
 else:
     failures.append("unknown mode %s" % mode)
 
@@ -206,12 +211,12 @@ render_authserv() {
 
 case_a() { render_authserv "$agents_json" | python3 -I "$work/check-authserv.py" set "$agents_json"; }
 case_b() { render_authserv "" | python3 -I "$work/check-authserv.py" unset; }
-case_c() { render_authserv "" | python3 -I "$work/check-authserv.py" rest; }
+case_c() { render_authserv "" | python3 -I "$work/check-authserv.py" rest "$work/control-jwk"; }
 
 launch_failures=0
 for entry in 'A:a set value arrives whole:case_a' \
              'B:an unset value is empty and control 1 holds:case_b' \
-             'C:control 2 is unchanged:case_c'; do
+             'C:every value outside environment is unchanged:case_c'; do
     IFS=':' read -r label description fn <<< "$entry"
     if "$fn"; then
         echo "PASS case $label — $description"

@@ -132,20 +132,46 @@ emitted property into the image environment, so an image would carry one agent
 set. `authserv --build` therefore refuses `--agent` and `--agent-jwks-uri` with
 exit 1. See `CHAT-vidnpywh`.
 
-Print the mapping, and pass it to the deployment:
+Print the mapping first. The export runs only when `chat-build` succeeds,
+because `export VAR="$(command)"` reports the status of `export` and hides a
+failed command.
 
 ```sh
-export AUTHSERV_AGENTS_JSON="$(./shell-scripts/chat-build authserv --agent-json \
+agents_json="$(./shell-scripts/chat-build authserv --agent-json \
   --notls --node-id 8 --key-type long \
   --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
-  --agent-jwks-uri 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=https://agent.example/jwks)"
+  --agent-jwks-uri 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=https://agent.example/jwks)" \
+  && export AUTHSERV_AGENTS_JSON="$agents_json"
+```
+
+**For a first deployment**, start the recipe with that variable set:
+
+```sh
 just deploy-authserv "$PWD/encrypt-keys/authserv.jwk" --key-type long
 ```
 
-The recipe passes that value to the container as `SPRING_APPLICATION_JSON`.
-That source ranks above the system properties that an image bakes, and a launch
-list replaces a baked list. So one image serves any agent set, and a changed
-JWKS URI needs a restart rather than a new image.
+The recipe passes the value to the container as `SPRING_APPLICATION_JSON`. That
+source ranks above the system properties that an image bakes, and a launch list
+replaces a baked list. So one image serves any agent set.
+
+**For a changed mapping, the recipe does nothing.** It exits with status 0 when
+authserv already answers its health endpoint. When authserv does not answer, it
+rebuilds the image with Maven, which a mapping change does not need. Recreate
+the container instead:
+
+```sh
+export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
+export SPRING_DATASOURCE_USERNAME='<the authserv database user>'
+export SPRING_DATASOURCE_PASSWORD='<the authserv database password>'
+export AUTHSERV_JWK_PATH="$PWD/encrypt-keys/authserv.jwk"
+export AUTHSERV_UID="$(id -u)" AUTHSERV_GID="$(id -g)"
+docker compose -f chat-authorization-server/docker-compose.yaml \
+  up -d --no-deps --force-recreate authserv
+```
+
+A changed JWKS URI therefore needs this recreate, and no new image. The compose
+file reads every variable above, so each one must hold the value that the
+running deployment uses. `--no-deps` leaves the Postgres container alone.
 
 An unset `AUTHSERV_AGENTS_JSON` gives an empty value, which Spring Boot
 ignores. A deployment that registers no agent therefore needs no change.

@@ -438,16 +438,26 @@ so one image would serve one agent set. `authserv --build` therefore refuses
 launch:
 
 ```sh
-export AUTHSERV_AGENTS_JSON="$(./shell-scripts/chat-build authserv --agent-json \
+agents_json="$(./shell-scripts/chat-build authserv --agent-json \
   --notls --node-id 8 --key-type long \
-  --agent <client-id>=<handle> --agent-jwks-uri <client-id>=<https-uri>)"
+  --agent 'CLIENT_ID=HANDLE' --agent-jwks-uri 'CLIENT_ID=HTTPS_URI')" \
+  && export AUTHSERV_AGENTS_JSON="$agents_json"
 just deploy-authserv "$PWD/encrypt-keys/authserv.jwk" --key-type long
 ```
+
+The export runs only when `chat-build` succeeds. `export VAR="$(command)"`
+reports the status of `export`, so it hides a failed command.
 
 The recipe passes `AUTHSERV_AGENTS_JSON` to the container as
 `SPRING_APPLICATION_JSON`. That source ranks above the system properties that
 an image bakes, and a launch list replaces a baked list. An unset variable
 gives an empty value, which Spring Boot ignores.
+
+**The recipe serves a first deployment alone.** It exits with status 0 when
+authserv already answers its health endpoint, and it rebuilds the image
+otherwise. For a changed mapping, recreate the container. See
+`docs/MCP-CREDENTIAL-ISSUANCE.md`, under `A container deployment registers its
+agents at launch`.
 
 `--agent-json` joins the goal group, so it cannot combine with `--run` or
 `--build`. It refuses a service other than `authserv` with exit 1, and it
