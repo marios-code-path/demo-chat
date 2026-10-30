@@ -2,7 +2,7 @@
 
 Issue: `CHAT-vidnpywh`
 Date: 2026-10-30
-Status: awaiting approval
+Status: approved on 2026-10-30
 
 ## Context
 
