@@ -10,6 +10,9 @@ The design is in
 `docs/superpowers/proofs/2026-10-18-node-9/RECORD.md`. The shell attach proof
 is in `docs/superpowers/proofs/2026-10-22-shell-attach/RECORD.md`.
 
+The [agent JWK tunnel guide](docs/AGENT-JWK-TUNNEL-GUIDE.md) covers token requests.
+It remains draft until the node-9 authserv wrapper lands.
+
 ## Prerequisites
 
 - Docker with Compose v2.

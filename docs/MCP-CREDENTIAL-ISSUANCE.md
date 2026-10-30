@@ -1,5 +1,8 @@
 # MCP adapter credential issuance
 
+This document defines the general agent credential procedure for demo-chat.
+The node-9 project owns its tunnel procedure and deployment values.
+
 This document tells an operator how the adapter credential file gets its value.
 Issue `CHAT-rvcrzxvw` carries the work.
 
@@ -10,7 +13,7 @@ The procedure asks the authorization server for a token. The token carries the
 `chat.mcp` scope, and the deployment requires that scope.
 
 `docs/MCP-ADAPTER.md` states the adapter contract.
-`docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records a run that uses this procedure.
+`docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records the secret-client run below.
 `docs/BUILD.md` states how to start a REST launch and how to make a signing key.
 
 ## What the credential must be
@@ -32,7 +35,75 @@ It names the OAuth client in the token request. It names one
 user. A token from an unlisted client is refused with 401, even when its scope
 is right. See `CHAT-frcrctdp`.
 
-## The procedure
+## Current `private_key_jwt` procedure
+
+Register each agent with a distinct client ID and RSA key pair.
+Keep each private JWK with its agent and outside the repository.
+Publish each public JWK through an HTTPS JWKS URI that authserv can reach.
+
+Pass `--agent CLIENT_ID=HANDLE` and `--agent-jwks-uri CLIENT_ID=HTTPS_URI`
+to `chat-build authserv` for each agent. The JWKS flag selects `private_key_jwt`.
+The authserv signing JWK is separate from every agent key.
+Pass the same client IDs and handles to core and REST.
+
+Use the `jdbc` Spring profile for a deployed server.
+Flyway creates the replay table for a new JDBC database.
+For an existing database, follow [the JDBC migration guide](AUTHSERV-JDBC-MIGRATION.md).
+The server refuses a JWKS agent when the replay table is absent.
+
+Each token request needs a new signed client assertion.
+Use `RS256` and set the JOSE `kid` to the public JWK ID.
+Set `iss` and `sub` to the registered client ID.
+Set `aud` to the exact token URL used for the request.
+Set `iat` to the issue time and `exp` to a short expiry, such as 60 seconds.
+Set `jti` to a new unique value. The server rejects a reused assertion.
+The agent signs the assertion with its private JWK.
+
+Set `CLIENT_ID` and `TOKEN_URL` for that agent.
+Set `ASSERTION_FILE` to the signed compact JWT outside the repository.
+Set `CREDENTIAL_FILE` to an absolute path outside the repository.
+Restrict access to the assertion file and credential directory.
+
+```sh
+(
+  set -eu
+  umask 077
+  credential_dir=$(dirname "$CREDENTIAL_FILE")
+  candidate=$(mktemp "$credential_dir/.credential.XXXXXX")
+  trap 'rm -f "$candidate"' EXIT
+  response=$(curl --fail-with-body -sS -X POST "$TOKEN_URL" \
+    -d grant_type=client_credentials \
+    -d "client_id=$CLIENT_ID" \
+    -d scope=chat.mcp \
+    -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
+    --data-urlencode "client_assertion@$ASSERTION_FILE")
+  printf '%s' "$response" \
+    | jq -er '.access_token | select(type == "string" and length > 0)' > "$candidate"
+  chmod 600 "$candidate"
+  mv -f "$candidate" "$CREDENTIAL_FILE"
+)
+```
+
+The assertion audience must equal `TOKEN_URL`.
+The response must contain a nonempty string `access_token`.
+A failed request or invalid response leaves the prior credential file unchanged.
+Point `credentialFile` in the adapter configuration at `CREDENTIAL_FILE`.
+The adapter reads the file on each request. It needs no restart after a token replacement.
+
+The server stores each used `jti` in `oauth2_client_assertion_jti` with JDBC.
+After a restart, each server reads the same table.
+The server rejects an assertion without `jti`.
+With `memory`, the server stores replay records in its process.
+A restart clears those records.
+The cache holds at most 10,000 unexpired assertions.
+At that limit, the server refuses a new assertion.
+An existing secret client does not change authentication method automatically.
+The server refuses startup if you assign its client ID a JWKS URI.
+Delete that stored client row before you register the ID with `private_key_jwt`.
+
+## Recorded secret client procedure
+
+Existing secret clients remain supported. The dated measurements below used secrets.
 
 ### Step 1: start the authorization server
 
@@ -56,44 +127,6 @@ Record each secret. **The memory profile makes new secrets at each start.**
 Request a new token after a restart. The `client-init` profile saves a client
 once and prints its secret once. A lost secret has no recovery path: delete the
 client row, and the next start registers it again.
-
-Register the agent with `--agent CLIENT_ID=HANDLE`.
-Add `--agent-jwks-uri CLIENT_ID=https://agent.example/jwks` for `private_key_jwt`.
-The agent keeps its private key. The server reads the public JWKS from that URI.
-
-The agent signs a short-lived assertion with RS256.
-Set `iss` and `sub` to the client ID.
-Set `aud` to the authorization server token endpoint.
-Set a short `exp` and a unique `jti`.
-Set the JOSE header `kid` to the matching public key ID.
-The server records each `jti`. It rejects a second use before the assertion expires.
-The server also rejects an assertion without `jti`.
-
-With `jdbc`, the server stores each used `jti` in the `oauth2_client_assertion_jti` table.
-After a restart, each server reads the same table.
-
-Flyway creates the replay table for new JDBC databases.
-For an existing database, follow [the JDBC migration guide](AUTHSERV-JDBC-MIGRATION.md) before the first start with the new image.
-The server refuses to start if a JWKS agent is configured and the replay table is absent.
-
-With `memory`, the server stores replay records in its process. A restart clears the records.
-The cache holds at most 10,000 unexpired assertions. At that limit, it refuses a new assertion.
-
-A stored secret client keeps its authentication method.
-The server refuses startup when you configure that client with a JWKS URI.
-Delete the old client row. The next start registers the client with the new method.
-
-Send the signed assertion in this request:
-
-```sh
-curl -sS -X POST https://AUTH_SERVER/oauth2/token \
-  -d grant_type=client_credentials -d "client_id=$CLIENT_ID" -d scope=chat.mcp \
-  -d client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer \
-  --data-urlencode "client_assertion=$CLIENT_ASSERTION"
-```
-
-Use the returned `access_token` as the agent bearer token.
-Create a new assertion when the access token expires.
 
 Do not use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent client id. It is
 the id of `app.oauth2.client`, and the start refuses a shared client id.
@@ -276,12 +309,21 @@ address, which is a development form. Use TLS for any other host.
 ### Step 3: write the credential file
 
 ```sh
-curl -sS -u '<agent-client-id>:<printed-secret>' \
-  -d 'grant_type=client_credentials' -d 'scope=chat.mcp' \
-  http://127.0.0.1:9000/oauth2/token \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' \
-  > /secure/path/credential.txt
-chmod 600 /secure/path/credential.txt
+CREDENTIAL_FILE=/secure/path/credential.txt
+(
+  set -eu
+  umask 077
+  credential_dir=$(dirname "$CREDENTIAL_FILE")
+  candidate=$(mktemp "$credential_dir/.credential.XXXXXX")
+  trap 'rm -f "$candidate"' EXIT
+  response=$(curl --fail-with-body -sS -u '<agent-client-id>:<printed-secret>' \
+    -d 'grant_type=client_credentials' -d 'scope=chat.mcp' \
+    http://127.0.0.1:9000/oauth2/token)
+  printf '%s' "$response" \
+    | jq -er '.access_token | select(type == "string" and length > 0)' > "$candidate"
+  chmod 600 "$candidate"
+  mv -f "$candidate" "$CREDENTIAL_FILE"
+)
 ```
 
 Point `credentialFile` in the adapter configuration at that path. A relative
@@ -289,6 +331,7 @@ value resolves against the directory of the configuration file.
 
 Keep the file outside the repository. A token under a tracked directory is one
 `git add` away from a commit, which is the rule the signing key already follows.
+A failed token request leaves the prior credential file unchanged.
 
 ### Step 4: launch the deployment
 
@@ -410,7 +453,7 @@ application chain. Its flag list is in the appendix below. It read
 **The 2026-10-01 run repeated every reading with
 `app.security.agent.username=Agent`.** That run is the one this document's
 procedure describes. The 2026-09-30 readings above stand, and the account they
-named is no longer the account the procedure uses. See "The agent account"
+named is no longer the account the recorded procedure uses. See "The agent account"
 below.
 
 The token came from the authorization server by the step 2 request. The harness
@@ -668,7 +711,7 @@ topicIds=1555003941702340608,1
 Both ids are in `topicIds` on purpose. A refusal from the allowlist never
 reaches a backend, so it would prove nothing about the deployment.
 
-## Reproduce it
+## Reproduce the recorded secret client run
 
 1. Start the authorization server with the step 1 command.
 2. Request a token with the step 2 command. Read `scope` in the response.
