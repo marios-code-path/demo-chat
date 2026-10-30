@@ -23,6 +23,12 @@ services:
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:?Set SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?Set SPRING_DATASOURCE_PASSWORD}
       APP_OAUTH2_JWK_PATH: file:/run/secrets/authserv.jwk
+      # The agent client mapping arrives at launch, not in the image. This
+      # source ranks above the system properties that the image bakes, and a
+      # launch list replaces a baked list. An unset variable gives an empty
+      # value, which Spring Boot ignores. `chat-build authserv --agent-json`
+      # prints the value. See CHAT-vidnpywh.
+      SPRING_APPLICATION_JSON: ${AUTHSERV_AGENTS_JSON:-}
     volumes:
       - type: bind
         source: ${AUTHSERV_JWK_PATH:?Set AUTHSERV_JWK_PATH}
