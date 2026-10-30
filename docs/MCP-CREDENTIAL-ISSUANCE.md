@@ -180,46 +180,57 @@ docker compose -f chat-authorization-server/docker-compose.yaml \
 
 The `client-init` profile reconciles the mapping at each start, and
 `deploy-authserv` activates that profile. The reconciliation reads one stored
-client per listed agent. Its behavior sets three limits.
+client per listed agent.
 
 **A new agent works.** The store holds no client for that id, so the start
 saves one. A recreate is enough.
 
-**A changed JWKS URI does not work.** The reconciliation compares the stored
-client against the mapping, and a different `jwk-set-uri` counts as drift. The
-start then fails:
+**A changed JWKS URI works.** The reconciliation updates the stored client when
+the URI is its only difference from the mapping. The start prints one line:
 
-    The stored client '<id>' is not an agent client. It differs in JWK Set URI.
+    Private_key_jwt agent client '<id>' (<handle>) changed its JWKS URI
+    from '<old>' to '<new>'.
+
+Read that line in the start log to confirm the change. The update keeps the
+stored row and every other setting of that client. See `CHAT-vidnpywh`.
+
+The agent must publish its new JWKS before the recreate. The server reads the
+URI at each token request, so an unreachable URI refuses the assertion.
+
+**Any other difference still fails the start.** A stored client that disagrees
+in two fields, or in one field other than the URI, fails with this message:
+
+    The stored client '<id>' is not an agent client. It differs in <fields>.
     Delete the row, and the next start registers it again.
+
+A stored secret client against a mapping with a JWKS URI is one such case.
 
 **A removed agent keeps its client.** The reconciliation reads the listed
 agents alone. An id that leaves the mapping keeps its stored client, and that
 client still receives tokens.
 
-`AgentClientsTests` records all three limits. With `--profile memory` the
-repository holds no row across a restart, so none of them applies.
+`AgentClientsTests` records each behavior above. With `--profile memory` the
+repository holds no row across a restart, so none of it applies.
 
-### Both repairs need an app function that does not exist
+### The remaining repairs need an app function that does not exist
 
 The failure message above names a row delete. This document gives no SQL
 command for it. `CHAT-tkabpfxm` stops CQL, SQL and direct backend access that
 stands in for an app call, and it asks for one focused issue per gap.
 
 `CHAT-vepxpmlk` is that issue. It covers the missing function: update or
-remove one registered agent client. Its acceptance covers a changed JWKS URI, a
-withdrawn agent, the refusal of a client row that is not an agent client, and
-the access rule for a function that decides which key authenticates as an
-agent.
+remove one registered agent client. Its acceptance covers a withdrawn agent,
+the refusal of a client row that is not an agent client, and the access rule
+for a function that decides which key authenticates as an agent.
 
-Two proposals stand against the two needs:
+| Need | State |
+|---|---|
+| A changed JWKS URI | the reconciliation applies it, so no function is needed |
+| Any other drift | `CHAT-vepxpmlk` holds the scope |
+| A withdrawn agent | `CHAT-vepxpmlk` holds the scope |
 
-| Need | Proposal | State |
-|---|---|---|
-| A changed JWKS URI | `docs/superpowers/specs/2026-10-30-agent-jwks-uri-update-design.md` | awaiting owner approval |
-| A withdrawn agent | none | `CHAT-vepxpmlk` holds the scope |
-
-Until one lands, ask the repository owner before you change or withdraw a
-stored agent client. Do not reach the row with `psql`.
+Ask the repository owner before you repair either remaining case. Do not reach
+the row with `psql`.
 
 An unset `AUTHSERV_AGENTS_JSON` gives an empty value, which Spring Boot
 ignores. A deployment that registers no agent therefore needs no change.

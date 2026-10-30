@@ -70,7 +70,8 @@ Read the old URI from `row` before the save, because the save replaces the row.
 
 **Files:** `chat-authorization-server/src/test/kotlin/com/demo/chat/AgentClientsTests.kt`.
 
-1. Add these nine cases before any production change. Each one fails.
+1. Add these nine cases before any production change.
+   Cases 1 to 6 fail, and cases 7 to 9 pass. Step 2 holds that sequence as a table.
 
    1. `reconcile` saves an updated client when only the URI differs.
    2. The saved client holds the new URI.
