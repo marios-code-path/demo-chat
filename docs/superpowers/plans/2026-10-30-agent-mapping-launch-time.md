@@ -13,11 +13,11 @@ The authserv compose service owns the `SPRING_APPLICATION_JSON` passthrough.
 
 **Basis:** [Approved design](../specs/2026-10-30-agent-mapping-launch-time-design.md), commit `94ade97c`.
 Approved on 2026-10-30. The approval covers the design and planning. It does not cover implementation.
-[Precedence proof](../proofs/2026-10-30-agent-mapping-precedence/RECORD.md), six cases, 0 failures.
+[Precedence proof](../proofs/2026-10-30-agent-mapping-precedence/RECORD.md), seven cases, 0 failures.
 
-## One stated deviation from the approved design
+## One accepted deviation from the first approved design
 
-The design states exit 2 for each new refusal. This plan uses **exit 1**.
+The design at `94ade97c` stated exit 2 for each new refusal. This plan uses **exit 1**.
 
 The repository already refuses two bake attempts, and both use exit 1:
 
@@ -29,7 +29,8 @@ Exit 1 belongs to a refused flag combination.
 The new refusal is a refused combination, so exit 1 keeps one meaning for one code.
 The refusal text follows the same `cannot be baked into an image` wording.
 
-The owner must accept this deviation before Task 1 starts.
+The owner accepted exit 1 on 2026-10-30. Commit `cfa56cd3` carries that text into the design.
+So the design and this plan now agree, and this section records the history alone.
 
 ## File responsibilities
 
@@ -151,13 +152,16 @@ Core and rest keep their present agent behavior.
 
 1. Record the current `docker compose config` output for the authserv service.
    Use `CHAT_NETWORK` and every variable that the current recipe sets.
-   Parse the `services.authserv.environment` mapping out of that output.
-   Keep that mapping as the control value. Do not keep the whole text.
+   Parse that output, and keep two controls. Do not keep the whole text.
+
+   Control 1 is the `services.authserv.environment` mapping. Case B compares it.
+   Control 2 is every other key of `services.authserv`. Case C compares it.
+   Control 2 holds the image, the ports, the volumes, the networks, the user, and `depends_on`.
 
    The change adds one key with an empty value, so the whole text must change.
    Measured on 2026-10-30: compose renders `${AUTHSERV_AGENTS_JSON:-}` as `SPRING_APPLICATION_JSON: ""`.
    An exact text control would therefore fail by construction.
-   The control must compare effective behavior instead.
+   Each control must compare effective behavior instead.
 
 2. Add three cases to `shell-scripts/test-authserv-profile.sh` before any code change.
 
@@ -172,8 +176,8 @@ Core and rest keep their present agent behavior.
    It expects no key of the control mapping to be absent.
 
    Case C leaves the operator variable unset.
-   It expects the rendered `services.authserv` keys outside `environment` to equal the control.
-   This keeps the image, the ports, the volumes, the networks, and the user unchanged.
+   It expects every key of `services.authserv` outside `environment` to equal control 2.
+   This keeps the image, the ports, the volumes, the networks, the user, and `depends_on` unchanged.
 
    Use `docker compose config` and parse the result. Do not compare raw text.
 
@@ -187,7 +191,7 @@ Core and rest keep their present agent behavior.
 
    Case A and case B are the failing-test-first evidence. Record both failures.
    Case C is the control. It must pass before the change and after it.
-   A case C failure before the change means the recorded control is wrong. Repair step 1 first.
+   A case C failure before the change means control 2 is wrong. Repair step 1 first.
 3. Add `SPRING_APPLICATION_JSON: ${AUTHSERV_AGENTS_JSON:-}` to the `environment` block of the authserv service.
    Put it after `APP_OAUTH2_JWK_PATH` at line 25, so one block holds every application property.
    An unset variable gives an empty value. Spring Boot ignores an empty value.
@@ -196,8 +200,8 @@ Core and rest keep their present agent behavior.
    The recipe must not call `--agent-json` itself, because this issue does not own agent selection.
 5. Run `shell-scripts/test-authserv-profile.sh`. Case A, case B, and case C must all pass.
    Case B must report the new key with an empty value.
-   Case B must report every other key and value unchanged against the step 1 control.
-   Case C must report no change outside the environment block.
+   Case B must report every other key and value unchanged against control 1.
+   Case C must report no change against control 2.
 
    | Case | After the change |
    | --- | --- |
@@ -260,7 +264,7 @@ Run each check and record its result:
 1. `./shell-scripts/test-flags.sh` reports zero failures.
 2. `shell-scripts/test-authserv-profile.sh` passes.
 3. `just build-partial chat-authorization-server unit` reports zero failures.
-4. `bash docs/superpowers/proofs/2026-10-30-agent-mapping-precedence/precedence.sh` still reports 0 failures.
+4. `bash docs/superpowers/proofs/2026-10-30-agent-mapping-precedence/precedence.sh` still reports 0 failures for seven cases.
 5. `bash -n shell-scripts/chat-build` is not valid for Python, so run `python3 -m py_compile shell-scripts/chat-build`.
 6. `bash -n shell-scripts/test-flags.sh` and `bash -n shell-scripts/test-authserv-profile.sh` pass.
 7. `git diff master...HEAD --check` reports nothing.
