@@ -1282,7 +1282,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                         help="path to the JWK file trusted by the deployment")
     parser.add_argument("--agent", action="append", default=[], metavar="CLIENT_ID=HANDLE",
                         help="an agent: the OAuth client id and the chat user handle. "
-                             "Repeat it for each agent")
+                             "Repeat it for each agent. authserv --build refuses it, "
+                             "because an image must hold no agent identity")
     parser.add_argument("--agent-jwks-uri", action="append", default=[], metavar="CLIENT_ID=HTTPS_URI",
                         help="authserv only: public JWKS URI for one private_key_jwt agent")
     parser.add_argument("--index-root", metavar="DIR", default=None,

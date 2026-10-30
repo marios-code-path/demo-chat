@@ -124,6 +124,39 @@ a row id that the store holds for another client.
 Wait until the log prints `Started ChatAppKt`. The token endpoint answers 404
 before that line.
 
+#### A container deployment registers its agents at launch
+
+The command above runs the server from the source tree, and `--agent` reaches
+that process. A container deployment is different. `--build` writes every
+emitted property into the image environment, so an image would carry one agent
+set. `authserv --build` therefore refuses `--agent` and `--agent-jwks-uri` with
+exit 1. See `CHAT-vidnpywh`.
+
+Print the mapping, and pass it to the deployment:
+
+```sh
+export AUTHSERV_AGENTS_JSON="$(./shell-scripts/chat-build authserv --agent-json \
+  --notls --node-id 8 --key-type long \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
+  --agent-jwks-uri 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=https://agent.example/jwks)"
+just deploy-authserv "$PWD/encrypt-keys/authserv.jwk" --key-type long
+```
+
+The recipe passes that value to the container as `SPRING_APPLICATION_JSON`.
+That source ranks above the system properties that an image bakes, and a launch
+list replaces a baked list. So one image serves any agent set, and a changed
+JWKS URI needs a restart rather than a new image.
+
+An unset `AUTHSERV_AGENTS_JSON` gives an empty value, which Spring Boot
+ignores. A deployment that registers no agent therefore needs no change.
+
+`--agent-json` refuses a service other than `authserv` with exit 1. It refuses
+an empty agent list with exit 1. It cannot combine with `--run` or `--build`.
+
+**The core and REST keep the old behavior.** They still accept `--agent` with
+`--build`, and they still bake their mapping. They bind `app.security.agents`
+and `app.init.initial-users`, so their move needs its own design.
+
 ### Step 2: request the token
 
 ```sh

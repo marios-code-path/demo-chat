@@ -387,7 +387,7 @@ not make one cheaper to add.
 | `--debug` | RSocket frame logging plus a JDWP agent on `DEBUG_PORT`. |
 | `--init PHASES` | Comma-separated: `users`, `rootkeys`. |
 | `--profile NAME` | Additional Spring profile. Repeatable. |
-| `--run` / `--build` | `spring-boot:run` (default) or `spring-boot:build-image`. |
+| `--run` / `--build` / `--agent-json` | `spring-boot:run` (default), `spring-boot:build-image`, or print the agent launch JSON and exit. |
 | `--image-manifest PATH` | Record the image after a successful `--build`. |
 | `--bake` | Pass options via the env file rather than inheriting them. |
 | `--env-file PATH` | Where to write the env file. |
@@ -397,6 +397,7 @@ not make one cheaper to add.
 | `--agent CLIENT_ID=HANDLE` | One agent. Repeat it for each agent. See below. |
 | `--agent-jwks-uri CLIENT_ID=HTTPS_URI` | Authserv reads this public JWKS for `private_key_jwt`. Repeat for each agent that uses a key. |
 | `--agent-scope SCOPE` | The one scope of every agent token. Defaults to `chat.mcp`. |
+| `--agent-json` | `authserv` only. Print the agent launch JSON and exit. See below. |
 | `--index-root DIR` | `core` only. Keep the Lucene indexes in files under `DIR`. See below. |
 | `--vector embedded` | Select the embedded vector store for `core --cassandra`. Requires `--embedding openai`. |
 | `--embedding openai` | Select the OpenAI-compatible provider for `core --cassandra`. Requires `--vector embedded`. |
@@ -423,9 +424,38 @@ the two lists.
   without case.
 - `--agent` on a service other than `core`, `rest` or `authserv`.
 - `--agent` on `core` or `rest` without `--jwk`.
+- `--agent` or `--agent-jwks-uri` with `authserv --build`. See below.
 
 The removed flags `--agent-client-id` and `--agent-username` exit 2 and name
 `--agent`.
+
+**An authserv image holds no agent.** An agent mapping names a runtime
+identity. `--build` writes every emitted property into the image environment,
+so one image would serve one agent set. `authserv --build` therefore refuses
+`--agent` and `--agent-jwks-uri` with exit 1. See `CHAT-vidnpywh`.
+
+`--agent-json` prints the mapping instead. The deployment passes that value at
+launch:
+
+```sh
+export AUTHSERV_AGENTS_JSON="$(./shell-scripts/chat-build authserv --agent-json \
+  --notls --node-id 8 --key-type long \
+  --agent <client-id>=<handle> --agent-jwks-uri <client-id>=<https-uri>)"
+just deploy-authserv "$PWD/encrypt-keys/authserv.jwk" --key-type long
+```
+
+The recipe passes `AUTHSERV_AGENTS_JSON` to the container as
+`SPRING_APPLICATION_JSON`. That source ranks above the system properties that
+an image bakes, and a launch list replaces a baked list. An unset variable
+gives an empty value, which Spring Boot ignores.
+
+`--agent-json` joins the goal group, so it cannot combine with `--run` or
+`--build`. It refuses a service other than `authserv` with exit 1, and it
+refuses an empty agent list with exit 1.
+
+`core` and `rest` keep their `--build` behavior and still bake their mapping.
+They bind `app.security.agents` and `app.init.initial-users`, so their move
+needs its own design.
 
 **Lucene index files.** `--index-root DIR` sets `app.index.lucene.root`.
 Without it, the Lucene indexes stay in memory. `chat-build` expands `~`, then
