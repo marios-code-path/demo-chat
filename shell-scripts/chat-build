@@ -1392,6 +1392,17 @@ def main() -> int:
                   "Supply app.oauth2.jwk.path when you run the image.",
                   file=sys.stderr)
             return 1
+        # An agent mapping names a runtime identity, and the image build writes
+        # it into the image environment. One image would then serve one agent
+        # set. --agent-json prints the mapping, and the deployment passes it at
+        # launch. See CHAT-vidnpywh.
+        if args.build and (args.agent or args.agent_jwks_uri):
+            print("chat-build: --agent cannot be baked into an image. "
+                  "An agent mapping names a runtime identity, not a build input. "
+                  "Print it with 'chat-build authserv --agent-json', and pass the "
+                  "result through AUTHSERV_AGENTS_JSON when you start the image.",
+                  file=sys.stderr)
+            return 1
         if not args.build and not args.jwk:
             print("chat-build: --jwk PATH is required to run the "
                   "authorization server. It reads an ES256 signing key from "
