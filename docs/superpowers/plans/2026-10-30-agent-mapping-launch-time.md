@@ -71,13 +71,22 @@ Core and rest keep their present agent behavior.
    ```
 
    This case proves core keeps its baked mapping. The refusal must not reach core.
-4. Run `./shell-scripts/test-flags.sh`.
-   The two refusal cases must fail now.
-   The control case must fail with `no golden`.
-   Record both failures as the failing-test-first evidence.
+4. Run `./shell-scripts/test-flags.sh` and record this sequence:
+
+   | Case | Before the change | Reason |
+   | --- | --- | --- |
+   | `refuse-agent-build` | fails | `chat-build` accepts the pair and exits 0 |
+   | `refuse-agent-jwks-build` | fails | `chat-build` accepts the pair and exits 0 |
+   | `core-build-image-agent` | fails with `no golden` | step 5 has not written the file yet |
+
+   The two refusal failures are the failing-test-first evidence.
+   The `no golden` failure is not that evidence. It only reports a missing file.
 5. Create the control golden with `./shell-scripts/test-flags.sh --update core-build-image-agent`.
    Read the written file. It must hold each `-Dapp.security.agents[0]` flag and each `-Dapp.init.initial-users` flag.
    Commit that golden with this task.
+   Run `./shell-scripts/test-flags.sh` again, still before the code change.
+   The control case must now pass, and the two refusal cases must still fail.
+   The control must pass before the change and after it, because core behavior does not change.
 6. Add the refusal to `shell-scripts/chat-build` inside the existing `if args.service == "authserv":` block.
    Put it next to the `--jwk` refusal at line 1389, so one block holds every authserv bake rule.
    Refuse when `args.build` holds and `args.agent` holds any value.
@@ -85,7 +94,8 @@ Core and rest keep their present agent behavior.
    Write one message to standard error. Name `--agent-json` and the compose variable in it.
    Return 1.
 7. Run `./shell-scripts/test-flags.sh`. Every case must pass.
-   The recorded pass count must rise by three, and the fail count must stay at zero.
+   This task adds three cases, so the count must read `all 60 case(s) match`.
+   The fail count must stay at zero.
 
 ## Task 2: Add the `--agent-json` output mode
 
@@ -111,6 +121,16 @@ Core and rest keep their present agent behavior.
 
    The third case relies on the argparse group, so it keeps exit 2.
 3. Run `./shell-scripts/test-flags.sh`. Each new case must fail. Record that evidence.
+
+   | Case | Failure before the change |
+   | --- | --- |
+   | `authserv-agent-json` | `chat-build` exits non-zero on an unrecognized `--agent-json` |
+   | `refuse-agent-json-service` | argparse exits 2, and the case expects exit 1 |
+   | `refuse-agent-json-no-agent` | argparse exits 2, and the case expects exit 1 |
+   | `refuse-agent-json-build` | argparse names an unrecognized argument, not a group conflict |
+
+   The `JSON_CASES` loop must report a non-zero exit as a failure. It must not stop the script.
+   Give it the same guard that the `CASES` loop uses for a non-zero exit.
 4. Add `--agent-json` to the existing goal group in `shell-scripts/chat-build` near line 1232.
    The group already holds `--run` and `--build`, so argparse refuses `--agent-json --build`.
    Write the help text as one sentence under 25 words.
@@ -156,18 +176,34 @@ Core and rest keep their present agent behavior.
    This keeps the image, the ports, the volumes, the networks, and the user unchanged.
 
    Use `docker compose config` and parse the result. Do not compare raw text.
-   Run the script. Case A must fail now. Record that evidence.
-   Case B and case C must pass before the change, because the control holds the old mapping.
+
+   Run the script before the change, and record this sequence:
+
+   | Case | Before the change | Reason |
+   | --- | --- | --- |
+   | A | fails | the key is absent, so no value can equal the JSON value |
+   | B | fails | the key is absent, so the presence check cannot hold |
+   | C | passes | the keys outside `environment` do not change in this task |
+
+   Case A and case B are the failing-test-first evidence. Record both failures.
+   Case C is the control. It must pass before the change and after it.
+   A case C failure before the change means the recorded control is wrong. Repair step 1 first.
 3. Add `SPRING_APPLICATION_JSON: ${AUTHSERV_AGENTS_JSON:-}` to the `environment` block of the authserv service.
    Put it after `APP_OAUTH2_JWK_PATH` at line 25, so one block holds every application property.
    An unset variable gives an empty value. Spring Boot ignores an empty value.
 4. Export `AUTHSERV_AGENTS_JSON` in `deploy-authserv` beside `AUTHSERV_JWK_PATH`.
    The recipe passes the operator value through and sets no default.
    The recipe must not call `--agent-json` itself, because this issue does not own agent selection.
-5. Run `shell-scripts/test-authserv-profile.sh`. Every case must pass.
-   After the change, case B must report the new key with an empty value.
-   Case B must report every other key unchanged.
+5. Run `shell-scripts/test-authserv-profile.sh`. Case A, case B, and case C must all pass.
+   Case B must report the new key with an empty value.
+   Case B must report every other key and value unchanged against the step 1 control.
    Case C must report no change outside the environment block.
+
+   | Case | After the change |
+   | --- | --- |
+   | A | passes |
+   | B | passes |
+   | C | passes |
 6. An empty value must change no bound property.
    Proof case 7 measures that result for two baked agents.
    Task 4 case 6 repeats it against `AgentClientProperties`.
@@ -191,9 +227,16 @@ The owner requires this task. It is not optional.
    3. `requireValid()` accepts the bound result.
    4. Two baked agents and one different launch agent bind to the launch agent alone.
    5. The same case proves no bound client id holds the baked value.
-   6. Two baked agents and no launch value bind to both baked agents.
-   7. One launch value and one baked `agent-scope` bind to the launch scope.
-3. Run the focused class. Each case must fail or pass for a stated reason.
+   6. Two baked agents and one empty launch value bind to both baked agents.
+   7. Two baked agents and no launch value bind to both baked agents.
+   8. One launch value and one baked `agent-scope` bind to the launch scope.
+3. Run the focused class. Every case must pass on its first run.
+
+   This task adds no production code, because `AgentClientProperties` does not change.
+   So no case starts red, and the failing-test-first rule does not apply here.
+   Each case states a claim that the design already makes.
+   A failure therefore means the design is wrong, not that code is missing.
+   Stop on any failure. Report it, and do not start Task 5.
    Case 4 is the case that the Java probe could not prove, so record its result first.
 4. Run `just build-partial chat-authorization-server unit`.
    Report the test count and the failure count.
