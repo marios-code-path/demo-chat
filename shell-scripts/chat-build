@@ -563,14 +563,28 @@ COMPOSITION_LABEL = "com.demo.chat.composition.sha256"
 COMPOSITION_LABELS_ENV = "CHAT_IMAGE_COMPOSITION_LABELS"
 
 
+# A URI value can carry a credential in its user information or in a query
+# parameter, also under a key that the key rule does not match.
+URI_USER_INFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)[^/?#@\s]*@")
+URI_PARAMETER = re.compile(r"([?&;])([^=&;#\s]+)=([^&;#\s]*)")
+
+
+def redact_value(value: str) -> str:
+    """Replace URI user information and secret query values with the marker."""
+    value = URI_USER_INFO.sub(lambda m: f"{m[1]}{REDACTED_VALUE}@", value)
+    return URI_PARAMETER.sub(
+        lambda m: f"{m[1]}{m[2]}=" + (REDACTED_VALUE if SECRET_OPTION_KEY.search(m[2]) else m[3]),
+        value)
+
+
 def redact_option(option: str) -> str:
-    """Replace the value of a credential option with a fixed marker."""
+    """Replace each credential in one option with a fixed marker."""
     if not option.startswith("-D") or "=" not in option:
-        return option
-    key = option[2:].split("=", 1)[0]
+        return redact_value(option)
+    key, value = option[2:].split("=", 1)
     if SECRET_OPTION_KEY.search(key.rsplit(".", 1)[-1]):
         return f"-D{key}={REDACTED_VALUE}"
-    return option
+    return f"-D{key}={redact_value(value)}"
 
 
 def canonical_json(record: dict) -> str:

@@ -157,6 +157,26 @@ else
     fail 'credentials stay out of the record and its diagnostics'
 fi
 
+# A URI with user information or a secret query parameter keeps its shape alone.
+if (cd "$work/cwd" && ROOTKEY_SOURCE_URI='http://admin:s3cret@core:6791/rootkeys?token=t0ken&x=1;password=pw9' \
+        "$builder" rest --notls --node-id 1 --key-type uuid --composition-json) \
+        > "$work/uri.json" 2> "$work/uri.err" \
+        && jq -e "$schema" "$work/uri.json" > /dev/null 2>&1 \
+        && ! grep -qE 'admin|s3cret|t0ken|pw9' "$work/uri.json" "$work/uri.err" \
+        && grep -qF 'http://<redacted>@core:6791/rootkeys?token=<redacted>&x=1;password=<redacted>' "$work/uri.json"; then
+    pass 'URI user information and secret query values stay out of the record'
+else
+    fail 'URI user information and secret query values stay out of the record'
+    grep -o 'rootkeys.consume.source=[^"]*' "$work/uri.json" 2> /dev/null | sed 's/^/    /'
+fi
+if (cd "$work/cwd" && ROOTKEY_SOURCE_URI='http://core:6791/rootkeys?x=1' "$builder" rest --notls \
+        --node-id 1 --key-type uuid --composition-json) 2> /dev/null \
+        | grep -qF -- '-Dapp.rootkeys.consume.source=http://core:6791/rootkeys?x=1"'; then
+    pass 'a URI without credentials stays as it is'
+else
+    fail 'a URI without credentials stays as it is'
+fi
+
 # expect_status LABEL STATUS ARGS...: the mode keeps each refusal status.
 expect_status() {
     local label="$1" expected="$2" status=0

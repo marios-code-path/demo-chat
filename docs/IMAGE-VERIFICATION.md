@@ -63,15 +63,25 @@ These values can come from the environment or from a node profile.
 
 ## Credentials
 
-The record contains no credential.
-A `-D` option is a credential option when the last segment of its key ends with
-`pass`, `password`, `secret`, `token`, `credential`, `credentials`, `header`, or `headers`.
-An index such as `[0]` after `header` or `headers` also matches.
-The match ignores case.
-The record keeps that option and replaces its value with `<redacted>`.
-Thus a changed credential does not change the record.
-For example, `-Dspring.security.user.password=actuator` becomes
-`-Dspring.security.user.password=<redacted>`.
+The builder replaces credential values with `<redacted>` by three rules.
+Each rule replaces the value and keeps the rest of the option.
+Thus a changed credential under these rules does not change the record.
+
+1. A `-D` option is a credential option when the last segment of its key ends with
+   `pass`, `password`, `secret`, `token`, `credential`, `credentials`, `header`, or `headers`.
+   An index such as `[0]` after `header` or `headers` also matches.
+   The rule replaces the whole value.
+   For example, `-Dspring.security.user.password=actuator` becomes
+   `-Dspring.security.user.password=<redacted>`.
+2. The user information of a URI is replaced.
+   For example, `http://admin:s3cret@core:6791/rootkeys` becomes `http://<redacted>@core:6791/rootkeys`.
+3. A URI parameter after `?`, `&`, or `;` is replaced when its name matches the name rule of rule 1.
+   For example, `?token=t0ken&x=1` becomes `?token=<redacted>&x=1`.
+
+All rules ignore case.
+These rules do not detect every credential form.
+A credential in another form enters the record, for example a bare value under an unrelated key name.
+Do not put credentials in build inputs that reach the JVM options.
 
 ## Canonical form
 
