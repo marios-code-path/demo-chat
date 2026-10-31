@@ -162,7 +162,7 @@ else
 fi
 
 # Invalid input gives status 2. The verifier has no deployment defaults.
-verify no-args -- 
+verify no-args --
 expect 'no arguments give status 2' 2 no-args
 verify no-jar -- --commit "$commit" --image "$image_id"
 expect 'a missing boot jar argument gives status 2' 2 no-jar

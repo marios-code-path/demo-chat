@@ -22,6 +22,9 @@
 set -uo pipefail
 
 . "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+# A selected profile or another neutral input would steer every golden. The
+# suite pins its own values below. See CHAT-gyfhbsbd.
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-composition-inputs.sh" || exit $?
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GOLDEN="$DIR/golden"
