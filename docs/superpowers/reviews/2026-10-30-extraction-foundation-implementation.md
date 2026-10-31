@@ -2,13 +2,33 @@
 
 Review issue: CHAT-qdsmackk.
 Parent: CHAT-zffgckla.
-Status: owner implementation review pending.
+Status: implementation approved at `b9708ae9`. Issue closure remains pending.
 Branch: `impl/chat-zffgckla-foundation`.
 Approved planning basis: `72233229`.
 Plan corrections: `8d830cf0`.
 Original implementation range: `8d830cf0..bdb8c1c8`.
 Isolation correction issue: CHAT-jgtsuyfo.
-The image-proof and repository-extraction implementations have not started.
+The original review request preceded the image-proof implementation.
+
+## Review and merge state
+
+The owner approved the corrected foundation at `b9708ae9` on 2026-10-31.
+CHAT-qdsmackk contains that re-review and its independent checks.
+The approval resolved the inherited-legacy-input blocker.
+The issue still has status `in-progress`.
+
+[Foundation partial CI](https://github.com/marios-code-path/demo-chat/actions/runs/41165417488) passed at `b9708ae9`.
+Its 11 module summaries total 2,051 tests, zero failures, zero errors, and 32 skipped tests.
+The earlier issue comment reported 283 tests and one skipped test. Those counts describe `chat-shell` alone.
+This result supplies independent CI evidence for the original author-reported Maven build.
+
+[PR #315](https://github.com/marios-code-path/demo-chat/pull/315) merged all 11 foundation commits with the image-proof work as `c060b9fe`.
+[Master CI](https://github.com/marios-code-path/demo-chat/actions/runs/41179621130) passed on that merge commit.
+Its build, integration, and agent-http jobs succeeded.
+The main checkout is clean at `c060b9fe` in the 2026-10-31 closure preparation check.
+
+This record identifies the earlier implementation approval. It does not establish that GitHub's merge approval gate passed.
+Repository extraction and the final neutral release remain separate work.
 
 ## Implemented behavior
 
@@ -39,7 +59,9 @@ The [intermediate scan](../proofs/2026-10-30-extraction-foundation/INTERMEDIATE-
 These matches have no permanent exception.
 CHAT-gdddeqkb remains pending.
 
-## Verification limits
+## Original verification limits
+
+These limits describe the original foundation verification. Later CI evidence is recorded above.
 
 The required partial build uses selected modules and their reactor dependencies.
 It does not establish full PR CI or live deployment acceptance.
@@ -47,18 +69,18 @@ Maven and Java stubs prove shell argument and staging behavior only.
 The existing secret suite retains its seven measured baseline failures in this sandbox.
 The count depends on the environment. The owner measured one failure in fourteen checks in the separate review environment.
 No secret behavior changed to hide them.
-The original partial Maven result remains author-reported until independent CI supplies its result.
+The original local Maven result was author-reported. The foundation CI result above supplies independent build evidence.
 The partial build's JVM exit timeout remains visible in the evidence record.
 No real register import, credential change, installed-home update, or remote deployment occurred.
-The main checkout remains at `1a8fd033`.
-The separate node-9 repository remains empty.
+At the original verification, the main checkout was at `1a8fd033`.
+The separate node-9 repository was empty at that time. This review makes no current claim about its contents.
 
 ## Required gate
 
-Review the foundation implementation before the next plan consumes it.
+The recorded re-review approved the foundation at `b9708ae9`.
 Each later plan retains its separate implementation review.
 The final release pin must select a reviewed neutral release without temporary compatibility.
-No release pin, PR merge, or extraction completion is claimed here.
+The merge is recorded above. No final neutral release pin or extraction completion is claimed here.
 
 ## Isolation review correction
 
@@ -77,4 +99,4 @@ The revised 119-case Register result uses this cleared environment.
 The helper is temporary test support. It is not an installed tool or a permanent lexical exception.
 The extraction must preserve test isolation when deployment tests move.
 Retained general suites must remove this temporary dependency when the final legacy reader leaves demo-chat.
-Foundation implementation approval remains pending.
+Foundation implementation approval is recorded above. Issue closure remains pending.
