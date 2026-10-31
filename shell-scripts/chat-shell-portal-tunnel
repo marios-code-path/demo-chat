@@ -10,31 +10,33 @@ if [[ -n "${CHAT_SHELL_REPO:-}" ]]; then
 else
     repo="$(cd "$script_dir/.." && pwd)"
 fi
-if [[ -n "${NODE_9_BIN:-}" ]]; then
-    node9_bin="$(cd "$NODE_9_BIN" && pwd -P)"
-elif [[ -f "$script_dir/../.installed" ]]; then
-    node9_bin="$script_dir"
-else
-    node9_bin="$repo/node-9/bin"
+. "$script_dir/tunnel-ports.sh"
+. "$script_dir/node-inputs.sh"
+chat_node_inputs || exit $?
+if declare -F chat_legacy_portal_inputs > /dev/null; then
+    chat_legacy_portal_inputs
 fi
+chat_tunnel_profile || exit $?
+chat_tunnel_compute 0 || exit $?
+
 host="${CHAT_PORTAL_HOST:-}"
 [[ "$host" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
     printf 'chat-shell-portal-tunnel: set CHAT_PORTAL_HOST to a host name.\n' >&2
     exit 2
 }
 host_label="${host%%.*}"
-tunnel="$node9_bin/node-9-tunnel"
-tcp_check="$node9_bin/isTCPOpen"
-installed_cli="$node9_bin/chat-shell-cli"
+tunnel="${CHAT_TUNNEL_COMMAND:-$script_dir/chat-tunnel}"
+tcp_check="${CHAT_TCP_CHECK:-$script_dir/isTCPOpen}"
+installed_cli="${CHAT_SHELL_CLI:-$script_dir/chat-shell-cli}"
 source_portal="$repo/shell-scripts/chat-shell-portal"
-user="${CHAT_SHELL_USER:-Sigma}"
-password_file="${CHAT_SHELL_PASSWORD_FILE:-$node9_bin/../secrets/$user.password}"
+user="${CHAT_SHELL_USER:-}"
+password_file="${CHAT_SHELL_PASSWORD_FILE:-${CHAT_DEPLOYMENT_SECRETS_DIR:-${CHAT_DEPLOYMENT_HOME:-$repo}/secrets}/$user.password}"
 password_temp=
 state="${CHAT_PORTAL_STATE_DIR:-${HOME:?set HOME}/.local/state/demo-chat/${host_label}-portal}"
 socket_dir="${CHAT_PORTAL_SOCKET_DIR:-/tmp/chat-portal-$UID}"
 socket="$socket_dir/p"
 socket_file="${CHAT_PORTAL_SOCKET_FILE:-}"
-runtime_lib="${CHAT_SHELL_LIB:-$node9_bin/../lib}"
+runtime_lib="${CHAT_SHELL_LIB:-${CHAT_DEPLOYMENT_HOME:-$repo}/lib}"
 
 fail() {
     printf 'chat-shell-portal-tunnel: %s\n' "$1" >&2
@@ -60,7 +62,7 @@ tunnel_is_running() {
     local pid command
     pid="$(cat "$state/tunnel.pid")"
     command="$(process_command "$pid")"
-    [[ "$command" == *"-- $host"* && "$command" == *"127.0.0.1:6890"* ]]
+    [[ "$command" == *"-- $host"* && "$command" == *"127.0.0.1:$NODE_RSOCKET_PORT"* ]]
 }
 
 # Print the process that holds this socket path, when one answers.
@@ -136,30 +138,30 @@ stop_all() {
 }
 
 choose_offset() {
-    local offset
-    if [[ -n "${CHAT_PORTAL_OFFSET:-}" ]]; then
-        offset="$CHAT_PORTAL_OFFSET"
-        [[ "$offset" =~ ^[0-9]+$ ]] && (( offset % 100 == 0 && offset <= 32700 )) \
-            || fail 'CHAT_PORTAL_OFFSET must be a multiple of 100 from 0 to 32700.'
-        "$tcp_check" "$((6890 + offset))" "$((6891 + offset))" "$((6892 + offset))" \
-            >/dev/null && { printf '%s\n' "$offset"; return; }
-        fail "ports for offset $offset are in use."
+    local offset status=0
+    if [[ "${CHAT_PORTAL_OFFSET+x}" ]]; then
+        chat_tunnel_compute "$CHAT_PORTAL_OFFSET" || return $?
+        "$tcp_check" "${CHAT_TUNNEL_REQUIRED_PORTS[@]}" > /dev/null || status=$?
+        case "$status" in
+            0) printf '%s\n' "$CHAT_TUNNEL_OFFSET"; return 0 ;;
+            1) fail 'the selected local port set is in use.' ;;
+            *) chat_tunnel_error 'the local port check failed.'; return 2 ;;
+        esac
     fi
-    for (( offset = 0; offset <= 32700; offset += 100 )); do
-        if "$tcp_check" "$((6890 + offset))" "$((6891 + offset))" "$((6892 + offset))" \
-            >/dev/null 2>&1; then
-            printf '%s\n' "$offset"
-            return
-        fi
-    done
-    fail 'no free tunnel port set is available.'
+    offset=$(chat_tunnel_find_offset "$tcp_check") || status=$?
+    case "$status" in
+        0) printf '%s\n' "$offset" ;;
+        1) fail 'no free tunnel port set is available.' ;;
+        *) chat_tunnel_error 'the local port check failed.'; return 2 ;;
+    esac
 }
 
 action="${1:-start}"
 case "$action" in
     start)
+        [[ -n "$user" ]] || fail 'set CHAT_SHELL_USER for the portal login.'
         [[ -x "$tunnel" && -x "$tcp_check" ]] \
-            || fail "node-9 tools are missing. Set NODE_9_BIN to their bin directory."
+            || fail 'the selected general tunnel tools are missing.'
         if [[ -x "$installed_cli" ]]; then
             portal="$installed_cli"
             portal_mode=installed
@@ -169,6 +171,11 @@ case "$action" in
             runtime_lib="${CHAT_SHELL_LIB:-$repo/lib}"
         else
             fail 'no installed shell CLI or source portal launcher is available.'
+        fi
+        if [[ ! -d "$runtime_lib" && -z "${CHAT_SHELL_LIB:-}" && -x "$source_portal" ]]; then
+            portal="$source_portal"
+            portal_mode=source
+            runtime_lib=
         fi
         if [[ "$portal_mode" == installed ]]; then
             [[ -d "$runtime_lib" ]] || fail "the installed CLI library is missing at $runtime_lib."
@@ -217,8 +224,9 @@ case "$action" in
         [[ "$tunnel_pid" =~ ^[0-9]+$ ]] || fail 'the tunnel returned an invalid process id.'
         printf '%s\n' "$tunnel_pid" > "$state/tunnel.pid"
         printf '%s\n' "$offset" > "$state/offset"
-        CORE_PORT=$((6890 + offset)) CORE_MGMT_PORT=$((6891 + offset)) \
-            CHAT_SHELL_KEY_TYPE=uuid CHAT_SHELL_NODE_ID=9 CHAT_SHELL_MODE=portal \
+        CORE_PORT=$((10#$NODE_RSOCKET_PORT + offset)) CORE_MGMT_PORT=$((10#$NODE_MGMT_PORT + offset)) \
+            CHAT_SHELL_LIB="$runtime_lib" \
+            CHAT_SHELL_KEY_TYPE="${NODE_KEY_TYPE:?select a key type}" CHAT_SHELL_NODE_ID="${NODE_ID:?select a node ID}" CHAT_SHELL_MODE=portal \
             CHAT_SHELL_USER="$user" CHAT_SHELL_PASSWORD_FILE="$password_file" \
             CHAT_SHELL_PORTAL_SOCKET="$socket" CHAT_SHELL_LOG="$state/application.log" \
             nohup "$portal" </dev/null >>"$state/portal-output.log" 2>&1 &
@@ -236,7 +244,7 @@ case "$action" in
                     ( umask 077; printf '%s\n' "$socket" > "$socket_file" )
                 fi
                 printf 'portal ready: user=%s socket=%s core_port=%s pid=%s tunnel_pid=%s\n' \
-                    "$user" "$socket" "$((6890 + offset))" "$portal_pid" "$tunnel_pid"
+                    "$user" "$socket" "$((10#$NODE_RSOCKET_PORT + offset))" "$portal_pid" "$tunnel_pid"
                 exit 0
             fi
             if ! kill -0 "$portal_pid" 2>/dev/null; then

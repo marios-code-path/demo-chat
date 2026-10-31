@@ -65,7 +65,8 @@ if HOME="$fixture/home" "$fixture/bin/setup-portal" Theta '../bad' >/dev/null 2>
 fi
 
 cp "$repo_root/shell-scripts/chat-shell-portal-tunnel" "$fixture/bin/chat-shell-portal-tunnel"
-cat > "$fixture/bin/node-9-tunnel" <<'EOF'
+cp "$repo_root/shell-scripts/"{node-inputs.sh,node-profile.sh,legacy-node-inputs.sh,tunnel-ports.sh} "$fixture/bin/"
+cat > "$fixture/bin/chat-tunnel" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "$CHAT_PORTAL_STATE_DIR/tunnel-arguments"
 exit 1
@@ -78,7 +79,7 @@ cat > "$fixture/bin/chat-shell-cli" <<'EOF'
 #!/usr/bin/env bash
 exit 0
 EOF
-chmod +x "$fixture/bin/node-9-tunnel" "$fixture/bin/isTCPOpen" "$fixture/bin/chat-shell-cli"
+chmod +x "$fixture/bin/chat-tunnel" "$fixture/bin/isTCPOpen" "$fixture/bin/chat-shell-cli"
 printf 'fixture-password\n' > "$fixture/secrets/Theta.password"
 if HOME="$fixture/home" NODE_9_BIN="$fixture/bin" CHAT_PORTAL_HOST=example.lan \
     CHAT_SHELL_USER=Theta CHAT_SHELL_PASSWORD_FILE="$fixture/secrets/Theta.password" \

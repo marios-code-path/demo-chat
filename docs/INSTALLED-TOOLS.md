@@ -24,3 +24,17 @@ This intermediate state does not establish the final pinned installation contrac
 
 Stubbed tests inspect JVM arguments, environment values, stage files, and failure behavior.
 They do not prove real Maven staging or live runtime acceptance.
+
+`chat-tunnel` and `chat-remote` use profile ports and one shared offset calculation.
+`CHAT_TUNNEL_AUTHSERV_PORT` supplies the optional authserv forward for `--authserv`.
+The profile schema contains no authserv key.
+The availability probe returns 0 for free ports, 1 for busy ports, and 2 for a refused check.
+Readiness checks establish local listeners only.
+
+The portal tunnel helper resolves its TCP check, tunnel, and CLI from its own tool directory.
+`CHAT_TCP_CHECK`, `CHAT_TUNNEL_COMMAND`, and `CHAT_SHELL_CLI` provide explicit executable overrides.
+MCP installers accept explicit `CHAT_DEPLOYMENT_HOME`, `CHAT_DEPLOYMENT_BIN`, `CHAT_REGISTER_COMMAND`, and `CHAT_MCP_STDIO` inputs.
+They do not discover an installed home or sibling checkout.
+Their default register and launcher come from their own tool directory.
+An absent default deployment launcher permits the general source launcher.
+An explicit launcher never receives that fallback.

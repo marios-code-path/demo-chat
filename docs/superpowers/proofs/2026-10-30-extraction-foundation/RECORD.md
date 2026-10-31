@@ -71,3 +71,19 @@ No secret implementation or assertion changed to conceal these failures.
 The metadata transport checks use existing offline stubs.
 No CQL or SQL command ran against an application backend.
 These checks do not establish resident-portal import support.
+
+## A5: General tunnels and MCP paths
+
+The initial profile tunnel suite failed seven of eight checks.
+The initial MCP path suite failed all nine checks.
+The required absent-bin and sentinel-bin cases now invoke the general TCP check and CLI.
+No deployment sentinel executes.
+An added overflow regression returns 2 before a TCP probe or CLI starts.
+The profile tunnel suite now passes ten checks.
+The MCP path suite passes nine checks.
+The general tunnel suite passes 27 checks.
+The general remote suite passes 24 checks.
+The existing deployment tunnel, remote, bin-only, MCP installer, setup-portal, socket, and TCP suites pass.
+The socket and TCP suites required permission for local listeners outside the sandbox.
+All SSH lifecycle checks use stubs. No remote connection or live MCP registration changed.
+The old deployment tunnel bodies remain until the extraction adapters replace them.

@@ -23,6 +23,17 @@ socket="$socket_dir/p"
 lib="$fixture/lib"
 bin="$fixture/bin"
 mkdir -p "$state" "$socket_dir" "$lib" "$bin"
+cat > "$fixture/profile.env" <<'EOF'
+NODE_PROFILE_VERSION=1
+NODE_ID=9
+NODE_KEY_TYPE=uuid
+NODE_RSOCKET_PORT=6890
+NODE_MGMT_PORT=6891
+NODE_REGISTRY_PORT=6892
+EOF
+printf '#!/usr/bin/env bash\nexit 1\n' > "$bin/chat-shell-cli"
+chmod +x "$bin/chat-shell-cli"
+
 
 # The stubs answer the questions that the script asks about other processes.
 cat > "$bin/ps" <<'STUB'
@@ -57,18 +68,18 @@ cat > "$bin/isTCPOpen" <<'STUB'
 #!/usr/bin/env bash
 exit 0
 STUB
-cat > "$bin/node-9-tunnel" <<'STUB'
+cat > "$bin/chat-tunnel" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "${FAKE_TUNNEL_PID:-999}"
 exit "${FAKE_TUNNEL_EXIT:-0}"
 STUB
-chmod +x "$bin/ps" "$bin/pgrep" "$bin/isTCPOpen" "$bin/node-9-tunnel"
+chmod +x "$bin/ps" "$bin/pgrep" "$bin/isTCPOpen" "$bin/chat-tunnel"
 
 run_tunnel() {
     local action="$1" code=0
     shift
     env PATH="$bin:/usr/bin:/bin" HOME="$fixture" \
-        NODE_9_BIN="$bin" CHAT_SHELL_REPO="$repo_root" CHAT_SHELL_LIB="$lib" \
+        CHAT_NODE_PROFILE="$fixture/profile.env" CHAT_TUNNEL_COMMAND="$bin/chat-tunnel" CHAT_TCP_CHECK="$bin/isTCPOpen" CHAT_SHELL_CLI="$bin/chat-shell-cli" CHAT_SHELL_REPO="$repo_root" CHAT_SHELL_LIB="$lib" \
         CHAT_PORTAL_HOST=node2.lan CHAT_SHELL_USER=theta \
         CHAT_SHELL_PASSWORD=fixture-secret \
         CHAT_PORTAL_STATE_DIR="$state" CHAT_PORTAL_SOCKET_DIR="$socket_dir" \
@@ -229,7 +240,7 @@ mkdir -p "$(dirname "$proof_file")"
 run_proof() {
     local action="$1" code=0
     shift
-    env PATH="$bin:/usr/bin:/bin" HOME="$fixture" NODE_9_BIN="$bin" \
+    env PATH="$bin:/usr/bin:/bin" HOME="$fixture" CHAT_NODE_PROFILE="$fixture/profile.env" CHAT_TUNNEL_COMMAND="$bin/chat-tunnel" CHAT_TCP_CHECK="$bin/isTCPOpen" CHAT_SHELL_CLI="$bin/chat-shell-cli" \
         CHAT_SHELL_REPO="$portal_repo" CHAT_PORTAL_HOST=node2.lan \
         CHAT_SHELL_USER=theta CHAT_SHELL_PASSWORD=fixture-secret \
         CHAT_PORTAL_STATE_DIR="$proof_state" CHAT_PORTAL_SOCKET_DIR="$proof_socket_dir" \

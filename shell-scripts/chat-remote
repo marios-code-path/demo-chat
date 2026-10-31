@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Run one local command through a profile-driven tunnel.
+set -uo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+tcp_check="${CHAT_REMOTE_TCP_CHECK:-$script_dir/isTCPOpen}"
+tunnel="${CHAT_REMOTE_TUNNEL:-$script_dir/chat-tunnel}"
+
+usage() {
+    printf 'usage: chat-remote [--dry-run] [--authserv] HOST MODE [COMMAND...]\n' >&2
+}
+
+dry_run=0
+authserv=0
+positional=()
+# The host and the mode are the fixed operands. An option of this tool goes
+# before them, because every later word belongs to COMMAND. A command option,
+# such as `register read --as Theta`, needs no separator. A `--` word is a
+# separator in any position, and it goes. See CHAT-uhdbljkr.
+parsing=1
+literal=0
+while (( $# )); do
+    if (( parsing )); then
+        case "$1" in
+            --dry-run) dry_run=1; shift; continue ;;
+            --authserv) authserv=1; shift; continue ;;
+            -h|--help) usage; exit 0 ;;
+            --) parsing=0; literal=1; shift; continue ;;
+            --*) usage; exit 2 ;;
+        esac
+    elif (( ! literal )); then
+        # A -- word is a separator in any position.
+        if [[ "$1" == '--' ]]; then
+            literal=1
+            shift
+            continue
+        fi
+        # An option of this tool anywhere in the command is a caller error.
+        # Without this rule a trailing --dry-run runs the command live.
+        # See CHAT-uhdbljkr.
+        case "$1" in
+            --dry-run|--authserv|-h|--help)
+                printf 'chat-remote: the option %s belongs before the host.\n' \
+                    "$1" >&2
+                exit 2
+                ;;
+        esac
+        # The first command word is a name, never an option. Without this
+        # rule a mistyped --dryrun runs as a command.
+        if (( ${#positional[@]} == 2 )); then
+            case "$1" in
+                -*)
+                    printf 'chat-remote: the first command word is the option %s. Put the command first, or write -- before it.\n' \
+                        "$1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+    fi
+    positional+=("$1")
+    shift
+    if (( parsing && ${#positional[@]} >= 2 )); then
+        parsing=0
+    fi
+done
+
+(( ${#positional[@]} >= 2 )) || { usage; exit 2; }
+host="${positional[0]}"
+mode="${positional[1]}"
+command_args=()
+if (( ${#positional[@]} > 2 )); then
+    command_args=("${positional[@]:2}")
+fi
+
+for tool in "$tcp_check" "$tunnel"; do
+    [[ -x "$tool" ]] \
+        || { printf 'chat-remote: %s is not executable.\n' "$tool" >&2; exit 2; }
+done
+
+[[ -n "$host" ]] \
+    || { printf 'chat-remote: the host is empty.\n' >&2; exit 2; }
+
+. "$script_dir/tunnel-ports.sh"
+chat_tunnel_profile || exit $?
+chat_tunnel_compute 0 "$authserv" || exit $?
+
+offset="$(chat_tunnel_find_offset "$tcp_check" "$authserv")"
+find_status=$?
+if (( find_status == 2 )); then
+    printf 'chat-remote: the port check failed. Check %s.\n' "$tcp_check" >&2
+    exit 2
+fi
+if (( find_status != 0 )); then
+    printf 'chat-remote: no free port set at or below offset %s.\n' \
+        32700 >&2
+    exit 1
+fi
+
+chat_tunnel_compute "$offset" "$authserv" || exit $?
+core_port="$CHAT_TUNNEL_LOCAL_RSOCKET"
+core_mgmt_port="$CHAT_TUNNEL_LOCAL_MGMT"
+registry_port="$CHAT_TUNNEL_LOCAL_REGISTRY"
+export CORE_PORT="$core_port" CORE_MGMT_PORT="$core_mgmt_port"
+export CHAT_REGISTRY="127.0.0.1:$registry_port"
+(( authserv )) && export AUTHSERV_PORT="$CHAT_TUNNEL_LOCAL_AUTHSERV"
+
+tunnel_args=()
+(( dry_run )) && tunnel_args+=(--dry-run)
+(( authserv )) && tunnel_args+=(--authserv)
+tunnel_args+=("$host" "$offset" "$mode")
+if (( ${#command_args[@]} > 0 )); then
+    tunnel_args+=("${command_args[@]}")
+fi
+
+printf 'chat-remote: offset %s, ports %s %s %s, registry 127.0.0.1:%s\n' \
+    "$offset" "$core_port" "$core_mgmt_port" "$registry_port" "$registry_port" >&2
+
+"$tunnel" "${tunnel_args[@]}"
+exit $?

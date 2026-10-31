@@ -140,3 +140,23 @@ chat_legacy_shell_runtime() {
         export CORE_MGMT_PORT="${CORE_MGMT_PORT-${NODE_MGMT_PORT-6891}}"
     fi
 }
+
+chat_legacy_portal_inputs() {
+    if [[ "${NODE_9_BIN+x}" && ! "${CHAT_NODE_PROFILE+x}" ]]; then
+        export NODE_RSOCKET_PORT="${NODE_RSOCKET_PORT-6890}"
+        export NODE_MGMT_PORT="${NODE_MGMT_PORT-6891}"
+        export NODE_REGISTRY_PORT="${NODE_REGISTRY_PORT-6892}"
+        export NODE_ID="${NODE_ID-9}" NODE_KEY_TYPE="${NODE_KEY_TYPE-uuid}"
+        export CHAT_SHELL_USER="${CHAT_SHELL_USER-Sigma}"
+    fi
+    if [[ ! "${CHAT_DEPLOYMENT_HOME+x}" && -n "${CHAT_DEPLOYMENT_BIN:-}" ]]; then
+        export CHAT_DEPLOYMENT_HOME="$(dirname "$CHAT_DEPLOYMENT_BIN")"
+    fi
+}
+
+chat_legacy_mcp_config() {
+    local li_register="$1"
+    shift
+    NODE9_ALLOW_SOURCE_TREE=1 CHAT_ALLOW_SOURCE_TREE=1 "$li_register" config \
+        --agent "$1" --project "$2" --register "$3"
+}

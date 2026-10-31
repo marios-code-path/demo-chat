@@ -187,4 +187,3 @@ chat_register_id_error() {
     fi
     return 0
 }
-

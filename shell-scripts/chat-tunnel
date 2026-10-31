@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# Open a tunnel with explicit profile ports. Readiness proves local listeners only.
+set -uo pipefail
+
+usage() {
+    printf 'usage: chat-tunnel [--dry-run] [--authserv] HOST OFFSET MODE [COMMAND...]\n' >&2
+}
+
+dry_run=0
+authserv=0
+positional=()
+# The host, the offset, and the mode are the fixed operands. An option of this
+# tool goes before them, because every later word belongs to COMMAND. A
+# command option, such as `register read --as Theta`, needs no separator. A
+# `--` word is a separator in any position, and it goes. See CHAT-uhdbljkr.
+parsing=1
+literal=0
+while (( $# )); do
+    if (( parsing )); then
+        case "$1" in
+            --dry-run) dry_run=1; shift; continue ;;
+            --authserv) authserv=1; shift; continue ;;
+            -h|--help) usage; exit 0 ;;
+            --) parsing=0; literal=1; shift; continue ;;
+            --*) usage; exit 2 ;;
+        esac
+    elif (( ! literal )); then
+        # A -- word is a separator in any position.
+        if [[ "$1" == '--' ]]; then
+            literal=1
+            shift
+            continue
+        fi
+        # An option of this tool anywhere in the command is a caller error.
+        # Without this rule a trailing --dry-run runs the command live.
+        # See CHAT-uhdbljkr.
+        case "$1" in
+            --dry-run|--authserv|-h|--help)
+                printf 'chat-tunnel: the option %s belongs before the host.\n' \
+                    "$1" >&2
+                exit 2
+                ;;
+        esac
+        # The first command word is a name, never an option. Without this
+        # rule a mistyped --dryrun runs as a command.
+        if (( ${#positional[@]} == 3 )); then
+            case "$1" in
+                -*)
+                    printf 'chat-tunnel: the first command word is the option %s. Put the command first, or write -- before it.\n' \
+                        "$1" >&2
+                    exit 2
+                    ;;
+            esac
+        fi
+    fi
+    positional+=("$1")
+    shift
+    if (( parsing && ${#positional[@]} >= 3 )); then
+        parsing=0
+    fi
+done
+
+(( ${#positional[@]} >= 3 )) || { usage; exit 2; }
+host="${positional[0]}"
+offset="${positional[1]}"
+mode="${positional[2]}"
+command_args=()
+if (( ${#positional[@]} > 3 )); then
+    command_args=("${positional[@]:3}")
+fi
+
+[[ -n "$host" ]] || { printf 'chat-tunnel: the host is empty.\n' >&2; exit 2; }
+[[ "$host" != -* ]] \
+    || { printf 'chat-tunnel: the host %s looks like an option.\n' "$host" >&2; exit 2; }
+case "$mode" in
+    non-persistent|false) persistent=0 ;;
+    persistent|true) persistent=1 ;;
+    *) printf 'chat-tunnel: the mode %s is not a known mode.\n' "$mode" >&2; exit 2 ;;
+esac
+
+if (( persistent )); then
+    (( ${#command_args[@]} == 0 )) \
+        || { printf 'chat-tunnel: a persistent tunnel takes no command.\n' >&2; exit 2; }
+else
+    (( ${#command_args[@]} > 0 )) \
+        || { printf 'chat-tunnel: a non-persistent tunnel needs a command.\n' >&2; exit 2; }
+fi
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$script_dir/tunnel-ports.sh"
+chat_tunnel_profile || exit $?
+chat_tunnel_compute "$offset" "$authserv" || exit $?
+local_rsocket="$CHAT_TUNNEL_LOCAL_RSOCKET"
+local_management="$CHAT_TUNNEL_LOCAL_MGMT"
+local_registry="$CHAT_TUNNEL_LOCAL_REGISTRY"
+local_authserv="${CHAT_TUNNEL_LOCAL_AUTHSERV:-}"
+required_ports=("${CHAT_TUNNEL_REQUIRED_PORTS[@]}")
+
+ssh_bin="${CHAT_TUNNEL_SSH:-ssh}"
+ready_seconds="${CHAT_TUNNEL_READY_SECONDS:-10}"
+[[ "$ready_seconds" =~ ^[0-9]+$ ]] \
+    || { printf 'chat-tunnel: CHAT_TUNNEL_READY_SECONDS must be a number.\n' >&2; exit 2; }
+
+ssh_args=(
+    -N
+    -o ExitOnForwardFailure=yes
+    -o ServerAliveInterval=15
+    -o ServerAliveCountMax=3
+    -L "127.0.0.1:$local_rsocket:127.0.0.1:$NODE_RSOCKET_PORT"
+    -L "127.0.0.1:$local_management:127.0.0.1:$NODE_MGMT_PORT"
+    -L "127.0.0.1:$local_registry:127.0.0.1:$NODE_REGISTRY_PORT"
+)
+(( authserv )) && ssh_args+=(-L "127.0.0.1:$local_authserv:127.0.0.1:$CHAT_TUNNEL_AUTHSERV_PORT")
+ssh_args+=(-- "$host")
+
+# tunnel_ready  True when all required local ports answer.
+tunnel_ready() {
+    local port
+    for port in "${required_ports[@]}"; do
+        nc -z -w 1 127.0.0.1 "$port" > /dev/null 2>&1 || return 1
+    done
+    return 0
+}
+
+# wait_for_tunnel  Poll the local ports. Return 1 after the budget.
+wait_for_tunnel() {
+    local waited=0
+    (( ready_seconds == 0 )) && return 0
+    while (( waited < ready_seconds * 10 )); do
+        tunnel_ready && return 0
+        sleep 0.1
+        waited=$(( waited + 1 ))
+    done
+    return 1
+}
+
+if (( dry_run )); then
+    printf 'chat-tunnel: host %s\n' "$host"
+    printf 'chat-tunnel: offset %s\n' "$offset"
+    printf 'chat-tunnel: mode %s\n' "$( (( persistent )) && printf persistent || printf non-persistent )"
+    printf 'chat-tunnel: %s %s\n' "$ssh_bin" "${ssh_args[*]}"
+    if (( ! persistent )); then
+        printf 'chat-tunnel: wait up to %s seconds for ports %s\n' \
+            "$ready_seconds" "${required_ports[*]}"
+        if (( authserv )); then
+            printf 'chat-tunnel: authserv at http://127.0.0.1:%s/oauth2/token\n' "$local_authserv"
+        fi
+        printf 'chat-tunnel: run %s\n' "${command_args[*]}"
+        printf 'chat-tunnel: stop the tunnel after the command exits\n'
+    else
+        printf 'chat-tunnel: move the tunnel to the background and print its process id\n'
+    fi
+    exit 0
+fi
+
+ssh_log="$(mktemp "${TMPDIR:-/tmp}/chat-tunnel.XXXXXX")" \
+    || { printf 'chat-tunnel: cannot make a log file.\n' >&2; exit 1; }
+
+# stop_tunnel  End the tunnel, reap it, and drop the log. The EXIT trap runs
+# this path, so a signal or a failed wait leaves no tunnel behind.
+stop_tunnel() {
+    if [[ -n "${tunnel_pid:-}" ]]; then
+        kill "$tunnel_pid" 2> /dev/null
+        wait "$tunnel_pid" 2> /dev/null
+    fi
+    rm -f "$ssh_log"
+}
+trap stop_tunnel EXIT
+
+# The tunnel takes no terminal input, and it never writes standard output.
+# In non-persistent mode the command owns standard input and output.
+"$ssh_bin" "${ssh_args[@]}" < /dev/null > /dev/null 2> "$ssh_log" &
+tunnel_pid=$!
+
+if ! wait_for_tunnel; then
+    # The ssh text is the exact cause. Print it before the summary line.
+    [[ -s "$ssh_log" ]] && cat "$ssh_log" >&2
+    printf 'chat-tunnel: the tunnel did not answer on ports %s.\n' \
+        "${required_ports[*]}" >&2
+    exit 1
+fi
+
+if (( authserv )); then
+    printf 'chat-tunnel: authserv at http://127.0.0.1:%s/oauth2/token\n' "$local_authserv" >&2
+fi
+
+if (( persistent )); then
+    disown "$tunnel_pid" 2> /dev/null || true
+    printf '%s\n' "$tunnel_pid"
+    trap - EXIT
+    rm -f "$ssh_log"
+    exit 0
+fi
+
+printf 'chat-tunnel: local ports %s %s %s reach %s.\n' \
+    "$local_rsocket" "$local_management" "$local_registry" "$host" >&2
+"${command_args[@]}"
+status=$?
+exit "$status"
