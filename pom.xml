@@ -462,6 +462,12 @@
                      plugin skips pom projects, so the root project never
                      runs git outside the tree. A build needs a git command.
 
+                     The native provider calls ProcessHandle.info. A sandbox
+                     that denies it stops the stamp step. A unit build in such
+                     a sandbox can add -Dmaven.gitcommitid.skip=true. A skipped
+                     build gives no image or source evidence, and it keeps any
+                     earlier stamp. See docs/BUILD.md.
+
                      Measured on 2026-10-31 with plugin 9.0.2. Upstream issue
                      git-commit-id-maven-plugin#215 is open. Test:
                      shell-scripts/test-git-stamp.sh. fp issue CHAT-sgwiyzic. -->

@@ -72,6 +72,35 @@ The integration command needs Docker.
 
 The integration command builds the test image before `chat-shell` uses it.
 
+### Build stamps need git and process access
+
+Each module build writes `git.properties` with the commit of the tree that Maven builds.
+The root POM runs the native `git` command for this stamp. See fp issue CHAT-sgwiyzic.
+Thus a module build needs a `git` command and a git work tree.
+A linked worktree and a plain checkout both get their own HEAD.
+
+The native git provider reads process information through `ProcessHandle.info`.
+A sandbox that denies that access stops the stamp step.
+*Measured on 2026-10-31 at commit `578fab53` in an agent sandbox:*
+`mvn -B -ntp -o -pl chat-core initialize` returned 1, and the trace named the denied `ProcessHandle.info` call.
+Outside that sandbox, the same command returned 0 and stamped `578fab53`.
+Other modules inherit the plugin configuration, so the same denial is expected for them.
+Only `chat-core` was measured.
+
+Use one of these two paths:
+
+1. Allow process inspection in the sandbox, or run Maven outside the sandbox.
+   Use this path for every image build and every source proof.
+2. For a unit build alone, add `-Dmaven.gitcommitid.skip=true`.
+   In the same sandbox, `mvn -B -ntp -o -pl chat-core -Dmaven.gitcommitid.skip=true initialize` returned 0.
+
+The skip property stops stamp generation. It does not remove an existing stamp.
+In the measurement, a skipped build with no earlier stamp wrote no `git.properties`.
+A skipped build after a normal build kept the earlier `git.properties` byte for byte.
+Thus a skipped build can hold a stamp of an earlier build, and that stamp can name another commit.
+A skipped build gives no image evidence and no source-acceptance evidence.
+Do not build an image or run `shell-scripts/verify-image-source` on the output of a skipped build.
+
 ## Build Health
 
 Use `docs/BUILD-HEALTH.md` for current build state.

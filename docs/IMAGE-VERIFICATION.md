@@ -209,6 +209,9 @@ The verifier removes each record that it created, and no other record.
 | 1 | A stamp is missing or different, or a Docker step fails. |
 | 2 | The input is invalid, or a command is missing. |
 
+Build the boot jar and the image without `-Dmaven.gitcommitid.skip=true`.
+A skipped build writes no new stamp and keeps any earlier stamp. See `docs/BUILD.md`.
+
 A source stamp proves the commit alone.
 Two images from one commit can hold different compositions.
 Thus a passed source check never replaces the composition check.
