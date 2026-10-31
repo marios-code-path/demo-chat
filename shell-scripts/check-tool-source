@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Validate an explicit pinned source without changing source or installed files.
+set -euo pipefail
+refuse() { printf 'check-tool-source: %s\n' "$1" >&2; exit 2; }
+[[ $# == 1 && -f "$1" && -r "$1" ]] || refuse 'supply one readable lock file.'
+command -v jq > /dev/null || refuse 'jq is required.'
+lock="$1"
+[[ "${DEMO_CHAT_HOME:-}" == /* && -d "$DEMO_CHAT_HOME" ]] \
+    || refuse 'select an existing absolute DEMO_CHAT_HOME.'
+source_root=$(cd "$DEMO_CHAT_HOME" && pwd -P)
+source_git() { GIT_OPTIONAL_LOCKS=0 git -C "$source_root" "$@"; }
+top=$(source_git rev-parse --show-toplevel 2> /dev/null) || refuse 'the source is not a Git checkout.'
+[[ "$top" == "$source_root" ]] || refuse 'DEMO_CHAT_HOME must select the Git root.'
+
+# Both documents use the same file records. Only the lock carries a commit.
+schema='
+def safe_path:
+    type == "string" and length > 0 and
+    (contains("\\") | not) and
+    (explode | all(. >= 32 and . != 127)) and
+    (startswith("/") | not) and
+    (split("/") | all(. != "" and . != "." and . != ".."));
+def files:
+    type == "object" and .interfaceVersion == 1 and
+    (.sourceTools | type == "array" and length > 0) and
+    (.runtimeFiles | type == "array" and length > 0) and
+    all(.sourceTools[]; type == "object" and keys == ["source"] and (.source | safe_path)) and
+    all(.runtimeFiles[]; type == "object" and keys == ["source","target"] and
+        (.source | safe_path) and (.target | safe_path and (contains("/") | not))) and
+    ([.sourceTools[].source] | length == (unique | length)) and
+    ([.runtimeFiles[].source] | length == (unique | length)) and
+    ([.runtimeFiles[].target] | length == (unique | length));
+'
+jq -e "$schema"'files and keys == ["demoChatCommit","interfaceVersion","runtimeFiles","sourceTools"] and
+    (.demoChatCommit | type == "string" and test("^[0-9a-fA-F]{40}$"))' "$lock" > /dev/null \
+    || refuse 'the lock has an invalid schema or full commit.'
+pin=$(jq -r '.demoChatCommit | ascii_downcase' "$lock")
+head_commit=$(source_git rev-parse --verify 'HEAD^{commit}') || refuse 'the source has no commit.'
+[[ "$head_commit" == "$pin" ]] || refuse 'the source commit does not match the lock.'
+state=$(source_git status --porcelain --untracked-files=no) || refuse 'Git cannot check source changes.'
+[[ -z "$state" ]] || refuse 'the source has tracked changes.'
+untracked=$(source_git ls-files --others --exclude-per-directory=.gitignore) \
+    || refuse 'Git cannot check untracked source inputs.'
+[[ -z "$untracked" ]] || refuse 'the source has untracked inputs outside repository ignore rules.'
+
+# Reject symlinks at every path component. Each required file must be tracked.
+check_file() {
+    local relative="$1" remaining component cursor="$source_root"
+    remaining="$relative"
+    while [[ -n "$remaining" ]]; do
+        component="${remaining%%/*}"
+        cursor="$cursor/$component"
+        [[ ! -L "$cursor" ]] || refuse "a required path is a symlink: $relative"
+        if [[ "$remaining" == */* ]]; then remaining="${remaining#*/}"; else remaining=''; fi
+    done
+    [[ -f "$cursor" && -r "$cursor" ]] || refuse "a required file is absent: $relative"
+    source_git ls-files --error-unmatch -- "$relative" > /dev/null 2>&1 \
+        || refuse "a required file is not tracked: $relative"
+}
+check_file shell-scripts/tool-interface.version
+check_file shell-scripts/tool-files.json
+[[ "$(cat "$source_root/shell-scripts/tool-interface.version")" == 1 ]] \
+    || refuse 'the source interface version is unsupported.'
+provider="$source_root/shell-scripts/tool-files.json"
+jq -e "$schema"'files and keys == ["interfaceVersion","runtimeFiles","sourceTools"]' "$provider" > /dev/null \
+    || refuse 'the source inventory is invalid.'
+expected=$(jq -cS 'del(.demoChatCommit)' "$lock")
+actual=$(jq -cS '.' "$provider")
+[[ "$expected" == "$actual" ]] || refuse 'the lock and source inventory differ.'
+records=$(jq -r '.sourceTools[].source, .runtimeFiles[].source' "$provider")
+while IFS= read -r relative; do check_file "$relative"; done <<< "$records"
+bytecode=$(source_git ls-files -- '*.pyc' '*.pyo' '**/__pycache__/**') \
+    || refuse 'Git cannot check tracked bytecode.'
+[[ -z "$bytecode" ]] || refuse 'the source tracks Python bytecode.'
+
+# This probe checks Git rules. It creates no directory or bytecode.
+source_git check-ignore -q -- shell-scripts/__pycache__/probe.pyc \
+    || refuse 'the source requires a Python cache ignore rule.'
+ignored=$(source_git check-ignore -v -- shell-scripts/__pycache__/probe.pyc) \
+    || refuse 'the source requires a tracked Python cache ignore rule.'
+origin="${ignored%%:*}"
+case "$origin" in .gitignore|*/.gitignore) ;; *) refuse 'the cache rule must come from a repository .gitignore.' ;; esac
+[[ "$origin" != /* && "$origin" != ../* && "$origin" != .git/* ]] \
+    || refuse 'a local or global exclude cannot satisfy the cache rule.'
+check_file "$origin"
+printf 'check-tool-source: accepted %s\n' "$head_commit"

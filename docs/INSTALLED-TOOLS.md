@@ -38,3 +38,22 @@ They do not discover an installed home or sibling checkout.
 Their default register and launcher come from their own tool directory.
 An absent default deployment launcher permits the general source launcher.
 An explicit launcher never receives that fallback.
+
+`tool-interface.version` declares interface version 1.
+`tool-files.json` lists source dependencies and installed file targets.
+The source inventory includes command support, Compose inputs, schema inputs, and reactor POM files.
+The exact Git pin covers compiled source and resources used by Maven.
+The runtime inventory includes the temporary compatibility reader during this intermediate state.
+It is not the final neutral release inventory.
+
+`check-tool-source LOCK` requires an explicit absolute `DEMO_CHAT_HOME` at a Git root.
+The lock contains `demoChatCommit` plus the inventory fields from `tool-files.json`.
+The commit must contain exactly 40 hexadecimal characters.
+The checker requires the matching commit, interface version, inventory, and tracked regular support files.
+It rejects symlinks, traversal, duplicate targets, tracked changes, tracked bytecode, and non-ignored untracked inputs.
+Only repository `.gitignore` rules can exclude untracked inputs from this check.
+A tracked repository `.gitignore` must ignore `shell-scripts/__pycache__/probe.pyc`.
+Local and global excludes cannot satisfy that precondition.
+The probe creates no file and changes no Git index.
+The checker returns 2 on refusal and changes no installed state.
+A successful intermediate check does not authorize a final deployment release pin.

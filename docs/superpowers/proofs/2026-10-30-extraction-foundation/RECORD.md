@@ -87,3 +87,16 @@ The existing deployment tunnel, remote, bin-only, MCP installer, setup-portal, s
 The socket and TCP suites required permission for local listeners outside the sandbox.
 All SSH lifecycle checks use stubs. No remote connection or live MCP registration changed.
 The old deployment tunnel bodies remain until the extraction adapters replace them.
+Implementation commit: `a203beeb`.
+
+## A6: Pinned source validation
+
+The initial `test-tool-release.sh` run failed two of 21 checks.
+The absent checker could not accept the clean exact pin or ordinary ignored bytecode.
+The fixture created literal bytecode files. No Python compilation ran in the source checkout.
+The expanded suite passes 30 checks, including Git index preservation.
+The checks cover full commit validation, inventory agreement, unsafe paths, absent support, and symlinks.
+They reject tracked changes, tracked bytecode, and untracked source hidden by local or global excludes.
+The cache precondition requires an effective rule from a tracked repository `.gitignore`.
+A negative rule, local exclude, or global exclude cannot satisfy it.
+The current inventory includes temporary compatibility and does not define the final neutral release.
