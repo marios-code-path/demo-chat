@@ -240,9 +240,32 @@ The build started no service and changed no live deployment.
 - `verify-image-source` against commit `9f956ff0` gave status 1. The boot jar holds commit `1a8fd033`.
 - `verify-image-source` against commit `1a8fd033` gave status 0 for 14 jars and the image layer. It left no container record.
 
-The stamp mismatch is a defect of the stamp in a linked worktree.
+The stamp mismatch was a defect of the stamp in a linked worktree.
 git-commit-id-maven-plugin recorded the HEAD of the main checkout, branch `master` at `1a8fd033`.
 The worktree HEAD was `9f956ff0`. The source verifier refused the image correctly.
+That image keeps its tag as historical evidence. A configuration change cannot change its stamps.
+
+### Acceptance after the stamp fix
+
+*Measured on 2026-10-31 at commit `1540336d`, in the same linked worktree.*
+
+Commit `1540336d` fixed the stamp, fp issue CHAT-sgwiyzic.
+The root POM comment states the configuration and the measurements.
+`shell-scripts/test-git-stamp.sh` tests a linked worktree and a plain checkout.
+
+The build used the same builder, flags, and buildpacks as above.
+It used the tag `chat-proof-sgwiyzic/cassandra-core-service-rsocket:0.0.1`.
+The build started no service and changed no live deployment.
+
+- Image ID: `sha256:440210b6da3782c30b0958286272b86b357ab54a95bc7824dbefffab1d2c9d3b`, arm64.
+- Boot jar stamp: `git.commit.id=1540336d`, branch `impl/chat-zffgckla-image-proof`, `git.dirty=false`.
+- Label: `com.demo.chat.composition.sha256=6304f6b3...`, equal to the fixture digest.
+- The image manifest took a record with `compositionVersion` 1 and the same digest.
+- `verify-image-composition` with the fixture record gave status 0 and the image ID above.
+- `verify-image-source` against the worktree HEAD `1540336d` gave status 0 for 14 jars and the image layer.
+- `verify-image-composition` with the node ID 8 record gave status 1.
+- `verify-image-source` against the main checkout HEAD `1a8fd033` gave status 1.
+- No container record stayed.
 Extraction Task B2 connects both verifiers to the destination node-9 builder.
 
 ## Tests
