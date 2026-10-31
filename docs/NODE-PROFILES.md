@@ -26,3 +26,9 @@ Node IDs use the existing range from 0 through 1023.
 Key types are `long` and `uuid`.
 Service ports must be distinct integers from 1 through 65535.
 Profile selection never searches the current directory or a sibling repository.
+
+During migration, `legacy-node-inputs.sh` owns legacy environment aliases.
+Its reader rejects unequal counterparts and preserves explicitly empty values.
+Its profile adapter translates legacy records as data before neutral validation.
+It removes its temporary file after validation and preserves the original selected profile path.
+The final deployment repository will own these rules after its adapter transition.
