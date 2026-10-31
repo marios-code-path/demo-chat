@@ -135,6 +135,11 @@ REFUSALS=(
   "refuse-agent-json-service|core --memory --agent-json --notls --long --node-id 0 --agent a=Agent|1|--agent-json requires the authserv service"
   "refuse-agent-json-no-agent|authserv --agent-json --notls --long --node-id 0|1|--agent-json needs at least one --agent"
   "refuse-agent-json-build|authserv --agent-json --build --notls --long --node-id 0 --agent a=Agent|2|not allowed with argument"
+  # --composition-json is one more member of the goal group. It is also a
+  # second output mode beside --dry-run. See CHAT-gyfhbsbd.
+  "refuse-composition-json-build|core --memory --composition-json --build --notls --long --node-id 0|2|not allowed with argument"
+  "refuse-composition-json-run|core --memory --composition-json --run --notls --long --node-id 0|2|not allowed with argument"
+  "refuse-composition-json-dry-run|core --memory --composition-json --dry-run --notls --long --node-id 0|2|two output modes"
   # One --agent-jwks-uri rule serves the launch path and the --agent-json mode.
   # The last two cases prove the mode uses that same rule. See CHAT-vidnpywh.
   "refuse-agent-jwks-service|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Agent --agent-jwks-uri a=https://example.test/jwks|1|--agent-jwks-uri requires authserv"

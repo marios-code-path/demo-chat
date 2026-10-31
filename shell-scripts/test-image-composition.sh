@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+# Assert that chat-build --composition-json prints the resolved image composition.
+# The mode runs no Maven, Docker, network, or write operation.
+# See docs/IMAGE-VERIFICATION.md and fp issue CHAT-gyfhbsbd.
+set -uo pipefail
+
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$here/test-support/clear-legacy-inputs.sh" || exit $?
+. "$here/test-support/clear-composition-inputs.sh" || exit $?
+
+builder="$here/chat-build"
+fixtures="$here/fixtures/image-composition"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+checks=0
+failures=0
+
+# Each external command records its call and fails. A record proves a forbidden call.
+mkdir -p "$work/bin" "$work/home" "$work/tmp" "$work/cwd"
+for tool in mvn docker curl wget; do
+    printf '#!/usr/bin/env bash\necho "%s $*" >> "%s/calls"\nexit 97\n' \
+        "$tool" "$work" > "$work/bin/$tool"
+    chmod +x "$work/bin/$tool"
+done
+export PATH="$work/bin:$PATH" HOME="$work/home" TMPDIR="$work/tmp"
+export CONSUL_HOST=10.0.0.5
+
+pass() { checks=$((checks + 1)); printf 'ok %s\n' "$1"; }
+fail() { checks=$((checks + 1)); failures=$((failures + 1)); printf 'FAIL %s\n' "$1"; }
+
+# compose NAME ARGS... writes NAME.json and NAME.err, and returns the builder status.
+compose() {
+    local name="$1"
+    shift
+    (cd "$work/cwd" && "$builder" "$@") > "$work/$name.json" 2> "$work/$name.err"
+}
+
+plan_case=(core --cassandra --index lucene --pubsub redis-pubsub --notls --key-type uuid --consul)
+
+# The two-composition case of the plan.
+if compose a "${plan_case[@]}" --node-id 7 --composition-json \
+        && compose b "${plan_case[@]}" --node-id 8 --composition-json \
+        && [[ "$(jq -r '.version' "$work/a.json")" == 1 ]] \
+        && [[ "$(jq -r '.service' "$work/a.json")" == core ]] \
+        && ! cmp -s "$work/a.json" "$work/b.json"; then
+    pass 'node IDs 7 and 8 give two records'
+else
+    fail 'node IDs 7 and 8 give two records'
+    sed 's/^/    /' "$work/a.err" "$work/b.err"
+fi
+
+if cmp -s "$work/a.json" "$fixtures/expected.json"; then
+    pass 'the record matches the expected fixture byte for byte'
+else
+    fail 'the record matches the expected fixture byte for byte'
+fi
+
+schema='keys == ["jvmOptions","mavenProfiles","module","service","springProfiles","version"]
+    and (.version | type == "number" and . == 1)
+    and (.service | type == "string") and (.module | type == "string")
+    and all(.mavenProfiles, .springProfiles, .jvmOptions; type == "array" and all(.[]; type == "string"))'
+if jq -e "$schema" "$work/a.json" > /dev/null 2>&1; then
+    pass 'the record has the exact version 1 schema'
+else
+    fail 'the record has the exact version 1 schema'
+fi
+
+# Canonical form: sorted keys, compact separators, one final LF.
+if [[ -s "$work/a.json" ]] && jq -cS . "$work/a.json" | cmp -s - "$work/a.json" \
+        && [[ $(wc -l < "$work/a.json") -eq 1 ]]; then
+    pass 'the record is canonical JSON with one final LF'
+else
+    fail 'the record is canonical JSON with one final LF'
+fi
+
+compose a2 "${plan_case[@]}" --node-id 7 --composition-json
+if [[ -s "$work/a.json" ]] && cmp -s "$work/a.json" "$work/a2.json"; then
+    pass 'a repeated run gives the same bytes'
+else
+    fail 'a repeated run gives the same bytes'
+fi
+
+# Equivalent accepted flag forms give one record.
+compose e1 core --consul --uuid --pubsub=redis-pubsub --index=lucene --cassandra \
+    --node-id=007 --notls --composition-json
+compose e2 core --composition-json --node-id 7 --notls --cassandra --consul \
+    --pubsub redis-pubsub --index lucene --key-type uuid
+if [[ -s "$work/a.json" ]] && cmp -s "$work/a.json" "$work/e1.json" \
+        && cmp -s "$work/a.json" "$work/e2.json"; then
+    pass 'equivalent flag forms give one record'
+else
+    fail 'equivalent flag forms give one record'
+fi
+
+# differs LABEL ENV-ASSIGNMENTS -- ARGS...: the changed input must change the record.
+differs() {
+    local label="$1" name="c$checks"
+    shift
+    local assignments=()
+    while [[ "$1" != -- ]]; do assignments+=("$1"); shift; done
+    shift
+    if (cd "$work/cwd" && env "${assignments[@]+"${assignments[@]}"}" "$builder" "$@") \
+            > "$work/$name.json" 2> "$work/$name.err" \
+            && jq -e "$schema" "$work/$name.json" > /dev/null 2>&1 \
+            && ! cmp -s "$work/a.json" "$work/$name.json"; then
+        pass "$label"
+    else
+        fail "$label"
+        sed 's/^/    /' "$work/$name.err"
+    fi
+}
+base_args=(--notls --node-id 7 --key-type uuid --consul --composition-json)
+differs 'a changed backend changes the record' -- core --memory "${base_args[@]}"
+differs 'a changed index changes the record' -- \
+    core --cassandra --index cassandra --pubsub redis-pubsub "${base_args[@]}"
+differs 'a changed pubsub changes the record' -- \
+    core --cassandra --index lucene --pubsub memory "${base_args[@]}"
+differs 'a changed key type changes the record' -- \
+    core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id 7 \
+    --key-type long --consul --composition-json
+differs 'an added vector and embedding change the record' -- \
+    "${plan_case[@]}" --node-id 7 --vector embedded --embedding openai --composition-json
+differs 'local discovery changes the record' -- \
+    core --cassandra --index lucene --pubsub redis-pubsub --notls --node-id 7 \
+    --key-type uuid --composition-json
+differs 'a changed registry host changes the record' CONSUL_HOST=10.0.0.6 -- \
+    "${plan_case[@]}" --node-id 7 --composition-json
+differs 'a changed core port changes the record' CORE_PORT=7790 -- \
+    "${plan_case[@]}" --node-id 7 --composition-json
+
+# A profile gives the same record as the explicit flags it replaces.
+printf 'NODE_PROFILE_VERSION=1\nNODE_ID=7\nNODE_KEY_TYPE=uuid\n' > "$work/profile.env"
+if (cd "$work/cwd" && CHAT_NODE_PROFILE="$work/profile.env" "$builder" core --cassandra \
+        --index lucene --pubsub redis-pubsub --notls --consul --composition-json) \
+        > "$work/p.json" 2> "$work/p.err" \
+        && [[ -s "$work/a.json" ]] && cmp -s "$work/a.json" "$work/p.json"; then
+    pass 'profile inputs give the record of the explicit flags'
+else
+    fail 'profile inputs give the record of the explicit flags'
+    sed 's/^/    /' "$work/p.err"
+fi
+printf 'NODE_PROFILE_VERSION=1\nNODE_ID=8\nNODE_KEY_TYPE=uuid\n' > "$work/profile8.env"
+differs 'a changed profile node ID changes the record' CHAT_NODE_PROFILE="$work/profile8.env" -- \
+    core --cassandra --index lucene --pubsub redis-pubsub --notls --consul --composition-json
+
+# Credentials do not enter the record or its diagnostics.
+mkdir -p "$work/keys"
+if (cd "$work/cwd" && KEYSTORE_PASS=sentinel-keystore-secret "$builder" core --cassandra \
+        --index lucene --pubsub redis-pubsub --tls "$work/keys" --node-id 7 --key-type uuid \
+        --consul --composition-json) > "$work/t.json" 2> "$work/t.err" \
+        && jq -e "$schema" "$work/t.json" > /dev/null 2>&1 \
+        && ! grep -q sentinel-keystore-secret "$work/t.json" "$work/t.err" \
+        && ! grep -q 'password=actuator' "$work/t.json" \
+        && ! grep -q 'Authorization: Basic' "$work/t.json"; then
+    pass 'credentials stay out of the record and its diagnostics'
+else
+    fail 'credentials stay out of the record and its diagnostics'
+fi
+
+# expect_status LABEL STATUS ARGS...: the mode keeps each refusal status.
+expect_status() {
+    local label="$1" expected="$2" status=0
+    shift 2
+    (cd "$work/cwd" && "$builder" "$@") > "$work/s.out" 2> "$work/s.err" || status=$?
+    if [[ "$status" == "$expected" && ! -s "$work/s.out" ]]; then
+        pass "$label"
+    else
+        fail "$label: expected $expected, received $status"
+    fi
+}
+: > "$work/key.jwk"
+expect_status 'index without Cassandra keeps status 1' 1 \
+    core --memory --index lucene --node-id 0 --key-type uuid --notls --composition-json
+expect_status 'vector pairing keeps status 2' 2 \
+    core --cassandra --vector embedded --node-id 0 --key-type uuid --notls --composition-json
+expect_status 'a JWK bake refusal keeps status 1' 1 \
+    authserv --jwk "$work/key.jwk" --node-id 0 --key-type uuid --notls --composition-json
+expect_status 'an agent bake refusal keeps status 1' 1 \
+    authserv --agent a=Agent --node-id 0 --key-type uuid --notls --composition-json
+expect_status 'an index-root bake refusal keeps status 1' 1 \
+    core --memory --index-root "$work/index" --node-id 0 --key-type uuid --notls --composition-json
+expect_status 'a missing key type keeps status 2' 2 \
+    core --memory --node-id 0 --notls --composition-json
+expect_status 'a missing TLS choice keeps status 1' 1 \
+    core --memory --node-id 0 --key-type uuid --composition-json
+expect_status 'a build goal beside the mode is refused with status 2' 2 \
+    core --memory --node-id 0 --key-type uuid --notls --build --composition-json
+expect_status 'a dry run beside the mode is refused with status 2' 2 \
+    core --memory --node-id 0 --key-type uuid --notls --dry-run --composition-json
+unset CONSUL_HOST
+expect_status 'Consul discovery without a host is refused with status 2' 2 \
+    core --memory --consul --node-id 0 --key-type uuid --notls --composition-json
+if grep -q 'needs CONSUL_HOST or --registry' "$work/s.err"; then
+    pass 'the Consul refusal names the missing host input'
+else
+    fail 'the Consul refusal names the missing host input'
+fi
+export CONSUL_HOST=10.0.0.5
+CHAT_NODE_PROFILE="$work/absent" expect_status 'an absent profile keeps status 2' 2 \
+    core --memory --node-id 0 --key-type uuid --notls --composition-json
+
+# The mode wrote nothing and called no external command.
+compose w "${plan_case[@]}" --node-id 7 --env-file "$work/env-file" \
+    --image-manifest "$work/manifest.json" --composition-json
+if [[ ! -e "$work/calls" && ! -e "$work/env-file" && ! -e "$work/manifest.json" ]] \
+        && [[ -z "$(find "$work/home" "$work/tmp" "$work/cwd" -mindepth 1 -print -quit)" ]]; then
+    pass 'the mode calls no external command and writes no file'
+else
+    fail 'the mode calls no external command and writes no file'
+    [[ ! -e "$work/calls" ]] || sed 's/^/    /' "$work/calls"
+fi
+
+printf '%s checks, %s failures\n' "$checks" "$failures"
+(( failures == 0 ))

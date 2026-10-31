@@ -547,6 +547,31 @@ SERVICES: dict[str, Service] = {
 # Build context
 # --------------------------------------------------------------------------
 
+# The composition record states what an image build resolves. A verifier
+# recomputes its digest from an expected record. See docs/IMAGE-VERIFICATION.md.
+COMPOSITION_VERSION = 1
+# An option value under one of these final key segments is a credential. The
+# record keeps the option and replaces its value, so no credential enters it.
+SECRET_OPTION_KEY = re.compile(r"(pass|password|secret|token|credentials?|headers?(\[\d+\])?)$",
+                               re.IGNORECASE)
+REDACTED_VALUE = "<redacted>"
+
+
+def redact_option(option: str) -> str:
+    """Replace the value of a credential option with a fixed marker."""
+    if not option.startswith("-D") or "=" not in option:
+        return option
+    key = option[2:].split("=", 1)[0]
+    if SECRET_OPTION_KEY.search(key.rsplit(".", 1)[-1]):
+        return f"-D{key}={REDACTED_VALUE}"
+    return option
+
+
+def canonical_json(record: dict) -> str:
+    """The canonical record: sorted keys, compact separators, UTF-8, no final LF."""
+    return json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
 AGENT_HANDLE = re.compile(r"[A-Za-z0-9_]+")
 # Admin and Anon are the ChatIdentity names. Service is the default service
 # account. An agent must be a plain user. See CHAT-frcrctdp.
@@ -1046,6 +1071,21 @@ class BuildContext:
         ]
         return [flag for group in groups for flag in group]
 
+    def composition(self) -> dict:
+        """The version 1 record of the resolved image composition.
+
+        It holds resolved values alone, never raw command text. Credential
+        values are replaced. See docs/IMAGE-VERIFICATION.md.
+        """
+        return {
+            "version": COMPOSITION_VERSION,
+            "service": self.service.name,
+            "module": self.module_name(),
+            "mavenProfiles": self.maven_profiles(),
+            "springProfiles": self.spring_profiles(),
+            "jvmOptions": [redact_option(o) for o in self.java_tool_options_list()],
+        }
+
     def java_tool_options(self) -> str:
         return " ".join(self.java_tool_options_list())
 
@@ -1291,6 +1331,9 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                       help="build a container image via spring-boot:build-image")
     goal.add_argument("--agent-json", action="store_true",
                       help="authserv only: print the agent launch JSON and exit")
+    goal.add_argument("--composition-json", action="store_true",
+                      help="print the canonical composition record of the image build "
+                           "and exit. It runs no Maven or Docker and writes no file.")
     parser.add_argument("--image-manifest", default=os.environ.get("CHAT_IMAGE_MANIFEST", ""),
                         metavar="PATH",
                         help="with --build, append the image to this JSON manifest. One path "
@@ -1380,6 +1423,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    if args.composition_json:
+        if args.dry_run:
+            print("chat-build: --composition-json and --dry-run are two output modes. "
+                  "Pick one.", file=sys.stderr)
+            return 2
+        # The record states the image build of these flags. So the build
+        # refusals apply, and the options resolve as a build resolves them.
+        args.build = True
     if (PROFILE_INPUTS and not getattr(args, "key_type", None)
             and not getattr(args, "long", False) and not getattr(args, "uuid", False)):
         args.key_type = os.environ.get("NODE_KEY_TYPE")
@@ -1564,6 +1615,18 @@ def main() -> int:
             return 1
 
     ctx = BuildContext(SERVICES[args.service], args)
+
+    if args.composition_json:
+        # Without a named host, Consul discovery asks Docker for one. This
+        # mode runs no Docker, so it refuses instead of guessing a host.
+        if (ctx.discovery == "consul" and not getattr(args, "registry", "")
+                and not os.environ.get("CONSUL_HOST")):
+            print("chat-build: --composition-json with Consul discovery needs "
+                  "CONSUL_HOST or --registry. The mode runs no Docker host lookup.",
+                  file=sys.stderr)
+            return 2
+        print(canonical_json(ctx.composition()))
+        return 0
 
     if args.dry_run:
         cmd = ctx.compose_maven_command()
