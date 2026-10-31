@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Emit validated profile records without evaluating their contents.
+set -euo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$here/node-profile.sh"
+required=()
+while (( $# )); do
+    if [[ "$1" != --require || $# -lt 2 ]]; then
+        chat_profile_error 'use --require KEY for each required value.'
+        exit 2
+    fi
+    required+=("$2")
+    shift 2
+done
+chat_node_profile_load "${required[@]+"${required[@]}"}"
+for profile_key in NODE_PROFILE_VERSION NODE_PROJECT NODE_NETWORK NODE_ID NODE_KEY_TYPE \
+    NODE_RSOCKET_PORT NODE_MGMT_PORT NODE_REGISTRY_PORT NODE_IMAGE_REPO CORE_IMAGE \
+    NODE_VECTOR_PERSIST CASSANDRA_VERSION REDIS_VERSION CONSUL_VERSION \
+    CHAT_EMBEDDING_OPENAI_BASE_URL CHAT_EMBEDDING_OPENAI_MODEL CHAT_EMBEDDING_IDENTITY VECTOR_OWNER; do
+    if profile_value=$(printenv "$profile_key"); then
+        printf '%s=%s\n' "$profile_key" "$profile_value"
+    fi
+done
