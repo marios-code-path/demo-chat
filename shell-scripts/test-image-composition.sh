@@ -210,5 +210,84 @@ else
     [[ ! -e "$work/calls" ]] || sed 's/^/    /' "$work/calls"
 fi
 
+# -- Task C2: the build passes its own composition digest to Maven ----------
+# This Maven stub records the label input of the build and reports success.
+mkdir -p "$work/capture-bin"
+cat > "$work/capture-bin/mvn" <<'STUB'
+#!/usr/bin/env bash
+if [[ -n "${CHAT_IMAGE_COMPOSITION_LABELS+set}" ]]; then
+    printf '%s' "$CHAT_IMAGE_COMPOSITION_LABELS" > "$CAPTURE"
+else
+    printf '<unset>' > "$CAPTURE"
+fi
+STUB
+chmod +x "$work/capture-bin/mvn"
+reserved=com.demo.chat.composition.sha256
+digest=$(printf '%s' "$(cat "$fixtures/expected.json")" | shasum -a 256 | cut -d' ' -f1)
+
+# capture NAME ENV-ASSIGNMENTS -- ARGS...: build with the capture stub.
+capture() {
+    local name="$1"
+    shift
+    local assignments=()
+    while [[ "$1" != -- ]]; do assignments+=("$1"); shift; done
+    shift
+    rm -f "$work/$name.labels"
+    capture_status=0
+    (cd "$work/cwd" && env PATH="$work/capture-bin:$PATH" CAPTURE="$work/$name.labels" \
+        "${assignments[@]+"${assignments[@]}"}" "$builder" "$@" \
+        --env-file "$work/$name.env") > "$work/$name.out" 2> "$work/$name.err" \
+        || capture_status=$?
+}
+
+capture g -- "${plan_case[@]}" --node-id 7 --build
+if (( capture_status == 0 )) && [[ "$(cat "$work/g.labels" 2> /dev/null)" == "$reserved=$digest" ]]; then
+    pass 'a build passes the digest of its own record as the reserved label'
+else
+    fail 'a build passes the digest of its own record as the reserved label'
+    printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/g.labels" 2> /dev/null)"
+fi
+
+capture f "CHAT_IMAGE_COMPOSITION_LABELS=$reserved=forged" -- "${plan_case[@]}" --node-id 7 --build
+if (( capture_status == 2 )) && [[ ! -e "$work/f.labels" ]] && grep -q "$reserved" "$work/f.err"; then
+    pass 'a caller label with the reserved key is refused before Maven runs'
+else
+    fail 'a caller label with the reserved key is refused before Maven runs'
+    printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/f.labels" 2> /dev/null)"
+fi
+
+capture u "CHAT_IMAGE_COMPOSITION_LABELS=org.example.team=chat 'org.example.note=two words'" -- \
+    "${plan_case[@]}" --node-id 7 --build
+if (( capture_status == 0 )) && [[ "$(cat "$work/u.labels" 2> /dev/null)" \
+        == "$reserved=$digest org.example.team=chat 'org.example.note=two words'" ]]; then
+    pass 'unrelated caller labels survive beside the reserved label'
+else
+    fail 'unrelated caller labels survive beside the reserved label'
+    printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/u.labels" 2> /dev/null)"
+fi
+
+capture m "CHAT_IMAGE_COMPOSITION_LABELS=no-value" -- "${plan_case[@]}" --node-id 7 --build
+if (( capture_status == 2 )) && [[ ! -e "$work/m.labels" ]]; then
+    pass 'a malformed caller label is refused before Maven runs'
+else
+    fail 'a malformed caller label is refused before Maven runs'
+fi
+
+capture r "CHAT_IMAGE_COMPOSITION_LABELS=org.example.team=chat" -- "${plan_case[@]}" --node-id 7 --run
+if (( capture_status == 0 )) && [[ "$(cat "$work/r.labels" 2> /dev/null)" == '<unset>' ]]; then
+    pass 'a run passes no image label input to Maven'
+else
+    fail 'a run passes no image label input to Maven'
+    printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/r.labels" 2> /dev/null)"
+fi
+
+capture n CONSUL_HOST=10.0.0.6 -- "${plan_case[@]}" --node-id 7 --build
+if (( capture_status == 0 )) && [[ "$(cat "$work/n.labels" 2> /dev/null)" == "$reserved="* ]] \
+        && [[ "$(cat "$work/n.labels")" != "$reserved=$digest" ]]; then
+    pass 'a changed composition changes the reserved label'
+else
+    fail 'a changed composition changes the reserved label'
+fi
+
 printf '%s checks, %s failures\n' "$checks" "$failures"
 (( failures == 0 ))

@@ -79,9 +79,52 @@ The digest is the SHA-256 of those UTF-8 bytes.
 
 `shell-scripts/fixtures/image-composition/expected.json` holds the record of the example command.
 
+## Reserved image label
+
+An image build sets the label `com.demo.chat.composition.sha256`.
+Its value is the lowercase hexadecimal digest of the build record.
+The builder computes the digest from the same record that `--composition-json` prints.
+The image build and the record read one resolved option list.
+
+The builder passes labels to Maven in `CHAT_IMAGE_COMPOSITION_LABELS`.
+That variable activates the `image-composition-labels` profile of the root POM.
+The profile sets `BP_IMAGE_LABELS` in the image environment of the `deploy` profile.
+The entry merges beside the `BPE_APPEND_JAVA_TOOL_OPTIONS`, `BPE_DELIM_JAVA_TOOL_OPTIONS`, and `BP_JVM_VERSION` entries.
+The Paketo image-labels buildpack reads `BP_IMAGE_LABELS` and applies the labels.
+A Maven build without the variable does not activate the profile.
+
+A caller can add unrelated labels through `CHAT_IMAGE_COMPOSITION_LABELS`.
+The value uses space-separated `key=value` words with shell quotes.
+The builder puts the reserved label first and keeps the caller labels in order.
+The builder refuses these caller values with status 2, before Maven runs:
+
+- A label with the reserved key.
+- A word that is not `key=value`.
+- A value that the shell quote rules cannot parse.
+
+A run with `--run` gets no label input.
+The builder removes an ambient `CHAT_IMAGE_COMPOSITION_LABELS` from the Maven environment of a run.
+
+The Paketo documentation does not prove that a builder contains the image-labels buildpack.
+The real image acceptance of the plan must establish that fact for the selected builder.
+
+## Image manifest fields
+
+`--image-manifest PATH` writes a record after a successful build and image inspection.
+Before it writes, the builder reads the reserved label from the inspected image.
+A missing label or a different label gives status 1 and no record.
+A successful record adds two fields:
+
+| Field | Value |
+| --- | --- |
+| `compositionVersion` | Integer `1`. |
+| `compositionSha256` | The digest that the reserved label holds. |
+
 ## Tests
 
 `shell-scripts/test-image-composition.sh` tests the mode.
 It replaces Maven, Docker, `curl`, and `wget` with commands that record a call and fail.
 It clears every ambient input that the mode reads before it sets its own inputs.
 `shell-scripts/test-flags.sh` tests the parser refusals of the mode.
+The same composition suite replaces Maven with a stub that records the label input of a build.
+`shell-scripts/test-image-manifest.sh` tests the label check of the manifest.

@@ -223,6 +223,8 @@ image was built and run later through the container launcher.*
 `chat-build ... --build --image-manifest PATH` records the image of each
 successful build. `CHAT_IMAGE_MANIFEST` sets the same path. One path serves one
 deployment run, so builds in that run leave one list for the push.
+A record requires the reserved composition label in the image. A missing or
+different label gives status 1 and no record. See `docs/IMAGE-VERIFICATION.md`.
 
 ```bash
 set -euo pipefail

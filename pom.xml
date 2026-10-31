@@ -636,6 +636,39 @@
                 </plugins>
             </build>
         </profile>
+        <!-- chat-build sets CHAT_IMAGE_COMPOSITION_LABELS for an image build.
+             The value holds the reserved label com.demo.chat.composition.sha256
+             and the unrelated caller labels. The Paketo image-labels buildpack
+             reads BP_IMAGE_LABELS. This entry merges into the image env of the
+             deploy profile and keeps its BPE entries. A Maven build without the
+             variable does not activate this profile, so it gets no unresolved
+             label property. See docs/IMAGE-VERIFICATION.md and CHAT-gyfhbsbd.
+
+             This profile is not activeByDefault. It sets one image build value
+             and changes no packaging. -->
+        <profile>
+            <id>image-composition-labels</id>
+            <activation>
+                <property>
+                    <name>env.CHAT_IMAGE_COMPOSITION_LABELS</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <image>
+                                <env>
+                                    <BP_IMAGE_LABELS>${env.CHAT_IMAGE_COMPOSITION_LABELS}</BP_IMAGE_LABELS>
+                                </env>
+                            </image>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <!-- The four profiles below carry no dependency here, and they must
              not carry one again.
 

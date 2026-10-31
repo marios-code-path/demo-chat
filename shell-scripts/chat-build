@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 import tempfile
@@ -555,6 +556,11 @@ COMPOSITION_VERSION = 1
 SECRET_OPTION_KEY = re.compile(r"(pass|password|secret|token|credentials?|headers?(\[\d+\])?)$",
                                re.IGNORECASE)
 REDACTED_VALUE = "<redacted>"
+# The image label that holds the SHA-256 of the record. Only the builder sets it.
+COMPOSITION_LABEL = "com.demo.chat.composition.sha256"
+# The root POM passes this value to the label buildpack as BP_IMAGE_LABELS.
+# A caller can put unrelated labels in it. The builder adds the reserved label.
+COMPOSITION_LABELS_ENV = "CHAT_IMAGE_COMPOSITION_LABELS"
 
 
 def redact_option(option: str) -> str:
@@ -570,6 +576,27 @@ def redact_option(option: str) -> str:
 def canonical_json(record: dict) -> str:
     """The canonical record: sorted keys, compact separators, UTF-8, no final LF."""
     return json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def image_label_input(digest: str, caller: str) -> str:
+    """The BP_IMAGE_LABELS value: the reserved label, then the caller labels.
+
+    The caller value uses the space-separated key=value form of the label
+    buildpack, with shell quotes. A caller label with the reserved key, or a
+    malformed one, raises ValueError. The digest never comes from the caller.
+    """
+    try:
+        words = shlex.split(caller)
+    except ValueError as error:
+        raise ValueError(f"{COMPOSITION_LABELS_ENV} cannot be parsed: {error}")
+    for word in words:
+        key, separator, _ = word.partition("=")
+        if not separator or not key:
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a label that is not key=value")
+        if key == COMPOSITION_LABEL:
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} cannot set {COMPOSITION_LABEL}. "
+                             "The builder computes that label")
+    return " ".join([f"{COMPOSITION_LABEL}={digest}"] + [shlex.quote(w) for w in words])
 
 
 AGENT_HANDLE = re.compile(r"[A-Za-z0-9_]+")
@@ -669,6 +696,10 @@ class BuildContext:
         self.index_root: str | None = (
             str(Path(index_root).expanduser()) if index_root else None)
         self.image_name = service.image_name_for(self.backend)
+        # The options resolve once. The image build and its composition record
+        # then read the same list, also when Docker supplies the Consul host.
+        self._options: list[str] | None = None
+        self.image_labels = ""
 
     # -- resolution ------------------------------------------------------
 
@@ -1057,6 +1088,11 @@ class BuildContext:
         ]
 
     def java_tool_options_list(self) -> list[str]:
+        if self._options is None:
+            self._options = self._resolve_java_tool_options()
+        return list(self._options)
+
+    def _resolve_java_tool_options(self) -> list[str]:
         groups = [
             self.main_flags(),
             self.tls_flags(),
@@ -1070,6 +1106,10 @@ class BuildContext:
             self.run_args(),
         ]
         return [flag for group in groups for flag in group]
+
+    def composition_digest(self) -> str:
+        """The SHA-256 of the canonical record, without the final LF."""
+        return hashlib.sha256(canonical_json(self.composition()).encode("utf-8")).hexdigest()
 
     def composition(self) -> dict:
         """The version 1 record of the resolved image composition.
@@ -1178,12 +1218,25 @@ class BuildContext:
             print(f"chat-build: the image query of {reference} has no image id "
                   "or architecture.", file=sys.stderr)
             return 1
+        # The image must hold the digest of this build's record. A missing or
+        # different label means the label buildpack did not apply it.
+        config = details.get("Config")
+        labels = config.get("Labels") if isinstance(config, dict) else None
+        label = labels.get(COMPOSITION_LABEL) if isinstance(labels, dict) else None
+        digest = self.composition_digest()
+        if label != digest:
+            state = "holds no" if label is None else "holds a different"
+            print(f"chat-build: the image {reference} {state} {COMPOSITION_LABEL} label, "
+                  "so the manifest takes no record.", file=sys.stderr)
+            return 1
         record = {
             "reference": reference,
             "imageId": details.get("Id", ""),
             "architecture": details.get("Architecture", ""),
             "service": self.service.name,
             "module": str(self.module_dir().name),
+            "compositionVersion": COMPOSITION_VERSION,
+            "compositionSha256": digest,
         }
         digests = details.get("RepoDigests") or []
         # A colon before the last slash belongs to a registry port.
@@ -1257,6 +1310,11 @@ class BuildContext:
             env.pop("JAVA_TOOL_OPTIONS", None)
         else:
             env["JAVA_TOOL_OPTIONS"] = self.java_tool_options()
+        # The label input reaches an image build alone. It activates the
+        # image-composition-labels profile of the root POM.
+        env.pop(COMPOSITION_LABELS_ENV, None)
+        if self.args.build:
+            env[COMPOSITION_LABELS_ENV] = self.image_labels
 
         cmd = self.compose_maven_command()
         print("+ " + " ".join(shlex.quote(c) for c in cmd), file=sys.stderr)
@@ -1644,6 +1702,14 @@ def main() -> int:
         print()
         print(f"# env file would be written to: {ctx.env_file_path()}")
         return 0
+
+    if args.build:
+        try:
+            ctx.image_labels = image_label_input(
+                ctx.composition_digest(), os.environ.get(COMPOSITION_LABELS_ENV, ""))
+        except ValueError as error:
+            print(f"chat-build: {error}.", file=sys.stderr)
+            return 2
 
     return ctx.execute()
 
