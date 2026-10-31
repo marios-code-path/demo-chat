@@ -80,8 +80,13 @@ while IFS= read -r entry; do
     proved=$((proved + 1))
 done < <(unzip -Z1 "$boot_jar" 'BOOT-INF/lib/chat-*.jar' 2> /dev/null)
 
-container_id=$(docker create "$image_id" 2> /dev/null) || container_id=''
-[[ -n "$container_id" ]] || fail "cannot create a container record of $image_id."
+# Keep a printed ID also when create fails. The record can exist, and the
+# cleanup must remove it.
+create_status=0
+container_id=$(docker create "$image_id" 2> /dev/null) || create_status=$?
+container_id=${container_id%%$'\n'*}
+(( create_status == 0 )) && [[ -n "$container_id" ]] \
+    || fail "cannot create a container record of $image_id."
 copy_status=0
 docker cp "$container_id:/workspace/BOOT-INF/classes/git.properties" - 2> /dev/null \
     | tar -xO > "$work/image-git.properties" 2> /dev/null || copy_status=$?

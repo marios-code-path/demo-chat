@@ -182,7 +182,35 @@ Two images from one commit can hold different compositions.
 Thus a passed source check never replaces the composition check.
 A missing composition label fails the composition check. It does not fall back to the source check.
 
+A failed `docker create` that still prints a container ID leaves a record.
+The verifier removes that record too.
+
 `shell-scripts/build-node-9-image` still holds its own copy of the source checks.
+
+## Real image acceptance
+
+*Measured on 2026-10-31 at commit `9f956ff0`, in a linked worktree.*
+
+The image build used builder `docker.io/paketobuildpacks/builder-noble-java-tiny:0.0.200`.
+It used the flags of the example command and the tag `chat-proof-gyfhbsbd/cassandra-core-service-rsocket:0.0.1`.
+The build started no service and changed no live deployment.
+
+- Image ID: `sha256:14028437a082fd8c6075ea8c3ecd9ed777e9db154da3a4c44468d66e7eafa54c`, arm64, no repository digest.
+- Buildpacks: ca-certificates 3.14.3, bellsoft-liberica 11.10.1, syft 2.43.3,
+  executable-jar 6.17.4, dist-zip 5.14.3, spring-boot 5.40.3,
+  environment-variables 4.12.0, image-labels 4.14.4.
+- Thus this builder contains the image-labels buildpack, and the buildpack applied the reserved label.
+- Label: `com.demo.chat.composition.sha256=6304f6b30f0943c5f16ad8d7fb9e9e80718c279538bb5f42f380d64169bd21bf`.
+  That value equals the digest of `fixtures/image-composition/expected.json`.
+- The image manifest took a record with `compositionVersion` 1 and the same digest.
+- `verify-image-composition` with that record gave status 0 and the image ID above.
+- `verify-image-composition` with the node ID 8 record gave status 1. The source commit did not change.
+- `verify-image-source` against commit `9f956ff0` gave status 1. The boot jar holds commit `1a8fd033`.
+- `verify-image-source` against commit `1a8fd033` gave status 0 for 14 jars and the image layer. It left no container record.
+
+The stamp mismatch is a defect of the stamp in a linked worktree.
+git-commit-id-maven-plugin recorded the HEAD of the main checkout, branch `master` at `1a8fd033`.
+The worktree HEAD was `9f956ff0`. The source verifier refused the image correctly.
 Extraction Task B2 connects both verifiers to the destination node-9 builder.
 
 ## Tests

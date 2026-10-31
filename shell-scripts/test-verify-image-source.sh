@@ -7,7 +7,7 @@ set -uo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$here/test-support/clear-legacy-inputs.sh" || exit $?
 . "$here/test-support/clear-composition-inputs.sh" || exit $?
-unset STUB_CREATE_FAIL STUB_CP_FAIL STUB_IMAGE_COMMIT STUB_NO_STAMP DOCKER_CALLS DOCKER_STATE
+unset STUB_CREATE_FAIL STUB_CREATE_PARTIAL STUB_CP_FAIL STUB_IMAGE_COMMIT STUB_NO_STAMP DOCKER_CALLS DOCKER_STATE
 
 verifier="$here/verify-image-source"
 work=$(mktemp -d)
@@ -33,6 +33,8 @@ case "$1" in
         id="container$RANDOM"
         printf '%s\n' "$id" >> "$DOCKER_CALLS.created"
         printf '%s\n' "$id"
+        # STUB_CREATE_PARTIAL=1 creates the record and then reports a failure.
+        [[ "${STUB_CREATE_PARTIAL:-}" != 1 ]] || exit 1
         ;;
     cp)
         [[ "${STUB_CP_FAIL:-}" != 1 ]] || exit 1
@@ -140,6 +142,14 @@ fi
 verify create-fail STUB_CREATE_FAIL=1 -- \
     --boot-jar "$work/good.jar" --commit "$commit" --image "$image_id"
 expect 'a failed create fails with status 1 and removes no container' 1 create-fail
+verify create-partial STUB_CREATE_PARTIAL=1 -- \
+    --boot-jar "$work/good.jar" --commit "$commit" --image "$image_id"
+expect 'a create that fails after it made a record still removes that record' 1 create-partial
+if [[ -s "$work/create-partial.calls.created" ]]; then
+    pass 'the partial create case made a record to remove'
+else
+    fail 'the partial create case made a record to remove'
+fi
 if ! grep -q '^rm' "$work/create-fail.calls"; then
     pass 'a failed create sends no removal'
 else

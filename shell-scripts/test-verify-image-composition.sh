@@ -166,6 +166,15 @@ print(hashlib.sha256(text.encode("utf-8")).hexdigest())' "$work/unicode.json")
 verify unicode STUB_LABEL="$python_digest" -- --expected "$work/unicode.json" --image example/core:1
 expect 'the jq canonical form gives the digest of the Python canonical form' 0 unicode
 
+# A string value can hold the text "version":2. Only the record version counts.
+jq -c '.jvmOptions += ["-Dspring.application.json={\"version\":2}"]' "$expected" > "$work/inner.json"
+inner_digest=$(python3 -I -c 'import hashlib, json, sys
+record = json.load(open(sys.argv[1], encoding="utf-8"))
+text = json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+print(hashlib.sha256(text.encode("utf-8")).hexdigest())' "$work/inner.json")
+verify inner STUB_LABEL="$inner_digest" -- --expected "$work/inner.json" --image example/core:1
+expect 'a version text inside a string value does not change the record version' 0 inner
+
 # A changed expected value gives a different digest.
 jq -c '.jvmOptions[8] = "-Dapp.nodeid=8"' "$expected" > "$work/node8.json"
 verify node8 -- --expected "$work/node8.json" --image example/core:1
