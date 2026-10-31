@@ -551,8 +551,9 @@ SERVICES: dict[str, Service] = {
 # The composition record states what an image build resolves. A verifier
 # recomputes its digest from an expected record. See docs/IMAGE-VERIFICATION.md.
 COMPOSITION_VERSION = 1
-# An option value under one of these final key segments is a credential. The
-# record keeps the option and replaces its value, so no credential enters it.
+# The key rule: an option value under one of these final key segments is a
+# credential, and the record replaces that value. The URI rules below cover
+# more forms. No rule detects every credential. See docs/IMAGE-VERIFICATION.md.
 SECRET_OPTION_KEY = re.compile(r"(pass|password|secret|token|credentials?|headers?(\[\d+\])?)$",
                                re.IGNORECASE)
 REDACTED_VALUE = "<redacted>"
