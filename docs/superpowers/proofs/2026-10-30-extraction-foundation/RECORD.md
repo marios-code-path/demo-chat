@@ -6,6 +6,31 @@ The owner approved implementation of all three plans.
 Each plan still requires implementation review.
 No live installation, register import, or remote deployment is part of these checks.
 
+## Evidence status after re-review and merge
+
+The sections below preserve the original foundation measurements and their environment limits.
+The owner approved the corrected implementation at `b9708ae9` on 2026-10-31 in CHAT-qdsmackk.
+That approval resolved the inherited-legacy-input blocker.
+
+[Foundation partial CI](https://github.com/marios-code-path/demo-chat/actions/runs/41165417488) passed at `b9708ae9`.
+Its 11 module summaries total 2,051 tests, zero failures, zero errors, and 32 skipped tests.
+All 13 reactor projects succeeded.
+The earlier issue comment reported 283 tests and one skipped test. Those counts describe `chat-shell` alone.
+This result supplies independent build evidence for the earlier author-reported local run.
+It does not remove the recorded local Surefire timeout or sandbox limits.
+
+All 11 foundation commits are ancestors of merge `c060b9fe` from [PR #315](https://github.com/marios-code-path/demo-chat/pull/315).
+[Master CI](https://github.com/marios-code-path/demo-chat/actions/runs/41179621130) passed at that merge commit.
+Its build, integration, and agent-http jobs succeeded.
+These later CI results are separate from the historical local checks below.
+They establish no live deployment, final neutral release, or repository-extraction acceptance.
+CHAT-qdsmackk still has status `in-progress` during this record correction.
+
+The re-review also recorded a residual neutral-input isolation gap as nonblocking.
+The shared helper clears legacy inputs. It does not clear neutral inputs.
+The image-proof work later added neutral-input clearing to its affected suites.
+No claim of complete suite isolation follows from the foundation approval.
+
 ## A1: Literal profiles
 
 Command: `bash shell-scripts/test-node-profile.sh`.
@@ -110,7 +135,7 @@ The current inventory includes temporary compatibility and does not define the f
 Implementation commit: `f35dc407`.
 The checker also accepted that exact clean implementation checkout with its intermediate inventory.
 
-## Final foundation verification
+## Original foundation verification
 
 The original author shell sweep passed all 24 selected suites.
 It activated the Miniforge base environment before execution.
@@ -171,14 +196,14 @@ Surefire terminated the `chat-client-rsocket` test JVM after a 30-second exit ti
 That module reported 93 tests, no failures, no errors, and no skipped tests before Maven continued successfully.
 This timeout is a visible verification limit. It is not a test assertion failure.
 The partial build does not establish full PR CI.
-No full PR CI, Docker image build, real jar staging, or live two-agent acceptance ran.
+No full PR CI, Docker image build, real jar staging, or live two-agent acceptance ran during that original verification.
 
 `git diff --check` and all six existing drift bindings pass.
-The main checkout remains clean at the stated master basis.
-The separate destination repository remains empty with no commits.
+The main checkout was clean at the stated master basis during that verification.
+The separate destination repository was empty with no commits at that time.
 The [intermediate scan](INTERMEDIATE-SCAN.md) records 1271 matching lines in 98 files at `f35dc407`.
 This report counts matching lines, not occurrences, and makes no final extraction claim.
-Owner foundation implementation review remains pending under CHAT-qdsmackk.
+Owner foundation implementation review was pending at that point. The later approval is recorded above.
 
 ## Review correction: inherited test inputs
 
@@ -206,10 +231,11 @@ The helper removes all 23 legacy names while preserving neutral and unrelated in
 A deliberate conflict introduced after the boundary still returns 2.
 Logs: `/private/tmp/CHAT-foundation-isolation-helper-red.log` and `/private/tmp/CHAT-foundation-isolation-helper-final.log`.
 
-All 35 affected suites now source `test-support/clear-legacy-inputs.sh` before fixture setup.
+At `b9708ae9`, 36 suite files reference `test-support/clear-legacy-inputs.sh` before fixture setup.
 They stop if the helper cannot load.
 The 119-case Register suite passes with the normal topic inherited.
-It also passes with all 23 legacy names seeded with conflicting fixture values before suite entry.
+The author also reported a passing Register run with all 23 legacy names set to conflicting fixture values before suite entry.
+The executable seed assertions for all aliases reside in `test-suite-environment.sh`.
 Both revised results require legacy inputs cleared before fixtures, rather than a caller that happens to omit them.
 Logs: `/private/tmp/CHAT-foundation-isolation-topic-green.log` and `/private/tmp/CHAT-foundation-isolation-full-green.log`.
 
@@ -220,7 +246,7 @@ The lexical report remains scoped to `f35dc407`.
 The owner measured 1286 matching lines across 100 files at the later `54113f32` review basis.
 Neither count describes this correction's final tree.
 
-The partial Maven result remains author-reported. No independent GitHub result is claimed.
+The partial Maven result was author-reported at that point. The later independent GitHub result is recorded above.
 
 The corrected sweep activated Miniforge base and sourced the helper before its suite loop:
 
@@ -257,4 +283,4 @@ Its failure count remains environment-dependent, as the owner review established
 No runtime implementation or secret behavior changed.
 Shell syntax checks pass under `/bin/bash` 3.2.
 `git diff --check` and all six drift bindings pass.
-Foundation implementation approval remains pending.
+The owner later approved `b9708ae9`. CHAT-qdsmackk still requires issue closure after this record correction.
