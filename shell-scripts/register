@@ -1,0 +1,965 @@
+#!/usr/bin/env bash
+# One authenticated register command for the selected deployment.
+#
+#   register read --as <name>              The session-start read.
+#   register read <topic> --as <name>      One topic, oldest first.
+#   register open <key> <short> <title> --as <name>   Stage 3, task 4.
+#   register post <key> [--requestId <id>] --as <name>   Stage 3, task 5.
+#   register config --agent <agent> --project <project>
+#       (--register <name> | --register-id <id>)
+#
+# read, open, and post also take --agent <agent> and --project <project>.
+# Both select the app config, which routes the call through the portal.
+# Without both, the command uses the one-shot login. That login reads
+# <deployment-home>/secrets/<name>.password. It does not read CHAT_SHELL_PASSWORD.
+#
+# A key is opaque text that names one topic. This project passes an fp issue
+# ID. The tool does not know where a key comes from. A pointer line holds
+# <key> | <topic> | <metadata> | <title>. This tool writes an empty metadata
+# field. The importer writes the bundle hash in that field. No reader
+# interprets it. See CHAT-jmnjvupr.
+#
+# Every output line is one JSON object with a `type`. A failure writes one
+# line on standard error and returns a nonzero status. The whole command has
+# a hard limit of 30 seconds. A timeout writes no output, unless the reader
+# blocks. See CHAT-jmnjvupr and docs/SHELL-COMMAND-CONTRACT.md.
+set -uo pipefail
+
+deadline_ms="${CHAT_REGISTER_DEADLINE_MS:-30000}"
+[[ "$deadline_ms" =~ ^[0-9]+$ ]] || deadline_ms=30000
+confirm_ms="${CHAT_REGISTER_CONFIRM_MS:-10000}"
+[[ "$confirm_ms" =~ ^[0-9]+$ ]] || confirm_ms=10000
+
+# The hard limit starts here, before any other external command. The
+# watchdog is the first fork. It stops this process at the limit, so setup,
+# the shell calls, pointer parsing, and the final output are inside the
+# limit. These arithmetic expansions and printf are shell builtins.
+printf -v watchdog_budget '%d.%03d' \
+    $(( deadline_ms / 1000 )) $(( deadline_ms % 1000 ))
+(
+    sleep "$watchdog_budget"
+    kill -TERM -- $$ 2> /dev/null
+) &
+watchdog=$!
+trap 'printf "register: the command passed its %s ms limit\n" "$deadline_ms" >&2; exit 124' TERM
+
+start_seconds="$(date +%s)"
+work="$(mktemp -d)"
+
+# cleanup  Stop the watchdog and remove the work directory.
+cleanup() {
+    if [[ -n "$watchdog" ]]; then
+        kill "$watchdog" 2> /dev/null
+    fi
+    rm -rf "$work"
+}
+trap cleanup EXIT
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=register-lib.sh
+source "$script_dir/register-lib.sh"
+chat_register_initialize || exit $?
+chat_deployment_require_installed || exit 2
+
+# resolve_cli  Choose the shell CLI. An installed copy has no repository, so
+# it takes the CLI from the caller or from its own bin directory. The portal
+# path needs no CLI, so it calls this function never.
+resolve_cli() {
+    chat_register_connection || exit $?
+    cli="${CHAT_SHELL_CLI:-$chat_register_tools_dir/chat-shell-cli}"
+    [[ -x "$cli" ]] || { printf 'register: select an executable CHAT_SHELL_CLI.\n' >&2; exit 2; }
+}
+secrets_dir="${CHAT_DEPLOYMENT_SECRETS_DIR:-$CHAT_DEPLOYMENT_HOME/secrets}"
+secrets_file="${CHAT_DEPLOYMENT_SECRETS_FILE:-$CHAT_DEPLOYMENT_HOME/secrets.env}"
+
+usage() {
+    printf 'usage: register read [<topic>] [--agent <agent>] [--project <project>] --as <name>\n' >&2
+    printf '       register open <key> <short-name> <title> [--agent <agent>] [--project <project>]\n' >&2
+    printf '           --as <name>\n' >&2
+    printf '       register post <key> [--requestId <id>] [--agent <agent>] [--project <project>]\n' >&2
+    printf '           --as <name>\n' >&2
+    printf '       register config --agent <agent> --project <project>\n' >&2
+    printf '           (--register <name> | --register-id <id>)\n' >&2
+    printf '\n' >&2
+    printf 'The agent and the project select the portal path for read, open, and post.\n' >&2
+    printf 'The command uses the one-shot login when either one is absent.\n' >&2
+    printf 'The one-shot login reads <deployment-home>/secrets/<name>.password.\n' >&2
+    printf 'It does not read CHAT_SHELL_PASSWORD.\n' >&2
+}
+
+fail() {
+    printf 'register: %s\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+# Refuse a key that cannot be encoded in a register pointer.
+check_key() {
+    local key_reason
+    key_reason="$(chat_register_key_error "$1")" || fail "$key_reason" 2
+}
+
+# Refuse a title that cannot be encoded in a register pointer.
+check_title() {
+    local title_reason
+    title_reason="$(chat_register_title_error "$1")" || fail "$title_reason" 2
+}
+
+
+# register_config ARGS...  Write the app config that the MCP adapter reads.
+# The config names one portal socket file and one register selector. The
+# command runs no shell call. See CHAT-lmwuxiiq.
+register_config() {
+    local agent='' project='' name='' id='' reason
+    local agent_key project_key config_dir target temp
+    while (( $# )); do
+        case "$1" in
+            --agent|--project|--register|--register-id)
+                [[ $# -ge 2 && -n "$2" ]] || { usage; exit 2; }
+                case "$1" in
+                    --agent) agent="$2" ;;
+                    --project) project="$2" ;;
+                    --register) name="$2" ;;
+                    --register-id) id="$2" ;;
+                esac
+                shift 2
+                ;;
+            *)
+                usage
+                exit 2
+                ;;
+        esac
+    done
+    [[ -n "$agent" ]] || fail 'the config needs --agent.' 2
+    [[ -n "$project" ]] || fail 'the config needs --project.' 2
+    [[ "$agent" =~ ^[A-Za-z][A-Za-z0-9_-]*$ ]] \
+        || fail "the agent $agent is not letters, digits, dash, or underscore." 2
+    [[ "$project" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]] \
+        || fail "the project $project is not letters, digits, dash, or underscore." 2
+    # A name wins over an id. The environment supplies either one when a flag
+    # is absent. See CHAT-lmwuxiiq.
+    [[ -n "$name" ]] || name="${CHAT_REGISTER_TOPIC_NAME:-}"
+    [[ -n "$id" ]] || id="${CHAT_REGISTER_TOPIC_ID:-}"
+    if [[ -z "$name" && -z "$id" ]]; then
+        fail 'set --register or --register-id, or set CHAT_REGISTER_TOPIC_NAME or CHAT_REGISTER_TOPIC_ID.' 2
+    fi
+    if [[ -n "$name" ]]; then
+        reason="$(chat_register_name_error "$name")" || fail "$reason" 2
+    else
+        reason="$(chat_register_id_error "$id")" || fail "$reason" 2
+    fi
+    agent_key="$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')"
+    project_key="$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')"
+    config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat"
+    target="$config_dir/mcp-portal-$agent_key-$project_key.properties"
+    temp="${target}.$$.tmp"
+    mkdir -p "$config_dir" || fail "cannot create $config_dir." 1
+    chmod 700 "$config_dir" || fail "cannot set the mode of $config_dir." 1
+    if ! (
+        umask 077
+        printf 'mode=portal-only\n'
+        if [[ -n "$name" ]]; then
+            printf 'registerName=%s\n' "$name"
+        else
+            printf 'registerId=%s\n' "$id"
+        fi
+        printf 'portalSocketFile=%s\n' \
+            "$HOME/.local/state/$project_key/portal-$agent_key/socket"
+    ) > "$temp"; then
+        rm -f "$temp"
+        fail "cannot write $temp." 1
+    fi
+    chmod 600 "$temp" || { rm -f "$temp"; fail "cannot set the mode of $temp." 1; }
+    if ! mv -f "$temp" "$target"; then
+        rm -f "$temp"
+        fail "cannot write $target." 1
+    fi
+    printf '%s\n' "$target"
+}
+
+# portal_exit_status CODE  Print the status of one portal error code. The
+# table comes from docs/MCP-ADAPTER.md. See CHAT-lmwuxiiq.
+portal_exit_status() {
+    case "$1" in
+        INVALID_INPUT) printf '2\n' ;;
+        WRITE_FAILED|NOT_OPEN|BUSY) printf '1\n' ;;
+        UNCONFIRMED) printf '75\n' ;;
+        TIMEOUT) printf '124\n' ;;
+        ADAPTER_ERROR) printf '1\n' ;;
+        *) printf '1\n' ;;
+    esac
+}
+
+# run_portal_tool TOOL ARGUMENTS  Send one MCP tool call through the adapter
+# and keep its reply. It sets portal_code, portal_status, portal_error, and
+# portal_lines. The adapter gets the remaining wrapper budget.
+portal_code=
+portal_status=
+portal_error=
+portal_complete=
+portal_lines=
+run_portal_tool() {
+    local tool="$1" arguments="$2" launcher reply budget pid timer line
+    local done_file stop_at
+    launcher="${CHAT_MCP_STDIO:-$chat_register_tools_dir/chat-mcp-stdio}"
+    [[ -x "$launcher" ]] || fail 'no MCP adapter. Set CHAT_MCP_STDIO.' 1
+    portal_code=
+    portal_status=
+    portal_error=
+    portal_complete=
+    portal_lines="$work/portal-lines"
+    : > "$portal_lines"
+    reply="$work/portal-reply"
+    jq -cn --arg tool "$tool" --argjson arguments "$arguments" '
+        {jsonrpc:"2.0",id:1,method:"initialize",
+         params:{protocolVersion:"2025-11-25",capabilities:{},
+                 clientInfo:{name:"register",version:"1"}}},
+        ({jsonrpc:"2.0",method:"notifications/initialized"}),
+        {jsonrpc:"2.0",id:2,method:"tools/call",
+         params:{name:$tool,arguments:$arguments}}' > "$work/portal-request" \
+        || fail 'cannot encode the portal request.' 1
+    budget="$(remaining_ms)"
+    # The adapter exits when standard input reaches end of file. So the
+    # wrapper writes the request and keeps the stream open until the id:2
+    # reply arrives, or until the budget passes. See CHAT-lmwuxiiq.
+    done_file="$work/portal-done"
+    rm -f "$done_file"
+    stop_at=$(( $(now_ms) + budget ))
+    (
+        cat "$work/portal-request"
+        while [[ ! -f "$done_file" ]]; do
+            sleep 0.05
+        done
+    ) | "$launcher" --config "$portal_config" \
+        > "$reply" 2> "$work/portal-err" &
+    pid=$!
+    while :; do
+        if grep -Fq '"id":2' "$reply" 2> /dev/null; then
+            break
+        fi
+        if ! kill -0 "$pid" 2> /dev/null; then
+            break
+        fi
+        (( $(now_ms) < stop_at )) || break
+        sleep 0.05
+    done
+    : > "$done_file"
+    if kill -0 "$pid" 2> /dev/null; then
+        (
+            sleep 0.5
+            kill -TERM -- "$pid" 2> /dev/null
+            sleep 0.2
+            kill -KILL -- "$pid" 2> /dev/null
+        ) &
+        timer=$!
+        wait "$pid" 2> /dev/null
+        kill "$timer" 2> /dev/null
+        wait "$timer" 2> /dev/null
+    else
+        wait "$pid" 2> /dev/null
+    fi
+    line="$(jq -c 'select(.id == 2)' "$reply" 2> /dev/null | head -n 1)"
+    if [[ -z "$line" ]]; then
+        portal_code='UNAVAILABLE'
+        return 0
+    fi
+    # A protocol failure carries no portal code. Reject it here, so a failed
+    # call never looks like an empty success. See CHAT-lmwuxiiq.
+    if jq -e 'has("error")' > /dev/null 2>&1 <<< "$line"; then
+        portal_code='ADAPTER_ERROR'
+        portal_error="$(jq -r '.error.message // empty' <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter answered an error'
+        return 0
+    fi
+    if ! jq -e '.result | has("structuredContent")' > /dev/null 2>&1 <<< "$line"; then
+        portal_error="$(jq -r '.result.content[0].text // empty' \
+            <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter answered no structured content'
+        portal_code='ADAPTER_ERROR'
+        return 0
+    fi
+    if jq -e '.result.isError == true' > /dev/null 2>&1 <<< "$line" \
+       && ! jq -e '.result.structuredContent.error.code // empty | length > 0' \
+            > /dev/null 2>&1 <<< "$line"; then
+        portal_code='ADAPTER_ERROR'
+        portal_error="$(jq -r '.result.content[0].text // empty' \
+            <<< "$line" 2> /dev/null)"
+        [[ -n "$portal_error" ]] || portal_error='the adapter refused the call'
+        return 0
+    fi
+    portal_code="$(jq -r '.result.structuredContent.error.code // empty' \
+        <<< "$line" 2> /dev/null)"
+    portal_error="$(jq -r '.result.structuredContent.error.message // empty' \
+        <<< "$line" 2> /dev/null)"
+    portal_status="$(jq -r '.result.structuredContent.status // empty' \
+        <<< "$line" 2> /dev/null)"
+    # `//` treats false as absent, so read the field by name.
+    portal_complete="$(jq -r '.result.structuredContent
+        | if has("complete") then (.complete | tostring) else "" end' \
+        <<< "$line" 2> /dev/null)"
+    jq -r '.result.structuredContent.lines[]?' <<< "$line" > "$portal_lines" \
+        2> /dev/null || : > "$portal_lines"
+}
+
+# portal_finish  Apply the last reply. A failure stops with its mapped status.
+portal_finish() {
+    if [[ -n "$portal_code" ]]; then
+        fail "${portal_error:-the portal answered $portal_code.}" \
+            "$(portal_exit_status "$portal_code")"
+    fi
+    if [[ -n "$portal_status" && "$portal_status" != '0' ]]; then
+        fail "the portal returned status $portal_status." "$portal_status"
+    fi
+    # An incomplete reply carries an error code. A reply without one is a
+    # failure, not an empty success. See CHAT-lmwuxiiq.
+    if [[ "$portal_complete" == 'false' ]]; then
+        portal_code='ADAPTER_ERROR'
+        fail 'the portal answered an incomplete reply' 1
+    fi
+    emit_typed "$portal_lines"
+}
+
+# portal_read TOPIC  Read through the portal. A transport failure sets portal
+# to 0, so the caller runs the one-shot path.
+portal_read() {
+    local topic="$1" arguments='{}'
+    [[ -z "$topic" ]] || arguments="$(jq -cn --arg topic "$topic" '{topic:$topic}')"
+    run_portal_tool chat_read_register "$arguments"
+    if [[ "$portal_code" == 'UNAVAILABLE' ]]; then
+        printf 'register: portal unavailable, using the one-shot login\n' >&2
+        portal=0
+        return 0
+    fi
+    portal_finish
+}
+
+# portal_open  Open one entry through the portal.
+portal_open() {
+    local arguments
+    arguments="$(jq -cn --arg key "$key" --arg short "$short" --arg title "$title" \
+        '{key:$key,short:$short,title:$title}')" \
+        || fail 'cannot encode the open request.' 1
+    run_portal_tool chat_open_register_entry "$arguments"
+    portal_finish
+}
+
+# portal_post  Post the entry that standard input carries through the portal.
+portal_post() {
+    local arguments
+    ( umask 077; cat > "$work/input" ) || fail 'cannot read standard input.' 2
+    if ! LC_ALL=C grep -q '[^[:space:]]' "$work/input"; then
+        fail 'the entry is empty or whitespace only.' 2
+    fi
+    if [[ -n "$request_id" ]]; then
+        [[ "$request_id" =~ ^[A-Za-z0-9._:-]+$ ]] \
+            || fail "the request id $request_id is not letters, digits, dot, dash, colon, or underscore." 2
+        [[ "$request_id" != '_' ]] \
+            || fail 'the request id _ asks for a new entry. Give the id of the uncertain post.' 2
+        arguments="$(jq -cn --arg key "$key" --rawfile text "$work/input" \
+            --arg rid "$request_id" '{key:$key,text:$text,requestId:$rid}')" \
+            || fail 'cannot encode the post request.' 1
+    else
+        arguments="$(jq -cn --arg key "$key" --rawfile text "$work/input" \
+            '{key:$key,text:$text}')" \
+            || fail 'cannot encode the post request.' 1
+    fi
+    run_portal_tool chat_post_register_entry "$arguments"
+    portal_finish
+}
+
+command_name="${1:-}"
+[[ -n "$command_name" ]] || { usage; exit 2; }
+shift
+
+# The config command writes a local file. It needs no register selector, no
+# user, and no shell CLI.
+if [[ "$command_name" == 'config' ]]; then
+    register_config "$@"
+    exit 0
+fi
+
+user=
+agent=
+project=
+topic=
+request_id=
+args=()
+while (( $# )); do
+    case "$1" in
+        --as)
+            shift
+            [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
+            user="$1"
+            ;;
+        --requestId)
+            shift
+            [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
+            request_id="$1"
+            ;;
+        --agent)
+            shift
+            [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
+            agent="$1"
+            ;;
+        --project)
+            shift
+            [[ $# -gt 0 && -n "$1" ]] || { usage; exit 2; }
+            project="$1"
+            ;;
+        -*)
+            usage
+            exit 2
+            ;;
+        *)
+            args+=("$1")
+            ;;
+    esac
+    shift
+done
+
+# -- Portal resolution ---------------------------------------------------
+# The agent and the project select one app config. The config names the live
+# portal socket and one register selector. A missing config keeps the one-shot
+# path. See CHAT-lmwuxiiq.
+agent="${agent:-${MY_AGENT_NAME:-}}"
+project="${project:-${MY_PROJECT_NAME:-}}"
+if [[ -z "$project" && -n "${MY_PROJECT_HOME:-}" ]]; then
+    project="$(basename "$MY_PROJECT_HOME")"
+fi
+portal=0
+portal_config=
+portal_socket=
+portal_socket_file=
+portal_register=
+portal_name=
+portal_id=
+if [[ -n "$agent" && -n "$project" ]]; then
+    portal_agent="$(printf '%s' "$agent" | tr '[:upper:]' '[:lower:]')"
+    portal_project="$(printf '%s' "$project" | tr '[:upper:]' '[:lower:]')"
+    portal_config="${XDG_CONFIG_HOME:-$HOME/.config}/demo-chat/mcp-portal-$portal_agent-$portal_project.properties"
+    if [[ -f "$portal_config" ]]; then
+        portal=1
+        portal_name="$(sed -n 's/^registerName=//p' "$portal_config" | head -n 1)"
+        portal_id="$(sed -n 's/^registerId=//p' "$portal_config" | head -n 1)"
+        portal_socket_file="$(sed -n 's/^portalSocketFile=//p' "$portal_config" | head -n 1)"
+        [[ -z "$portal_name" || -z "$portal_id" ]] \
+            || fail 'the config holds both registerName and registerId. Keep one.' 1
+        [[ -n "$portal_socket_file" ]] \
+            || fail "the config $portal_config has no portalSocketFile." 1
+        portal_register="${portal_name:-$portal_id}"
+        [[ -n "$portal_register" ]] \
+            || fail "the config $portal_config has no register selector." 1
+        portal_socket="$(sed -n '1p' "$portal_socket_file" 2> /dev/null || true)"
+    fi
+fi
+
+# The environment selector must agree with the config selector. A name and an
+# id name different things, so the command never compares them.
+if (( portal )); then
+    env_name="${CHAT_REGISTER_TOPIC_NAME:-}"
+    env_id="${CHAT_REGISTER_TOPIC_ID:-}"
+    if [[ ( -n "$portal_name" && -n "$env_id" ) || ( -n "$portal_id" && -n "$env_name" ) ]]; then
+        fail 'cannot compare a register name with a register id. Clear one selector.' 2
+    fi
+    if [[ -n "$portal_name" && -n "$env_name" && "$portal_name" != "$env_name" ]]; then
+        fail "the config register '$portal_name' differs from the environment register '$env_name'." 2
+    fi
+    if [[ -n "$portal_id" && -n "$env_id" && "$portal_id" != "$env_id" ]]; then
+        fail "the config register '$portal_id' differs from the environment register '$env_id'." 2
+    fi
+    if [[ -n "$user" ]]; then
+        printf 'register: user selection is ignored when connected through portal\n' >&2
+    fi
+fi
+
+# A missing socket file falls back for a read. A write needs the portal.
+if (( portal )) && [[ -z "$portal_socket" || ! -e "$portal_socket" ]]; then
+    if [[ "$command_name" == 'read' ]]; then
+        printf 'register: portal unavailable, using the one-shot login\n' >&2
+        portal=0
+    else
+        fail 'portal unavailable. The socket file names no socket.' 1
+    fi
+fi
+
+if (( portal )); then
+    register="$portal_register"
+elif [[ -n "$portal_register" ]]; then
+    register="$portal_register"
+else
+    # The register value names the index room in every shell call below. A
+    # read accepts the name or the id. See CHAT-jmnjvupr.
+    register="$(chat_register_value)" || exit 2
+fi
+
+if (( ! portal )); then
+    [[ -n "$user" ]] || { usage; exit 2; }
+    case "$user" in
+        Sigma|Theta|Phi|Mario) ;;
+        *) fail "unknown user $user. The users are Sigma, Theta, Phi, and Mario." 2 ;;
+    esac
+    resolve_cli
+fi
+
+# use_credentials  Export the login, or fail with status 77. The owner
+# login reads the rendered value in secrets.env. No client copy of the
+# Mario password exists. See decision 37.
+use_credentials() {
+    local password_file value
+    if [[ "$user" == 'Mario' ]]; then
+        if [[ ! -r "$secrets_file" ]]; then
+            fail "cannot read $secrets_file. Run deployment/bin/setup-secrets." 77
+        fi
+        value="$(sed -n 's/^CHAT_USER_MARIO_PASSWORD=//p' "$secrets_file" | head -n 1)"
+        if [[ -z "$value" ]]; then
+            fail "the owner password is absent from $secrets_file. Run deployment/bin/setup-secrets --owner." 77
+        fi
+        password_file="$work/Mario.password"
+        ( umask 077; printf '%s\n' "$value" > "$password_file" ) \
+            || fail "cannot write $password_file." 1
+    else
+        password_file="$secrets_dir/$user.password"
+        if [[ ! -r "$password_file" ]]; then
+            fail "cannot read $password_file. Run deployment/bin/setup-secrets." 77
+        fi
+    fi
+    export CHAT_SHELL_USER="$user"
+    export CHAT_SHELL_PASSWORD_FILE="$password_file"
+}
+
+# remaining_ms  Print the milliseconds left in the wrapper budget. The
+# budget covers every shell call from one start. A spent budget prints 1.
+remaining_ms() {
+    local now left
+    now="$(date +%s)"
+    left=$(( deadline_ms - (now - start_seconds) * 1000 ))
+    (( left < 1 )) && left=1
+    printf '%s\n' "$left"
+}
+
+# now_ms  Print the epoch in milliseconds. GNU date gives microseconds.
+# A coarse clock gives whole seconds.
+now_ms() {
+    local ns
+    ns="$(date +%s%N 2> /dev/null)"
+    if [[ "$ns" =~ ^[0-9]+$ ]] && (( ${#ns} >= 16 )); then
+        printf '%s\n' "$(( ns / 1000000 ))"
+    else
+        printf '%s000\n' "$(date +%s)"
+    fi
+}
+
+# run_shell ARGS...  Run one shell command under the wrapper deadline.
+# Standard input comes from $work/input. Output lands in $work/out and
+# status in $shell_status. A passed deadline sets $expired.
+shell_status=0
+expired=0
+expired_scope=
+call_cap_ms=0
+run_shell() {
+    local out="$work/out" err="$work/err" timer budget
+    : > "$out"
+    : > "$err"
+    [[ -f "$work/input" ]] || : > "$work/input"
+    shell_status=0
+    expired=0
+    expired_scope=
+    budget="$(remaining_ms)"
+    expired_scope=wrapper
+    if (( call_cap_ms > 0 && call_cap_ms < budget )); then
+        budget="$call_cap_ms"
+        expired_scope=window
+    fi
+    set -m
+    "$cli" "$@" < "$work/input" > "$out" 2> "$err" &
+    local pid=$!
+    (
+        sleep "$(awk "BEGIN { printf \"%.3f\", $budget / 1000 }")"
+        # The global watchdog can fire first and remove the work directory.
+        # A missing directory is not an error, and it adds no stderr line.
+        [[ -d "$work" ]] && : > "$work/expired"
+        kill -TERM -- "-$pid" 2> /dev/null
+        sleep 0.2
+        kill -KILL -- "-$pid" 2> /dev/null
+    ) &
+    timer=$!
+    wait "$pid"
+    shell_status=$?
+    kill "$timer" 2> /dev/null
+    wait "$timer" 2> /dev/null
+    set +m
+    [[ -f "$work/expired" ]] && expired=1
+    return 0
+}
+
+# run_shell_within MS ARGS...  Run one shell command with at most MS
+# milliseconds left in a window, and never past the wrapper limit.
+run_shell_within() {
+    local cap="$1"
+    shift
+    call_cap_ms="$cap"
+    run_shell "$@"
+    call_cap_ms=0
+}
+
+# require_ok LABEL  Stop on a passed deadline or a failed shell call.
+require_ok() {
+    local reason
+    if [[ "$expired" == '1' ]]; then
+        fail "the $1 passed its ${deadline_ms} ms limit" 124
+    fi
+    if [[ "$shell_status" -ne 0 ]]; then
+        reason="$(head -n 1 "$work/err" 2> /dev/null)"
+        [[ -n "$reason" ]] || reason="the shell returned $shell_status"
+        fail "$reason" "$shell_status"
+    fi
+}
+
+# index_denied  True when the last read printed a denied-index warning. A
+# denied index holds no pointer, so the read cannot answer "does KEY exist".
+index_denied() {
+    jq -e 'select(.type == "warning" and .kind == "denied-index")' \
+        "$work/out" > /dev/null 2>&1
+}
+
+# denied_reason  Print the reason of the last denied-index warning.
+denied_reason() {
+    jq -r 'select(.type == "warning" and .kind == "denied-index")
+           | .reason // "Access Denied"' "$work/out" 2> /dev/null | head -n 1
+}
+
+# read_index  Read the pointer index into $work/out. A denied index joins
+# the register room once and reads once more. A remaining denial stops with
+# status 1 and one line, before any topic create or entry post. A readable
+# index joins nothing. See owner decision 38.
+read_index() {
+    run_shell register-read --index "$register"
+    require_ok 'the index read'
+    index_denied || return 0
+    run_shell join "$register"
+    require_ok "the join of $register"
+    run_shell register-read --index "$register"
+    require_ok 'the index read after the join'
+    if index_denied; then
+        reason="$(denied_reason)"
+        [[ -n "$reason" ]] || reason='Access Denied'
+        fail "the register index was denied to $user: $reason" 1
+    fi
+}
+
+# load_pointers  Fill $work/pointers from the index records in $work/out.
+# Each row is timestamp, message id, key, topic, metadata, title. Only the
+# records of the register room count. The tool never reads the metadata or
+# the title. The @tsv form doubles a backslash, so a key that holds one
+# cannot match. The filter refuses it here, and check_key refuses it at a
+# write.
+load_pointers() {
+    jq -r --arg index "$register" \
+        'select((.type // "record") == "record" and .topic == $index)
+           | [ .timestamp, .id ]
+             + (.text // "" | split("|") | map(gsub("^\\s+|\\s+$"; "")))
+           | @tsv' "$work/out" > "$work/pointers" 2> /dev/null \
+        || return 1
+    awk -F'\t' 'NF != 6 || $3 == "" || $4 == "" || index($3, "\\") > 0 { bad = 1 }
+                END { exit bad ? 1 : 0 }' "$work/pointers"
+}
+
+# earliest_pointer KEY  Print timestamp, id, and topic of the earliest
+# pointer for KEY. Time orders first, then the message id.
+earliest_pointer() {
+    LC_ALL=C sort -t$'\t' -k1,1 -k2,2 "$work/pointers" \
+        | awk -F'\t' -v key="$1" '$3 == key { print $1"\t"$2"\t"$4; exit }'
+}
+
+# pointer_owner TOPIC  Print the key of the earliest pointer that names
+# TOPIC.
+pointer_owner() {
+    LC_ALL=C sort -t$'\t' -k1,1 -k2,2 "$work/pointers" \
+        | awk -F'\t' -v topic="$1" '$4 == topic { print $3; exit }'
+}
+
+# pointer_shows_id KEY ID  True when a pointer for KEY has message ID.
+pointer_shows_id() {
+    awk -F'\t' -v key="$1" -v id="$2" \
+        '$3 == key && $2 == id { found = 1 } END { exit found ? 0 : 1 }' \
+        "$work/pointers"
+}
+
+# stop_if_late  Return 124 when the watchdog already passed the limit.
+stop_if_late() {
+    if [[ -f "$work/expired" ]]; then
+        fail "the command passed its ${deadline_ms} ms limit" 124
+    fi
+}
+
+# emit_open STATE TOPIC POINTER_ID  Print the one open result line. The
+# line goes to a file first, so a late stop leaves no output.
+emit_open() {
+    jq -cn --arg state "$1" --arg topic "$2" --arg id "$3" --arg key "$key" \
+        '{type:"open",state:$state,key:$key,topic:$topic,pointer_id:$id}' \
+        > "$work/typed-open" || fail 'the open result did not encode.' 1
+    stop_if_late
+    cat "$work/typed-open"
+}
+
+# read_shows_id TOPIC ID  True when the last shell read holds the message.
+read_shows_id() {
+    jq -e --arg topic "$1" --arg id "$2" \
+        'select(.id == $id and .topic == $topic)' "$work/out" > /dev/null 2>&1
+}
+
+# emit_post  Print the one post result line.
+emit_post() {
+    jq -cn --arg key "$key" --arg topic "$selected_topic" \
+        --arg message "$new_id" --arg command "$command_id" \
+        --arg request "$receipt_request" \
+        '{type:"post",key:$key,topic:$topic,message_id:$message,
+          command_id:$command,request_id:$request}' \
+        > "$work/typed-post" || fail 'the post result did not encode.' 1
+    stop_if_late
+    cat "$work/typed-post"
+}
+
+# split_pointer ROW  Set selected_id and selected_topic from one row.
+split_pointer() {
+    local rest
+    rest="${1#*$'\t'}"
+    selected_id="${rest%%$'\t'*}"
+    selected_topic="${rest#*$'\t'}"
+}
+
+# emit_typed FILE  Print each line with a `type`. A line that already has
+# one keeps it. A line that is not JSON fails the command.
+emit_typed() {
+    local out="$work/typed"
+    if ! jq -c 'if has("type") then . else ({type:"record"} + .) end' "$1" > "$out" 2> /dev/null; then
+        fail 'the shell output is not a JSON line. Check the shell version.' 1
+    fi
+    stop_if_late
+    cat "$out"
+}
+
+# The input file is created at its first use. A post creates it under
+# umask 077, so the entry file is private from its first byte.
+
+case "$command_name" in
+    read)
+        if (( ${#args[@]} > 1 )); then
+            usage
+            exit 2
+        fi
+        topic="${args[0]:-}"
+        if (( portal )); then
+            portal_read "$topic"
+            (( portal )) && exit 0
+        fi
+        use_credentials
+        if [[ -z "$topic" ]]; then
+            run_shell register-read --index "$register"
+        else
+            run_shell messages "$topic" --format records
+        fi
+        if [[ "$expired" == '1' ]]; then
+            fail "the read passed its ${deadline_ms} ms limit" 124
+        fi
+        if [[ "$shell_status" -ne 0 ]]; then
+            reason="$(head -n 1 "$work/err" 2> /dev/null)"
+            [[ -n "$reason" ]] || reason="the shell returned $shell_status"
+            fail "$reason" "$shell_status"
+        fi
+        emit_typed "$work/out"
+        ;;
+    open)
+        (( ${#args[@]} == 3 )) || { usage; exit 2; }
+        key="${args[0]}"
+        short="${args[1]}"
+        title="${args[2]}"
+        check_key "$key"
+        [[ "$short" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+            || fail "the short name $short is not lowercase letters, digits, or dashes." 2
+        check_title "$title"
+        if (( portal )); then
+            portal_open
+            exit 0
+        fi
+        # A write needs the name. It mints the entry topic, and an id gives
+        # no prefix. See CHAT-jmnjvupr.
+        name="$(chat_register_name)" || exit 2
+        register="$name"
+        use_credentials
+
+        read_index
+        load_pointers \
+            || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+
+        selected="$(earliest_pointer "$key")"
+        if [[ -n "$selected" ]]; then
+            split_pointer "$selected"
+            emit_open exists "$selected_topic" "$selected_id"
+            exit 0
+        fi
+
+        new_topic="$name-fr-$short"
+        (( ${#new_topic} <= 64 )) \
+            || fail "the topic $new_topic passes 64 characters." 2
+        owner_id="$(pointer_owner "$new_topic")"
+        if [[ -n "$owner_id" && "$owner_id" != "$key" ]]; then
+            fail "the topic $new_topic belongs to $owner_id, not $key." 1
+        fi
+
+        run_shell add-topic --name "$new_topic"
+        if [[ "$expired" == '1' ]]; then
+            fail "the topic create passed its ${deadline_ms} ms limit" 124
+        fi
+        if [[ "$shell_status" -ne 0 ]]; then
+            # A concurrent open may have added the pointer.
+            add_status="$shell_status"
+            add_reason="$(head -n 1 "$work/err" 2> /dev/null)"
+            [[ -n "$add_reason" ]] || add_reason="the shell returned $add_status"
+            read_index
+            load_pointers \
+                || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+            selected="$(earliest_pointer "$key")"
+            [[ -n "$selected" ]] || fail "$add_reason" "$add_status"
+            split_pointer "$selected"
+            emit_open exists "$selected_topic" "$selected_id"
+            exit 0
+        fi
+
+        run_shell join "$new_topic"
+        require_ok "the join of $new_topic"
+
+        # The metadata field stays empty. This tool writes none and reads none.
+        printf '%s | %s | | %s\n' "$key" "$new_topic" "$title" > "$work/input"
+        run_shell post --topic "$register"
+        require_ok 'the pointer post'
+        new_id="$(jq -r '.messageId // empty' "$work/out" 2> /dev/null | head -n 1)"
+        [[ -n "$new_id" ]] || fail 'the pointer post returned no message id.' 75
+
+        run_shell messages "$register" --format records
+        require_ok 'the index readback'
+        load_pointers \
+            || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+        pointer_shows_id "$key" "$new_id" \
+            || fail "the index readback does not show pointer $new_id." 75
+        selected="$(earliest_pointer "$key")"
+        split_pointer "$selected"
+        if [[ "$selected_id" == "$new_id" ]]; then
+            emit_open created "$selected_topic" "$selected_id"
+        else
+            emit_open exists "$selected_topic" "$selected_id"
+        fi
+        ;;
+    post)
+        (( ${#args[@]} == 1 )) || { usage; exit 2; }
+        key="${args[0]}"
+        check_key "$key"
+        if (( portal )); then
+            portal_post
+            exit 0
+        fi
+        # A write needs the name. It reads the register room by name. See
+        # CHAT-jmnjvupr.
+        name="$(chat_register_name)" || exit 2
+        register="$name"
+        if [[ -n "$request_id" ]]; then
+            [[ "$request_id" =~ ^[A-Za-z0-9._:-]+$ ]] \
+                || fail "the request id $request_id is not letters, digits, dot, dash, colon, or underscore." 2
+            [[ "$request_id" != '_' ]] \
+                || fail 'the request id _ asks for a new entry. Give the id of the uncertain post.' 2
+        fi
+
+        # Read the entry before any shell call. The private file is the post
+        # input, so the bytes that this command checks are the bytes it sends.
+        ( umask 077; cat > "$work/input" ) \
+            || fail 'cannot read standard input.' 2
+        if ! LC_ALL=C grep -q '[^[:space:]]' "$work/input"; then
+            fail 'the entry is empty or whitespace only.' 2
+        fi
+
+        # The wrapper owns the request id. The shell's "_" asks for a new
+        # entry on every call, so a retry with "_" can post a second entry.
+        if [[ -z "$request_id" ]]; then
+            request_id="$(uuidgen 2> /dev/null | tr '[:upper:]' '[:lower:]')"
+            [[ -n "$request_id" ]] \
+                || fail 'cannot generate a request id. Install uuidgen.' 1
+        fi
+        use_credentials
+
+        read_index
+        load_pointers \
+            || fail 'a pointer is not in the form <key> | <topic> | <metadata> | <title>.' 1
+        selected="$(earliest_pointer "$key")"
+        [[ -n "$selected" ]] \
+            || fail "no pointer for $key. Run register open first." 1
+        split_pointer "$selected"
+
+        run_shell join "$selected_topic"
+        require_ok "the join of $selected_topic"
+
+        run_shell post --topic "$selected_topic" --requestId "$request_id"
+        if [[ "$expired" == '1' ]]; then
+            fail "the entry post passed its ${deadline_ms} ms limit. Request id $request_id." 124
+        fi
+        if [[ "$shell_status" -ne 0 ]]; then
+            reason="$(head -n 1 "$work/err" 2> /dev/null)"
+            [[ -n "$reason" ]] || reason="the shell returned $shell_status"
+            fail "$reason Request id $request_id. Retry with --requestId $request_id." "$shell_status"
+        fi
+
+        new_id="$(jq -r '.messageId // empty' "$work/out" 2> /dev/null | head -n 1)"
+        command_id="$(jq -r '.commandId // empty' "$work/out" 2> /dev/null | head -n 1)"
+        receipt_request="$(jq -r '.requestId // empty' "$work/out" 2> /dev/null | head -n 1)"
+        [[ -n "$receipt_request" ]] || receipt_request="$request_id"
+        if [[ -z "$new_id" ]]; then
+            if [[ -n "$receipt_request" ]]; then
+                fail "the post returned no message id. Retry with --requestId $receipt_request." 75
+            fi
+            fail 'the post returned no message id.' 75
+        fi
+
+        # Poll the topic for the message id, for at most confirm_ms. Each
+        # read gets only the time left in that window, so a slow read
+        # cannot hold the post past the window.
+        poll_start="$(now_ms)"
+        while :; do
+            now="$(now_ms)"
+            window_left=$(( confirm_ms - ( now - poll_start ) ))
+            (( window_left < 1 )) && break
+            run_shell_within "$window_left" messages "$selected_topic" --format records
+            if [[ "$expired" == '1' ]]; then
+                if [[ "$expired_scope" == 'wrapper' ]]; then
+                    fail "the confirmation read passed its ${deadline_ms} ms limit. Request id $request_id." 124
+                fi
+                # The read hit the window. The post stays unconfirmed.
+                break
+            fi
+            found=0
+            if [[ "$shell_status" -eq 0 ]] \
+               && read_shows_id "$selected_topic" "$new_id"; then
+                found=1
+            fi
+            now="$(now_ms)"
+            busy_ms=$(( now - poll_start ))
+            if [[ "$found" == '1' ]] && (( busy_ms < confirm_ms )); then
+                emit_post
+                exit 0
+            fi
+            # The read used part of the window. Measure the time left
+            # again, after the read.
+            window_left=$(( confirm_ms - busy_ms ))
+            (( window_left < 1 )) && break
+            pause_ms=500
+            (( window_left < pause_ms )) && pause_ms="$window_left"
+            printf -v pause '%d.%03d' $(( pause_ms / 1000 )) $(( pause_ms % 1000 ))
+            sleep "$pause"
+        done
+        if [[ -n "$receipt_request" ]]; then
+            fail "no read showed message $new_id from command $command_id within ${confirm_ms} ms. Retry with --requestId $receipt_request." 75
+        fi
+        fail "no read showed message $new_id from command $command_id within ${confirm_ms} ms." 75
+        ;;
+    *)
+        usage
+        exit 2
+        ;;
+esac

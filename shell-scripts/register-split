@@ -1,0 +1,52 @@
+#!/usr/bin/env perl
+# Split one frozen register file without changing its bytes.
+use strict;
+use warnings;
+use Digest::SHA qw(sha256_hex);
+use Encode qw(decode FB_CROAK LEAVE_SRC);
+use JSON::PP;
+
+@ARGV == 2 or die "register-split: use <source-file> <new-output-directory>\n";
+my ($source, $output) = @ARGV;
+-f $source && !-l $source or die "register-split: source is not a regular file\n";
+-e $output || -l $output and die "register-split: output path exists\n";
+
+open my $input, '<:raw', $source or die "register-split: cannot read source\n";
+local $/;
+my $data = <$input>;
+close $input or die "register-split: cannot close source\n";
+defined $data && length($data) or die "register-split: source is empty\n";
+index($data, "\0") < 0 or die "register-split: source has a NUL byte\n";
+eval { decode('UTF-8', $data, FB_CROAK | LEAVE_SRC) };
+$@ and die "register-split: source is not valid UTF-8\n";
+
+my @starts = (0);
+while ($data =~ /^## /mg) {
+    push @starts, $-[0];
+}
+@starts == 1 || $starts[1] > 0 or die "register-split: source has no preamble\n";
+push @starts, length($data);
+
+umask 0077;
+mkdir $output, 0700 or die "register-split: cannot create output directory\n";
+open my $manifest, '>:raw', "$output/sections.jsonl"
+    or die "register-split: cannot create manifest\n";
+my $json = JSON::PP->new->canonical;
+
+for my $index (0 .. $#starts - 1) {
+    my $section = substr($data, $starts[$index], $starts[$index + 1] - $starts[$index]);
+    my $path = sprintf('section-%06d.bin', $index);
+    open my $section_file, '>:raw', "$output/$path"
+        or die "register-split: cannot create section\n";
+    print {$section_file} $section or die "register-split: cannot write section\n";
+    close $section_file or die "register-split: cannot close section\n";
+    my $row = {
+        index => $index,
+        path => $path,
+        bytes => length($section),
+        sha256 => sha256_hex($section),
+    };
+    print {$manifest} $json->encode($row), "\n"
+        or die "register-split: cannot write manifest\n";
+}
+close $manifest or die "register-split: cannot close manifest\n";

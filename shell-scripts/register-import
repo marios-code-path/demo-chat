@@ -1,0 +1,1675 @@
+#!/usr/bin/env bash
+# Import one reviewed register snapshot into the selected deployment. See CHAT-jmnjvupr and
+# docs/superpowers/specs/2026-10-21-portable-register-import-design.md.
+#
+#   register-import pack --source FILE --mapping FILE --bundle DIR [--register NAME]
+#   register-import apply --bundle DIR --as Mario [--register NAME]
+#   register-import verify --bundle DIR --as Mario [--register NAME]
+#
+# pack makes no network call, and it needs no installed home. apply and
+# verify run from an installed home alone. Every command takes the register
+# name from --register, or from CHAT_REGISTER_TOPIC_NAME. The name mints
+# every topic and every request ID. See CHAT-jmnjvupr.
+#
+# A refusal prints one line on standard error and returns a nonzero status.
+# Status 2 names invalid input, an invalid bundle, or a failed guard. The
+# design file holds the complete status table.
+#
+# Set REGISTER_IMPORT_LIB=1 and source this file to get the functions alone.
+# The offline suite uses that mode. The command then runs nothing.
+set -uo pipefail
+
+register_import_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=register-lib.sh
+source "$register_import_dir/register-lib.sh"
+chat_register_initialize || return 2 2>/dev/null || exit 2
+
+# The byte limit of one section, one session range, and one entry range.
+REGISTER_IMPORT_RANGE_LIMIT=16384
+
+# The fixed UUIDv5 namespace of every import request ID. The design file fixes
+# this value. A change of it changes every request ID.
+REGISTER_IMPORT_NAMESPACE='e9d6d78a-0020-43e3-9893-92737b9e536c'
+
+# apply and verify set these three values. They start empty, because this
+# file runs with set -u, and a library caller can enter one function alone.
+import_bundle=''
+import_cli_path=''
+import_work=''
+# The login of the owner comes from --as at run time. No script names it.
+# See CHAT-sufkkqon.
+import_owner=''
+# The register name comes from --register or from the environment at run
+# time. It mints every topic, every request ID, and the receipt path. See
+# CHAT-jmnjvupr.
+import_register=''
+
+# import_error MESSAGE  Print one line on standard error and return 2.
+import_error() {
+    printf 'register-import: %s\n' "$1" >&2
+    return 2
+}
+
+# validate_mapping MAPPING SOURCE
+# Check one mapping file against its source file. Print one reason and return
+# 2 for a mapping that cannot describe a safe import. Print nothing and return
+# 0 for a reviewed mapping.
+#
+# The structure check runs in one jq program. The key rule, the topic rule,
+# and the title rule run here, because the key and title rules live in lib.sh.
+# A caller runs this function once for one bundle.
+validate_mapping() {
+    local mapping="$1" source_file="$2"
+    local source_hash reason count index key topic title
+
+    [[ -f "$mapping" && ! -L "$mapping" ]] \
+        || { import_error 'the mapping is not a regular file'; return; }
+    [[ -f "$source_file" && ! -L "$source_file" ]] \
+        || { import_error 'the source is not a regular file'; return; }
+    jq -e . "$mapping" > /dev/null 2>&1 \
+        || { import_error 'the mapping is not valid JSON'; return; }
+
+    source_hash="$(shasum -a 256 "$source_file" | cut -d ' ' -f 1)"
+    reason="$(jq -r --arg sha "$source_hash" '
+        def whole(v): (v | type) == "number" and (v | floor) == v;
+        if (.version != 1) then
+            "the mapping version is not 1"
+        elif (((.source_sha256 // "") | type) != "string"
+              or ((.source_sha256 // "") | test("^[0-9a-f]{64}$") | not)) then
+            "the source hash is not 64 lowercase hexadecimal characters"
+        elif (.source_sha256 != $sha) then
+            "the source hash does not match the source file"
+        elif (((.source_date // "") | type) != "string"
+              or ((.source_date // "")
+                  | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$") | not)) then
+            "the source date is not one ISO date"
+        elif (((.source_basis // "") | type) != "string"
+              or ((.source_basis // "") | length) == 0) then
+            "the source basis is empty"
+        elif ((whole(.session.first_line) | not)
+              or (whole(.session.after_line) | not)) then
+            "the session range is not two whole numbers"
+        elif (.session.first_line < 1) then
+            "the session range starts below line 1"
+        elif (.session.after_line <= .session.first_line) then
+            "the session range holds no line"
+        elif ((.entries | type) != "array" or (.entries | length) == 0) then
+            "the mapping holds no entry"
+        elif ([.entries[] | select((.key | type) != "string"
+                                   or (.topic | type) != "string"
+                                   or (.title | type) != "string")]
+              | length) > 0 then
+            "an entry holds a key, a topic, or a title that is not text"
+        elif ([.entries[] | select((whole(.first_line) | not)
+                                   or (whole(.after_line) | not))]
+              | length) > 0 then
+            "an entry range is not two whole numbers"
+        elif ([.entries[] | select(.first_line < 1
+                                   or .after_line <= .first_line)]
+              | length) > 0 then
+            "an entry range holds no line"
+        elif ((.entries | map(.key) | unique | length)
+              != (.entries | length)) then
+            "a key repeats in the mapping"
+        elif ((.entries | map(.topic) | unique | length)
+              != (.entries | length)) then
+            "a topic repeats in the mapping"
+        else
+            ""
+        end' "$mapping" 2> /dev/null)"
+    if [[ -n "$reason" ]]; then
+        import_error "$reason"
+        return
+    fi
+
+    count="$(jq -r '.entries | length' "$mapping")"
+    for (( index = 0; index < count; index++ )); do
+        key="$(jq -r ".entries[$index].key" "$mapping")"
+        topic="$(jq -r ".entries[$index].topic" "$mapping")"
+        title="$(jq -r ".entries[$index].title" "$mapping")"
+        reason="$(chat_register_key_error "$key")" \
+            || { import_error "entry $index: $reason"; return; }
+        if [[ ! "$topic" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]]; then
+            import_error "entry $index: the topic is not lowercase letters, digits, and dashes"
+            return
+        fi
+        reason="$(chat_register_title_error "$title")" \
+            || { import_error "entry $index: $reason"; return; }
+    done
+    return 0
+}
+
+# file_mode PATH  Print the octal mode of one path.
+file_mode() {
+    case "$(uname -s)" in
+        Darwin) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
+# hash_of PATH  Print the SHA-256 of one file.
+hash_of() {
+    shasum -a 256 "$1" | cut -d ' ' -f 1
+}
+
+# bytes_of PATH  Print the byte count of one file.
+bytes_of() {
+    wc -c < "$1" | tr -d ' '
+}
+
+# import_set_register [FLAG_VALUE] [FLAG_SEEN]
+# Set import_register from the flag, or from the environment. Print one line
+# and return 2 for an absent or invalid name. FLAG_SEEN holds true when the
+# caller saw the flag. An empty value after the flag is a refusal, not a
+# fallback to the environment. A write needs the name, because it mints
+# topics and receipt paths. See CHAT-jmnjvupr.
+import_set_register() {
+    local flag="${1:-}" seen="${2:-false}" reason
+    if [[ "$seen" != 'true' ]]; then
+        import_register="$(chat_register_name)" || return 2
+        return 0
+    fi
+    if [[ -z "$flag" ]]; then
+        import_error 'the flag --register needs a name'
+        return 2
+    fi
+    reason="$(chat_register_name_error "$flag")" \
+        || { import_error "$reason"; return 2; }
+    import_register="$flag"
+    return 0
+}
+
+# snapshot_topic SOURCE_SHA  Print the topic name of the snapshot.
+snapshot_topic() {
+    printf '%s-fr-snapshot-%s\n' "$import_register" "${1:0:12}"
+}
+
+# snapshot_key SOURCE_SHA  Print the pointer key of the snapshot.
+snapshot_key() {
+    printf 'snapshot-%s\n' "${1:0:12}"
+}
+
+# one_request HASH KIND TOPIC INDEX
+# Print one request row. The request ID comes from the fixed namespace and
+# the name <content hash>|<kind>|<topic>|<index>.
+one_request() {
+    local hash="$1" kind="$2" topic="$3" index="$4" id
+    id="$("$register_import_dir/register-uuid5" "$REGISTER_IMPORT_NAMESPACE" \
+        "$hash|$kind|$topic|$index")" || return 1
+    jq -cS -n --arg kind "$kind" --arg topic "$topic" \
+        --argjson index "$index" --arg id "$id" \
+        '{kind: $kind, topic: $topic, index: $index, request_id: $id}'
+}
+
+# build_requests CONTENT_MANIFEST CONTENT_HASH
+# Print every request row in the apply order. pack writes these rows into the
+# bundle manifest. check_bundle derives them again and compares them.
+build_requests() {
+    local manifest="$1" hash="$2"
+    local topic count index entry_topic source_hash
+    source_hash="$(jq -r '.source_sha256' "$manifest")" || return 1
+    topic="$(snapshot_topic "$source_hash")"
+    one_request "$hash" snapshot-header "$topic" 0 || return 1
+    count="$(jq -r '.parts | length' "$manifest")" || return 1
+    for (( index = 0; index < count; index++ )); do
+        one_request "$hash" snapshot-part "$topic" "$index" || return 1
+    done
+    one_request "$hash" session "$topic" 0 || return 1
+    count="$(jq -r '.entries | length' "$manifest")" || return 1
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")" || return 1
+        one_request "$hash" entry-header "$entry_topic" 0 || return 1
+        one_request "$hash" entry "$entry_topic" 0 || return 1
+    done
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")" || return 1
+        one_request "$hash" entry-pointer "$entry_topic" 0 || return 1
+    done
+    one_request "$hash" snapshot-pointer "$topic" 0 || return 1
+}
+
+# pack_bundle --source FILE --mapping FILE --bundle DIR
+# Build one private bundle. The command makes no network call, and it needs no
+# installed home. A failed pack leaves no bundle directory, because the work
+# happens in a private temporary directory beside the target.
+pack_bundle() {
+    local source_file='' mapping='' bundle='' register_flag='' register_seen='false'
+    while (( $# )); do
+        case "$1" in
+            --source)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --source needs a value'
+                    return
+                fi
+                source_file="$2"
+                shift 2
+                ;;
+            --mapping)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --mapping needs a value'
+                    return
+                fi
+                mapping="$2"
+                shift 2
+                ;;
+            --bundle)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
+                ;;
+            --register)
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
+                ;;
+            *)
+                import_error "pack does not take the argument $1"
+                return
+                ;;
+        esac
+    done
+    [[ -n "$source_file" && -n "$mapping" && -n "$bundle" ]] \
+        || { import_error 'pack needs --source, --mapping, and --bundle'; return; }
+    # The name comes first, because build_requests mints the snapshot topic
+    # from it. Pack and apply must derive one set of request IDs.
+    import_set_register "$register_flag" "$register_seen" || return 2
+    [[ ! -e "$bundle" && ! -L "$bundle" ]] \
+        || { import_error "the bundle path $bundle exists"; return; }
+    validate_mapping "$mapping" "$source_file" || return
+
+    local parent tmp split_out row index path bytes heading range_out
+    local count first after key topic title source_hash source_bytes
+    local content_hash part_count session_bytes request_count
+    parent="$(dirname "$bundle")"
+    [[ -d "$parent" ]] \
+        || { import_error "the parent directory $parent is absent"; return; }
+    umask 0077
+    tmp="$(mktemp -d "$parent/.register-import-XXXXXX")" \
+        || { import_error 'no temporary directory'; return; }
+
+    if ! split_out="$("$register_import_dir/register-split" "$source_file" \
+        "$tmp/parts" 2>&1)"; then
+        rm -rf "$tmp"
+        import_error "the source does not split: ${split_out##*register-split: }"
+        return
+    fi
+
+    : > "$tmp/parts.jsonl"
+    while IFS= read -r row; do
+        index="$(jq -r '.index' <<< "$row")"
+        path="$(jq -r '.path' <<< "$row")"
+        bytes="$(jq -r '.bytes' <<< "$row")"
+        if (( bytes > REGISTER_IMPORT_RANGE_LIMIT )); then
+            if (( index == 0 )); then
+                heading='(the preamble)'
+            else
+                heading="$(head -1 "$tmp/parts/$path")"
+            fi
+            rm -rf "$tmp"
+            import_error "section $heading at index $index holds $bytes bytes, above the limit of $REGISTER_IMPORT_RANGE_LIMIT"
+            return
+        fi
+        jq -cS --arg path "parts/$path" \
+            '{index: .index, path: $path, bytes: .bytes, sha256: .sha256}' \
+            <<< "$row" >> "$tmp/parts.jsonl"
+    done < "$tmp/parts/sections.jsonl"
+    rm -f "$tmp/parts/sections.jsonl"
+
+    mkdir -p "$tmp/ranges"
+    first="$(jq -r '.session.first_line' "$mapping")"
+    after="$(jq -r '.session.after_line' "$mapping")"
+    if ! range_out="$("$register_import_dir/register-range" "$source_file" \
+        "$first" "$after" "$tmp/ranges/session.bin" 2>&1)"; then
+        rm -rf "$tmp"
+        import_error "the session range fails: ${range_out##*register-range: }"
+        return
+    fi
+    jq -cS --arg path 'ranges/session.bin' '. + {path: $path}' \
+        <<< "$range_out" > "$tmp/session.json"
+    session_bytes="$(jq -r '.bytes' "$tmp/session.json")"
+
+    : > "$tmp/entries.jsonl"
+    count="$(jq -r '.entries | length' "$mapping")"
+    for (( index = 0; index < count; index++ )); do
+        path="$(printf 'ranges/entry-%03d.bin' "$index")"
+        first="$(jq -r ".entries[$index].first_line" "$mapping")"
+        after="$(jq -r ".entries[$index].after_line" "$mapping")"
+        key="$(jq -r ".entries[$index].key" "$mapping")"
+        topic="$(jq -r ".entries[$index].topic" "$mapping")"
+        title="$(jq -r ".entries[$index].title" "$mapping")"
+        if ! range_out="$("$register_import_dir/register-range" \
+            "$source_file" "$first" "$after" "$tmp/$path" 2>&1)"; then
+            rm -rf "$tmp"
+            import_error "the range of entry $index fails: ${range_out##*register-range: }"
+            return
+        fi
+        jq -cS --arg path "$path" --arg key "$key" --arg topic "$topic" \
+            --arg title "$title" --argjson index "$index" \
+            '. + {path: $path, key: $key, topic: $topic, title: $title, index: $index}' \
+            <<< "$range_out" >> "$tmp/entries.jsonl"
+    done
+
+    source_hash="$(hash_of "$source_file")"
+    source_bytes="$(bytes_of "$source_file")"
+    cp "$source_file" "$tmp/source.md"
+    cp "$mapping" "$tmp/mapping.json"
+    jq -cS -n \
+        --argjson parts "$(jq -cS -s . "$tmp/parts.jsonl")" \
+        --argjson entries "$(jq -cS -s . "$tmp/entries.jsonl")" \
+        --argjson session "$(cat "$tmp/session.json")" \
+        --argjson mapping "$(cat "$tmp/mapping.json")" \
+        --arg sha "$source_hash" --argjson bytes "$source_bytes" \
+        '{version: 1, source_sha256: $sha, source_bytes: $bytes,
+          mapping: $mapping, parts: $parts, session: $session,
+          entries: $entries}' > "$tmp/content-manifest.json" \
+        || { rm -rf "$tmp"; import_error 'the content manifest fails'; return; }
+    content_hash="$(hash_of "$tmp/content-manifest.json")"
+
+    if ! build_requests "$tmp/content-manifest.json" "$content_hash" \
+        > "$tmp/requests.jsonl"; then
+        rm -rf "$tmp"
+        import_error 'the request IDs fail'
+        return
+    fi
+    jq -cS -n --arg hash "$content_hash" \
+        --argjson bytes "$(bytes_of "$tmp/content-manifest.json")" \
+        --argjson requests "$(jq -cS -s . "$tmp/requests.jsonl")" \
+        '{version: 1, content_sha256: $hash,
+          content_manifest: {path: "content-manifest.json", bytes: $bytes,
+                             sha256: $hash},
+          requests: $requests}' > "$tmp/bundle-manifest.json" \
+        || { rm -rf "$tmp"; import_error 'the bundle manifest fails'; return; }
+
+    rm -f "$tmp/parts.jsonl" "$tmp/entries.jsonl" "$tmp/session.json" \
+        "$tmp/requests.jsonl"
+    find "$tmp" -type d -exec chmod 700 {} + 2> /dev/null
+    find "$tmp" -type f -exec chmod 600 {} + 2> /dev/null
+    mv "$tmp" "$bundle" \
+        || { rm -rf "$tmp"; import_error "the bundle does not move to $bundle"; return; }
+
+    part_count="$(jq -r '.parts | length' "$bundle/content-manifest.json")"
+    request_count="$(jq -r '.requests | length' "$bundle/bundle-manifest.json")"
+    printf 'source: %s\n' "$source_hash"
+    printf 'source bytes: %s\n' "$source_bytes"
+    printf 'bundle: %s\n' "$content_hash"
+    printf 'parts: %s\n' "$part_count"
+    printf 'session bytes: %s\n' "$session_bytes"
+    printf 'topic: %s parts %s\n' "$(snapshot_topic "$source_hash")" "$part_count"
+    jq -r '.entries[] | "topic: \(.topic) key \(.key) bytes \(.bytes)"' \
+        "$bundle/content-manifest.json"
+    printf 'pointer key: %s\n' "$(snapshot_key "$source_hash")"
+    printf 'requests: %s\n' "$request_count"
+    return 0
+}
+
+# check_bundle DIR
+# Check one bundle before any live call. The function compares every mode,
+# every byte count, every hash, and every request ID. It prints one line that
+# names the file of the first difference and returns 2.
+check_bundle() {
+    local bundle="$1"
+    local file row path bytes sha stored_hash actual_hash tmp want got
+
+    [[ -d "$bundle" ]] \
+        || { import_error "the bundle directory $bundle is absent"; return; }
+    [[ "$(file_mode "$bundle")" == '700' ]] \
+        || { import_error "the bundle directory is not mode 0700"; return; }
+    for file in content-manifest.json bundle-manifest.json source.md \
+        mapping.json; do
+        [[ -f "$bundle/$file" && ! -L "$bundle/$file" ]] \
+            || { import_error "$file is absent from the bundle"; return; }
+    done
+    # A symlink can point at bytes that no review covered, and a loose
+    # directory lets another user read every part. Both stop the check.
+    while IFS= read -r file; do
+        import_error "$(basename "$file") is a symbolic link"
+        return
+    done < <(find "$bundle" -type l | sort)
+    while IFS= read -r file; do
+        [[ "$(file_mode "$file")" == '700' ]] \
+            || { import_error "the directory $(basename "$file") is not mode 0700"; return; }
+    done < <(find "$bundle" -type d | sort)
+    while IFS= read -r file; do
+        [[ "$(file_mode "$file")" == '600' ]] \
+            || { import_error "$(basename "$file") is not mode 0600"; return; }
+    done < <(find "$bundle" -type f | sort)
+    # Every path of the bundle is one directory or one regular file.
+    while IFS= read -r file; do
+        import_error "$(basename "$file") is not a regular file"
+        return
+    done < <(find "$bundle" ! -type d ! -type f ! -type l | sort)
+
+    jq -e . "$bundle/content-manifest.json" > /dev/null 2>&1 \
+        || { import_error 'content-manifest.json is not valid JSON'; return; }
+    jq -e . "$bundle/bundle-manifest.json" > /dev/null 2>&1 \
+        || { import_error 'bundle-manifest.json is not valid JSON'; return; }
+
+    actual_hash="$(hash_of "$bundle/content-manifest.json")"
+    stored_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+    [[ "$stored_hash" == "$actual_hash" ]] \
+        || { import_error 'content-manifest.json does not match the hash in bundle-manifest.json'; return; }
+
+    [[ "$(hash_of "$bundle/source.md")" \
+       == "$(jq -r '.source_sha256' "$bundle/content-manifest.json")" ]] \
+        || { import_error 'source.md does not match the content manifest'; return; }
+
+    while IFS= read -r row; do
+        path="$(jq -r '.path' <<< "$row")"
+        bytes="$(jq -r '.bytes' <<< "$row")"
+        sha="$(jq -r '.sha256' <<< "$row")"
+        if [[ ! -f "$bundle/$path" || -L "$bundle/$path" ]]; then
+            import_error "$(basename "$path") is absent from the bundle"
+            return
+        fi
+        if [[ "$(bytes_of "$bundle/$path")" != "$bytes" ]]; then
+            import_error "$(basename "$path") holds a different byte count"
+            return
+        fi
+        if [[ "$(hash_of "$bundle/$path")" != "$sha" ]]; then
+            import_error "$(basename "$path") holds a different SHA-256"
+            return
+        fi
+    done < <(jq -c '.parts[], .session, .entries[]' \
+        "$bundle/content-manifest.json")
+
+    tmp="$(mktemp -d)" || { import_error 'no temporary directory'; return; }
+    if ! build_requests "$bundle/content-manifest.json" "$actual_hash" \
+        > "$tmp/requests.jsonl"; then
+        rm -rf "$tmp"
+        import_error 'the request IDs fail'
+        return
+    fi
+    want="$(jq -cS -s . "$tmp/requests.jsonl")"
+    got="$(jq -cS '.requests' "$bundle/bundle-manifest.json")"
+    rm -rf "$tmp"
+    [[ "$want" == "$got" ]] \
+        || { import_error 'bundle-manifest.json does not hold the derived request IDs'; return; }
+    return 0
+}
+
+# import_cql QUERY
+# Run one read-only CQL query. REGISTER_IMPORT_CQLSH names another command
+# from the caller. The general tool does not discover a deployment transport.
+import_cql() {
+    if [[ -n "${REGISTER_IMPORT_CQLSH:-}" ]]; then
+        "$REGISTER_IMPORT_CQLSH" -e "$1"
+    else
+        import_error 'set REGISTER_IMPORT_CQLSH to the existing metadata transport.'
+        return 2
+    fi
+}
+
+# cql_rows
+# Read cqlsh text on standard input. Print one line for every data row, with
+# pipe characters between trimmed fields. The first text line is the header.
+cql_rows() {
+    awk '
+        {
+            line = $0
+            gsub(/^[ \t]+|[ \t]+$/, "", line)
+            if (line == "") next
+            if (line ~ /^-+(\+-+)*$/) next
+            if (line ~ /^\([0-9]+ rows?\)$/) next
+            if (!header++) next
+            count = split(line, field, "|")
+            out = ""
+            for (i = 1; i <= count; i++) {
+                gsub(/^[ \t]+|[ \t]+$/, "", field[i])
+                out = (i == 1 ? field[i] : out "|" field[i])
+            }
+            print out
+        }'
+}
+
+# topic_room_id TOPIC
+# Print the room ID of one topic name. Print nothing for an absent topic.
+# Return 1 when the query fails.
+topic_room_id() {
+    local out
+    out="$(import_cql "SELECT room_id FROM chat_uuid.chat_room WHERE name = '$1' ALLOW FILTERING;" 2> /dev/null)" \
+        || return 1
+    printf '%s\n' "$out" | cql_rows | head -1
+}
+
+# ownership_proof TOPIC
+# Print the handle that holds the * permission row of one topic. Print
+# nothing and return 1 when the proof fails. The design file holds the three
+# queries.
+ownership_proof() {
+    local topic="$1" room out principals principal handle
+    room="$(topic_room_id "$topic")" || return 1
+    [[ -n "$room" ]] || return 1
+    out="$(import_cql "SELECT principal, permission FROM chat_uuid.auth_metadata WHERE target = $room ALLOW FILTERING;" 2> /dev/null)" \
+        || return 1
+    principals="$(printf '%s\n' "$out" | cql_rows \
+        | awk -F'|' '$2 == "*" { print $1 }')"
+    [[ "$(printf '%s\n' "$principals" | grep -c .)" == '1' ]] || return 1
+    principal="$principals"
+    out="$(import_cql "SELECT handle FROM chat_uuid.chat_user WHERE user_id = $principal;" 2> /dev/null)" \
+        || return 1
+    handle="$(printf '%s\n' "$out" | cql_rows | head -1)"
+    [[ -n "$handle" ]] || return 1
+    printf '%s\n' "$handle"
+}
+
+# index_message_count CLI
+# Print the number of index records. Return 2 for a denied warning, and 1 for
+# a failed read.
+index_message_count() {
+    local cli="$1" out
+    out="$("$cli" register-read --index "$import_register" 2> /dev/null)" \
+        || return 1
+    if printf '%s\n' "$out" \
+        | jq -e -s 'any(.[]; (.type // "") == "warning")' > /dev/null 2>&1; then
+        return 2
+    fi
+    printf '%s\n' "$out" \
+        | jq -s -r '[.[] | select((.type // "record") == "record")] | length' \
+        2> /dev/null
+}
+
+# ensure_index RECEIPT_DIR
+# Make the index ready for one import, and keep the ownership proof in the
+# private host state. Return 1 for every conflict.
+#
+# A saved proof must match the live index. With no saved proof, the index may
+# hold no message, and Mario must hold its * permission row. The function
+# saves the proof before any topic or pointer post.
+ensure_index() {
+    local receipt_dir="$1" cli saved_id saved_owner room proof count status
+    cli="$(import_cli)" || return 2
+
+    if [[ -f "$receipt_dir/index.json" ]]; then
+        saved_id="$(jq -r '.id // ""' "$receipt_dir/index.json" 2> /dev/null)"
+        saved_owner="$(jq -r '.owner // ""' "$receipt_dir/index.json" 2> /dev/null)"
+        room="$(topic_room_id "$import_register")" \
+            || { import_error 'the index read fails'; return 1; }
+        proof="$(ownership_proof "$import_register")" \
+            || { import_error 'the ownership proof fails'; return 1; }
+        if [[ -z "$saved_id" || "$saved_id" != "$room" \
+              || "$saved_owner" != "$proof"
+              || "$proof" != "$import_owner" ]]; then
+            import_error 'the saved index proof does not match the live index'
+            return 1
+        fi
+        return 0
+    fi
+
+    room="$(topic_room_id "$import_register")" \
+        || { import_error 'the index read fails'; return 1; }
+    if [[ -n "$room" ]]; then
+        count="$(index_message_count "$cli")"
+        status=$?
+        if (( status == 2 )); then
+            import_error 'the index read returns a denied warning'
+            return 1
+        fi
+        if (( status != 0 )); then
+            import_error 'the index read fails'
+            return 1
+        fi
+        if (( count > 0 )); then
+            import_error "the index holds $count messages and no saved proof"
+            return 1
+        fi
+    else
+        "$cli" add-topic --name "$import_register" > /dev/null 2>&1 \
+            || { import_error 'the new index topic fails'; return 1; }
+        room="$(topic_room_id "$import_register")" \
+            || { import_error 'the index read fails'; return 1; }
+        [[ -n "$room" ]] \
+            || { import_error 'the new index has no room ID'; return 1; }
+    fi
+
+    proof="$(ownership_proof "$import_register")" \
+        || { import_error 'the ownership proof fails'; return 1; }
+    if [[ "$proof" != "$import_owner" ]]; then
+        import_error "the * permission row of the index names $proof, not $import_owner"
+        return 1
+    fi
+
+    mkdir -p "$receipt_dir" || { import_error 'the receipt directory fails'; return 1; }
+    chmod 700 "$receipt_dir"
+    ( umask 077
+      jq -cS -n --arg id "$room" --arg owner "$proof" \
+          '{id: $id, owner: $owner}' > "$receipt_dir/index.json" ) \
+        || { import_error 'the index proof does not reach a private file'; return 1; }
+    chmod 600 "$receipt_dir/index.json"
+    return 0
+}
+
+# write_snapshot_header FILE  Write the provenance header of the snapshot.
+write_snapshot_header() {
+    local manifest="$import_bundle/content-manifest.json"
+    {
+        printf 'register snapshot\n'
+        printf 'bundle: %s\n' \
+            "$(jq -r '.content_sha256' "$import_bundle/bundle-manifest.json")"
+        printf 'source: %s\n' "$(jq -r '.source_sha256' "$manifest")"
+        printf 'source date: %s\n' "$(jq -r '.mapping.source_date' "$manifest")"
+        printf 'source basis: %s\n' \
+            "$(jq -r '.mapping.source_basis' "$manifest")"
+        printf 'parts: %s\n' "$(jq -r '.parts | length' "$manifest")"
+    } > "$1"
+}
+
+# write_entry_header FILE INDEX  Write the provenance header of one entry.
+write_entry_header() {
+    local file="$1" index="$2" manifest="$import_bundle/content-manifest.json"
+    {
+        printf 'register entry\n'
+        printf 'bundle: %s\n' \
+            "$(jq -r '.content_sha256' "$import_bundle/bundle-manifest.json")"
+        printf 'key: %s\n' "$(jq -r ".entries[$index].key" "$manifest")"
+        printf 'title: %s\n' "$(jq -r ".entries[$index].title" "$manifest")"
+        printf 'source: %s\n' "$(jq -r '.source_sha256' "$manifest")"
+    } > "$file"
+}
+
+# topic_candidates TOPIC
+# Print every message that this bundle plans for one topic, as
+# <kind>|<index>|<payload file>. A retry compares a stored message of no
+# receipt with these payloads.
+topic_candidates() {
+    local topic="$1" manifest="$import_bundle/content-manifest.json"
+    local source_hash count index entry_topic
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    if [[ "$topic" == "$(snapshot_topic "$source_hash")" ]]; then
+        write_snapshot_header "$import_work/candidate-header.txt"
+        printf 'snapshot-header|0|%s\n' "$import_work/candidate-header.txt"
+        count="$(jq -r '.parts | length' "$manifest")"
+        for (( index = 0; index < count; index++ )); do
+            printf 'snapshot-part|%s|%s\n' "$index" \
+                "$import_bundle/$(jq -r ".parts[$index].path" "$manifest")"
+        done
+        printf 'session|0|%s\n' \
+            "$import_bundle/$(jq -r '.session.path' "$manifest")"
+        return 0
+    fi
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        [[ "$entry_topic" == "$topic" ]] || continue
+        write_entry_header "$import_work/candidate-header.txt" "$index"
+        printf 'entry-header|0|%s\n' "$import_work/candidate-header.txt"
+        printf 'entry|0|%s\n' \
+            "$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
+        return 0
+    done
+    return 0
+}
+
+# adopt_message TOPIC MESSAGE_ID LIVE_FILE RECEIPT_FILE
+# Take a stored message of no receipt when its bytes match one payload that
+# this bundle plans for the topic. A crash between a post and its receipt
+# leaves exactly that state. The receipt then lets the retry send the same
+# request ID. Return 1 when no payload matches.
+adopt_message() {
+    local topic="$1" message_id="$2" live_file="$3" receipt_file="$4"
+    local row kind index path request_id
+    jq -j --arg id "$message_id" 'select(.id == $id) | .text' "$live_file" \
+        > "$import_work/adopt.text" 2> /dev/null
+    while IFS='|' read -r kind index path; do
+        [[ -n "$kind" ]] || continue
+        cmp -s "$path" "$import_work/adopt.text" || continue
+        request_id="$(request_id_for "$import_bundle/bundle-manifest.json" \
+            "$kind" "$topic" "$index")"
+        [[ -n "$request_id" ]] || return 1
+        ( umask 077
+          jq -cS -n --arg request "$request_id" --arg message "$message_id" \
+            --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+            '{requestId: $request, messageId: $message, kind: $kind,
+              topic: $topic, index: $index}' >> "$receipt_file" )
+        return 0
+    done < <(topic_candidates "$topic")
+    return 1
+}
+
+# check_one_target TOPIC RECEIPT_FILE RETRY
+# Check one target topic before a write. An absent topic passes.
+#
+# On a fresh import, RETRY holds no value, and an existing target topic stops
+# the import. On a retry of this bundle, an existing topic passes when every
+# stored message of no receipt matches one planned payload. An empty topic
+# also passes, because a stopped run creates a topic before its first post.
+#
+# RETRY cannot come from the receipt file alone. A run that stops after its
+# first post leaves a stored message and no receipt. The caller reads the host
+# state of this bundle before the index step and passes the answer here.
+check_one_target() {
+    local topic="$1" receipt_file="$2" retry="${3:-}" room out live
+    room="$(topic_room_id "$topic")" \
+        || { import_error "the read of $topic fails"; return 1; }
+    [[ -n "$room" ]] || return 0
+    if [[ "$retry" != 'true' ]]; then
+        import_error "the target topic $topic exists already"
+        return 1
+    fi
+    if [[ ! -f "$receipt_file" ]]; then
+        : > "$receipt_file"
+        chmod 600 "$receipt_file"
+    fi
+    out="$("$import_cli_path" messages "$topic" --format records 2> /dev/null)" \
+        || { import_error "the readback of $topic fails"; return 1; }
+    printf '%s\n' "$out" > "$import_work/target.jsonl"
+    while IFS= read -r live; do
+        [[ -n "$live" ]] || continue
+        if jq -e -s --arg id "$live" --arg topic "$topic" \
+            'any(.[]; .messageId == $id and .topic == $topic)' \
+            "$receipt_file" > /dev/null 2>&1; then
+            continue
+        fi
+        if adopt_message "$topic" "$live" "$import_work/target.jsonl" \
+            "$receipt_file"; then
+            continue
+        fi
+        import_error "the topic $topic holds the message $live of no receipt and of other bytes"
+        return 1
+    done < <(printf '%s\n' "$out" | jq -r 'select(.id) | .id' 2> /dev/null)
+    return 0
+}
+
+# check_target_topics BUNDLE [RECEIPT_FILE] [RETRY]
+# Check every target name of one bundle before the first write.
+check_target_topics() {
+    local bundle="$1" receipt_file="${2:-}" retry="${3:-}"
+    local source_hash topic count index
+    source_hash="$(jq -r '.source_sha256' "$bundle/content-manifest.json" \
+        2> /dev/null)"
+    [[ -n "$source_hash" ]] \
+        || { import_error 'the bundle holds no source hash'; return 1; }
+    check_one_target "$(snapshot_topic "$source_hash")" "$receipt_file" \
+        "$retry" || return 1
+    count="$(jq -r '.entries | length' "$bundle/content-manifest.json")"
+    for (( index = 0; index < count; index++ )); do
+        topic="$(jq -r ".entries[$index].topic" \
+            "$bundle/content-manifest.json")"
+        check_one_target "$topic" "$receipt_file" "$retry" || return 1
+    done
+    return 0
+}
+
+# load_receipts RECEIPT_FILE
+# Check every receipt line. Return 1 for a malformed file.
+load_receipts() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
+    if ! jq -e -s 'all(.[]; (.requestId | type) == "string"
+                            and (.messageId | type) == "string"
+                            and (.kind | type) == "string"
+                            and (.topic | type) == "string")' \
+        "$file" > /dev/null 2>&1; then
+        import_error 'the receipt file holds a malformed line'
+        return 1
+    fi
+    return 0
+}
+
+# receipt_message_id RECEIPT_FILE REQUEST_ID
+# Print the stored message ID of one request, or nothing.
+receipt_message_id() {
+    [[ -f "$1" ]] || return 0
+    jq -r --arg id "$2" 'select(.requestId == $id) | .messageId' "$1" \
+        2> /dev/null | head -1
+}
+
+# request_id_for MANIFEST KIND TOPIC INDEX
+# Print the request ID that pack derived for one message.
+request_id_for() {
+    jq -r --arg kind "$2" --arg topic "$3" --argjson index "$4" \
+        '[.requests[] | select(.kind == $kind and .topic == $topic
+                               and .index == $index) | .request_id][0] // ""' \
+        "$1"
+}
+
+# resolve_uncertain RECEIPT_DIR KIND REQUEST_TOPIC INDEX FILE TARGET REQUEST_ID
+# Read one topic after an uncertain post. A stored message with the posted
+# bytes and no receipt takes a receipt now. The run still stops with 75,
+# because the core reported an uncertain outcome. The receipt keeps a later
+# run from finding a message of no receipt.
+resolve_uncertain() {
+    local receipt_dir="$1" kind="$2" topic="$3" index="$4" file="$5"
+    local target="$6" request_id="$7" out live
+    out="$("$import_cli_path" messages "$target" --format records \
+        2> /dev/null)" || return 0
+    printf '%s\n' "$out" > "$import_work/uncertain.jsonl"
+    while IFS= read -r live; do
+        [[ -n "$live" ]] || continue
+        if [[ -n "$(receipt_message_id "$receipt_dir/receipts.jsonl" \
+            "$request_id")" ]]; then
+            return 0
+        fi
+        if jq -e -s --arg id "$live" 'any(.[]; .messageId == $id)' \
+            "$receipt_dir/receipts.jsonl" > /dev/null 2>&1; then
+            continue
+        fi
+        jq -j --arg id "$live" 'select(.id == $id) | .text' \
+            "$import_work/uncertain.jsonl" > "$import_work/uncertain.text" \
+            2> /dev/null
+        if cmp -s "$file" "$import_work/uncertain.text"; then
+            ( umask 077
+              jq -cS -n --arg request "$request_id" --arg message "$live" \
+                --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+                '{requestId: $request, messageId: $message, kind: $kind,
+                  topic: $topic, index: $index}' \
+                >> "$receipt_dir/receipts.jsonl" )
+            return 0
+        fi
+    done < <(printf '%s\n' "$out" | jq -r 'select(.id) | .id' 2> /dev/null)
+    return 0
+}
+
+# post_once RECEIPT_DIR KIND REQUEST_TOPIC INDEX FILE [POST_TOPIC]
+# Post one payload with its derived request ID, and keep a receipt. Print the
+# message ID. A pointer names its target topic in the request and reaches the
+# index, so POST_TOPIC can differ from REQUEST_TOPIC.
+#
+# A repeated request ID returns the first message ID, so a retry makes no
+# second message. A stored receipt with another message ID stops the import.
+post_once() {
+    local receipt_dir="$1" kind="$2" topic="$3" index="$4" file="$5"
+    local target="${6:-$3}"
+    local request_id stored out status message_id
+    request_id="$(request_id_for "$import_bundle/bundle-manifest.json" \
+        "$kind" "$topic" "$index")"
+    [[ -n "$request_id" ]] \
+        || { import_error "the bundle holds no request ID for $kind in $topic"; return 1; }
+    stored="$(receipt_message_id "$receipt_dir/receipts.jsonl" "$request_id")"
+    out="$("$import_cli_path" post --topic "$target" \
+        --requestId "$request_id" < "$file" 2> /dev/null)"
+    status=$?
+    if (( status == 75 )); then
+        out="$("$import_cli_path" post --topic "$target" \
+            --requestId "$request_id" < "$file" 2> /dev/null)"
+        status=$?
+        if (( status != 0 )); then
+            resolve_uncertain "$receipt_dir" "$kind" "$topic" "$index" \
+                "$file" "$target" "$request_id"
+            import_error "the post of $kind in $target stays uncertain"
+            return 75
+        fi
+    fi
+    if (( status != 0 )); then
+        import_error "the post of $kind in $target returned $status"
+        return 1
+    fi
+    message_id="$(printf '%s\n' "$out" | jq -r 'select(.messageId) | .messageId' \
+        2> /dev/null | head -1)"
+    if [[ -z "$message_id" ]]; then
+        import_error "the post of $kind in $target returned no message ID"
+        return 75
+    fi
+    if [[ -n "$stored" && "$stored" != "$message_id" ]]; then
+        import_error "the receipt of $kind in $target names another message ID"
+        return 1
+    fi
+    if [[ -z "$stored" ]]; then
+        ( umask 077
+          jq -cS -n --arg request "$request_id" --arg message "$message_id" \
+            --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+            '{requestId: $request, messageId: $message, kind: $kind,
+              topic: $topic, index: $index}' \
+            >> "$receipt_dir/receipts.jsonl" )
+    fi
+    printf '%s\n' "$message_id"
+}
+
+# add_topic_once TOPIC  Create one topic when it is absent.
+add_topic_once() {
+    local topic="$1" room
+    room="$(topic_room_id "$topic")" \
+        || { import_error "the read of $topic fails"; return 1; }
+    [[ -z "$room" ]] || return 0
+    "$import_cli_path" add-topic --name "$topic" > /dev/null 2>&1 \
+        || { import_error "the new topic $topic fails"; return 1; }
+    return 0
+}
+
+# verify_topic TOPIC POSTED_FILE
+# Read one topic and compare every posted message with its bytes. The last
+# line of POSTED_FILE must hold the newest message of the topic.
+verify_topic() {
+    local topic="$1" posted="$2" out row id path last_id newest
+    out="$("$import_cli_path" messages "$topic" --format records 2> /dev/null)" \
+        || { import_error "the readback of $topic fails"; return 1; }
+    printf '%s\n' "$out" > "$import_work/live.jsonl"
+    while IFS= read -r row; do
+        [[ -n "$row" ]] || continue
+        id="$(jq -r '.id' <<< "$row")"
+        path="$(jq -r '.path' <<< "$row")"
+        jq -j --arg id "$id" 'select(.id == $id) | .text' \
+            "$import_work/live.jsonl" > "$import_work/live.text" 2> /dev/null
+        if ! cmp -s "$path" "$import_work/live.text"; then
+            import_error "the readback of $topic shows other bytes for $id"
+            return 1
+        fi
+    done < "$posted"
+    last_id="$(jq -r '.id' "$posted" | tail -1)"
+    newest="$(jq -r 'select(.id) | .id' "$import_work/live.jsonl" \
+        2> /dev/null | tail -1)"
+    if [[ "$last_id" != "$newest" ]]; then
+        import_error "the newest message of $topic is $newest, not $last_id"
+        return 1
+    fi
+    return 0
+}
+
+# agent_members [OWNER]  Print the agent login of every member that this host
+# declares, one name on each line, in sorted order. OWNER leaves the list,
+# because the owner value lives in secrets.env and needs no password file.
+#
+# secrets.env declares the members. Each line of the form
+# CHAT_USER_<NAME>_PASSWORD=<value> names one login. So the list comes from the
+# host, and no name stands in this file. A host with another set of agents
+# needs no change here. A declared member with no password file is a gap, and
+# import_credentials names it. See CHAT-sufkkqon.
+agent_members() {
+    local owner="${1:-}" secrets_file
+    secrets_file="${CHAT_DEPLOYMENT_SECRETS_FILE:-$CHAT_DEPLOYMENT_HOME/secrets.env}"
+    [[ -r "$secrets_file" ]] || return 0
+    sed -nE 's/^CHAT_USER_([A-Z0-9]+)_PASSWORD=.+$/\1/p' "$secrets_file" \
+        | awk '{ print toupper(substr($0, 1, 1)) tolower(substr($0, 2)) }' \
+        | awk -v owner="$owner" '$0 != owner' \
+        | sort -u
+}
+
+# join_all TOPIC  Join every agent member and the owner to one topic.
+join_all() {
+    local topic="$1" name file secrets_dir
+    secrets_dir="${CHAT_DEPLOYMENT_SECRETS_DIR:-$CHAT_DEPLOYMENT_HOME/secrets}"
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        file="$secrets_dir/$name.password"
+        CHAT_SHELL_USER="$name" CHAT_SHELL_PASSWORD_FILE="$file" \
+            "$import_cli_path" join "$topic" > /dev/null 2>&1 \
+            || { import_error "$name does not join $topic"; return 1; }
+    done < <(agent_members "$import_owner")
+    CHAT_SHELL_USER="$import_owner" \
+        CHAT_SHELL_PASSWORD_FILE="$import_work/owner.password" \
+        "$import_cli_path" join "$topic" > /dev/null 2>&1 \
+        || { import_error "the owner does not join $topic"; return 1; }
+    return 0
+}
+
+# import_posts RECEIPT_DIR
+# Post the snapshot topic, every entry topic, and every pointer. The order
+# follows the design file. No pointer precedes the readback of its topic.
+import_posts() {
+    local receipt_dir="$1"
+    local manifest="$import_bundle/content-manifest.json"
+    local source_hash source_date basis topic count index part_path
+    local message_id entry_topic key title bundle_hash status
+
+    manifest="$import_bundle/content-manifest.json"
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    source_date="$(jq -r '.mapping.source_date' "$manifest")"
+    basis="$(jq -r '.mapping.source_basis' "$manifest")"
+    bundle_hash="$(jq -r '.content_sha256' \
+        "$import_bundle/bundle-manifest.json")"
+    topic="$(snapshot_topic "$source_hash")"
+    count="$(jq -r '.parts | length' "$manifest")"
+
+    add_topic_once "$topic" || return 1
+    : > "$import_work/posted.jsonl"
+
+    write_snapshot_header "$import_work/snapshot-header.txt"
+    message_id="$(post_once "$receipt_dir" snapshot-header "$topic" 0 \
+        "$import_work/snapshot-header.txt")" || return $?
+    jq -cS -n --arg id "$message_id" \
+        --arg path "$import_work/snapshot-header.txt" \
+        '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+
+    for (( index = 0; index < count; index++ )); do
+        part_path="$import_bundle/$(jq -r ".parts[$index].path" "$manifest")"
+        message_id="$(post_once "$receipt_dir" snapshot-part "$topic" \
+            "$index" "$part_path")" || return $?
+        jq -cS -n --arg id "$message_id" --arg path "$part_path" \
+            '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+    done
+
+    part_path="$import_bundle/$(jq -r '.session.path' "$manifest")"
+    message_id="$(post_once "$receipt_dir" session "$topic" 0 "$part_path")" \
+        || return $?
+    jq -cS -n --arg id "$message_id" --arg path "$part_path" \
+        '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+
+    verify_topic "$topic" "$import_work/posted.jsonl" || return 1
+    join_all "$topic" || return 1
+
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        key="$(jq -r ".entries[$index].key" "$manifest")"
+        title="$(jq -r ".entries[$index].title" "$manifest")"
+        part_path="$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
+        add_topic_once "$entry_topic" || return 1
+        : > "$import_work/posted.jsonl"
+        write_entry_header "$import_work/entry-header.txt" "$index"
+        message_id="$(post_once "$receipt_dir" entry-header "$entry_topic" 0 \
+            "$import_work/entry-header.txt")" || return $?
+        jq -cS -n --arg id "$message_id" \
+            --arg path "$import_work/entry-header.txt" \
+            '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+        message_id="$(post_once "$receipt_dir" entry "$entry_topic" 0 \
+            "$part_path")" || return $?
+        jq -cS -n --arg id "$message_id" --arg path "$part_path" \
+            '{id: $id, path: $path}' >> "$import_work/posted.jsonl"
+        verify_topic "$entry_topic" "$import_work/posted.jsonl" || return 1
+        join_all "$entry_topic" || return 1
+    done
+
+    : > "$import_work/pointers.jsonl"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        key="$(jq -r ".entries[$index].key" "$manifest")"
+        title="$(jq -r ".entries[$index].title" "$manifest")"
+        printf '%s | %s | %s | %s\n' "$key" "$entry_topic" "$bundle_hash" \
+            "$title" > "$import_work/pointer.txt"
+        message_id="$(post_once "$receipt_dir" entry-pointer "$entry_topic" 0 \
+            "$import_work/pointer.txt" "$import_register")" || return $?
+        printf '%s\n' "$message_id" >> "$import_work/pointers.jsonl"
+    done
+
+    printf '%s | %s | %s | %s\n' "$(snapshot_key "$source_hash")" "$topic" \
+        "$bundle_hash" "Forward register snapshot $source_date" \
+        > "$import_work/pointer.txt"
+    message_id="$(post_once "$receipt_dir" snapshot-pointer "$topic" 0 \
+        "$import_work/pointer.txt" "$import_register")" || return $?
+    printf '%s\n' "$message_id" >> "$import_work/pointers.jsonl"
+
+    "$import_cli_path" register-read --index "$import_register" \
+        > "$import_work/index.jsonl" 2> /dev/null \
+        || { import_error 'the index readback fails'; return 1; }
+    while IFS= read -r message_id; do
+        [[ -n "$message_id" ]] || continue
+        if ! jq -e -s --arg id "$message_id" 'any(.[]; .id == $id)' \
+            "$import_work/index.jsonl" > /dev/null 2>&1; then
+            import_error "the index readback misses the pointer $message_id"
+            return 1
+        fi
+    done < "$import_work/pointers.jsonl"
+    return 0
+}
+
+# import_cli  Print the path of the shell CLI, or refuse.
+import_cli() {
+    local cli="${CHAT_SHELL_CLI:-$chat_register_tools_dir/chat-shell-cli}"
+    [[ -x "$cli" ]] || { import_error 'select an executable CHAT_SHELL_CLI.'; return 2; }
+    printf '%s\n' "$cli"
+}
+
+# import_credentials WORK_DIR OWNER
+# Check every agent login and write the owner password file. Return 77 when one
+# login is absent. The function makes no live call, and it prints no secret.
+#
+# The owner value sits in secrets.env, under the key of its own login. So the
+# owner name arrives at run time, and no name stands here. See CHAT-sufkkqon.
+import_credentials() {
+    local work_dir="$1" owner="$2" secrets_dir secrets_file name value owner_key
+    secrets_dir="${CHAT_DEPLOYMENT_SECRETS_DIR:-$CHAT_DEPLOYMENT_HOME/secrets}"
+    secrets_file="${CHAT_DEPLOYMENT_SECRETS_FILE:-$CHAT_DEPLOYMENT_HOME/secrets.env}"
+    local members=0
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        if [[ ! -r "$secrets_dir/$name.password" ]]; then
+            import_error "cannot read the login of $name at $secrets_dir/$name.password. Run setup-secrets."
+            return 77
+        fi
+        members=$(( members + 1 ))
+    done < <(agent_members "$owner")
+    if (( members == 0 )); then
+        import_error "no agent login is in $secrets_dir. Run setup-secrets."
+        return 77
+    fi
+    if [[ ! -r "$secrets_file" ]]; then
+        import_error "cannot read $secrets_file. Run setup-secrets."
+        return 77
+    fi
+    owner_key="CHAT_USER_$(printf '%s' "$owner" | tr '[:lower:]' '[:upper:]')_PASSWORD"
+    value="$(sed -n "s/^$owner_key=//p" "$secrets_file" \
+        | head -n 1)"
+    if [[ -z "$value" ]]; then
+        import_error "the owner login is absent from $secrets_file. Run setup-secrets --owner."
+        return 77
+    fi
+    ( umask 077; printf '%s\n' "$value" > "$work_dir/owner.password" ) \
+        || { import_error 'the owner login does not reach a private file'; return 1; }
+    return 0
+}
+
+# export_caller WORK_DIR USER
+# Export the values that every shell CLI call reads. A create and an import
+# make the same calls, so they share this one step.
+#
+# The caller login is the load-bearing value. A call with no login reaches the
+# core as no user, and the core then writes no owner row for a new room. A
+# create in that state leaves a room that no user owns. See CHAT-egdtmwfc.
+export_caller() {
+    local work_dir="$1" user="$2"
+    # The core ports come from the caller or the installed default. An ssh
+    # tunnel moves them together, so a moved core port moves the management
+    # port with it. See CHAT-kewgzgbf and CHAT-egdtmwfc.
+    chat_register_connection || return $?
+    export CHAT_SHELL_USER="$user"
+    export CHAT_SHELL_PASSWORD_FILE="$work_dir/owner.password"
+}
+
+# import_preflight BUNDLE USER WORK_DIR
+# Run every check that precedes an import or a verification. The order puts
+# the offline checks first, so a caller error makes no live call. The function
+# sets import_cli_path, and it exports the login of the owner.
+import_preflight() {
+    local bundle="$1" user="$2" work_dir="$3" cli status reported_user
+    local bad_topic
+
+    [[ "$user" == 'Mario' ]] \
+        || { import_error 'the first delivery accepts the import user Mario alone'; return 2; }
+
+    # The caller or selected profile supplies identity and connection values.
+
+    check_bundle "$bundle" || return
+    # Every entry topic carries the register name as a prefix. A bundle
+    # of another register stops here, before any live call. See
+    # CHAT-jmnjvupr.
+    bad_topic="$(jq -r --arg prefix "$import_register-fr-" '
+        [.entries[] | select(.topic | startswith($prefix) | not) | .topic][0]
+        // ""' "$bundle/content-manifest.json" 2> /dev/null)"
+    if [[ -n "$bad_topic" ]]; then
+        import_error "the entry topic $bad_topic does not start with $import_register-fr-"
+        return 2
+    fi
+    chat_deployment_require_installed || return 2
+    chat_register_load_profile || return 2
+
+    cli="$(import_cli)" || return
+    import_credentials "$work_dir" "$user"
+    status=$?
+    if (( status != 0 )); then
+        return "$status"
+    fi
+
+    export_caller "$work_dir" "$user" || return $?
+    # Every later function takes the owner login from this value, and no
+    # function names it. See CHAT-sufkkqon.
+    import_owner="$user"
+
+    if ! curl --connect-timeout 2 --max-time 3 --fail --silent \
+        --output /dev/null \
+        "http://127.0.0.1:${CORE_MGMT_PORT}/actuator/health"; then
+        import_error "the core answers no health check on port $CORE_MGMT_PORT"
+        return 69
+    fi
+
+    "$cli" whoami > "$work_dir/whoami" 2> "$work_dir/whoami-err"
+    status=$?
+    if (( status != 0 )); then
+        import_error "the shell CLI returned $status for whoami"
+        if (( status == 69 || status == 75 )); then
+            return "$status"
+        fi
+        return 2
+    fi
+    # whoami prints one UUID, one user, one display name, and one avatar.
+    reported_user="$(sed -nE \
+        's/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} : ([^ |]+) \| .*/\1/p' \
+        "$work_dir/whoami")"
+    if [[ "$(wc -l < "$work_dir/whoami")" -ne 1 \
+          || "$reported_user" != "$user" ]]; then
+        import_error "the shell CLI does not report the identity $user"
+        return 2
+    fi
+
+    import_cli_path="$cli"
+    return 0
+}
+
+# apply_bundle --bundle DIR --as Mario
+# Import one bundle into the installed the selected deployment.
+apply_bundle() {
+    local bundle='' user='' work_dir status bundle_hash receipt_dir
+    local register_flag='' register_seen='false'
+    while (( $# )); do
+        case "$1" in
+            --bundle)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
+                ;;
+            --as)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --as needs a value'
+                    return
+                fi
+                user="$2"
+                shift 2
+                ;;
+            --register)
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
+                ;;
+            *)
+                import_error "apply does not take the argument $1"
+                return
+                ;;
+        esac
+    done
+    [[ -n "$bundle" && -n "$user" ]] \
+        || { import_error 'apply needs --bundle and --as'; return; }
+    import_set_register "$register_flag" "$register_seen" || return 2
+
+    work_dir="$(mktemp -d)" \
+        || { import_error 'no temporary directory'; return; }
+    import_preflight "$bundle" "$user" "$work_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
+    bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+    receipt_dir="$CHAT_DEPLOYMENT_HOME/data/register-import/$import_register/$bundle_hash"
+    import_bundle="$bundle"
+    import_work="$work_dir"
+
+    # A run of this bundle started here before when the host holds its index
+    # proof or one receipt. That answer must come before the index step,
+    # because the index step writes the proof itself.
+    local retry='false'
+    if [[ -s "$receipt_dir/receipts.jsonl" || -f "$receipt_dir/index.json" ]]
+    then
+        retry='true'
+    fi
+
+    mkdir -p "$receipt_dir" \
+        || { rm -rf "$work_dir"; import_error 'the receipt directory fails'; return; }
+    chmod 700 "$receipt_dir"
+    if ! load_receipts "$receipt_dir/receipts.jsonl"; then
+        rm -rf "$work_dir"
+        return 1
+    fi
+
+    check_target_topics "$bundle" "$receipt_dir/receipts.jsonl" "$retry"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    ensure_index "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    join_all "$import_register"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
+    import_posts "$receipt_dir"
+    status=$?
+    rm -rf "$work_dir"
+    if (( status != 0 )); then
+        return "$status"
+    fi
+    printf 'import: bundle %s\n' "$bundle_hash"
+    printf 'import: receipts %s\n' "$receipt_dir/receipts.jsonl"
+    printf 'import: messages %s\n' \
+        "$(grep -c . "$receipt_dir/receipts.jsonl")"
+    return 0
+}
+
+# has_warning FILE  Status 0 when one record of FILE is a warning.
+has_warning() {
+    jq -e -s 'any(.[]; (.type // "") == "warning")' "$1" > /dev/null 2>&1
+}
+
+# read_topic TOPIC OUT_FILE
+# Read one topic into OUT_FILE. Return 1 for a failed read and for a denied
+# warning, even when the read returns status 0.
+read_topic() {
+    local topic="$1" out_file="$2"
+    "$import_cli_path" messages "$topic" --format records > "$out_file" \
+        2> /dev/null || { import_error "the read of $topic fails"; return 1; }
+    if has_warning "$out_file"; then
+        import_error "the read of $topic gives a denied warning"
+        return 1
+    fi
+    return 0
+}
+
+# message_text LIVE_FILE MESSAGE_ID OUT_FILE
+# Write the exact text of one message into OUT_FILE.
+message_text() {
+    jq -j --arg id "$2" 'select(.id == $id) | .text' "$1" > "$3" 2> /dev/null
+}
+
+# receipt_id RECEIPT_FILE KIND TOPIC [INDEX]
+# Print the message ID of one receipt.
+receipt_id() {
+    local file="$1" kind="$2" topic="$3" index="${4:-}"
+    if [[ -n "$index" ]]; then
+        jq -r --arg kind "$kind" --arg topic "$topic" --argjson index "$index" \
+            'select(.kind == $kind and .topic == $topic and .index == $index)
+             | .messageId' "$file" 2> /dev/null | head -1
+    else
+        jq -r --arg kind "$kind" --arg topic "$topic" \
+            'select(.kind == $kind and .topic == $topic) | .messageId' \
+            "$file" 2> /dev/null | head -1
+    fi
+}
+
+# import_now_ms  Print the epoch in milliseconds.
+import_now_ms() {
+    local ns
+    ns="$(date +%s%N 2> /dev/null)"
+    if [[ "$ns" =~ ^[0-9]+$ ]] && (( ${#ns} >= 16 )); then
+        printf '%s\n' "$(( ns / 1000000 ))"
+    else
+        printf '%s000\n' "$(date +%s)"
+    fi
+}
+
+# verify_content RECEIPT_DIR
+# Rebuild the source from the stored parts, and check every stored range.
+verify_content() {
+    local receipt_dir="$1" manifest topic count index message_id path
+    local source_hash rebuilt_hash entry_topic
+    manifest="$import_bundle/content-manifest.json"
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    topic="$(snapshot_topic "$source_hash")"
+
+    read_topic "$topic" "$import_work/snapshot.jsonl" || return 1
+    : > "$import_work/rebuilt"
+    count="$(jq -r '.parts | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        message_id="$(receipt_id "$receipt_dir/receipts.jsonl" snapshot-part \
+            "$topic" "$index")"
+        [[ -n "$message_id" ]] \
+            || { import_error "no receipt holds part $index"; return 1; }
+        message_text "$import_work/snapshot.jsonl" "$message_id" \
+            "$import_work/part.text"
+        cat "$import_work/part.text" >> "$import_work/rebuilt"
+    done
+    if ! cmp -s "$import_bundle/source.md" "$import_work/rebuilt"; then
+        import_error 'the stored parts do not rebuild the source bytes'
+        return 1
+    fi
+    rebuilt_hash="$(hash_of "$import_work/rebuilt")"
+    if [[ "$rebuilt_hash" != "$source_hash" ]]; then
+        import_error 'the rebuilt source holds another SHA-256'
+        return 1
+    fi
+
+    message_id="$(receipt_id "$receipt_dir/receipts.jsonl" session "$topic" 0)"
+    [[ -n "$message_id" ]] \
+        || { import_error 'no receipt holds the session range'; return 1; }
+    message_text "$import_work/snapshot.jsonl" "$message_id" \
+        "$import_work/session.text"
+    path="$import_bundle/$(jq -r '.session.path' "$manifest")"
+    if ! cmp -s "$path" "$import_work/session.text"; then
+        import_error 'the stored session range holds other bytes'
+        return 1
+    fi
+
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index < count; index++ )); do
+        entry_topic="$(jq -r ".entries[$index].topic" "$manifest")"
+        path="$import_bundle/$(jq -r ".entries[$index].path" "$manifest")"
+        read_topic "$entry_topic" "$import_work/entry.jsonl" || return 1
+        message_id="$(receipt_id "$receipt_dir/receipts.jsonl" entry \
+            "$entry_topic" 0)"
+        [[ -n "$message_id" ]] \
+            || { import_error "no receipt holds the entry of $entry_topic"; return 1; }
+        message_text "$import_work/entry.jsonl" "$message_id" \
+            "$import_work/entry.text"
+        if ! cmp -s "$path" "$import_work/entry.text"; then
+            import_error "the stored range of $entry_topic holds other bytes"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# verify_pointers RECEIPT_DIR
+# Check every pointer of this bundle in the index.
+verify_pointers() {
+    local receipt_dir="$1" manifest count index topic message_id text fields
+    local bundle_hash source_hash
+    manifest="$import_bundle/content-manifest.json"
+    source_hash="$(jq -r '.source_sha256' "$manifest")"
+    bundle_hash="$(jq -r '.content_sha256' \
+        "$import_bundle/bundle-manifest.json")"
+    "$import_cli_path" register-read --index "$import_register" \
+        > "$import_work/index.jsonl" 2> /dev/null \
+        || { import_error 'the index read fails'; return 1; }
+    if has_warning "$import_work/index.jsonl"; then
+        import_error 'the index read gives a denied warning'
+        return 1
+    fi
+    count="$(jq -r '.entries | length' "$manifest")"
+    for (( index = 0; index <= count; index++ )); do
+        if (( index < count )); then
+            topic="$(jq -r ".entries[$index].topic" "$manifest")"
+            message_id="$(receipt_id "$receipt_dir/receipts.jsonl" \
+                entry-pointer "$topic" 0)"
+        else
+            topic="$(snapshot_topic "$source_hash")"
+            message_id="$(receipt_id "$receipt_dir/receipts.jsonl" \
+                snapshot-pointer "$topic" 0)"
+        fi
+        [[ -n "$message_id" ]] \
+            || { import_error "no receipt holds the pointer of $topic"; return 1; }
+        message_text "$import_work/index.jsonl" "$message_id" \
+            "$import_work/pointer.text"
+        [[ -s "$import_work/pointer.text" ]] \
+            || { import_error "the index misses the pointer of $topic"; return 1; }
+        text="$(cat "$import_work/pointer.text")"
+        fields="$(printf '%s' "$text" | awk -F'|' '{print NF}' | head -1)"
+        if [[ "$fields" != '4' ]]; then
+            import_error "the pointer of $topic holds $fields fields, not 4"
+            return 1
+        fi
+        if [[ "$text" != *"$bundle_hash"* ]]; then
+            import_error "the pointer of $topic names another bundle"
+            return 1
+        fi
+    done
+    return 0
+}
+
+# verify_reads
+# Time five whole session reads, one for each of the four users and one
+# again. Print the median. Return 124 for a read that passes the wrapper
+# budget, and 1 for a failed read or a denied warning.
+verify_reads() {
+    local target="${REGISTER_IMPORT_READ_TARGET_MS:-10000}"
+    local attempt user start finish status median name count index
+    local readers=()
+    # The readers are the agents of this host and the owner. The spec asks for
+    # five reads, so a shorter list repeats from its start. No name stands in
+    # this file. See CHAT-sufkkqon.
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        readers+=("$name")
+    done < <(agent_members "$import_owner")
+    readers+=("$import_owner")
+    count=${#readers[@]}
+    : > "$import_work/times"
+    attempt=0
+    for (( index = 0; index < 5; index++ )); do
+        user="${readers[$(( index % count ))]}"
+        attempt=$(( attempt + 1 ))
+        start="$(import_now_ms)"
+        # The wrapper reads CHAT_REGISTER_TOPIC_NAME. A near miss leaves the
+        # wrapper on the register of the caller's environment, so a check of
+        # one register reads another. See CHAT-tjzxhvjc.
+        env CHAT_REGISTER_TOPIC_NAME="$import_register" \
+            "$chat_register_tools_dir/register" read --as "$user" \
+            > "$import_work/read.jsonl" 2> "$import_work/read.err"
+        status=$?
+        finish="$(import_now_ms)"
+        if (( status == 124 )); then
+            import_error "the read of $user passed its time limit"
+            return 124
+        fi
+        if (( status != 0 )); then
+            import_error "the read of $user returned $status"
+            return 1
+        fi
+        if has_warning "$import_work/read.jsonl"; then
+            import_error "the read of $user gives a denied warning"
+            return 1
+        fi
+        printf '%s\n' "$(( finish - start ))" >> "$import_work/times"
+    done
+    median="$(sort -n "$import_work/times" | sed -n '3p')"
+    if (( median > target )); then
+        import_error "the median read takes $median ms, above the target of $target ms"
+        return 1
+    fi
+    printf '%s\n' "$median"
+    return 0
+}
+
+# verify_bundle --bundle DIR --as Mario
+# Read the destination and prove that it holds this bundle.
+verify_bundle() {
+    local bundle='' user='' work_dir status bundle_hash receipt_dir median
+    local register_flag='' register_seen='false'
+    while (( $# )); do
+        case "$1" in
+            --bundle)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --bundle needs a value'
+                    return
+                fi
+                bundle="$2"
+                shift 2
+                ;;
+            --as)
+                if (( $# < 2 )) || [[ -z "$2" ]]; then
+                    import_error 'the flag --as needs a value'
+                    return
+                fi
+                user="$2"
+                shift 2
+                ;;
+            --register)
+                register_seen='true'
+                if (( $# < 2 )); then
+                    import_error 'the flag --register needs a value'
+                    return
+                fi
+                register_flag="$2"
+                shift 2
+                ;;
+            *)
+                import_error "verify does not take the argument $1"
+                return
+                ;;
+        esac
+    done
+    [[ -n "$bundle" && -n "$user" ]] \
+        || { import_error 'verify needs --bundle and --as'; return; }
+    import_set_register "$register_flag" "$register_seen" || return 2
+
+    work_dir="$(mktemp -d)" \
+        || { import_error 'no temporary directory'; return; }
+    import_preflight "$bundle" "$user" "$work_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
+    bundle_hash="$(jq -r '.content_sha256' "$bundle/bundle-manifest.json")"
+    receipt_dir="$CHAT_DEPLOYMENT_HOME/data/register-import/$import_register/$bundle_hash"
+    import_bundle="$bundle"
+    import_work="$work_dir"
+
+    if [[ ! -s "$receipt_dir/receipts.jsonl" ]]; then
+        rm -rf "$work_dir"
+        import_error "no receipt of this bundle lives in $receipt_dir"
+        return 1
+    fi
+    if ! load_receipts "$receipt_dir/receipts.jsonl"; then
+        rm -rf "$work_dir"
+        return 1
+    fi
+
+    # The content and the pointers come first. The timed reads are the last
+    # gate, so a byte fault reports itself on a host that is too slow for the
+    # target. A stall before that gate fails at the content check instead.
+    # See CHAT-aknmdufn.
+    verify_content "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    verify_pointers "$receipt_dir"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+    median="$(verify_reads)"
+    status=$?
+    if (( status != 0 )); then
+        rm -rf "$work_dir"
+        return "$status"
+    fi
+
+    printf 'verify: bundle %s\n' "$bundle_hash"
+    printf 'verify: source bytes %s\n' \
+        "$(jq -r '.source_bytes' "$bundle/content-manifest.json")"
+    printf 'verify: parts %s\n' \
+        "$(jq -r '.parts | length' "$bundle/content-manifest.json")"
+    printf 'verify: entries %s\n' \
+        "$(jq -r '.entries | length' "$bundle/content-manifest.json")"
+    printf 'verify: read median %s ms\n' "$median"
+    rm -rf "$work_dir"
+    return 0
+}
+
+if [[ "${REGISTER_IMPORT_LIB:-}" == '1' ]]; then
+    return 0
+fi
+
+command="${1:-}"
+shift || true
+case "$command" in
+    pack)
+        pack_bundle "$@"
+        exit $?
+        ;;
+    apply)
+        apply_bundle "$@"
+        exit $?
+        ;;
+    verify)
+        verify_bundle "$@"
+        exit $?
+        ;;
+    *)
+        printf 'register-import: use pack, apply, or verify.\n' >&2
+        exit 2
+        ;;
+esac

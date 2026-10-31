@@ -143,7 +143,7 @@ fi
 code_files=(node-9.env compose.yaml compose.vector-disk.yaml userinit.yml advertise.yml)
 code_dirs=(bin schema ansible)
 shell_scripts=(chat-shell-cli chat-shell-portal chat-shell-portal-tunnel \
-    chat-mcp-stdio generate-agent-instructions node-profile node-profile.sh node-inputs.sh legacy-node-inputs.sh)
+    chat-mcp-stdio generate-agent-instructions node-profile node-profile.sh node-inputs.sh legacy-node-inputs.sh register-lib.sh)
 # The state names. A re-run never touches them.
 state_dirs=(data secrets images)
 for script in "${shell_scripts[@]}"; do

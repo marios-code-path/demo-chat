@@ -2,17 +2,17 @@
 # Offline checks for the register import on a prepared host. No container
 # start, and no real core. See CHAT-jmnjvupr.
 #
-# The suite installs a node-9 home in a temporary directory. It gives that
-# home a stub shell CLI and a stub curl. Every check runs offline.
+# The suite prepares a generic fixture home with a CLI stub and a curl stub.
+# It reads no deployment installer or deployment checkout.
 set -uo pipefail
 
 # The verify step reads through the register wrapper, and the wrapper needs a
 # register value. An install sets it in .envrc. See CHAT-jmnjvupr.
-export NODE_9_REGISTER_TOPIC_NAME=demo-chat-register
+export CHAT_REGISTER_TOPIC_NAME=demo-chat-register
 
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
-importer="$repo_root/node-9/bin/register-import"
+importer="$repo_root/shell-scripts/register-import"
 stub_cli="$repo_root/shell-scripts/fixtures/register-stub-cli"
 
 work="$(mktemp -d)"
@@ -31,21 +31,26 @@ file_mode_of() {
     esac
 }
 
-# -- One installed home, one stub CLI, one stub curl ---------------------
+# -- One generic home, one stub CLI, one stub curl ---------------------
 
-install_home="$work/opt/node-9"
-mkdir -p "$work/opt"
-bundle="$work/vault-bundle"
-mkdir -p "$bundle"
-printf 'fixture-vault-pass\n' > "$bundle/vault-pass"
-printf 'fixture-shared-vault\n' > "$bundle/shared.yml"
-printf 'fixture-owner-vault\n' > "$bundle/owner.yml"
-if ! install_out="$(env XDG_CONFIG_HOME="$work/config" \
-    bash node-9/install --skip-cli --prefix "$install_home" \
-    --vault-source "$bundle" 2>&1)"; then
-    printf 'FAIL the suite cannot install a home: %s\n' "$install_out"
-    exit 1
-fi
+install_home="$work/opt/fixture"
+mkdir -p "$install_home/bin" "$install_home/secrets"
+: > "$install_home/.installed"
+for tool in register register-create register-import register-range register-split register-uuid5 \
+    register-lib.sh node-inputs.sh node-profile.sh; do
+    cp "$repo_root/shell-scripts/$tool" "$install_home/bin/$tool"
+done
+cat > "$work/profile.env" <<'EOF'
+NODE_PROFILE_VERSION=1
+NODE_PROJECT=chat-fixture
+NODE_ID=9
+NODE_KEY_TYPE=uuid
+NODE_RSOCKET_PORT=6890
+NODE_MGMT_PORT=6891
+NODE_REGISTRY_PORT=6892
+NODE_VECTOR_PERSIST=on
+EOF
+export CHAT_NODE_PROFILE="$work/profile.env"
 
 for name in Sigma Theta Phi; do
     printf 'fixture-%s-password\n' "$name" > "$install_home/secrets/$name.password"
@@ -73,10 +78,10 @@ cqlsh_stub="$work/bin/cqlsh-stub"
 cat > "$cqlsh_stub" <<'STUB'
 #!/usr/bin/env bash
 set -uo pipefail
-if [[ "${STUB_REQUIRE_NODE9_ENV:-0}" == '1' \
-      && ( "${NODE9_PROJECT:-}" != 'chat-node-9' \
-           || "${NODE9_VECTOR_PERSIST:-}" != 'on' ) ]]; then
-    printf 'cqlsh-stub: node-9 environment is absent\n' >&2
+if [[ "${STUB_REQUIRE_PROFILE_ENV:-0}" == '1' \
+      && ( "${NODE_PROJECT:-}" != 'chat-fixture' \
+           || "${NODE_VECTOR_PERSIST:-}" != 'on' ) ]]; then
+    printf 'cqlsh-stub: profile environment is absent\n' >&2
     exit 2
 fi
 state="${STUB_STATE:?Set STUB_STATE}"
@@ -163,7 +168,7 @@ cat > "$work/mapping.json" <<EOF
 }
 EOF
 bundle="$work/bundle"
-if ! pack_out="$(NODE9_ALLOW_SOURCE_TREE=1 "$importer" pack \
+if ! pack_out="$(CHAT_ALLOW_SOURCE_TREE=1 "$importer" pack \
     --source "$work/source.md" --mapping "$work/mapping.json" \
     --bundle "$bundle" 2>&1)"; then
     printf 'FAIL the suite cannot pack a bundle: %s\n' "$pack_out"
@@ -205,7 +210,7 @@ calls() {
 # run_apply [extra env assignments] -- ARGS...
 # Run the installed apply with the stub CLI, the stub curl, and a clean
 # stub state. The output holds standard output and standard error. An empty
-# NODE_9_REGISTER_TOPIC_NAME stays empty. A REGISTER value goes on the flag.
+# CHAT_REGISTER_TOPIC_NAME stays empty. A REGISTER value goes on the flag.
 run_apply() {
     reset_stub
     # A fresh state needs fresh receipts. A saved index proof of a room that
@@ -214,7 +219,7 @@ run_apply() {
     local -a reg=()
     [[ -n "${REGISTER:-}" ]] && reg=(--register "$REGISTER")
     out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
-        NODE_9_REGISTER_TOPIC_NAME="${NODE_9_REGISTER_TOPIC_NAME-demo-chat-register}" \
+        CHAT_REGISTER_TOPIC_NAME="${CHAT_REGISTER_TOPIC_NAME-demo-chat-register}" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" "$@" \
         "$install_home/bin/register-import" apply --bundle "$bundle" \
         "${reg[@]}" --as Mario 2>&1)"
@@ -224,7 +229,7 @@ run_apply() {
 # -- The preflight -------------------------------------------------------
 
 reset_stub
-out="$(env -u NODE9_ALLOW_SOURCE_TREE PATH="$stub_bin:$PATH" \
+out="$(env -u CHAT_ALLOW_SOURCE_TREE PATH="$stub_bin:$PATH" \
     STUB_STATE="$stub_state" CHAT_SHELL_CLI="$stub_cli" \
     REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
     "$importer" apply --bundle "$bundle" --as Mario 2>&1)"
@@ -333,21 +338,21 @@ else
     bad 'apply_reads_the_named_register' "exit $status, log: $(head -3 "$stub_state/log" 2>/dev/null)"
 fi
 
-REGISTER=demo-chat-register NODE_9_REGISTER_TOPIC_NAME='' run_apply
+REGISTER=demo-chat-register CHAT_REGISTER_TOPIC_NAME='' run_apply
 if [[ $status -eq 0 && "$(calls)" -gt 0 ]]; then
     ok 'apply_takes_an_explicit_register'
 else
     bad 'apply_takes_an_explicit_register' "exit $status, calls=$(calls), output: $out"
 fi
 
-REGISTER='' NODE_9_REGISTER_TOPIC_NAME='' run_apply
+REGISTER='' CHAT_REGISTER_TOPIC_NAME='' run_apply
 if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
     ok 'apply_needs_a_register'
 else
     bad 'apply_needs_a_register' "exit $status, calls=$(calls), output: $out"
 fi
 
-REGISTER='' NODE_9_REGISTER_TOPIC_NAME='' NODE_9_REGISTER_TOPIC_ID=abc123 run_apply
+REGISTER='' CHAT_REGISTER_TOPIC_NAME='' CHAT_REGISTER_TOPIC_ID=abc123 run_apply
 if [[ $status -eq 2 && "$(calls)" -eq 0 ]]; then
     ok 'apply_refuses_an_id_alone'
 else
@@ -367,8 +372,8 @@ fi
 run_flag() {
     reset_stub
     out="$(bounded 10 env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
-        NODE9_ALLOW_SOURCE_TREE=1 \
-        NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
+        CHAT_ALLOW_SOURCE_TREE=1 \
+        CHAT_REGISTER_TOPIC_NAME=demo-chat-register \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
         "$@" 2>&1)"
     status=$?
@@ -525,14 +530,14 @@ cat > "$work/mapping-plain.json" <<EOF
   ]
 }
 EOF
-if ! NODE9_ALLOW_SOURCE_TREE=1 "$importer" pack \
+if ! CHAT_ALLOW_SOURCE_TREE=1 "$importer" pack \
     --source "$work/source.md" --mapping "$work/mapping-plain.json" \
     --bundle "$work/bundle-plain" > /dev/null 2>&1; then
     bad 'apply_refuses_a_prefixless_entry' 'the suite cannot pack the plain bundle'
 else
     reset_stub
     out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
-        NODE_9_REGISTER_TOPIC_NAME=demo-chat-register \
+        CHAT_REGISTER_TOPIC_NAME=demo-chat-register \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
         "$install_home/bin/register-import" apply --bundle "$work/bundle-plain" \
         --as Mario 2>&1)"
@@ -567,7 +572,7 @@ run_index() {
     out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         STUB_INDEX_PRE="${3:-0}" STUB_DENY_INDEX="${4:-0}" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
-        NODE9_ALLOW_SOURCE_TREE=1 bash -c '
+        CHAT_ALLOW_SOURCE_TREE=1 bash -c '
             REGISTER_IMPORT_LIB=1
             export REGISTER_IMPORT_LIB
             source "$1" || exit 2
@@ -629,7 +634,7 @@ rm -rf "$receipts"
 printf 'demo-chat-register-fr-first\n' >> "$stub_state/topics"
 out="$(env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
     CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
-    NODE9_ALLOW_SOURCE_TREE=1 bash -c '
+    CHAT_ALLOW_SOURCE_TREE=1 bash -c '
         REGISTER_IMPORT_LIB=1
         export REGISTER_IMPORT_LIB
         source "$1" || exit 2
@@ -653,7 +658,7 @@ snapshot_topic_name="demo-chat-register-fr-snapshot-$(sha_of "$work/source.md" |
 # Run one whole apply against a clean stub state and a clean receipt
 # directory. The state stays after the run, so a case can read the log.
 full_apply() {
-    out="$(env -u NODE9_PROJECT -u NODE9_VECTOR_PERSIST \
+    out="$(env -u NODE_PROJECT -u NODE_VECTOR_PERSIST \
         PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" "$@" \
         "$install_home/bin/register-import" apply --bundle "$bundle" \
@@ -686,11 +691,11 @@ fi
 
 reset_stub
 rm -rf "$receipts"
-full_apply STUB_REQUIRE_NODE9_ENV=1
+full_apply STUB_REQUIRE_PROFILE_ENV=1
 if [[ $status -eq 0 ]]; then
-    ok 'apply_loads_node9_environment_for_cql'
+    ok 'apply_loads_profile_environment_for_metadata'
 else
-    bad 'apply_loads_node9_environment_for_cql' \
+    bad 'apply_loads_profile_environment_for_metadata' \
         "exit $status, output: $out"
 fi
 
@@ -1097,7 +1102,7 @@ fi
 # The importer itself names no member. The owner guard and the ownership proof
 # stay named, and CHAT-sufkkqon holds that remaining work.
 member_names="$(grep -nE '(for|in) +(Sigma|Theta|Phi)' \
-    "$repo_root/node-9/bin/register-import" | head -3)"
+    "$repo_root/shell-scripts/register-import" | head -3)"
 if [[ -z "$member_names" ]]; then
     ok 'importer_holds_no_member_name'
 else
@@ -1122,13 +1127,13 @@ create="$install_home/bin/register-create"
 
 # run_create [ENV ASSIGNMENT...] -- ARGS...
 # Run the installed register-create with the stub CLI and the stub cqlsh. The
-# stub cqlsh demands the node-9 environment, so a command that skips
-# node9_load_env fails here. The run is bounded, so a parser loop fails the
+# stub cqlsh demands the profile environment, so a command that skips
+# chat_register_load_profile fails here. The run is bounded, so a parser loop fails the
 # check instead of hanging.
 run_create() {
     out="$(bounded 60 env PATH="$stub_bin:$PATH" STUB_STATE="$stub_state" \
         CHAT_SHELL_CLI="$stub_cli" REGISTER_IMPORT_CQLSH="$cqlsh_stub" \
-        STUB_REQUIRE_NODE9_ENV=1 "$@" 2>&1)"
+        STUB_REQUIRE_PROFILE_ENV=1 "$@" 2>&1)"
     status=$?
 }
 
@@ -1424,7 +1429,7 @@ fi
 
 # -- Register value helpers ---------------------------------------------
 
-lib="$repo_root/node-9/bin/lib.sh"
+lib="$repo_root/shell-scripts/register-lib.sh"
 
 # register_probe PROGRAM [ENV ASSIGNMENT...]
 # Source lib.sh in a clean environment, run one program, and print
@@ -1432,50 +1437,50 @@ lib="$repo_root/node-9/bin/lib.sh"
 register_probe() {
     local program="$1"; shift
     local out status
-    out="$(env -u NODE_9_REGISTER_TOPIC_NAME -u NODE_9_REGISTER_TOPIC_ID "$@" \
+    out="$(env -u CHAT_REGISTER_TOPIC_NAME -u CHAT_REGISTER_TOPIC_ID "$@" \
         bash -c 'source "$0" > /dev/null 2>&1; eval "$1"' \
         "$lib" "$program" 2>&1)"
     status=$?
     printf '%s|%s' "$status" "$out"
 }
 
-out="$(register_probe 'node9_register_value')"
-if [[ "$out" == 2\|* ]] && [[ "$out" == *NODE_9_REGISTER_TOPIC_NAME* ]] \
-   && [[ "$out" == *NODE_9_REGISTER_TOPIC_ID* ]]; then
+out="$(register_probe 'chat_register_value')"
+if [[ "$out" == 2\|* ]] && [[ "$out" == *CHAT_REGISTER_TOPIC_NAME* ]] \
+   && [[ "$out" == *CHAT_REGISTER_TOPIC_ID* ]]; then
     ok 'register_value_needs_a_variable'
 else
     bad 'register_value_needs_a_variable' "$out"
 fi
 
-out="$(register_probe 'node9_register_value' \
-    NODE_9_REGISTER_TOPIC_NAME=demo-chat-register)"
+out="$(register_probe 'chat_register_value' \
+    CHAT_REGISTER_TOPIC_NAME=demo-chat-register)"
 [[ "$out" == '0|demo-chat-register' ]] && ok 'register_value_prefers_the_name' \
     || bad 'register_value_prefers_the_name' "$out"
 
-out="$(register_probe 'node9_register_value' NODE_9_REGISTER_TOPIC_ID=abc)"
+out="$(register_probe 'chat_register_value' CHAT_REGISTER_TOPIC_ID=abc)"
 [[ "$out" == '0|abc' ]] && ok 'register_value_takes_the_id' \
     || bad 'register_value_takes_the_id' "$out"
 
-out="$(register_probe 'node9_register_name' NODE_9_REGISTER_TOPIC_ID=abc)"
+out="$(register_probe 'chat_register_name' CHAT_REGISTER_TOPIC_ID=abc)"
 [[ "$out" == 2\|* ]] && ok 'register_name_refuses_an_id_alone' \
     || bad 'register_name_refuses_an_id_alone' "$out"
 
-out="$(register_probe 'node9_register_name' NODE_9_REGISTER_TOPIC_NAME=Demo)"
+out="$(register_probe 'chat_register_name' CHAT_REGISTER_TOPIC_NAME=Demo)"
 [[ "$out" == 2\|* ]] && ok 'register_name_refuses_an_invalid_env_name' \
     || bad 'register_name_refuses_an_invalid_env_name' "$out"
 
-out="$(register_probe 'node9_register_value' \
-    NODE_9_REGISTER_TOPIC_NAME=demo-chat-register NODE_9_REGISTER_TOPIC_ID=abc)"
+out="$(register_probe 'chat_register_value' \
+    CHAT_REGISTER_TOPIC_NAME=demo-chat-register CHAT_REGISTER_TOPIC_ID=abc)"
 [[ "$out" == '0|demo-chat-register' ]] && ok 'register_value_name_wins' \
     || bad 'register_value_name_wins' "$out"
 
 for bad_name in Demo --x a_b "$(printf 'a%.0s' $(seq 1 38))"; do
-    out="$(register_probe "node9_register_name_error $bad_name")"
+    out="$(register_probe "chat_register_name_error $bad_name")"
     [[ "$out" == 1\|* ]] && ok "register_name_refuses_${bad_name//[^a-zA-Z0-9]/_}" \
         || bad "register_name_refuses_${bad_name//[^a-zA-Z0-9]/_}" "$out"
 done
 
-out="$(register_probe 'node9_register_name_error demo-chat-register')"
+out="$(register_probe 'chat_register_name_error demo-chat-register')"
 [[ "$out" == '0|' ]] && ok 'register_name_accepts_a_good_name' \
     || bad 'register_name_accepts_a_good_name' "$out"
 
