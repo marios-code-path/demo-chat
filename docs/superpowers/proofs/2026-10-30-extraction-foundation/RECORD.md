@@ -88,6 +88,10 @@ The socket and TCP suites required permission for local listeners outside the sa
 All SSH lifecycle checks use stubs. No remote connection or live MCP registration changed.
 The old deployment tunnel bodies remain until the extraction adapters replace them.
 Implementation commit: `a203beeb`.
+Final inspection exposed a source fallback after an explicit CLI selection named a missing executable.
+The new regression failed before the guard and passed after it.
+The expanded profile suite passes 17 checks.
+It also verifies all three forwards for both profiles and stops offset search after one refused probe.
 
 ## A6: Pinned source validation
 
@@ -100,3 +104,5 @@ They reject tracked changes, tracked bytecode, and untracked source hidden by lo
 The cache precondition requires an effective rule from a tracked repository `.gitignore`.
 A negative rule, local exclude, or global exclude cannot satisfy it.
 The current inventory includes temporary compatibility and does not define the final neutral release.
+Implementation commit: `f35dc407`.
+The checker also accepted that exact clean implementation checkout with its intermediate inventory.

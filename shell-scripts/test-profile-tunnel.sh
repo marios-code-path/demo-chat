@@ -68,7 +68,27 @@ for selected in alpha beta; do
         > "$work/out" 2> "$work/error" || status=$?
     label="$selected profile supplies the SSH forwarding ports"
     check grep -Fq "127.0.0.1:$((port + 100)):127.0.0.1:$port" "$work/out"
+    for delta in 1 2; do
+        label="$selected profile supplies forwarding port $((port + delta))"
+        check grep -Fq "127.0.0.1:$((port + delta + 100)):127.0.0.1:$((port + delta))" "$work/out"
+    done
 done
+cat > "$work/refused-check" <<'EOF'
+#!/usr/bin/env bash
+printf 'refused\n' >> "$CHAT_TEST_CALLS"
+exit 2
+EOF
+chmod +x "$work/refused-check"
+: > "$work/calls"
+status=0
+CHAT_NODE_PROFILE="$repo/shell-scripts/fixtures/profiles/alpha.env" \
+    CHAT_REMOTE_TCP_CHECK="$work/refused-check" CHAT_REMOTE_TUNNEL="$general/chat-tunnel" \
+    CHAT_TEST_CALLS="$work/calls" bash "$repo/shell-scripts/chat-remote" example.test non-persistent true \
+    > "$work/out" 2> "$work/error" || status=$?
+label='a refused availability probe preserves status 2'
+check test "$status" -eq 2
+label='a refused probe stops search before another probe or tunnel'
+check test "$(cat "$work/calls")" = refused
 sed -e 's/15890/65000/' -e 's/15891/65001/' -e 's/15892/65002/' \
     "$repo/shell-scripts/fixtures/profiles/alpha.env" > "$work/high-ports.env"
 : > "$work/calls"
@@ -83,5 +103,23 @@ label='a profile offset overflow returns status 2'
 check test "$status" -eq 2
 label='an overflowing offset starts no TCP probe or CLI'
 check test ! -s "$work/calls"
+mkdir -p "$work/source/shell-scripts"
+cat > "$work/source/shell-scripts/chat-shell-portal" <<'EOF'
+#!/usr/bin/env bash
+printf 'unexpected source fallback\n' > "$CHAT_TEST_SENTINEL"
+exit 1
+EOF
+chmod +x "$work/source/shell-scripts/chat-shell-portal"
+rm -f "$work/sentinel"
+status=0
+env PATH="$general:$PATH" CHAT_NODE_PROFILE="$repo/shell-scripts/fixtures/profiles/alpha.env" \
+    CHAT_SHELL_REPO="$work/source" CHAT_SHELL_CLI="$work/missing-cli" \
+    CHAT_PORTAL_HOST=example.test CHAT_SHELL_USER=Agent CHAT_SHELL_PASSWORD=fixture-password \
+    CHAT_SHELL_LIB="$work/lib" CHAT_PORTAL_OFFSET=0 \
+    CHAT_PORTAL_STATE_DIR="$work/state-explicit" CHAT_PORTAL_SOCKET_DIR="$work/socket-explicit" \
+    CHAT_TEST_CALLS="$work/calls" CHAT_TEST_SENTINEL="$work/sentinel" \
+    bash "$general/chat-shell-portal-tunnel" start > "$work/out" 2> "$work/error" || status=$?
+label='a missing explicit CLI cannot select the source portal'
+check test ! -e "$work/sentinel"
 printf '%s checks, %s failures\n' "$checks" "$failures"
 test "$failures" -eq 0

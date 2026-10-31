@@ -162,6 +162,9 @@ case "$action" in
         [[ -n "$user" ]] || fail 'set CHAT_SHELL_USER for the portal login.'
         [[ -x "$tunnel" && -x "$tcp_check" ]] \
             || fail 'the selected general tunnel tools are missing.'
+        if [[ "${CHAT_SHELL_CLI+x}" && ! -x "$installed_cli" ]]; then
+            fail "the explicit shell CLI is not executable: $installed_cli"
+        fi
         if [[ -x "$installed_cli" ]]; then
             portal="$installed_cli"
             portal_mode=installed

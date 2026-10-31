@@ -33,6 +33,7 @@ Readiness checks establish local listeners only.
 
 The portal tunnel helper resolves its TCP check, tunnel, and CLI from its own tool directory.
 `CHAT_TCP_CHECK`, `CHAT_TUNNEL_COMMAND`, and `CHAT_SHELL_CLI` provide explicit executable overrides.
+An explicit missing CLI causes refusal before the source portal can execute.
 MCP installers accept explicit `CHAT_DEPLOYMENT_HOME`, `CHAT_DEPLOYMENT_BIN`, `CHAT_REGISTER_COMMAND`, and `CHAT_MCP_STDIO` inputs.
 They do not discover an installed home or sibling checkout.
 Their default register and launcher come from their own tool directory.
