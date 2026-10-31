@@ -9,7 +9,7 @@ The general verifier compares that digest with the caller's expected composition
 Node-9 supplies its expected composition through its single composition definition.
 Technology: existing Python builder, Bash verification, JSON, SHA-256, Maven, and Paketo buildpacks.
 
-Status: proposed plan. No implementation is authorized.
+Status: approved for implementation. Foundation implementation review remains a prerequisite.
 Review issue: CHAT-gyfhbsbd. Implementation owner: CHAT-scbvcozr.
 Prerequisite: reviewed foundation implementation under CHAT-qdsmackk.
 The repository extraction plan consumes the reviewed result before its final release pin.

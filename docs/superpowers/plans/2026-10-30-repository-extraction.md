@@ -8,7 +8,7 @@ Architecture: node-9 selects profiles, translates legacy inputs, and consumes a 
 Demo-chat retains general mechanisms and Register and Portal implementations.
 Technology: existing shell and Perl utilities, Maven staging, Git pins, and the current installed layout.
 
-Status: proposed plan. No implementation is authorized.
+Status: approved for implementation, with the owner-required Task B3 correction applied.
 Review issue: CHAT-utubzjvi. Parent: CHAT-zffgckla.
 Inspection basis: demo-chat `1a8fd03383ccaa35b92c9e23f58b4a172d948301`.
 Destination: `/Users/darkbit1001/workspace/node-9`, empty during inspection.
@@ -150,13 +150,24 @@ Never publish that fixture lock as the final deployment lock.
 After Task B5 and implementation review, resolve the release pin from the actual accepted demo-chat commit:
 
 ```bash
-release_commit=$(git -C "$DEMO_CHAT_HOME" rev-parse HEAD)
+set -euo pipefail
+release_commit=$(git -C "$DEMO_CHAT_HOME" rev-parse --verify 'HEAD^{commit}') || exit 1
+[[ "$release_commit" =~ ^[[:xdigit:]]{40}$ ]] || exit 1
 git -C "$DEMO_CHAT_HOME" diff --exit-code
 git -C "$DEMO_CHAT_HOME" diff --cached --exit-code
-jq --arg commit "$release_commit" '.demoChatCommit = $commit' \
-    "$NODE9_REPO/demo-chat-tools.lock.json" > "$NODE9_REPO/demo-chat-tools.lock.json.next"
-mv "$NODE9_REPO/demo-chat-tools.lock.json.next" "$NODE9_REPO/demo-chat-tools.lock.json"
+lock_stage=$(mktemp "$NODE9_REPO/.demo-chat-tools.lock.XXXXXX") || exit 1
+trap 'rm -f "$lock_stage"' EXIT
+if jq --arg commit "$release_commit" '.demoChatCommit = $commit' \
+    "$NODE9_REPO/demo-chat-tools.lock.json" > "$lock_stage" \
+    && jq -e --arg commit "$release_commit" '.demoChatCommit == $commit' "$lock_stage" > /dev/null; then
+    mv "$lock_stage" "$NODE9_REPO/demo-chat-tools.lock.json"
+else
+    exit 1
+fi
 ```
+
+Add failed Git capture, short commit, non-hexadecimal commit, failed jq, and empty staged-output cases to `tests/test-tools-source.sh`.
+Each refusal must preserve the original lock bytes and remove the temporary stage.
 
 The resolver must validate source cleanliness, inventory, ignore-rule origin, and version through `check-tool-source` before replacement.
 The installer stages general files beneath `$prefix/tools/demo-chat/bin` and jars beneath the existing runtime paths.

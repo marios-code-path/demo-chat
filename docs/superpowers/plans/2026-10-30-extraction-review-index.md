@@ -5,8 +5,9 @@ The required inventory correction is applied in `../specs/2026-10-30-node-profil
 `STUB_REQUIRE_NODE9_ENV` is a test control. Its neutral target is `STUB_REQUIRE_PROFILE_ENV`.
 There is no whole `NODE9_ENV` variable in the inspected tracked source.
 
-All three implementation plans remain proposed and require separate owner approval.
-No plan permits implementation merely because its prerequisite design received approval.
+The owner approved all three implementation plans.
+The foundation and extraction plans include the required corrections that need no further plan review.
+Each plan still requires separate implementation review.
 Do not use subagents.
 
 | Order | Plan | Review issue | Required implementation result |
@@ -58,8 +59,7 @@ No code, installation, deployment, credential, or process change occurred.
 
 ## Remaining gates
 
-Request owner approval for each implementation plan.
-After approval, execute each plan with its required evidence and implementation review.
+Execute each approved plan with its required evidence and implementation review.
 Run full PR CI before merge readiness claims.
 Confirm repository-owner approval and at least one GitHub approval before merging.
 Keep the final guide publication under CHAT-vnljyxpl after extraction prerequisites and live acceptance.

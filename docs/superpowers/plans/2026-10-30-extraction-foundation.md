@@ -8,7 +8,7 @@ Architecture: temporary compatibility surrounds neutral profile, runtime, regist
 The separate deployment repository receives the final compatibility adapters under the second plan.
 Technology: existing Bash 3.2, Python builder, Perl register utilities, Kotlin contracts, Maven, and Git.
 
-Status: proposed plan. Design approval does not authorize implementation.
+Status: approved for implementation, with the owner-required Task A5 correction applied.
 Review issue: CHAT-qdsmackk. Parent: CHAT-zffgckla.
 Basis: `1a8fd03383ccaa35b92c9e23f58b4a172d948301`.
 Approved contracts: `../specs/2026-10-30-node-profile-contract.md` and `../specs/2026-10-30-demo-chat-tool-consumption.md`.
@@ -47,6 +47,8 @@ Commit messages must include the owning FP issue.
 | `shell-scripts/tool-files.json` | Source and installed dependency inventory, including support libraries. |
 | `docs/NODE-PROFILES.md`, `docs/INSTALLED-TOOLS.md` | General operator contracts without deployment-specific defaults. |
 
+`shell-scripts/isTCPOpen` and `shell-scripts/tunnel-ports.sh` do not exist at the inspection commit.
+The TCP implementation to promote is `node-9/bin/isTCPOpen`.
 The final release omits the temporary compatibility library.
 The intermediate inventory includes it whenever a copied entry point reads it.
 
@@ -236,9 +238,27 @@ Use offline stubs only. No register migration or backend operation is authorized
 Owner: CHAT-dnteampq and CHAT-rxfvixhr.
 
 Create general tunnel files from the responsibility map.
+Promote `node-9/bin/isTCPOpen` into `shell-scripts/isTCPOpen` without changing its exit-status meaning.
+Create `shell-scripts/tunnel-ports.sh` for the shared port mechanism.
 Modify `shell-scripts/chat-shell-portal-tunnel`, `mcp-install-lib.sh`, `claude-mcp-install.sh`, and `codex-mcp-install.sh`.
 Modify their existing tests and `shell-scripts/test-is-tcp-open.sh`.
 Create `shell-scripts/test-profile-tunnel.sh` and `test-profile-mcp-paths.sh`.
+
+The current general portal helper resolves three executables through the deployment bin:
+
+- Line 26 resolves `$node9_bin/node-9-tunnel`.
+- Line 27 resolves `$node9_bin/isTCPOpen`.
+- Line 28 resolves `$node9_bin/chat-shell-cli`.
+
+This is a current ownership violation, not the intended generic resolution rule.
+The new general helper resolves its tunnel, TCP check, and CLI through its general tool directory or explicit neutral inputs.
+The intermediate node-9 paths serve existing public callers and compatibility wrappers only.
+General tools must not use those paths to locate their own mechanisms.
+Add a test-profile-tunnel case with a general tool directory and an absent deployment bin.
+Place recording TCP and CLI executables only in the general directory.
+Require the portal helper to invoke those executables without accessing a deployment bin.
+Place failing sentinels in a separate deployment bin to detect accidental fallback in a second case.
+Both cases must preserve the general tool calls and produce no deployment-sentinel invocation.
 
 Keep `isTCPOpen` semantics: 0 means all ports are free, 1 means busy, and 2 means a refused check.
 Use it for availability selection, not as a success predicate for tunnel readiness.
