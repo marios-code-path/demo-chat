@@ -240,6 +240,13 @@ if [[ -n "${CHAT_IMAGE_COMPOSITION_LABELS+set}" ]]; then
 else
     printf '<unset>' > "$CAPTURE"
 fi
+# The options that reach Maven. An unset variable leaves the POM expression
+# ${env.JAVA_TOOL_OPTIONS} unresolved, and the image receives that literal.
+if [[ -n "${JAVA_TOOL_OPTIONS+set}" ]]; then
+    printf 'set:%s' "$JAVA_TOOL_OPTIONS" > "$CAPTURE.options"
+else
+    printf '<unset>' > "$CAPTURE.options"
+fi
 STUB
 chmod +x "$work/capture-bin/mvn"
 reserved=com.demo.chat.composition.sha256
@@ -252,7 +259,7 @@ capture() {
     local assignments=()
     while [[ "$1" != -- ]]; do assignments+=("$1"); shift; done
     shift
-    rm -f "$work/$name.labels"
+    rm -f "$work/$name.labels" "$work/$name.labels.options"
     capture_status=0
     (cd "$work/cwd" && env PATH="$work/capture-bin:$PATH" CAPTURE="$work/$name.labels" \
         "${assignments[@]+"${assignments[@]}"}" "$builder" "$@" \
@@ -364,6 +371,16 @@ if (( capture_status == 0 )) && [[ "$(cat "$work/kb.labels" 2> /dev/null)" == "$
 else
     fail 'a baked build labels the record of the options that the image receives'
     printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/kb.labels" 2> /dev/null)"
+fi
+if [[ "$(cat "$work/kb.labels.options" 2> /dev/null)" == 'set:' ]]; then
+    pass 'a baked build passes JAVA_TOOL_OPTIONS to Maven as an empty value'
+else
+    fail "a baked build passes JAVA_TOOL_OPTIONS to Maven as an empty value: $(cat "$work/kb.labels.options" 2> /dev/null)"
+fi
+if [[ "$(cat "$work/g.labels.options" 2> /dev/null)" == set:--enable-native-access=* ]]; then
+    pass 'an inherited build passes its options to Maven'
+else
+    fail 'an inherited build passes its options to Maven'
 fi
 if [[ -s "$work/kb.labels" && "$(cat "$work/kb.labels")" != "$(cat "$work/g.labels" 2> /dev/null)" ]]; then
     pass 'a baked build and an inherited build give two labels'

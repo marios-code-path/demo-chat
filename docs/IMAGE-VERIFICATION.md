@@ -45,10 +45,15 @@ The record is one JSON object with exactly these fields:
 
 All values are strings or string arrays, except the integer version.
 
-`jvmOptions` holds the options that the image build receives.
-With `--bake`, the builder removes `JAVA_TOOL_OPTIONS` from the Maven environment.
-The image then receives no resolved option, and `jvmOptions` is `[]`.
+`jvmOptions` holds the options that `chat-build` passes to the image build.
+The root POM writes them to `BPE_APPEND_JAVA_TOOL_OPTIONS`, followed by its constant flag `--add-modules=jdk.incubator.vector`.
+That constant flag is in every image, and the record leaves it out.
+
+With `--bake`, the builder passes `JAVA_TOOL_OPTIONS` to Maven as an empty value.
+The image then holds the constant flag alone, and `jvmOptions` is `[]`.
 `--composition-json --bake` prints that same record.
+An unset variable would leave `${env.JAVA_TOOL_OPTIONS}` unresolved, and Maven would write that literal text into the image.
+Before CHAT-gyfhbsbd, `--bake` did that.
 The array order is the order of the resolved launch plan.
 
 The record holds resolved values. It never holds raw command text or a caller-supplied digest.
