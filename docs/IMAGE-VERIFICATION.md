@@ -111,11 +111,23 @@ A Maven build without the variable does not activate the profile.
 A caller can add unrelated labels through `CHAT_IMAGE_COMPOSITION_LABELS`.
 The value uses space-separated `key=value` words with shell quotes.
 The builder puts the reserved label first and keeps the caller labels in order.
+
+The image-labels buildpack does not parse shell quotes.
+It reads a key up to the first `=`.
+A quoted value ends at either quote character, and a backslash escapes only a quote.
+Thus the builder writes each caller label again in that form.
+A value with a space or a quote gets double quotes, and each quote inside it gets a backslash.
+For example, `'org.example.note=two words'` becomes `org.example.note="two words"`.
+
 The builder refuses these caller values with status 2, before Maven runs:
 
 - A label with the reserved key.
 - A word that is not `key=value`.
 - A value that the shell quote rules cannot parse.
+- A key with a space, a quote, or a backslash.
+- A value with a backslash.
+
+A key cannot hold `=`, because the first `=` ends the key. A value can hold `=`.
 
 A run with `--run` gets no label input.
 The builder removes an ambient `CHAT_IMAGE_COMPOSITION_LABELS` from the Maven environment of a run.
@@ -235,6 +247,11 @@ It replaces Maven, Docker, `curl`, and `wget` with commands that record a call a
 It clears every ambient input that the mode reads before it sets its own inputs.
 `shell-scripts/test-flags.sh` tests the parser refusals of the mode.
 The same composition suite replaces Maven with a stub that records the label input of a build.
+The suite reads that label input through `shell-scripts/test-support/image-labels-parse.py`.
+That helper copies the label parser of image-labels v4.14.4, commit `2ae3978e`.
+On 2026-10-31 the helper and the pinned Go functions gave the same result for 5033 inputs.
+The inputs held both quote characters, backslashes, spaces, `=`, and non-ASCII text.
+The builder output for 3000 random label sets also gave the expected labels through the Go functions.
 `shell-scripts/test-image-manifest.sh` tests the label check of the manifest.
 `shell-scripts/test-verify-image-composition.sh` and `shell-scripts/test-verify-image-source.sh` test the verifiers with a Docker stub.
 The composition suite holds an image with a correct source stamp and a different composition label.

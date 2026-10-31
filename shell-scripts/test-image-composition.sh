@@ -276,15 +276,55 @@ else
     printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/f.labels" 2> /dev/null)"
 fi
 
+# decoded NAME: the labels of NAME as the pinned image-labels parser reads them.
+# The helper copies the v4.14.4 Go parser. See docs/IMAGE-VERIFICATION.md.
+decoded() {
+    python3 -I "$here/test-support/image-labels-parse.py" "$(cat "$work/$1.labels" 2> /dev/null)" | jq -cS .
+}
+if [[ "$(decoded g)" == "$(jq -cnS --arg k "$reserved" --arg d "$digest" '{labels: {($k): $d}}')" ]]; then
+    pass 'the buildpack parser reads the reserved label of a build'
+else
+    fail 'the buildpack parser reads the reserved label of a build'
+fi
+
 capture u "CHAT_IMAGE_COMPOSITION_LABELS=org.example.team=chat 'org.example.note=two words'" -- \
     "${plan_case[@]}" --node-id 7 --build
-if (( capture_status == 0 )) && [[ "$(cat "$work/u.labels" 2> /dev/null)" \
-        == "$reserved=$digest org.example.team=chat 'org.example.note=two words'" ]]; then
-    pass 'unrelated caller labels survive beside the reserved label'
+want=$(jq -cnS --arg k "$reserved" --arg d "$digest" \
+    '{labels: {($k): $d, "org.example.team": "chat", "org.example.note": "two words"}}')
+if (( capture_status == 0 )) && [[ "$(decoded u)" == "$want" ]]; then
+    pass 'unrelated caller labels with a space survive the buildpack parser'
 else
-    fail 'unrelated caller labels survive beside the reserved label'
-    printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/u.labels" 2> /dev/null)"
+    fail 'unrelated caller labels with a space survive the buildpack parser'
+    printf '    status %s, labels %s, parsed %s\n' "$capture_status" \
+        "$(cat "$work/u.labels" 2> /dev/null)" "$(decoded u)"
 fi
+
+# Both quote characters in values. The parser ends a quoted value at either one.
+capture q "CHAT_IMAGE_COMPOSITION_LABELS=org.example.q=\"it's \\\"x\\\"\" org.example.s='say \"hi\"' org.example.e=b=c" -- \
+    "${plan_case[@]}" --node-id 7 --build
+want=$(jq -cnS --arg k "$reserved" --arg d "$digest" \
+    '{labels: {($k): $d, "org.example.q": "it'"'"'s \"x\"", "org.example.s": "say \"hi\"", "org.example.e": "b=c"}}')
+if (( capture_status == 0 )) && [[ "$(decoded q)" == "$want" ]]; then
+    pass 'values with both quote characters and an equals sign survive the buildpack parser'
+else
+    fail 'values with both quote characters and an equals sign survive the buildpack parser'
+    printf '    status %s, labels %s, parsed %s\n' "$capture_status" \
+        "$(cat "$work/q.labels" 2> /dev/null)" "$(decoded q)"
+fi
+
+# refused NAME LABELS LABEL: the builder refuses LABELS with status 2 before Maven.
+refused() {
+    capture "$1" "CHAT_IMAGE_COMPOSITION_LABELS=$2" -- "${plan_case[@]}" --node-id 7 --build
+    if (( capture_status == 2 )) && [[ ! -e "$work/$1.labels" ]]; then
+        pass "$3"
+    else
+        fail "$3: status $capture_status, labels $(cat "$work/$1.labels" 2> /dev/null)"
+    fi
+}
+refused ks "'org.example.a b=c'" 'a caller key with a space is refused with status 2'
+refused kd 'org.example.\"a=c' 'a caller key with a double quote is refused with status 2'
+refused kq "org.example.\\'a=c" 'a caller key with a single quote is refused with status 2'
+refused vb "org.example.a='x\\y'" 'a caller value with a backslash is refused with status 2'
 
 capture m "CHAT_IMAGE_COMPOSITION_LABELS=no-value" -- "${plan_case[@]}" --node-id 7 --build
 if (( capture_status == 2 )) && [[ ! -e "$work/m.labels" ]]; then

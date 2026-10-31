@@ -592,25 +592,49 @@ def canonical_json(record: dict) -> str:
     return json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
+def image_label_word(key: str, value: str) -> str:
+    """One label in the form that the image-labels buildpack parses.
+
+    The buildpack parser is not a shell. It reads the key up to the first =.
+    A quoted value ends at either quote character, and a backslash escapes a
+    quote alone. So the word quotes the value alone, in double quotes, and
+    escapes both quote characters. The caller checks refuse every key and
+    value that this form cannot carry.
+    """
+    if not any(c.isspace() or c in "\"'" for c in value):
+        return f"{key}={value}"
+    escaped = value.replace('"', '\\"').replace("'", "\\'")
+    return f'{key}="{escaped}"'
+
+
 def image_label_input(digest: str, caller: str) -> str:
     """The BP_IMAGE_LABELS value: the reserved label, then the caller labels.
 
-    The caller value uses the space-separated key=value form of the label
-    buildpack, with shell quotes. A caller label with the reserved key, or a
-    malformed one, raises ValueError. The digest never comes from the caller.
+    The caller value uses space-separated key=value words with shell quotes.
+    A caller label with the reserved key, a malformed one, a key with a space,
+    a quote, or a backslash, or a value with a backslash raises ValueError.
+    The digest never comes from the caller.
     """
     try:
         words = shlex.split(caller)
     except ValueError as error:
         raise ValueError(f"{COMPOSITION_LABELS_ENV} cannot be parsed: {error}")
+    labels = [f"{COMPOSITION_LABEL}={digest}"]
     for word in words:
-        key, separator, _ = word.partition("=")
+        key, separator, value = word.partition("=")
         if not separator or not key:
             raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a label that is not key=value")
         if key == COMPOSITION_LABEL:
             raise ValueError(f"{COMPOSITION_LABELS_ENV} cannot set {COMPOSITION_LABEL}. "
                              "The builder computes that label")
-    return " ".join([f"{COMPOSITION_LABEL}={digest}"] + [shlex.quote(w) for w in words])
+        if any(c.isspace() or c in "\"'\\" for c in key):
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a key with a space, a quote, "
+                             "or a backslash. The label buildpack cannot read it")
+        if "\\" in value:
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a value with a backslash. "
+                             "The label buildpack cannot read it")
+        labels.append(image_label_word(key, value))
+    return " ".join(labels)
 
 
 AGENT_HANDLE = re.compile(r"[A-Za-z0-9_]+")
