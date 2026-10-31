@@ -6,7 +6,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-splitter="$repo_root/node-9/bin/register-split"
+splitter="$repo_root/shell-scripts/register-split"
 source_commit=2d75f0cdd09115da422cdc0a693f0227f31a6ef5
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

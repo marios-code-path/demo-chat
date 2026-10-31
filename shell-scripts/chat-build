@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 import tempfile
@@ -37,6 +38,35 @@ from urllib.parse import urlsplit
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
+
+
+def profile_inputs() -> bool:
+    """Read a selected profile without evaluating its records."""
+    if "CHAT_NODE_PROFILE" not in os.environ:
+        return False
+    result = subprocess.run(
+        ["bash", str(HERE / "node-profile")], capture_output=True, text=True)
+    if result.returncode:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(result.returncode)
+    for record in result.stdout.split("\n"):
+        if not record:
+            continue
+        key, separator, value = record.partition("=")
+        if not separator:
+            print("chat-build: the profile reader returned an invalid record.", file=sys.stderr)
+            raise SystemExit(2)
+        os.environ[key] = value
+    for target, source in (("CORE_PORT", "NODE_RSOCKET_PORT"),
+                           ("CORE_MGMT_PORT", "NODE_MGMT_PORT")):
+        if target not in os.environ and source in os.environ:
+            os.environ[target] = os.environ[source]
+    if "CHAT_REGISTRY" not in os.environ and "NODE_REGISTRY_PORT" in os.environ:
+        os.environ["CHAT_REGISTRY"] = "127.0.0.1:" + os.environ["NODE_REGISTRY_PORT"]
+    return True
+
+
+PROFILE_INPUTS = profile_inputs()
 
 
 # --------------------------------------------------------------------------
@@ -518,6 +548,96 @@ SERVICES: dict[str, Service] = {
 # Build context
 # --------------------------------------------------------------------------
 
+# The composition record states what an image build resolves. A verifier
+# recomputes its digest from an expected record. See docs/IMAGE-VERIFICATION.md.
+COMPOSITION_VERSION = 1
+# The key rule: an option value under one of these final key segments is a
+# credential, and the record replaces that value. The URI rules below cover
+# more forms. No rule detects every credential. See docs/IMAGE-VERIFICATION.md.
+SECRET_OPTION_KEY = re.compile(r"(pass|password|secret|token|credentials?|headers?(\[\d+\])?)$",
+                               re.IGNORECASE)
+REDACTED_VALUE = "<redacted>"
+# The image label that holds the SHA-256 of the record. Only the builder sets it.
+COMPOSITION_LABEL = "com.demo.chat.composition.sha256"
+# The root POM passes this value to the label buildpack as BP_IMAGE_LABELS.
+# A caller can put unrelated labels in it. The builder adds the reserved label.
+COMPOSITION_LABELS_ENV = "CHAT_IMAGE_COMPOSITION_LABELS"
+
+
+# A URI value can carry a credential in its user information or in a query
+# parameter, also under a key that the key rule does not match.
+URI_USER_INFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)[^/?#@\s]*@")
+URI_PARAMETER = re.compile(r"([?&;])([^=&;#\s]+)=([^&;#\s]*)")
+
+
+def redact_value(value: str) -> str:
+    """Replace URI user information and secret query values with the marker."""
+    value = URI_USER_INFO.sub(lambda m: f"{m[1]}{REDACTED_VALUE}@", value)
+    return URI_PARAMETER.sub(
+        lambda m: f"{m[1]}{m[2]}=" + (REDACTED_VALUE if SECRET_OPTION_KEY.search(m[2]) else m[3]),
+        value)
+
+
+def redact_option(option: str) -> str:
+    """Replace each credential in one option with a fixed marker."""
+    if not option.startswith("-D") or "=" not in option:
+        return redact_value(option)
+    key, value = option[2:].split("=", 1)
+    if SECRET_OPTION_KEY.search(key.rsplit(".", 1)[-1]):
+        return f"-D{key}={REDACTED_VALUE}"
+    return f"-D{key}={redact_value(value)}"
+
+
+def canonical_json(record: dict) -> str:
+    """The canonical record: sorted keys, compact separators, UTF-8, no final LF."""
+    return json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def image_label_word(key: str, value: str) -> str:
+    """One label in the form that the image-labels buildpack parses.
+
+    The buildpack parser is not a shell. It reads the key up to the first =.
+    A quoted value ends at either quote character, and a backslash escapes a
+    quote alone. So the word quotes the value alone, in double quotes, and
+    escapes both quote characters. The caller checks refuse every key and
+    value that this form cannot carry.
+    """
+    if not any(c.isspace() or c in "\"'" for c in value):
+        return f"{key}={value}"
+    escaped = value.replace('"', '\\"').replace("'", "\\'")
+    return f'{key}="{escaped}"'
+
+
+def image_label_input(digest: str, caller: str) -> str:
+    """The BP_IMAGE_LABELS value: the reserved label, then the caller labels.
+
+    The caller value uses space-separated key=value words with shell quotes.
+    A caller label with the reserved key, a malformed one, a key with a space,
+    a quote, or a backslash, or a value with a backslash raises ValueError.
+    The digest never comes from the caller.
+    """
+    try:
+        words = shlex.split(caller)
+    except ValueError as error:
+        raise ValueError(f"{COMPOSITION_LABELS_ENV} cannot be parsed: {error}")
+    labels = [f"{COMPOSITION_LABEL}={digest}"]
+    for word in words:
+        key, separator, value = word.partition("=")
+        if not separator or not key:
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a label that is not key=value")
+        if key == COMPOSITION_LABEL:
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} cannot set {COMPOSITION_LABEL}. "
+                             "The builder computes that label")
+        if any(c.isspace() or c in "\"'\\" for c in key):
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a key with a space, a quote, "
+                             "or a backslash. The label buildpack cannot read it")
+        if "\\" in value:
+            raise ValueError(f"{COMPOSITION_LABELS_ENV} holds a value with a backslash. "
+                             "The label buildpack cannot read it")
+        labels.append(image_label_word(key, value))
+    return " ".join(labels)
+
+
 AGENT_HANDLE = re.compile(r"[A-Za-z0-9_]+")
 # Admin and Anon are the ChatIdentity names. Service is the default service
 # account. An agent must be a plain user. See CHAT-frcrctdp.
@@ -615,6 +735,10 @@ class BuildContext:
         self.index_root: str | None = (
             str(Path(index_root).expanduser()) if index_root else None)
         self.image_name = service.image_name_for(self.backend)
+        # The options resolve once. The image build and its composition record
+        # then read the same list, also when Docker supplies the Consul host.
+        self._options: list[str] | None = None
+        self.image_labels = ""
 
     # -- resolution ------------------------------------------------------
 
@@ -1003,6 +1127,11 @@ class BuildContext:
         ]
 
     def java_tool_options_list(self) -> list[str]:
+        if self._options is None:
+            self._options = self._resolve_java_tool_options()
+        return list(self._options)
+
+    def _resolve_java_tool_options(self) -> list[str]:
         groups = [
             self.main_flags(),
             self.tls_flags(),
@@ -1016,6 +1145,29 @@ class BuildContext:
             self.run_args(),
         ]
         return [flag for group in groups for flag in group]
+
+    def composition_digest(self) -> str:
+        """The SHA-256 of the canonical record, without the final LF."""
+        return hashlib.sha256(canonical_json(self.composition()).encode("utf-8")).hexdigest()
+
+    def composition(self) -> dict:
+        """The version 1 record of the resolved image composition.
+
+        It holds resolved values alone, never raw command text. Credential
+        values are replaced. jvmOptions holds the options that chat-build
+        passes to the image build. With --bake it passes none, so the list is
+        empty. The POM adds its constant vector flag in every mode, and the
+        record leaves it out. See docs/IMAGE-VERIFICATION.md.
+        """
+        options = [] if self.args.bake else self.java_tool_options_list()
+        return {
+            "version": COMPOSITION_VERSION,
+            "service": self.service.name,
+            "module": self.module_name(),
+            "mavenProfiles": self.maven_profiles(),
+            "springProfiles": self.spring_profiles(),
+            "jvmOptions": [redact_option(o) for o in options],
+        }
 
     def java_tool_options(self) -> str:
         return " ".join(self.java_tool_options_list())
@@ -1109,12 +1261,25 @@ class BuildContext:
             print(f"chat-build: the image query of {reference} has no image id "
                   "or architecture.", file=sys.stderr)
             return 1
+        # The image must hold the digest of this build's record. A missing or
+        # different label means the label buildpack did not apply it.
+        config = details.get("Config")
+        labels = config.get("Labels") if isinstance(config, dict) else None
+        label = labels.get(COMPOSITION_LABEL) if isinstance(labels, dict) else None
+        digest = self.composition_digest()
+        if label != digest:
+            state = "holds no" if label is None else "holds a different"
+            print(f"chat-build: the image {reference} {state} {COMPOSITION_LABEL} label, "
+                  "so the manifest takes no record.", file=sys.stderr)
+            return 1
         record = {
             "reference": reference,
             "imageId": details.get("Id", ""),
             "architecture": details.get("Architecture", ""),
             "service": self.service.name,
             "module": str(self.module_dir().name),
+            "compositionVersion": COMPOSITION_VERSION,
+            "compositionSha256": digest,
         }
         digests = details.get("RepoDigests") or []
         # A colon before the last slash belongs to a registry port.
@@ -1185,9 +1350,17 @@ class BuildContext:
         env = os.environ.copy()
         if self.args.bake:
             # The image build reads the env file instead of inheriting options.
-            env.pop("JAVA_TOOL_OPTIONS", None)
+            # An empty value, not an absent one. An absent variable leaves the
+            # POM expression ${env.JAVA_TOOL_OPTIONS} unresolved, and Maven
+            # writes that literal text into the image. See CHAT-gyfhbsbd.
+            env["JAVA_TOOL_OPTIONS"] = ""
         else:
             env["JAVA_TOOL_OPTIONS"] = self.java_tool_options()
+        # The label input reaches an image build alone. It activates the
+        # image-composition-labels profile of the root POM.
+        env.pop(COMPOSITION_LABELS_ENV, None)
+        if self.args.build:
+            env[COMPOSITION_LABELS_ENV] = self.image_labels
 
         cmd = self.compose_maven_command()
         print("+ " + " ".join(shlex.quote(c) for c in cmd), file=sys.stderr)
@@ -1243,7 +1416,9 @@ def node_id_value(raw: str) -> int:
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--node-id", metavar="ID", required=True, type=node_id_value,
+    profile_node = os.environ.get("NODE_ID") if PROFILE_INPUTS else None
+    parser.add_argument("--node-id", metavar="ID", required=profile_node is None,
+                        default=profile_node, type=node_id_value,
                         help="node id for key generation, an integer in 0..1023. "
                              "It must be unique across every deployment that writes to one store.")
 
@@ -1260,6 +1435,9 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                       help="build a container image via spring-boot:build-image")
     goal.add_argument("--agent-json", action="store_true",
                       help="authserv only: print the agent launch JSON and exit")
+    goal.add_argument("--composition-json", action="store_true",
+                      help="print the canonical composition record of the image build "
+                           "and exit. It runs no Maven or Docker and writes no file.")
     parser.add_argument("--image-manifest", default=os.environ.get("CHAT_IMAGE_MANIFEST", ""),
                         metavar="PATH",
                         help="with --build, append the image to this JSON manifest. One path "
@@ -1349,6 +1527,17 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    if args.composition_json:
+        if args.dry_run:
+            print("chat-build: --composition-json and --dry-run are two output modes. "
+                  "Pick one.", file=sys.stderr)
+            return 2
+        # The record states the image build of these flags. So the build
+        # refusals apply, and the options resolve as a build resolves them.
+        args.build = True
+    if (PROFILE_INPUTS and not getattr(args, "key_type", None)
+            and not getattr(args, "long", False) and not getattr(args, "uuid", False)):
+        args.key_type = os.environ.get("NODE_KEY_TYPE")
 
     # Every run and every image build is a deployment, and a deployment names
     # its key type. No key type is a default. See CHAT-ehpgyapa.
@@ -1531,6 +1720,18 @@ def main() -> int:
 
     ctx = BuildContext(SERVICES[args.service], args)
 
+    if args.composition_json:
+        # Without a named host, Consul discovery asks Docker for one. This
+        # mode runs no Docker, so it refuses instead of guessing a host.
+        if (ctx.discovery == "consul" and not getattr(args, "registry", "")
+                and not os.environ.get("CONSUL_HOST")):
+            print("chat-build: --composition-json with Consul discovery needs "
+                  "CONSUL_HOST or --registry. The mode runs no Docker host lookup.",
+                  file=sys.stderr)
+            return 2
+        print(canonical_json(ctx.composition()))
+        return 0
+
     if args.dry_run:
         cmd = ctx.compose_maven_command()
         print(f"# service:  {ctx.service.name}")
@@ -1547,6 +1748,14 @@ def main() -> int:
         print()
         print(f"# env file would be written to: {ctx.env_file_path()}")
         return 0
+
+    if args.build:
+        try:
+            ctx.image_labels = image_label_input(
+                ctx.composition_digest(), os.environ.get(COMPOSITION_LABELS_ENV, ""))
+        except ValueError as error:
+            print(f"chat-build: {error}.", file=sys.stderr)
+            return 2
 
     return ctx.execute()
 

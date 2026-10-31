@@ -448,6 +448,33 @@
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
+                <!-- In a linked git worktree, the plugin's directory lookup
+                     maps the .git file to the main .git directory. With the
+                     default JGit reader or with native git, git.properties
+                     then names the HEAD of the main checkout. JGit 6.10 in
+                     this plugin cannot read a worktree git directory.
+
+                     A configured directory skips that lookup. With native
+                     git, the plugin runs git in the parent of that directory.
+                     The parent of the module directory is inside the tree, so
+                     git reads the HEAD of the tree that Maven builds. This
+                     holds for a linked worktree and a plain checkout. The
+                     plugin skips pom projects, so the root project never
+                     runs git outside the tree. A build needs a git command.
+
+                     The native provider calls ProcessHandle.info. A sandbox
+                     that denies it stops the stamp step. A unit build in such
+                     a sandbox can add -Dmaven.gitcommitid.skip=true. A skipped
+                     build gives no image or source evidence, and it keeps any
+                     earlier stamp. See docs/BUILD.md.
+
+                     Measured on 2026-10-31 with plugin 9.0.2. Upstream issue
+                     git-commit-id-maven-plugin#215 is open. Test:
+                     shell-scripts/test-git-stamp.sh. fp issue CHAT-sgwiyzic. -->
+                <configuration>
+                    <useNativeGit>true</useNativeGit>
+                    <dotGitDirectory>${project.basedir}</dotGitDirectory>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
@@ -632,6 +659,39 @@
                                 </goals>
                             </execution>
                         </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- chat-build sets CHAT_IMAGE_COMPOSITION_LABELS for an image build.
+             The value holds the reserved label com.demo.chat.composition.sha256
+             and the unrelated caller labels. The Paketo image-labels buildpack
+             reads BP_IMAGE_LABELS. This entry merges into the image env of the
+             deploy profile and keeps its BPE entries. A Maven build without the
+             variable does not activate this profile, so it gets no unresolved
+             label property. See docs/IMAGE-VERIFICATION.md and CHAT-gyfhbsbd.
+
+             This profile is not activeByDefault. It sets one image build value
+             and changes no packaging. -->
+        <profile>
+            <id>image-composition-labels</id>
+            <activation>
+                <property>
+                    <name>env.CHAT_IMAGE_COMPOSITION_LABELS</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <image>
+                                <env>
+                                    <BP_IMAGE_LABELS>${env.CHAT_IMAGE_COMPOSITION_LABELS}</BP_IMAGE_LABELS>
+                                </env>
+                            </image>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

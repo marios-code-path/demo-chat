@@ -7,6 +7,8 @@
 # that the launcher builds. The suite needs no free port.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 launcher="$repo_root/shell-scripts/chat-shell-cli"
@@ -309,6 +311,22 @@ run_stage() {
         JAVA_ARGS="$work/stage-java-args" "$@" "$stager" "$dir" 2>&1)"
     status=$?
 }
+
+for profile_case in alpha beta; do
+    case "$profile_case" in alpha) profile_node=7 ;; beta) profile_node=1001 ;; esac
+    run_stage "$work/profile-$profile_case" \
+        CHAT_NODE_PROFILE="$repo_root/shell-scripts/fixtures/profiles/$profile_case.env"
+    if [[ $status -eq 0 ]] && grep -qx "# node-id $profile_node" \
+        "$work/profile-$profile_case/shell-cli.options"; then
+        ok "stage_reads_${profile_case}_identity"
+    else
+        bad "stage_reads_${profile_case}_identity" "exit $status, output: $out"
+    fi
+done
+if [[ "${CHAT_PROFILE_STAGE_ONLY:-}" == 1 ]]; then
+    (( failures == 0 ))
+    exit
+fi
 
 out="$(env PATH="$stub_bin:$PATH" MVN_CALLS="$work/mvn-calls" "$stager" 2>&1)"
 status=$?

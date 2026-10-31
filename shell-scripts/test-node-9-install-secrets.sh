@@ -6,6 +6,8 @@
 # test hooks. No case reads a live secret. See CHAT-cnwkjsrp.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 install="$repo_root/node-9/install"

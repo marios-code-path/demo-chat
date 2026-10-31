@@ -6,6 +6,8 @@
 # never read the repository Vault, and they never write to node-9/secrets/.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 setup="$repo_root/node-9/bin/setup-secrets"

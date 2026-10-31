@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Prove that a boot jar and an image come from one source commit.
+#
+#   verify-image-source --boot-jar FILE --commit COMMIT --image IMAGE_ID
+#
+# The proof reads git.properties from BOOT-INF/classes of the boot jar.
+# It reads git.properties from each BOOT-INF/lib/chat-*.jar as well.
+# It then reads /workspace/BOOT-INF/classes/git.properties from the image layers.
+# Each git.commit.id must equal COMMIT.
+#
+# IMAGE_ID must be an immutable image ID, sha256: and 64 hexadecimal digits.
+# A tag can move to another image, and an ID cannot.
+# docker create makes a container record and starts no process.
+# The verifier removes each record that it created, and no other record.
+# A Paketo image holds no shell, so a docker run cannot read the file.
+#
+# The verifier has no deployment defaults. The caller names every input.
+# A source stamp proves the commit alone. It does not prove the composition.
+# verify-image-composition is a separate check. See docs/IMAGE-VERIFICATION.md.
+#
+# Exit status: 0 proved, 1 proof failed, 2 invalid input or a missing command.
+set -uo pipefail
+
+refuse() { printf 'verify-image-source: %s\n' "$1" >&2; exit 2; }
+fail() { printf 'verify-image-source: %s\n' "$1" >&2; exit 1; }
+
+boot_jar='' commit='' image_id=''
+while (( $# )); do
+    case "$1" in
+        --boot-jar|--commit|--image)
+            (( $# >= 2 )) || refuse "$1 needs a value."
+            case "$1" in
+                --boot-jar) boot_jar="$2" ;;
+                --commit) commit="$2" ;;
+                --image) image_id="$2" ;;
+            esac
+            shift 2 ;;
+        -h|--help)
+            printf 'usage: verify-image-source --boot-jar FILE --commit COMMIT --image IMAGE_ID\n' >&2
+            exit 0 ;;
+        *) refuse "unknown argument: $1" ;;
+    esac
+done
+[[ -n "$boot_jar" && -n "$commit" && -n "$image_id" ]] \
+    || refuse 'name --boot-jar, --commit, and --image.'
+[[ -f "$boot_jar" && -r "$boot_jar" ]] || refuse "the boot jar $boot_jar is not a readable file."
+[[ "$commit" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] \
+    || refuse 'the commit must be a full hexadecimal commit ID.'
+[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || refuse 'the image must be an immutable image ID, sha256: and 64 hexadecimal digits.'
+command -v docker > /dev/null 2>&1 || refuse 'no docker command.'
+command -v unzip > /dev/null 2>&1 || refuse 'no unzip command.'
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/verify-image-source-XXXXXX") || refuse 'no temporary directory.'
+container_id=''
+cleanup() {
+    # Remove the record that this run created, and no other record.
+    [[ -z "$container_id" ]] || docker rm -f "$container_id" > /dev/null 2>&1
+    rm -rf "$work"
+}
+trap cleanup EXIT
+
+# jar_stamp: print the commit of one git.properties stream.
+jar_stamp() { sed -nE 's/^git\.commit\.id=([0-9a-f]+).*/\1/p' | head -1; }
+
+name="${boot_jar##*/}"
+boot_commit=$(unzip -p "$boot_jar" BOOT-INF/classes/git.properties 2> /dev/null | jar_stamp)
+[[ -n "$boot_commit" ]] || fail "$name holds no git.commit.id in BOOT-INF/classes/git.properties."
+[[ "$boot_commit" == "$commit" ]] \
+    || fail "$name comes from commit $boot_commit, and the expected commit is $commit."
+
+proved=1
+while IFS= read -r entry; do
+    [[ -n "$entry" ]] || continue
+    unzip -o -q -d "$work/nested" "$boot_jar" "$entry" || fail "cannot read $entry from $name."
+    nested_commit=$(unzip -p "$work/nested/$entry" git.properties 2> /dev/null | jar_stamp)
+    [[ -n "$nested_commit" ]] || fail "${entry##*/} inside $name holds no git.commit.id."
+    [[ "$nested_commit" == "$commit" ]] \
+        || fail "${entry##*/} inside $name comes from commit $nested_commit, and the expected commit is $commit."
+    proved=$((proved + 1))
+done < <(unzip -Z1 "$boot_jar" 'BOOT-INF/lib/chat-*.jar' 2> /dev/null)
+
+# Keep a printed ID also when create fails. The record can exist, and the
+# cleanup must remove it.
+create_status=0
+container_id=$(docker create "$image_id" 2> /dev/null) || create_status=$?
+container_id=${container_id%%$'\n'*}
+(( create_status == 0 )) && [[ -n "$container_id" ]] \
+    || fail "cannot create a container record of $image_id."
+copy_status=0
+docker cp "$container_id:/workspace/BOOT-INF/classes/git.properties" - 2> /dev/null \
+    | tar -xO > "$work/image-git.properties" 2> /dev/null || copy_status=$?
+(( copy_status == 0 )) \
+    || fail "cannot read /workspace/BOOT-INF/classes/git.properties from $image_id."
+image_commit=$(jar_stamp < "$work/image-git.properties")
+[[ -n "$image_commit" ]] || fail "$image_id holds no git.commit.id in its layers."
+[[ "$image_commit" == "$commit" ]] \
+    || fail "$image_id holds commit $image_commit, and the expected commit is $commit."
+
+printf 'verify-image-source: %s jars and image %s at %s\n' "$proved" "$image_id" "$commit"

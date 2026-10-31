@@ -1,37 +1,40 @@
 #!/usr/bin/env bash
-# Shared path rules for the MCP client installers.
-#
-# The installers register one MCP server with one client. They need two paths.
-# A source tree holds neither the MCP runtime nor a register command that
-# runs, so an installed home wins when one exists.
-#
-# **The installed home is permanent:** /opt/demo-chat/node-9 on every host.
-# Node 9 serves every project from that one home, and the project enters only
-# the config name and the server name. NODE9_HOME names another home.
-#
-# Call mcp_install_resolve with the repository root. It sets MCP_REGISTER and
-# MCP_LAUNCHER.
+# Resolve general MCP tools without deployment discovery.
 
-# mcp_install_resolve REPO_ROOT  Set the register command and the launcher.
 mcp_install_resolve() {
-    local repo_root="$1"
-    local home="${NODE9_HOME:-/opt/demo-chat/node-9}"
-    if [[ ! -f "$home/.installed" ]]; then
-        home="$repo_root/node-9"
+    local repo_root="$1" tools_dir selected_bin
+    tools_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    if [[ -f "$tools_dir/node-inputs.sh" ]]; then
+        . "$tools_dir/node-inputs.sh"
+        chat_node_inputs || return $?
     fi
-    MCP_REGISTER="$home/bin/register"
-    if [[ -x "$home/bin/chat-mcp-stdio" ]]; then
-        MCP_LAUNCHER="$home/bin/chat-mcp-stdio"
+    if [[ "${CHAT_DEPLOYMENT_HOME+x}" ]]; then
+        [[ "$CHAT_DEPLOYMENT_HOME" == /* && -d "$CHAT_DEPLOYMENT_HOME" ]] \
+            || { printf 'mcp-install: select an existing absolute CHAT_DEPLOYMENT_HOME.\n' >&2; return 2; }
+    fi
+    if [[ "${CHAT_DEPLOYMENT_BIN+x}" ]]; then
+        [[ "$CHAT_DEPLOYMENT_BIN" == /* && -d "$CHAT_DEPLOYMENT_BIN" ]] \
+            || { printf 'mcp-install: select an existing absolute CHAT_DEPLOYMENT_BIN.\n' >&2; return 2; }
+        selected_bin="$CHAT_DEPLOYMENT_BIN"
+    elif [[ "${CHAT_DEPLOYMENT_HOME+x}" ]]; then
+        selected_bin="$CHAT_DEPLOYMENT_HOME/bin"
     else
-        MCP_LAUNCHER="$repo_root/shell-scripts/chat-mcp-stdio"
+        selected_bin="$tools_dir"
     fi
+    MCP_REGISTER="${CHAT_REGISTER_COMMAND-$selected_bin/register}"
+    MCP_LAUNCHER="${CHAT_MCP_STDIO-$selected_bin/chat-mcp-stdio}"
+    if [[ ! "${CHAT_MCP_STDIO+x}" && ! -x "$MCP_LAUNCHER" ]]; then
+        MCP_LAUNCHER="$tools_dir/chat-mcp-stdio"
+    fi
+    [[ -x "$MCP_REGISTER" && -x "$MCP_LAUNCHER" ]] \
+        || { printf 'mcp-install: the selected register or adapter is not executable.\n' >&2; return 2; }
 }
 
-# mcp_install_config AGENT PROJECT REGISTER_NAME  Write one config, print its path.
-#
-# `register config` makes no shell call, so a source tree may write it. That
-# tree refuses every other command. See CHAT-lmwuxiiq.
 mcp_install_config() {
-    NODE9_ALLOW_SOURCE_TREE=1 "$MCP_REGISTER" config \
-        --agent "$1" --project "$2" --register "$3"
+    if declare -F chat_legacy_mcp_config > /dev/null; then
+        chat_legacy_mcp_config "$MCP_REGISTER" "$@"
+    else
+        CHAT_ALLOW_SOURCE_TREE=1 "$MCP_REGISTER" config \
+            --agent "$1" --project "$2" --register "$3"
+    fi
 }

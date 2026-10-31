@@ -2,14 +2,15 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$script_dir/../.installed" ]]; then
-    lib_dir="$(cd "$script_dir/../lib/mcp" 2>/dev/null && pwd -P)" || {
-        printf 'chat-mcp-stdio: the installed MCP runtime is missing. Reinstall node-9 without --skip-cli.\n' >&2
+if [[ "${CHAT_MCP_LIB+x}" || -f "$script_dir/../.installed" ]]; then
+    runtime_path="${CHAT_MCP_LIB-$script_dir/../lib/mcp}"
+    lib_dir="$(cd "$runtime_path" 2>/dev/null && pwd -P)" || {
+        printf 'chat-mcp-stdio: the MCP runtime is missing at %s.\n' "$runtime_path" >&2
         exit 1
     }
     mcp_jars=("$lib_dir"/*.jar)
     if [[ ! -f "${mcp_jars[0]}" ]]; then
-        printf 'chat-mcp-stdio: the installed MCP runtime is missing. Reinstall node-9 without --skip-cli.\n' >&2
+        printf 'chat-mcp-stdio: the MCP runtime has no jars at %s.\n' "$runtime_path" >&2
         exit 1
     fi
     classpath="$(IFS=:; printf '%s' "${mcp_jars[*]}")"

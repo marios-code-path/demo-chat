@@ -8,6 +8,8 @@
 # clears the credentials, so chat-deploy and deploy-authserv stop early.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo"
 tmp_root="${TMPDIR:-/tmp}"

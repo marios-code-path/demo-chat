@@ -7,17 +7,19 @@
 # mapping that cannot describe one safe import.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 # The suite runs the tools from a source tree on purpose.
-export NODE9_ALLOW_SOURCE_TREE=1
+export CHAT_ALLOW_SOURCE_TREE=1
 
 # Pack derives the snapshot request topic from the register name. See
 # CHAT-jmnjvupr.
-export NODE_9_REGISTER_TOPIC_NAME=demo-chat-register
+export CHAT_REGISTER_TOPIC_NAME=demo-chat-register
 
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
-ranger="$repo_root/node-9/bin/register-range"
-importer="$repo_root/node-9/bin/register-import"
+ranger="$repo_root/shell-scripts/register-range"
+importer="$repo_root/shell-scripts/register-import"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -187,7 +189,7 @@ fi
 
 # -- register-uuid5 ------------------------------------------------------
 
-uuid5="$repo_root/node-9/bin/register-uuid5"
+uuid5="$repo_root/shell-scripts/register-uuid5"
 out="$("$uuid5" 6ba7b810-9dad-11d1-80b4-00c04fd430c8 python.org 2>&1)"
 status=$?
 if [[ $status -eq 0 && "$out" == '886313e1-3b8a-5372-9b90-0c9aee199e5d' ]]; then

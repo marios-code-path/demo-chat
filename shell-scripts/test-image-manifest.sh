@@ -7,6 +7,9 @@
 # appends one record.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-composition-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 build="$repo_root/shell-scripts/chat-build"
@@ -23,10 +26,11 @@ mkdir -p "$stub_bin"
 # Remove caller settings before each stubbed build. The test supplies its own
 # manifest path and stub values after these removals.
 clean_env=(-u CHAT_IMAGE_MANIFEST -u STUB_REF -u STUB_ID -u STUB_ARCH
-           -u STUB_DIGESTS -u MVN_EXIT -u DOCKER_EXIT)
+           -u STUB_DIGESTS -u MVN_EXIT -u DOCKER_EXIT -u STUB_LABEL -u LABEL_CAPTURE)
 
 # The Maven stub answers two calls. A property query prints one image
 # reference. Every other call is the build, and MVN_EXIT sets its status.
+# The build records its image label input, as the label buildpack reads it.
 cat > "$stub_bin/mvn" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "${MVN_CALLS:?Set MVN_CALLS}"
@@ -36,12 +40,15 @@ for word in "$@"; do
         exit 0
     fi
 done
+[[ -z "${LABEL_CAPTURE:-}" ]] || printf '%s' "${CHAT_IMAGE_COMPOSITION_LABELS-}" > "$LABEL_CAPTURE"
 exit "${MVN_EXIT:-0}"
 STUB
 chmod +x "$stub_bin/mvn"
 
 # The Docker stub answers the image query of one reference. DOCKER_EXIT sets
-# its status, and STUB_DIGESTS sets the repository digest list.
+# its status, and STUB_DIGESTS sets the repository digest list. The image label
+# is the reserved label that the build received. STUB_LABEL=none removes it,
+# and another STUB_LABEL value replaces it.
 cat > "$stub_bin/docker" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "${DOCKER_CALLS:?Set DOCKER_CALLS}"
@@ -50,8 +57,16 @@ if [[ "${1:-}" == 'image' && "${2:-}" == 'inspect' ]]; then
         printf 'Error: No such image\n' >&2
         exit 1
     fi
-    printf '{"Id":"%s","Architecture":"%s","Os":"linux","RepoDigests":%s}\n' \
-        "${STUB_ID-sha256:1111}" "${STUB_ARCH-arm64}" "${STUB_DIGESTS:-[]}"
+    labels=null
+    if [[ -n "${STUB_LABEL+set}" ]]; then
+        [[ "$STUB_LABEL" == none ]] \
+            || labels="{\"com.demo.chat.composition.sha256\":\"$STUB_LABEL\"}"
+    elif label=$(grep -oE 'com\.demo\.chat\.composition\.sha256=[0-9a-f]+' \
+            "${LABEL_CAPTURE:?Set LABEL_CAPTURE}" 2> /dev/null); then
+        labels="{\"com.demo.chat.composition.sha256\":\"${label#*=}\"}"
+    fi
+    printf '{"Id":"%s","Architecture":"%s","Os":"linux","RepoDigests":%s,"Config":{"Labels":%s}}\n' \
+        "${STUB_ID-sha256:1111}" "${STUB_ARCH-arm64}" "${STUB_DIGESTS:-[]}" "$labels"
     exit 0
 fi
 exit 0
@@ -84,6 +99,7 @@ run_build() {
     out="$(env "${clean_env[@]}" PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
         KEYSTORE_PASS=test-pass CASSANDRA_CONTACT_POINTS=127.0.0.1 \
         MVN_CALLS="$work/mvn-calls" DOCKER_CALLS="$work/docker-calls" \
+        LABEL_CAPTURE="$work/label-capture" \
         CHAT_IMAGE_MANIFEST="$manifest" "${env_pairs[@]}" \
         "$build" "${args[@]}" 2>&1)"
     status=$?
@@ -160,6 +176,40 @@ if (( status == 0 )) && [[ "$(records_of "$manifest")" == '2' ]] \
 else
     bad 'manifest_replaces_one_reference' \
         "records $(records_of "$manifest"), ids $(jq -c '[.[].imageId]' "$manifest" 2> /dev/null)"
+fi
+
+# -- The record carries the composition digest of the build --------------
+# The expected digest comes from the composition mode with the same inputs.
+expected_sha=$(env PATH="$stub_bin:$PATH" CONSUL_HOST=10.0.0.5 CHAT_REGISTRY= \
+    KEYSTORE_PASS=test-pass CASSANDRA_CONTACT_POINTS=127.0.0.1 \
+    "$build" core --memory --notls --long --node-id 0 --composition-json \
+    | { IFS= read -r line; printf '%s' "$line"; } | shasum -a 256 | cut -d' ' -f1)
+composition_manifest="$work/composition.json"
+run_build "$composition_manifest" STUB_REF=docker.io/library/chat-core:0.0.1
+if (( status == 0 )) \
+   && [[ "$(jq -r '.[0].compositionVersion' "$composition_manifest" 2> /dev/null)" == 1 ]] \
+   && [[ "$(jq -r '.[0].compositionSha256' "$composition_manifest" 2> /dev/null)" == "$expected_sha" ]]; then
+    ok 'manifest_records_the_composition_digest'
+else
+    bad 'manifest_records_the_composition_digest' \
+        "exit $status, record: $(cat "$composition_manifest" 2> /dev/null), output: $out"
+fi
+
+# -- A missing or different image label writes nothing -------------------
+missing_label="$work/missing-label.json"
+run_build "$missing_label" STUB_LABEL=none STUB_REF=docker.io/library/chat-core:0.0.1
+if (( status == 1 )) && [[ ! -e "$missing_label" ]] && [[ "$out" == *com.demo.chat.composition.sha256* ]]; then
+    ok 'missing_label_writes_no_record'
+else
+    bad 'missing_label_writes_no_record' "exit $status, output: $out"
+fi
+other_label="$work/other-label.json"
+run_build "$other_label" STUB_LABEL="$(printf '0%.0s' {1..64})" \
+    STUB_REF=docker.io/library/chat-core:0.0.1
+if (( status == 1 )) && [[ ! -e "$other_label" ]] && [[ "$out" == *com.demo.chat.composition.sha256* ]]; then
+    ok 'mismatched_label_writes_no_record'
+else
+    bad 'mismatched_label_writes_no_record' "exit $status, output: $out"
 fi
 
 # -- A failed build writes nothing ---------------------------------------

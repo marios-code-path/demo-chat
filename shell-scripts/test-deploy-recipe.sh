@@ -7,6 +7,8 @@
 # happened once, on 2026-10-16. The test also clears CHAT_SERVICE_PASSWORD,
 # because chat-deploy refuses to start a service without it.
 set -uo pipefail
+
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
 export CHAT_SERVICE_PASSWORD=
 
 cd "$(dirname "$0")/.."

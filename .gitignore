@@ -59,3 +59,6 @@ pgdb/data/
 /.st-shell.zsh
 /agentgateway.yml
 /.claude_env
+
+# Python checks can create local bytecode.
+__pycache__/

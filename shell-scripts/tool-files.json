@@ -1,0 +1,289 @@
+{
+  "interfaceVersion": 1,
+  "sourceTools": [
+    {
+      "source": "chat-authorization-server/pom.xml"
+    },
+    {
+      "source": "chat-client-consul/pom.xml"
+    },
+    {
+      "source": "chat-client-rsocket/pom.xml"
+    },
+    {
+      "source": "chat-core/pom.xml"
+    },
+    {
+      "source": "chat-crypto/pom.xml"
+    },
+    {
+      "source": "chat-deploy-cassandra/pom.xml"
+    },
+    {
+      "source": "chat-deploy-e2ee/pom.xml"
+    },
+    {
+      "source": "chat-deploy-kafka/pom.xml"
+    },
+    {
+      "source": "chat-deploy-memory-integration-test/pom.xml"
+    },
+    {
+      "source": "chat-deploy-memory/pom.xml"
+    },
+    {
+      "source": "chat-deploy-redis/pom.xml"
+    },
+    {
+      "source": "chat-deploy/pom.xml"
+    },
+    {
+      "source": "chat-embedding-local/pom.xml"
+    },
+    {
+      "source": "chat-embedding-openai/pom.xml"
+    },
+    {
+      "source": "chat-gateway/pom.xml"
+    },
+    {
+      "source": "chat-index-cassandra/pom.xml"
+    },
+    {
+      "source": "chat-index-lucene/pom.xml"
+    },
+    {
+      "source": "chat-mcp/pom.xml"
+    },
+    {
+      "source": "chat-messaging-kafka/pom.xml"
+    },
+    {
+      "source": "chat-messaging-memory/pom.xml"
+    },
+    {
+      "source": "chat-persistence-cassandra/pom.xml"
+    },
+    {
+      "source": "chat-persistence-memory/pom.xml"
+    },
+    {
+      "source": "chat-persistence-redis/pom.xml"
+    },
+    {
+      "source": "chat-persistence-xstream/pom.xml"
+    },
+    {
+      "source": "chat-presence/pom.xml"
+    },
+    {
+      "source": "chat-security/pom.xml"
+    },
+    {
+      "source": "chat-service-composite/pom.xml"
+    },
+    {
+      "source": "chat-service-controller/pom.xml"
+    },
+    {
+      "source": "chat-shell-host/pom.xml"
+    },
+    {
+      "source": "chat-shell/pom.xml"
+    },
+    {
+      "source": "chat-vector-embedded/pom.xml"
+    },
+    {
+      "source": "chat-vector-redis/pom.xml"
+    },
+    {
+      "source": "chat-vector-simple/pom.xml"
+    },
+    {
+      "source": "chat-web/pom.xml"
+    },
+    {
+      "source": "chat-webflux/pom.xml"
+    },
+    {
+      "source": "devops/docker/compose-core-lucene.yaml"
+    },
+    {
+      "source": "devops/docker/compose-core-redis.yaml"
+    },
+    {
+      "source": "devops/docker/compose-core-vector-embedded.yaml"
+    },
+    {
+      "source": "devops/docker/compose-core.yaml"
+    },
+    {
+      "source": "devops/docker/docker-compose.yaml"
+    },
+    {
+      "source": "pom.xml"
+    },
+    {
+      "source": "shared-deploy-configuration/pom.xml"
+    },
+    {
+      "source": "shared-resources-cassandra/pom.xml"
+    },
+    {
+      "source": "shared-resources-cassandra/src/main/resources/keyspace-long.cql"
+    },
+    {
+      "source": "shared-resources-cassandra/src/main/resources/keyspace-uuid.cql"
+    },
+    {
+      "source": "shell-scripts/build-shell-cli-lib"
+    },
+    {
+      "source": "shell-scripts/chat-build"
+    },
+    {
+      "source": "shell-scripts/chat-deploy"
+    },
+    {
+      "source": "shell-scripts/chat-shell-cli"
+    },
+    {
+      "source": "shell-scripts/check-tool-source"
+    },
+    {
+      "source": "shell-scripts/java-probe.sh"
+    },
+    {
+      "source": "shell-scripts/legacy-node-inputs.sh"
+    },
+    {
+      "source": "shell-scripts/node-inputs.sh"
+    },
+    {
+      "source": "shell-scripts/node-profile"
+    },
+    {
+      "source": "shell-scripts/node-profile.sh"
+    },
+    {
+      "source": "shell-scripts/run-cassandra-in-docker.sh"
+    },
+    {
+      "source": "shell-scripts/run-consul-in-docker.sh"
+    },
+    {
+      "source": "shell-scripts/run-redis-in-docker.sh"
+    },
+    {
+      "source": "shell-scripts/tool-files.json"
+    },
+    {
+      "source": "shell-scripts/tool-interface.version"
+    },
+    {
+      "source": "shell-scripts/verify-image-composition"
+    },
+    {
+      "source": "shell-scripts/verify-image-source"
+    }
+  ],
+  "runtimeFiles": [
+    {
+      "source": "shell-scripts/node-profile",
+      "target": "node-profile"
+    },
+    {
+      "source": "shell-scripts/node-profile.sh",
+      "target": "node-profile.sh"
+    },
+    {
+      "source": "shell-scripts/node-inputs.sh",
+      "target": "node-inputs.sh"
+    },
+    {
+      "source": "shell-scripts/legacy-node-inputs.sh",
+      "target": "legacy-node-inputs.sh"
+    },
+    {
+      "source": "shell-scripts/java-probe.sh",
+      "target": "java-probe.sh"
+    },
+    {
+      "source": "shell-scripts/chat-shell-cli",
+      "target": "chat-shell-cli"
+    },
+    {
+      "source": "shell-scripts/chat-shell-portal",
+      "target": "chat-shell-portal"
+    },
+    {
+      "source": "shell-scripts/chat-shell-portal-tunnel",
+      "target": "chat-shell-portal-tunnel"
+    },
+    {
+      "source": "shell-scripts/chat-mcp-stdio",
+      "target": "chat-mcp-stdio"
+    },
+    {
+      "source": "shell-scripts/chat-tunnel",
+      "target": "chat-tunnel"
+    },
+    {
+      "source": "shell-scripts/chat-remote",
+      "target": "chat-remote"
+    },
+    {
+      "source": "shell-scripts/tunnel-ports.sh",
+      "target": "tunnel-ports.sh"
+    },
+    {
+      "source": "shell-scripts/isTCPOpen",
+      "target": "isTCPOpen"
+    },
+    {
+      "source": "shell-scripts/register",
+      "target": "register"
+    },
+    {
+      "source": "shell-scripts/register-create",
+      "target": "register-create"
+    },
+    {
+      "source": "shell-scripts/register-import",
+      "target": "register-import"
+    },
+    {
+      "source": "shell-scripts/register-range",
+      "target": "register-range"
+    },
+    {
+      "source": "shell-scripts/register-split",
+      "target": "register-split"
+    },
+    {
+      "source": "shell-scripts/register-uuid5",
+      "target": "register-uuid5"
+    },
+    {
+      "source": "shell-scripts/register-lib.sh",
+      "target": "register-lib.sh"
+    },
+    {
+      "source": "shell-scripts/mcp-install-lib.sh",
+      "target": "mcp-install-lib.sh"
+    },
+    {
+      "source": "shell-scripts/claude-mcp-install.sh",
+      "target": "claude-mcp-install.sh"
+    },
+    {
+      "source": "shell-scripts/codex-mcp-install.sh",
+      "target": "codex-mcp-install.sh"
+    },
+    {
+      "source": "shell-scripts/chat_libs.sh",
+      "target": "chat_libs.sh"
+    }
+  ]
+}

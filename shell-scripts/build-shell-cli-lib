@@ -8,10 +8,9 @@
 # An installed node-9 home takes that directory as its lib/.
 # The launchers then need no repository, Maven, or ~/.m2.
 #
-# shell-cli.options holds two header lines, the key type and the node id, and
-# one JVM option on each later line. The options come from the launcher
-# itself, through CHAT_SHELL_CLI_PRINT_OPTIONS, so the installed list and the
-# source-tree list cannot differ. The file holds no login and no secret.
+# shell-cli.options records the identity, connection ports, Java selection, and source stamp in comment headers.
+# Each remaining line holds one JVM option from CHAT_SHELL_CLI_PRINT_OPTIONS.
+# The file holds no login or secret.
 #
 # A failed build leaves no stage directory. The work happens in a temporary
 # directory beside the target, and one rename completes it.
@@ -33,9 +32,7 @@
 # an uncommitted change reached a jar.
 set -uo pipefail
 
-# The node-9 values of the frozen options. See node-9/node-9.env.
-key_type=uuid
-node_id=9
+# The caller supplies identity and connection values before staging.
 
 fail() {
     printf 'build-shell-cli-lib: %s\n' "$1" >&2
@@ -76,24 +73,36 @@ stage="$1"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 launcher="$repo_root/shell-scripts/chat-shell-cli"
 [[ -x "$launcher" ]] || fail "no launcher at $launcher" 2
+. "$repo_root/shell-scripts/node-inputs.sh"
+chat_node_inputs || exit $?
+if declare -F chat_legacy_stage_inputs > /dev/null; then
+    chat_legacy_stage_inputs
+fi
 
-# NODE9_MVN and NODE9_JAVA name another mvn and another java. node-9/install
-# checks the same two names, and it passes them here, so the check and the
-# call always name one pair. See CHAT-bjqzvsoe and the branch review of 2026-10-22.
-mvn_command="${NODE9_MVN:-mvn}"
-java_command="${NODE9_JAVA:-java}"
+# CHAT_BUILD_MVN and CHAT_BUILD_JAVA select the build tools.
+# The temporary compatibility reader translates their legacy names before this selection.
+mvn_command="${CHAT_BUILD_MVN:-mvn}"
+java_command="${CHAT_BUILD_JAVA:-java}"
 command -v "$mvn_command" > /dev/null 2>&1 \
     || fail "no mvn at $mvn_command. The build needs Maven." 2
 command -v "$java_command" > /dev/null 2>&1 \
     || fail "no java at $java_command. The build needs a JDK." 2
 java_path="$(command -v "$java_command")"
+key_type="${CHAT_SHELL_KEY_TYPE:-${NODE_KEY_TYPE:-}}"
+node_id="${CHAT_SHELL_NODE_ID:-${NODE_ID:-}}"
+[[ -n "$key_type" && -n "$node_id" ]] \
+    || fail 'supply a profile or explicit key type and node ID.' 2
+export CORE_PORT="${CORE_PORT:-${NODE_RSOCKET_PORT:-}}"
+export CORE_MGMT_PORT="${CORE_MGMT_PORT:-${NODE_MGMT_PORT:-}}"
+[[ -n "$CORE_PORT" && -n "$CORE_MGMT_PORT" ]] \
+    || fail 'supply explicit core ports or a profile.' 2
 
 probe_lib="$repo_root/shell-scripts/java-probe.sh"
 [[ -f "$probe_lib" ]] || fail "no java probe library at $probe_lib" 2
 # shellcheck source=java-probe.sh
 . "$probe_lib"
 
-# Maven selects its own JDK through JAVA_HOME. So NODE9_JAVA must also set
+# Maven selects its own JDK through JAVA_HOME. So CHAT_BUILD_JAVA must also set
 # that path, or the build compiles with one JDK and the launcher runs another.
 #
 # The home comes from the JVM, and never from the path of the java. A path can
@@ -108,11 +117,10 @@ probe_lib="$repo_root/shell-scripts/java-probe.sh"
 # that names no java keeps JAVA_HOME as well, because that value is the
 # selection of the environment. On a host with sdkman, it is the home of the
 # current candidate. See CHAT-faqxupam and CHAT-bjqzvsoe.
-if [[ -n "${NODE9_JAVA:-}" ]]; then
+if [[ -n "${CHAT_BUILD_JAVA:-}" ]]; then
     # The query starts a JVM. A stub java with no JDK holds its caller, so the
-    # call takes a time limit. NODE9_JAVA_LIMIT sets the seconds, node-9/install
-    # reads the same name, and the offline suite lowers it.
-    java_limit_s="${NODE9_JAVA_LIMIT:-30}"
+    # CHAT_JAVA_PROBE_LIMIT_S bounds the probe in seconds.
+    java_limit_s="${CHAT_JAVA_PROBE_LIMIT_S:-30}"
     java_home="$(java_probe_run "$java_limit_s" "$java_command" \
         -XshowSettings:properties -version \
         | sed -nE 's/^[[:space:]]*java\.home = (.*)$/\1/p' | head -1)"
@@ -262,8 +270,7 @@ fi
 # before any JVM start, so this call reaches no core.
 phase=$((phase + 1))
 status "[$phase/$total_phases] options freeze"
-if ! options="$(CORE_PORT=6890 CORE_MGMT_PORT=6891 \
-    CHAT_SHELL_JAVA="$java_command" \
+if ! options="$(CHAT_SHELL_JAVA="$java_command" \
     CHAT_SHELL_KEY_TYPE="$key_type" CHAT_SHELL_NODE_ID="$node_id" \
     CHAT_SHELL_CLI_PRINT_OPTIONS=1 CHAT_SHELL_LIB='' "$launcher" whoami \
     2> "$tmp.options-err")"; then
@@ -277,6 +284,8 @@ rm -f "$tmp.options-err"
 {
     printf '# key-type %s\n' "$key_type"
     printf '# node-id %s\n' "$node_id"
+    printf '# core-port %s\n' "$CORE_PORT"
+    printf '# core-mgmt-port %s\n' "$CORE_MGMT_PORT"
     printf '# java %s\n' "$java_path"
     # The proven stamp of the staged jar set. node-9/install copies these two
     # values into the .installed marker. See CHAT-gwrrazjg.

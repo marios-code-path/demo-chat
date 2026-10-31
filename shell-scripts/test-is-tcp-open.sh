@@ -6,7 +6,7 @@
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
-tool="$PWD/node-9/bin/isTCPOpen"
+tool="$PWD/shell-scripts/isTCPOpen"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"; stop_listener' EXIT

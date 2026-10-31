@@ -4,6 +4,13 @@
 # A caller cannot override it. The directory fixes the Compose files and
 # the mounts, so an override could redirect node 9 at another project.
 NODE9_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Use the shared validators without changing deployment configuration.
+if [[ -f "$NODE9_DIR/.installed" ]]; then
+    source "$NODE9_DIR/bin/register-lib.sh"
+else
+    source "$NODE9_DIR/../shell-scripts/register-lib.sh"
+fi
+
 
 # node9_installed
 # Status 0 in an installed copy. The installer writes the .installed marker.
@@ -40,38 +47,7 @@ node9_require_installed() {
 # reserved for archive pointers. The register command and the importer share
 # this rule. See CHAT-jmnjvupr.
 node9_key_error() {
-    local key="${1-}" trimmed
-    if [[ -z "$key" ]]; then
-        printf 'the key is empty.\n'
-        return 1
-    fi
-    if (( ${#key} > 64 )); then
-        printf 'the key passes 64 characters.\n'
-        return 1
-    fi
-    if [[ "$key" == *'|'* ]]; then
-        printf 'the key holds the | delimiter.\n'
-        return 1
-    fi
-    if [[ "$key" == *[\\]* ]]; then
-        printf 'the key holds a backslash.\n'
-        return 1
-    fi
-    if [[ "$key" == *[[:cntrl:]]* ]]; then
-        printf 'the key holds a control character.\n'
-        return 1
-    fi
-    trimmed="${key#"${key%%[![:space:]]*}"}"
-    trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
-    if [[ "$key" != "$trimmed" ]]; then
-        printf 'the key holds a space at its start or its end.\n'
-        return 1
-    fi
-    if [[ "$key" == '-' ]]; then
-        printf 'the key - is reserved for archive pointers.\n'
-        return 1
-    fi
-    return 0
+    chat_register_key_error "$@"
 }
 
 # node9_title_error TITLE
@@ -80,20 +56,7 @@ node9_key_error() {
 # control character. The register command and the importer share this rule.
 # See CHAT-jmnjvupr.
 node9_title_error() {
-    local title="${1-}"
-    if [[ -z "$title" ]]; then
-        printf 'the title is empty.\n'
-        return 1
-    fi
-    if [[ "$title" == *'|'* ]]; then
-        printf 'the title holds the | delimiter.\n'
-        return 1
-    fi
-    if [[ "$title" == *[[:cntrl:]]* ]]; then
-        printf 'the title holds a control character.\n'
-        return 1
-    fi
-    return 0
+    chat_register_title_error "$@"
 }
 
 # node9_register_value
@@ -130,20 +93,7 @@ node9_register_name() {
 # room for -fr-snapshot- and twelve hex characters inside 64. See
 # CHAT-jmnjvupr.
 node9_register_name_error() {
-    local name="${1-}"
-    if [[ -z "$name" ]]; then
-        printf 'the register name is empty.\n'
-        return 1
-    fi
-    if (( ${#name} > 37 )); then
-        printf 'the register name passes 37 characters.\n'
-        return 1
-    fi
-    if [[ ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-        printf 'the register name is not lowercase letters, digits, and dashes.\n'
-        return 1
-    fi
-    return 0
+    chat_register_name_error "$@"
 }
 
 # node9_register_id_error ID
@@ -152,20 +102,7 @@ node9_register_name_error() {
 # a letter or a digit, and holds at most 64 characters. The adapter applies
 # this rule to both selector keys. See CHAT-lmwuxiiq.
 node9_register_id_error() {
-    local id="${1-}"
-    if [[ -z "$id" ]]; then
-        printf 'the register id is empty.\n'
-        return 1
-    fi
-    if (( ${#id} > 64 )); then
-        printf 'the register id passes 64 characters.\n'
-        return 1
-    fi
-    if [[ ! "$id" =~ ^[A-Za-z0-9][A-Za-z0-9-]*$ ]]; then
-        printf 'the register id is not letters, digits, and dashes.\n'
-        return 1
-    fi
-    return 0
+    chat_register_id_error "$@"
 }
 
 # node9_check_toggle VALUE

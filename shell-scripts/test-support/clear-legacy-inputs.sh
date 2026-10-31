@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Clear inherited legacy inputs before each suite creates its fixtures.
+# A case can set deliberate legacy inputs after this boundary.
+# Remove this test-only transition helper when final adapters own compatibility.
+unset NODE9_PROJECT NODE9_VECTOR_PERSIST NODE9_RSOCKET_PORT NODE9_MGMT_PORT \
+    NODE9_REGISTRY_PORT NODE9_IMAGE_REPO NODE9_HOME NODE_9_BIN \
+    NODE9_SECRETS_FILE NODE9_SECRETS_DIR NODE9_ANSIBLE_DIR NODE9_JAVA NODE9_MVN \
+    NODE9_JAVA_LIMIT NODE9_ALLOW_SOURCE_TREE NODE9_CHAT_BUILD \
+    NODE9_INSTALL_FAIL_LIB_MOVE NODE9_INSTALL_LEGACY_SHA256 NODE9_INSTALL_LEGACY_SIZE \
+    NODE_9_REGISTER_TOPIC_NAME NODE_9_REGISTER_TOPIC_ID NODE9_DIR STUB_REQUIRE_NODE9_ENV
