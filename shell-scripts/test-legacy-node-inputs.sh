@@ -95,6 +95,10 @@ env -i PATH="$PATH" CHAT_NODE_PROFILE="$work/legacy.env" bash -c \
     _ "$reader" > "$work/out" 2> "$work/error" || status=$?
 label='the shipped legacy profile remains readable'
 check test "$status" -eq 0
+target=NODE_PROJECT
+run_alias NODE_PROJECT=valid NODE9_PROJECT=$'valid\n'
+label='aliases compare complete values including trailing newlines'
+check test "$status" -eq 2
 
 printf '%s checks, %s failures\n' "$checks" "$failures"
 test "$failures" -eq 0

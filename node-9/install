@@ -143,12 +143,17 @@ fi
 code_files=(node-9.env compose.yaml compose.vector-disk.yaml userinit.yml advertise.yml)
 code_dirs=(bin schema ansible)
 shell_scripts=(chat-shell-cli chat-shell-portal chat-shell-portal-tunnel \
-    chat-mcp-stdio generate-agent-instructions)
+    chat-mcp-stdio generate-agent-instructions node-profile node-profile.sh node-inputs.sh legacy-node-inputs.sh)
 # The state names. A re-run never touches them.
 state_dirs=(data secrets images)
 for script in "${shell_scripts[@]}"; do
-    [[ -x "$src/../shell-scripts/$script" ]] \
-        || fail "the $script launcher is missing beside node-9." 2
+    if [[ "$script" == *.sh ]]; then
+        [[ -f "$src/../shell-scripts/$script" ]] \
+            || fail "the $script library is missing beside node-9." 2
+    else
+        [[ -x "$src/../shell-scripts/$script" ]] \
+            || fail "the $script launcher is missing beside node-9." 2
+    fi
 done
 [[ -x "$src/bin/setup-portal" ]] \
     || fail 'the setup-portal launcher is missing from node-9/bin.' 2
@@ -572,7 +577,7 @@ if [[ "$skip_cli" != 'true' ]]; then
     # NODE9_JAVA on every run, so a default install named the java of the path.
     # The build script then replaced the JAVA_HOME of the caller with a derived
     # path, and the build held one core and printed no line. See CHAT-faqxupam.
-    build_env=()
+    build_env=("CHAT_NODE_PROFILE=$src/node-9.env" NODE_ID=9 NODE_KEY_TYPE=uuid)
     [[ -n "${NODE9_JAVA:-}" ]] && build_env+=("NODE9_JAVA=$java_command")
     [[ -n "${NODE9_MVN:-}" ]] && build_env+=("NODE9_MVN=$mvn_command")
     status "[2/$total_phases] shell CLI build. Its log is at $stage_parent/build.log"

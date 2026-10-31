@@ -156,6 +156,14 @@ fi
 export CHAT_SHELL_LAUNCH_EPOCH_MS
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+inputs="$(dirname "${BASH_SOURCE[0]}")/node-inputs.sh"
+if [[ -f "$inputs" ]]; then
+    . "$inputs"
+    chat_node_inputs || exit $?
+elif [[ "${CHAT_NODE_PROFILE+x}" ]]; then
+    printf 'chat-shell-cli: the selected profile needs the profile loader.\n' >&2
+    exit 2
+fi
 
 # Two runtimes, one launcher.
 #
@@ -172,11 +180,20 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lib="${CHAT_SHELL_LIB:-$root/lib}"
 options_file="$lib/shell-cli.options"
 opts=()
+if [[ -n "${CHAT_SHELL_LIB:-}" && ! -f "$options_file" ]]; then
+    printf 'chat-shell-cli: the selected runtime has no options at %s.\n' "$lib" >&2
+    exit 2
+fi
 
 if [[ -f "$options_file" ]]; then
-    # The installed node-9 runtime needs these ports for local RSocket discovery.
-    export CORE_PORT="${CORE_PORT:-6890}"
-    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-6891}"
+    if declare -F chat_legacy_shell_runtime > /dev/null; then
+        chat_legacy_shell_runtime "$options_file"
+    fi
+    # Connection inputs override the ports recorded during staging.
+    frozen_core_port="$(sed -n 's/^# core-port //p' "$options_file" | head -1)"
+    frozen_mgmt_port="$(sed -n 's/^# core-mgmt-port //p' "$options_file" | head -1)"
+    export CORE_PORT="${CORE_PORT:-${NODE_RSOCKET_PORT:-$frozen_core_port}}"
+    export CORE_MGMT_PORT="${CORE_MGMT_PORT:-${NODE_MGMT_PORT:-$frozen_mgmt_port}}"
     frozen_key_type="$(sed -n 's/^# key-type //p' "$options_file" | head -1)"
     frozen_node_id="$(sed -n 's/^# node-id //p' "$options_file" | head -1)"
     frozen_java="$(sed -n 's/^# java //p' "$options_file" | head -1)"
@@ -184,8 +201,8 @@ if [[ -f "$options_file" ]]; then
         echo "chat-shell-cli: $options_file holds no key type and node id header." >&2
         exit 2
     fi
-    key_type="${CHAT_SHELL_KEY_TYPE:-$frozen_key_type}"
-    node_id="${CHAT_SHELL_NODE_ID:-$frozen_node_id}"
+    key_type="${CHAT_SHELL_KEY_TYPE:-${NODE_KEY_TYPE:-$frozen_key_type}}"
+    node_id="${CHAT_SHELL_NODE_ID:-${NODE_ID:-$frozen_node_id}}"
     if [[ "$key_type" != "$frozen_key_type" ]]; then
         printf 'chat-shell-cli: the installed options serve key type %s, and the caller asks for %s.\n' \
             "$frozen_key_type" "$key_type" >&2
@@ -203,10 +220,17 @@ if [[ -f "$options_file" ]]; then
             *) opts+=("$line") ;;
         esac
     done < "$options_file"
+    if [[ -n "${ROOTKEY_SOURCE_URI:-}" ]]; then
+        opts+=("-Dapp.rootkeys.consume.source=$ROOTKEY_SOURCE_URI")
+    elif [[ -n "$CORE_MGMT_PORT" ]]; then
+        opts+=("-Dapp.rootkeys.consume.source=http://${CORE_HOST:-127.0.0.1}:$CORE_MGMT_PORT")
+    fi
     class_path="$lib/*"
 else
-    key_type="${CHAT_SHELL_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE to long or uuid}"
-    node_id="${CHAT_SHELL_NODE_ID:-1}"
+    key_type="${CHAT_SHELL_KEY_TYPE:-${NODE_KEY_TYPE:?set CHAT_SHELL_KEY_TYPE or select a profile}}"
+    node_id="${CHAT_SHELL_NODE_ID:-${NODE_ID:-1}}"
+    [[ -z "${CORE_PORT:-}" && -n "${NODE_RSOCKET_PORT:-}" ]] && export CORE_PORT="$NODE_RSOCKET_PORT"
+    [[ -z "${CORE_MGMT_PORT:-}" && -n "${NODE_MGMT_PORT:-}" ]] && export CORE_MGMT_PORT="$NODE_MGMT_PORT"
     classpath="${CHAT_SHELL_CLASSPATH_FILE:-$root/chat-deploy/target/shell-cli.classpath}"
 
     # The options of the shell launch plan, as chat-build prints them for the
@@ -266,6 +290,10 @@ fi
 # checked, so the run uses that one. CHAT_SHELL_JAVA names another. See
 # CHAT-bjqzvsoe and the branch review of 2026-10-22.
 java_bin="${CHAT_SHELL_JAVA:-${frozen_java:-java}}"
+if [[ -z "${CHAT_SHELL_JAVA:-}" ]] && ! command -v "$java_bin" > /dev/null 2>&1 \
+    && command -v java > /dev/null 2>&1; then
+    java_bin=java
+fi
 if ! command -v "$java_bin" > /dev/null 2>&1; then
     printf 'chat-shell-cli: no java at %s. Set CHAT_SHELL_JAVA.\n' "$java_bin" >&2
     exit 2

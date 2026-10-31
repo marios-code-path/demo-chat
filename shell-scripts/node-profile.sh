@@ -73,7 +73,8 @@ chat_node_profile_load() {
         || { chat_profile_error 'the profile needs NODE_PROFILE_VERSION=1.'; return 2; }
     for cp_key in $cp_all; do
         cp_found=false
-        if cp_value=$(printenv "$cp_key"); then
+        if printenv "$cp_key" > /dev/null; then
+            cp_value="${!cp_key}"
             cp_found=true
         else
             for ((cp_index=0; cp_index < ${#cp_keys[@]}; cp_index++)); do

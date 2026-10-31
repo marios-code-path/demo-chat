@@ -39,6 +39,35 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent
 
 
+def profile_inputs() -> bool:
+    """Read a selected profile without evaluating its records."""
+    if "CHAT_NODE_PROFILE" not in os.environ:
+        return False
+    result = subprocess.run(
+        ["bash", str(HERE / "node-profile")], capture_output=True, text=True)
+    if result.returncode:
+        sys.stderr.write(result.stderr)
+        raise SystemExit(result.returncode)
+    for record in result.stdout.split("\n"):
+        if not record:
+            continue
+        key, separator, value = record.partition("=")
+        if not separator:
+            print("chat-build: the profile reader returned an invalid record.", file=sys.stderr)
+            raise SystemExit(2)
+        os.environ[key] = value
+    for target, source in (("CORE_PORT", "NODE_RSOCKET_PORT"),
+                           ("CORE_MGMT_PORT", "NODE_MGMT_PORT")):
+        if target not in os.environ and source in os.environ:
+            os.environ[target] = os.environ[source]
+    if "CHAT_REGISTRY" not in os.environ and "NODE_REGISTRY_PORT" in os.environ:
+        os.environ["CHAT_REGISTRY"] = "127.0.0.1:" + os.environ["NODE_REGISTRY_PORT"]
+    return True
+
+
+PROFILE_INPUTS = profile_inputs()
+
+
 # --------------------------------------------------------------------------
 # Ports — mirrors shell-scripts/ports.sh
 # --------------------------------------------------------------------------
@@ -1243,7 +1272,9 @@ def node_id_value(raw: str) -> int:
 
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--node-id", metavar="ID", required=True, type=node_id_value,
+    profile_node = os.environ.get("NODE_ID") if PROFILE_INPUTS else None
+    parser.add_argument("--node-id", metavar="ID", required=profile_node is None,
+                        default=profile_node, type=node_id_value,
                         help="node id for key generation, an integer in 0..1023. "
                              "It must be unique across every deployment that writes to one store.")
 
@@ -1349,6 +1380,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = build_parser().parse_args()
+    if (PROFILE_INPUTS and not getattr(args, "key_type", None)
+            and not getattr(args, "long", False) and not getattr(args, "uuid", False)):
+        args.key_type = os.environ.get("NODE_KEY_TYPE")
 
     # Every run and every image build is a deployment, and a deployment names
     # its key type. No key type is a default. See CHAT-ehpgyapa.

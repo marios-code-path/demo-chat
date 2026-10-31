@@ -2,6 +2,7 @@
 # Emit validated profile records without evaluating their contents.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$here/node-inputs.sh"
 . "$here/node-profile.sh"
 required=()
 while (( $# )); do
@@ -12,7 +13,8 @@ while (( $# )); do
     required+=("$2")
     shift 2
 done
-chat_node_profile_load "${required[@]+"${required[@]}"}"
+[[ -n "${CHAT_NODE_PROFILE:-}" ]] || { chat_profile_error 'set CHAT_NODE_PROFILE.'; exit 2; }
+chat_node_inputs "${required[@]+"${required[@]}"}"
 for profile_key in NODE_PROFILE_VERSION NODE_PROJECT NODE_NETWORK NODE_ID NODE_KEY_TYPE \
     NODE_RSOCKET_PORT NODE_MGMT_PORT NODE_REGISTRY_PORT NODE_IMAGE_REPO CORE_IMAGE \
     NODE_VECTOR_PERSIST CASSANDRA_VERSION REDIS_VERSION CONSUL_VERSION \

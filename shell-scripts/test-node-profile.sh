@@ -107,5 +107,14 @@ CHAT_NODE_PROFILE="$profile" bash -c \
     _ "$repo/shell-scripts/node-profile.sh" > "$work/out" 2> "$work/error" || status=$?
 label='library exports validated values'
 check test "$status" -eq 0
+profile="$repo/shell-scripts/fixtures/profiles/alpha.env"
+run env NODE_PROJECT=$'valid\n'
+label='an environment value keeps its trailing newline for validation'
+check refused
+profile="$work/no-version"
+printf 'NODE_PROJECT=neutral\nNODE_ID=7\n' > "$profile"
+run env
+label='a neutral profile cannot omit its version'
+check refused
 printf '%s checks, %s failures\n' "$checks" "$failures"
 test "$failures" -eq 0

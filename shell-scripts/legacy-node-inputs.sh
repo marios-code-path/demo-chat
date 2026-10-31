@@ -30,15 +30,18 @@ EOF
 chat_legacy_node_inputs() {
     local li_old li_new li_old_value li_new_value li_index li_root
     local li_keys=() li_values=()
-    if li_root=$(printenv NODE9_DIR); then
+    if printenv NODE9_DIR > /dev/null; then
+        li_root="$NODE9_DIR"
         if [[ $# == 0 || "$li_root" != "$1" ]]; then
             printf 'legacy-node-inputs: the deployment root cannot be overridden.\n' >&2
             return 2
         fi
     fi
     while read -r li_old li_new; do
-        if li_old_value=$(printenv "$li_old"); then
-            if li_new_value=$(printenv "$li_new"); then
+        if printenv "$li_old" > /dev/null; then
+            li_old_value="${!li_old}"
+            if printenv "$li_new" > /dev/null; then
+                li_new_value="${!li_new}"
                 if [[ "$li_old_value" != "$li_new_value" ]]; then
                     printf 'legacy-node-inputs: %s conflicts with %s.\n' "$li_old" "$li_new" >&2
                     return 2
@@ -56,7 +59,7 @@ chat_legacy_node_inputs() {
 
 chat_legacy_profile_translate() {
     local li_path="$1" li_line li_key li_value li_old li_new li_index li_found li_original
-    local li_keys=() li_values=() li_originals=() li_version=false
+    local li_keys=() li_values=() li_originals=() li_version=false li_legacy=false
     [[ "$li_path" == /* && -f "$li_path" && -r "$li_path" ]] \
         || { chat_profile_error 'select a readable absolute profile file.'; return 2; }
     LC_ALL=C tr -d '\000' < "$li_path" | cmp -s "$li_path" - \
@@ -69,7 +72,7 @@ chat_legacy_profile_translate() {
         li_key="$li_original"
         li_value="${li_line#*=}"
         while read -r li_old li_new; do
-            if [[ "$li_key" == "$li_old" ]]; then li_key="$li_new"; break; fi
+            if [[ "$li_key" == "$li_old" ]]; then li_key="$li_new"; li_legacy=true; break; fi
         done < <(chat_legacy_pairs)
         chat_profile_key "$li_key" \
             || { chat_profile_error 'the legacy profile contains an unknown key.'; return 2; }
@@ -92,7 +95,11 @@ chat_legacy_profile_translate() {
         fi
         [[ "$li_key" != NODE_PROFILE_VERSION ]] || li_version=true
     done < "$li_path"
-    [[ "$li_version" == true ]] || printf 'NODE_PROFILE_VERSION=1\n'
+    if [[ "$li_version" != true ]]; then
+        [[ "$li_legacy" == true ]] \
+            || { chat_profile_error 'a neutral profile needs NODE_PROFILE_VERSION=1.'; return 2; }
+        printf 'NODE_PROFILE_VERSION=1\n'
+    fi
     for ((li_index=0; li_index < ${#li_keys[@]}; li_index++)); do
         printf '%s=%s\n' "${li_keys[$li_index]}" "${li_values[$li_index]}"
     done
@@ -112,4 +119,24 @@ chat_legacy_node_profile_load() {
     fi
     rm -f "$li_stage"
     return "$li_status"
+}
+
+# Keep old entry-point defaults here until deployment adapters replace them.
+chat_legacy_stage_inputs() {
+    if ! printenv CHAT_NODE_PROFILE > /dev/null; then
+        export NODE_KEY_TYPE="${NODE_KEY_TYPE-uuid}"
+        export NODE_ID="${NODE_ID-9}"
+        export CORE_PORT="${CORE_PORT-6890}"
+        export CORE_MGMT_PORT="${CORE_MGMT_PORT-6891}"
+    fi
+}
+
+chat_legacy_shell_runtime() {
+    local li_options="$1"
+    if ! grep -q '^# core-port ' "$li_options" \
+        && grep -qx '# node-id 9' "$li_options" \
+        && grep -qx '# key-type uuid' "$li_options"; then
+        export CORE_PORT="${CORE_PORT-${NODE_RSOCKET_PORT-6890}}"
+        export CORE_MGMT_PORT="${CORE_MGMT_PORT-${NODE_MGMT_PORT-6891}}"
+    fi
 }
