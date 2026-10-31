@@ -106,3 +106,71 @@ A negative rule, local exclude, or global exclude cannot satisfy it.
 The current inventory includes temporary compatibility and does not define the final neutral release.
 Implementation commit: `f35dc407`.
 The checker also accepted that exact clean implementation checkout with its intermediate inventory.
+
+## Final foundation verification
+
+The final shell sweep passed all 24 selected suites.
+It activated the Miniforge base environment before execution.
+The suites were:
+
+```text
+test-node-profile
+test-legacy-node-inputs
+test-profile-launchers
+test-profile-exit-status
+test-shell-cli-lib
+test-chat-shell-cli-deadline
+test-chat-mcp-installed
+test-flags
+test-register-source-independence
+test-register
+test-register-bundle
+test-register-bootstrap
+test-register-import
+test-register-host-install
+test-profile-tunnel
+test-profile-mcp-paths
+test-chat-tunnel
+test-chat-remote
+test-mcp-install
+test-setup-portal
+test-node-9-bin-only
+test-node-9-tunnel
+test-node-9-remote
+test-chat-shell-portal
+```
+
+Each command was `bash shell-scripts/NAME.sh` with the listed suite name.
+Logs reside at `/private/tmp/CHAT-foundation-final-NAME.log`.
+The source-check suite separately passed 30 checks under `/bin/bash` 3.2 after its final change.
+The socket lifecycle suite passed again after the explicit CLI correction, with permission for local listeners.
+The earlier local TCP suite passed eight checks with the same permission.
+
+The first required partial build stopped at a sandbox-denied Kotlin daemon marker write.
+In-process compilation reached tests, where Mockito could not initialize its agent.
+An explicit installed Byte Buddy agent resolved that error.
+The next sandboxed run reached MCP tests, where local listener binds were denied.
+The final run received permission for local test listeners and reported `BUILD SUCCESS` with exit status 0.
+Its command was:
+
+```bash
+source /Users/darkbit1001/miniforge3/etc/profile.d/conda.sh
+conda activate base
+MAVEN_OPTS='-Dkotlin.compiler.daemon=false -Dkotlin.compiler.execution.strategy=in-process -DargLine=-javaagent:/Users/darkbit1001/.m2/repository/net/bytebuddy/byte-buddy-agent/1.17.8/byte-buddy-agent-1.17.8.jar' \
+    just build-partial chat-shell,chat-mcp unit
+```
+
+Log: `/private/tmp/CHAT-foundation-partial-allowed.log`.
+The reactor reported success for all 13 selected projects and required dependencies.
+Surefire terminated the `chat-client-rsocket` test JVM after a 30-second exit timeout.
+That module reported 93 tests, no failures, no errors, and no skipped tests before Maven continued successfully.
+This timeout is a visible verification limit. It is not a test assertion failure.
+The partial build does not establish full PR CI.
+No full PR CI, Docker image build, real jar staging, or live two-agent acceptance ran.
+
+`git diff --check` and all six existing drift bindings pass.
+The main checkout remains clean at the stated master basis.
+The separate destination repository remains empty with no commits.
+The [intermediate scan](INTERMEDIATE-SCAN.md) records 1271 matching lines in 98 files at `f35dc407`.
+This report counts matching lines, not occurrences, and makes no final extraction claim.
+Owner foundation implementation review remains pending under CHAT-qdsmackk.
