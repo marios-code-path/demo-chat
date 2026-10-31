@@ -7,6 +7,8 @@
 # appends one record.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 build="$repo_root/shell-scripts/chat-build"

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Check temporary alias rules before general tools change their inputs.
 set -uo pipefail
+
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

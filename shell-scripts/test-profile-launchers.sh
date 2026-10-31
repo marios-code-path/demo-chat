@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Inspect profile-driven JVM arguments without starting Java or Maven.
 set -uo pipefail
+
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 work=$(cd "$work" && pwd -P)

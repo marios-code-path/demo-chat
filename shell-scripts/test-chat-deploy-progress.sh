@@ -8,6 +8,8 @@
 # the plan, because the stage lines read the image and module from it.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 tmp_root="${TMPDIR:-/tmp}"
 work="$(mktemp -d "${tmp_root%/}/chat-deploy-progress.XXXXXX")"

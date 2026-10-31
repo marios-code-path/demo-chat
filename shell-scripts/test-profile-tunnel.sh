@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Verify general tool resolution and profile-driven tunnel ports.
 set -uo pipefail
+
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
 repo=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

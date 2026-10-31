@@ -6,6 +6,8 @@
 # arguments, and its standard input. The tests never reach a core.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 # The suite runs the wrapper from a source tree on purpose. The installed
 # guard of CHAT-mvvvnujw otherwise stops every call with status 2.
 export NODE9_ALLOW_SOURCE_TREE=1

@@ -5,6 +5,8 @@
 # never run `docker compose up`, and they never touch node 16.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 # The sandbox copies are source trees. They run on purpose.
 export NODE9_ALLOW_SOURCE_TREE=1
 

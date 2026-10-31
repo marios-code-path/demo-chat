@@ -54,7 +54,7 @@ It now passes all six cases, including an injected shared validator.
 
 | Assertion group | General suite | Deployment suite during transition |
 | --- | --- | --- |
-| Config, typed reads, pointers, portal routing, receipts, deadlines. | `test-register.sh`, 119 passing cases. | Original `test-node-9-register.sh` also passes 119 cases until its later split. |
+| Config, typed reads, pointers, portal routing, receipts, deadlines. | `test-register.sh`, 119 passing cases with inherited legacy inputs cleared before fixtures. | Original `test-node-9-register.sh` also passes 119 cases until its later split. |
 | Caller identity choice. | General command accepts a valid explicit identity. | Original wrapper retains its fixed identity refusal. |
 | Bundle validation and request derivation. | `test-register-bundle.sh`, 22 passing cases. | No deployment installer is required. |
 | Retry, receipts, index, recovery, collision, and create. | `test-register-bootstrap.sh`, 95 passing cases in a generic fixture home. | Deployment installation and environment assertions have their separate suite. |
@@ -64,6 +64,9 @@ It now passes all six cases, including an injected shared validator.
 The existing core deployment suite also passes.
 The secret suite fails seven of fourteen checks in this sandbox.
 The exact `1a8fd033` baseline fails the same seven checks under the same isolated Ansible cache setting.
+This count depends on the environment.
+The owner reported one failure in fourteen checks in the separate review environment.
+The owner confirmed the same missing-Ansible assertion failure at master and `54113f32`.
 Ansible reports that its local RPC server cannot start.
 One existing assertion expects `--local` in a missing-Ansible message that does not contain that text.
 No secret implementation or assertion changed to conceal these failures.
@@ -109,8 +112,10 @@ The checker also accepted that exact clean implementation checkout with its inte
 
 ## Final foundation verification
 
-The final shell sweep passed all 24 selected suites.
+The original author shell sweep passed all 24 selected suites.
 It activated the Miniforge base environment before execution.
+That sweep inherited the caller environment without clearing the full legacy input set.
+The isolation correction below replaces that test condition for revised results.
 The suites were:
 
 ```text
@@ -174,3 +179,82 @@ The separate destination repository remains empty with no commits.
 The [intermediate scan](INTERMEDIATE-SCAN.md) records 1271 matching lines in 98 files at `f35dc407`.
 This report counts matching lines, not occurrences, and makes no final extraction claim.
 Owner foundation implementation review remains pending under CHAT-qdsmackk.
+
+## Review correction: inherited test inputs
+
+Review basis: `54113f32`. Correction issue: CHAT-jgtsuyfo.
+The owner found that `test-register.sh` inherited legacy selectors while some cases cleared only their neutral counterparts.
+The compatibility reader correctly refused unequal values.
+The correction changes test isolation and evidence only.
+
+Before the correction, this command reported 119 checks and five failures:
+
+```bash
+NODE_9_REGISTER_TOPIC_NAME=demo-chat-register bash shell-scripts/test-register.sh
+```
+
+With `NODE_9_REGISTER_TOPIC_NAME=ambient-register`, the same suite reported 119 checks and 77 failures.
+The arbitrary topic also changed default register selection.
+Logs: `/private/tmp/CHAT-foundation-isolation-topic-red.log` and `/private/tmp/CHAT-foundation-isolation-red.log`.
+
+The new `test-suite-environment.sh` initially failed 24 of 47 checks because no shared boundary cleared its seeded inputs.
+After the helper existed, all 47 checks passed under `/bin/bash` 3.2.
+The test obtains the full alias table from the reader.
+It seeds every legacy alias and neutral counterpart with unequal fixture values.
+It also seeds `NODE9_DIR` and `STUB_REQUIRE_NODE9_ENV`.
+The helper removes all 23 legacy names while preserving neutral and unrelated inputs.
+A deliberate conflict introduced after the boundary still returns 2.
+Logs: `/private/tmp/CHAT-foundation-isolation-helper-red.log` and `/private/tmp/CHAT-foundation-isolation-helper-final.log`.
+
+All 35 affected suites now source `test-support/clear-legacy-inputs.sh` before fixture setup.
+They stop if the helper cannot load.
+The 119-case Register suite passes with the normal topic inherited.
+It also passes with all 23 legacy names seeded with conflicting fixture values before suite entry.
+Both revised results require legacy inputs cleared before fixtures, rather than a caller that happens to omit them.
+Logs: `/private/tmp/CHAT-foundation-isolation-topic-green.log` and `/private/tmp/CHAT-foundation-isolation-full-green.log`.
+
+The helper is test-only transitional support. It is not an installed tool or a permanent scan exception.
+Deployment test transfer must preserve the isolation boundary.
+Retained general tests must remove this dependency when final adapters replace the temporary reader.
+The lexical report remains scoped to `f35dc407`.
+The owner measured 1286 matching lines across 100 files at the later `54113f32` review basis.
+Neither count describes this correction's final tree.
+
+The partial Maven result remains author-reported. No independent GitHub result is claimed.
+
+The corrected sweep activated Miniforge base and sourced the helper before its suite loop:
+
+```bash
+source /Users/darkbit1001/miniforge3/etc/profile.d/conda.sh
+conda activate base
+. shell-scripts/test-support/clear-legacy-inputs.sh
+```
+
+All 36 suites in that loop passed.
+They comprise the original 24-suite list plus these twelve suites:
+
+```text
+test-tool-release
+test-authserv-profile
+test-build-node-9-image
+test-chat-deploy-progress
+test-deploy-recipe
+test-image-manifest
+test-key-type-required
+test-node-9-install-secrets
+test-node-9-register
+test-node-9
+test-shell-recipe
+test-suite-environment
+```
+
+Each command was `bash shell-scripts/NAME.sh`.
+Logs reside at `/private/tmp/CHAT-isolation-sweep-NAME.log`.
+Separate socket lifecycle and TCP suites also passed under cleared legacy inputs with permission for local listeners.
+The unchanged secret suite again reported seven failures in fourteen checks in this sandbox.
+Its command used `ANSIBLE_LOCAL_TEMP=/private/tmp/CHAT-isolation-ansible-cache` after the same input clearing.
+Its failure count remains environment-dependent, as the owner review established.
+No runtime implementation or secret behavior changed.
+Shell syntax checks pass under `/bin/bash` 3.2.
+`git diff --check` and all six drift bindings pass.
+Foundation implementation approval remains pending.

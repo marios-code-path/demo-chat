@@ -4,6 +4,8 @@
 # source plan must do the same. See CHAT-hmbigvmf.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 here="$(cd "$(dirname "$0")" && pwd)"
 failures=0
 T="$(mktemp -d)"

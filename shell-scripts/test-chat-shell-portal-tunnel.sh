@@ -5,6 +5,8 @@
 # portal, no tunnel, and no node. See CHAT-hmbigvmf.
 set -euo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tunnel_script="$repo_root/shell-scripts/chat-shell-portal-tunnel"
 fixture="$(mktemp -d)"

@@ -5,6 +5,8 @@
 # budget to zero, so it never probes a port. The command in each case is a
 # local bash call.
 set -uo pipefail
+
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
 profile_repo=$(cd "$(dirname "$0")/.." && pwd)
 export CHAT_NODE_PROFILE="$profile_repo/shell-scripts/fixtures/profiles/alpha.env"
 export CHAT_TUNNEL_AUTHSERV_PORT=9000

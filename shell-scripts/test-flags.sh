@@ -21,6 +21,8 @@
 
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GOLDEN="$DIR/golden"
 CHAT_BUILD="$DIR/chat-build"

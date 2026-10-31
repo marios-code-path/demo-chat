@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Preserve existing refusal statuses and isolate new profile failures.
 set -uo pipefail
+
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
 repo=$(cd "$(dirname "$0")/.." && pwd)
 builder="${CHAT_TEST_BUILD:-$repo/shell-scripts/chat-build}"
 work=$(mktemp -d)

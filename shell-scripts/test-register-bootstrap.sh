@@ -6,6 +6,8 @@
 # It reads no deployment installer or deployment checkout.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 # The verify step reads through the register wrapper, and the wrapper needs a
 # register value. An install sets it in .envrc. See CHAT-jmnjvupr.
 export CHAT_REGISTER_TOPIC_NAME=demo-chat-register

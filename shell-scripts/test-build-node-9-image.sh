@@ -7,6 +7,8 @@
 # point the script at the stub and at the fixture.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 builder="$repo_root/shell-scripts/build-node-9-image"

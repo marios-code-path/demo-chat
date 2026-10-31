@@ -7,6 +7,8 @@
 # mapping that cannot describe one safe import.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 # The suite runs the tools from a source tree on purpose.
 export CHAT_ALLOW_SOURCE_TREE=1
 

@@ -7,6 +7,8 @@
 # that the launcher builds. The suite needs no free port.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 repo_root="$PWD"
 launcher="$repo_root/shell-scripts/chat-shell-cli"

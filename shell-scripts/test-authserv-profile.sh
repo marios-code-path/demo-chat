@@ -2,6 +2,8 @@
 # Check the authorization server deployment profiles.
 set -euo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/authserv-launch.XXXXXX")"
 trap 'rm -rf -- "$work"' EXIT

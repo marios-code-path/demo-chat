@@ -7,6 +7,8 @@
 # not hang.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 here="$(cd "$(dirname "$0")" && pwd)"
 # The harness pins the real perl, because a case puts a stub perl first on the PATH of the launcher.
 real_perl="$(command -v perl)"

@@ -6,6 +6,8 @@
 # local bash call.
 set -uo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/test-support/clear-legacy-inputs.sh" || exit $?
+
 cd "$(dirname "$0")/.."
 tool="$PWD/node-9/bin/node-9-tunnel"
 
