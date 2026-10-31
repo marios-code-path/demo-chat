@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# Prove that an image holds the digest of an expected composition record.
+#
+#   verify-image-composition --expected FILE --image REFERENCE
+#
+# FILE holds a version 1 composition record, as chat-build --composition-json
+# prints it. The verifier checks the exact schema and recomputes the digest.
+# The digest is the SHA-256 of the canonical record without the final LF.
+# The image label com.demo.chat.composition.sha256 must equal that digest.
+#
+# The verifier inspects REFERENCE once. It prints the immutable image ID of
+# that inspection on standard output. A later check must use that ID, because
+# a tag can move to another image after the inspection.
+#
+# A matching label proves the composition that the trusted builder recorded.
+# It is not a signature. It does not prove the source commit.
+# verify-image-source is a separate check. See docs/IMAGE-VERIFICATION.md.
+#
+# Exit status: 0 proved, 1 missing or different metadata or a Docker failure,
+# 2 invalid input or a missing command.
+set -uo pipefail
+
+label_key=com.demo.chat.composition.sha256
+
+refuse() { printf 'verify-image-composition: %s\n' "$1" >&2; exit 2; }
+fail() { printf 'verify-image-composition: %s\n' "$1" >&2; exit 1; }
+
+expected='' image=''
+while (( $# )); do
+    case "$1" in
+        --expected|--image)
+            (( $# >= 2 )) || refuse "$1 needs a value."
+            if [[ "$1" == --expected ]]; then expected="$2"; else image="$2"; fi
+            shift 2 ;;
+        -h|--help)
+            printf 'usage: verify-image-composition --expected FILE --image REFERENCE\n' >&2
+            exit 0 ;;
+        *) refuse "unknown argument: $1" ;;
+    esac
+done
+[[ -n "$expected" && -n "$image" ]] || refuse 'name --expected and --image.'
+command -v jq > /dev/null 2>&1 || refuse 'no jq command.'
+command -v docker > /dev/null 2>&1 || refuse 'no docker command.'
+if command -v sha256sum > /dev/null 2>&1; then
+    sha256() { sha256sum | cut -d' ' -f1; }
+elif command -v shasum > /dev/null 2>&1; then
+    sha256() { shasum -a 256 | cut -d' ' -f1; }
+else
+    refuse 'no sha256sum or shasum command.'
+fi
+
+# -- The expected record -------------------------------------------------
+[[ -f "$expected" && -r "$expected" ]] || refuse "the expected record $expected is not a readable file."
+iconv -f UTF-8 -t UTF-8 "$expected" > /dev/null 2>&1 \
+    || refuse 'the expected record is not valid UTF-8.'
+jq -e . "$expected" > /dev/null 2>&1 || refuse 'the expected record is not valid JSON.'
+schema='type == "object"
+    and keys == ["jvmOptions","mavenProfiles","module","service","springProfiles","version"]
+    and (.version | type == "number")
+    and (.service | type == "string") and (.module | type == "string")
+    and all(.mavenProfiles, .springProfiles, .jvmOptions; type == "array" and all(.[]; type == "string"))'
+jq -e "$schema" "$expected" > /dev/null 2>&1 \
+    || refuse 'the expected record does not have the version 1 schema.'
+# The version must be the integer 1. A float such as 1.0 is another value in
+# the canonical form of chat-build. The raw text decides, so no jq version
+# can change the result. A schema record holds the key "version" once.
+version_words=$(grep -oE '"version"[[:space:]]*:[[:space:]]*[^,}[:space:]]+' "$expected" \
+    | sed -E 's/.*:[[:space:]]*//')
+[[ "$version_words" == 1 ]] || refuse "the expected record has version ${version_words//$'\n'/ }. Only version 1 is supported."
+# jq and Python write a control character or DEL in different ways. No
+# composition value holds one, so the verifier refuses them.
+jq -e '[.. | strings | explode[] | select(. < 32 or . == 127)] | length == 0' "$expected" > /dev/null 2>&1 \
+    || refuse 'the expected record holds a control character.'
+canonical=$(jq -cS . "$expected") || refuse 'cannot write the canonical record.'
+digest=$(printf '%s' "$canonical" | sha256)
+[[ "$digest" =~ ^[0-9a-f]{64}$ ]] || refuse 'cannot compute the expected digest.'
+
+# -- The image -----------------------------------------------------------
+# One inspection. Every later statement reads its result alone.
+inspect_status=0
+inspect=$(docker image inspect --format '{{json .}}' "$image" 2> /dev/null) || inspect_status=$?
+(( inspect_status == 0 )) || fail "docker cannot inspect $image. It returned status $inspect_status."
+inspect=${inspect%%$'\n'*}
+image_id=$(printf '%s' "$inspect" | jq -r 'if type == "object" and (.Id | type) == "string" then .Id else "" end' 2> /dev/null) \
+    || fail "the inspection of $image gives no JSON object."
+[[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "the inspection of $image gives no immutable image ID."
+label=$(printf '%s' "$inspect" | jq -r --arg key "$label_key" \
+    '(.Config.Labels // {}) | if type == "object" then (.[$key] // "") else "" end' 2> /dev/null) \
+    || fail "the inspection of $image gives no readable labels."
+[[ -n "$label" ]] || fail "image $image_id holds no $label_key label."
+[[ "$label" == "$digest" ]] \
+    || fail "image $image_id holds $label_key=$label, and the expected record gives $digest."
+
+printf 'verify-image-composition: image %s holds the expected composition %s\n' "$image_id" "$digest" >&2
+printf '%s\n' "$image_id"

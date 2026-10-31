@@ -120,6 +120,71 @@ A successful record adds two fields:
 | `compositionVersion` | Integer `1`. |
 | `compositionSha256` | The digest that the reserved label holds. |
 
+## Verify an image
+
+Two general tools verify an image. Each has no deployment defaults.
+Each proves a different fact, so neither replaces the other.
+A deployment builder runs both.
+
+### Composition
+
+```bash
+image_id=$(shell-scripts/verify-image-composition --expected expected.json --image REFERENCE)
+```
+
+The verifier checks that the expected file has the exact version 1 schema.
+It recomputes the digest with the canonical form above, through `jq -cS`.
+It then inspects `REFERENCE` once.
+The reserved label of that image must equal the digest.
+On success, it prints the immutable image ID of that inspection on standard output.
+A later check must use that ID, because a tag can move to another image.
+
+| Status | Meaning |
+| --- | --- |
+| 0 | The label equals the expected digest. |
+| 1 | The label is missing or different, the inspection gives no immutable ID, or Docker fails. |
+| 2 | The input is invalid, or a command is missing. |
+
+A Docker failure always gives status 1, whatever status Docker returns.
+The verifier refuses these expected files with status 2, before it inspects the image:
+
+- A file that is not readable, not UTF-8, or not JSON.
+- A record without the exact version 1 fields and types.
+- A version other than the integer `1`, for example `2` or `1.0`.
+- A string with a control character or DEL.
+  `jq` and Python write these characters in different ways.
+
+### Source commit
+
+```bash
+shell-scripts/verify-image-source --boot-jar FILE --commit COMMIT --image "$image_id"
+```
+
+The verifier reads `git.commit.id` from these stamps:
+
+- `BOOT-INF/classes/git.properties` of the boot jar.
+- `git.properties` of each `BOOT-INF/lib/chat-*.jar` in the boot jar.
+- `/workspace/BOOT-INF/classes/git.properties` in the image layers.
+
+Each commit must equal `COMMIT`, a full hexadecimal commit ID.
+The image must be an immutable image ID, `sha256:` and 64 hexadecimal digits.
+`docker create` makes a container record and starts no process.
+The verifier removes each record that it created, and no other record.
+
+| Status | Meaning |
+| --- | --- |
+| 0 | Every stamp equals the commit. |
+| 1 | A stamp is missing or different, or a Docker step fails. |
+| 2 | The input is invalid, or a command is missing. |
+
+A source stamp proves the commit alone.
+Two images from one commit can hold different compositions.
+Thus a passed source check never replaces the composition check.
+A missing composition label fails the composition check. It does not fall back to the source check.
+
+`shell-scripts/build-node-9-image` still holds its own copy of the source checks.
+Extraction Task B2 connects both verifiers to the destination node-9 builder.
+
 ## Tests
 
 `shell-scripts/test-image-composition.sh` tests the mode.
@@ -128,3 +193,6 @@ It clears every ambient input that the mode reads before it sets its own inputs.
 `shell-scripts/test-flags.sh` tests the parser refusals of the mode.
 The same composition suite replaces Maven with a stub that records the label input of a build.
 `shell-scripts/test-image-manifest.sh` tests the label check of the manifest.
+`shell-scripts/test-verify-image-composition.sh` and `shell-scripts/test-verify-image-source.sh` test the verifiers with a Docker stub.
+The composition suite holds an image with a correct source stamp and a different composition label.
+It also moves the tag to another image after the first inspection.

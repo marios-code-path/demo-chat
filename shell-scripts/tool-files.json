@@ -180,6 +180,12 @@
     },
     {
       "source": "shell-scripts/tool-interface.version"
+    },
+    {
+      "source": "shell-scripts/verify-image-composition"
+    },
+    {
+      "source": "shell-scripts/verify-image-source"
     }
   ],
   "runtimeFiles": [
