@@ -1115,15 +1115,17 @@ class BuildContext:
         """The version 1 record of the resolved image composition.
 
         It holds resolved values alone, never raw command text. Credential
-        values are replaced. See docs/IMAGE-VERIFICATION.md.
+        values are replaced. With --bake the image build receives no options,
+        so the record holds none. See docs/IMAGE-VERIFICATION.md.
         """
+        options = [] if self.args.bake else self.java_tool_options_list()
         return {
             "version": COMPOSITION_VERSION,
             "service": self.service.name,
             "module": self.module_name(),
             "mavenProfiles": self.maven_profiles(),
             "springProfiles": self.spring_profiles(),
-            "jvmOptions": [redact_option(o) for o in self.java_tool_options_list()],
+            "jvmOptions": [redact_option(o) for o in options],
         }
 
     def java_tool_options(self) -> str:

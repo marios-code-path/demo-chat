@@ -289,5 +289,27 @@ else
     fail 'a changed composition changes the reserved label'
 fi
 
+# -- --bake: the image receives no options, so the record holds none --------
+compose k "${plan_case[@]}" --node-id 7 --bake --composition-json
+if [[ -s "$work/a.json" ]] && jq -e '.jvmOptions == []' "$work/k.json" > /dev/null 2>&1 \
+        && [[ "$(jq -cS 'del(.jvmOptions)' "$work/k.json")" == "$(jq -cS 'del(.jvmOptions)' "$work/a.json")" ]]; then
+    pass 'a baked composition record holds no JVM options and keeps the other fields'
+else
+    fail 'a baked composition record holds no JVM options and keeps the other fields'
+fi
+bake_digest=$(printf '%s' "$(jq -cS '.jvmOptions = []' "$fixtures/expected.json")" | shasum -a 256 | cut -d' ' -f1)
+capture kb -- "${plan_case[@]}" --node-id 7 --build --bake
+if (( capture_status == 0 )) && [[ "$(cat "$work/kb.labels" 2> /dev/null)" == "$reserved=$bake_digest" ]]; then
+    pass 'a baked build labels the record of the options that the image receives'
+else
+    fail 'a baked build labels the record of the options that the image receives'
+    printf '    status %s, labels %s\n' "$capture_status" "$(cat "$work/kb.labels" 2> /dev/null)"
+fi
+if [[ -s "$work/kb.labels" && "$(cat "$work/kb.labels")" != "$(cat "$work/g.labels" 2> /dev/null)" ]]; then
+    pass 'a baked build and an inherited build give two labels'
+else
+    fail 'a baked build and an inherited build give two labels'
+fi
+
 printf '%s checks, %s failures\n' "$checks" "$failures"
 (( failures == 0 ))

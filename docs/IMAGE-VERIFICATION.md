@@ -44,6 +44,11 @@ The record is one JSON object with exactly these fields:
 | `jvmOptions` | Ordered resolved `JAVA_TOOL_OPTIONS` entries of the build, with credential values replaced. |
 
 All values are strings or string arrays, except the integer version.
+
+`jvmOptions` holds the options that the image build receives.
+With `--bake`, the builder removes `JAVA_TOOL_OPTIONS` from the Maven environment.
+The image then receives no resolved option, and `jvmOptions` is `[]`.
+`--composition-json --bake` prints that same record.
 The array order is the order of the resolved launch plan.
 
 The record holds resolved values. It never holds raw command text or a caller-supplied digest.
